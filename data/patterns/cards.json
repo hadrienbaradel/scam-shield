@@ -169,5 +169,39 @@
     ],
     "first_seen": "2026-10-05",
     "last_seen": "2026-10-26"
+  },
+  {
+    "id": "us-job-offer-via-invoicing-platform-2026",
+    "name": "Fake recruiter 'your profile matched' sent through an invoicing platform",
+    "status": "active",
+    "channels": [
+      "email"
+    ],
+    "countries": [
+      "US",
+      "FR"
+    ],
+    "impersonated_brands": [
+      "Adecco"
+    ],
+    "lure": "Remote job matching your profile, book an intro call through a link",
+    "ask": "Click a look-alike booking link that collects personal data or credentials",
+    "red_flags": [
+      "your profile matched",
+      "select a time for an intro call",
+      "sent to you via go.xero.com",
+      "reply-to on an unrelated domain"
+    ],
+    "red_flag_domains": [
+      "adecco-hrjobs.com",
+      "hrteamadecco.com",
+      "mediateaminviter.com"
+    ],
+    "safe_action": "Look the job up yourself on the recruiter's official website; never book through a link in an unexpected email",
+    "sources": [
+      "Real samples received 2026-08-31 and 2026-09-10, reviewed by Hadrien 2026-10-26"
+    ],
+    "first_seen": "2026-08-31",
+    "last_seen": "2026-10-26"
   }
 ]

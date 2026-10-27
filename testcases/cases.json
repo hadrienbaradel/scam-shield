@@ -720,6 +720,69 @@
         ]
       },
       "notes": "Hijacked Brazilian business mailbox sending through SendGrid; generic 'new secure message' lure also used by the real bank; link chain medium.com -> free website builder (bolt.host)."
+    },
+    {
+      "id": "A8",
+      "set": "A",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "source": "Real job-offer phishing received 2026-08-31 (reported to Xero by Hadrien). Recipient name replaced by the test persona, reply-to local part and invite token redacted.",
+      "message": {
+        "channel": "email",
+        "fromName": "Andrea from Adecco",
+        "from": "messaging-service@post.xero.com",
+        "replyTo": "recruiter@hrteamadecco.com",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Fully Remote Integrated Marketing Manager Position (Your Profile Matched)",
+        "date": "2026-08-31T18:39:30Z",
+        "body": "Hi Linda,\n\nI've been going through candidate profiles for a few open positions, and your marketing background stood out enough that I wanted to reach out directly rather than send a generic job post.\n\nThis role comes with real influence over campaign budgets, platform mix, and performance strategy — not just execution and reporting.\n\nApply here: https://calendar.adecco-hrjobs.com/invite/REDACTED\n\nThe application includes a quick step to select a time for an intro call, so that's taken care of in the same process.\n\nLet me know if you'd like more details — happy to share.\n\nBest,\nFranz | Adecco\nAdecco Recruiting Team\n\nThis email was sent to Linda via https://go.xero.com",
+        "links": [
+          {
+            "text": "https://calendar.adecco-hrjobs.com/invite/REDACTED",
+            "href": "https://calendar.adecco-hrjobs.com/invite/REDACTED"
+          },
+          {
+            "text": "https://go.xero.com",
+            "href": "https://go.xero.com"
+          }
+        ]
+      },
+      "notes": "Sent through Xero's real invoicing service (post.xero.com via Mailgun's 'High Risk Pool'), so SPF/DKIM/DMARC pass; display name claims Adecco; reply-to and link domains borrow the name Adecco."
+    },
+    {
+      "id": "A9",
+      "set": "A",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "source": "Real job-offer phishing received 2026-09-10, same campaign. Recipient name replaced, reply-to local part and invite token redacted.",
+      "message": {
+        "channel": "email",
+        "fromName": "Adecco Hiring Team",
+        "from": "messaging-service@post.xero.com",
+        "replyTo": "recruiter@mediateaminviter.com",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "I found what I was looking for and it led me here",
+        "date": "2026-09-10T19:15:47Z",
+        "body": "Hi Linda,\n\nI've been going through candidate profiles for a few open positions, and your marketing background stood out enough that I wanted to reach out directly rather than send a generic job post.\n\nThis role comes with real influence over campaign budgets, platform mix, and performance strategy — not just execution and reporting.\n\nApply here: https://calendar.adecco-hrjobs.com/invite/REDACTED\n\nThe application includes a quick step to select a time for an intro call, so that's taken care of in the same process.\n\nLet me know if you'd like more details — happy to share.\n\nBest,\nFranz | Adecco\nAdecco Recruiting Team\n\nThis email was sent to Linda via https://go.xero.com",
+        "links": [
+          {
+            "text": "https://calendar.adecco-hrjobs.com/invite/REDACTED",
+            "href": "https://calendar.adecco-hrjobs.com/invite/REDACTED"
+          },
+          {
+            "text": "https://go.xero.com",
+            "href": "https://go.xero.com"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://calendar.adecco-hrjobs.com/invite/REDACTED": {
+          "domain_age_days": 17
+        }
+      },
+      "notes": "RDAP: adecco-hrjobs.com registered 17 days before sending."
     }
   ]
 }

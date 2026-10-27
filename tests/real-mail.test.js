@@ -36,6 +36,19 @@ const LEGIT = [
   { name: "Meetup with 'ups' inside a word", m: { fromName: "Meetup", from: "info@meetup.com", auth: PASS,
     subject: "New events in your groups: Startups & signups", body: "3 new events from your groups this week.",
     links: [{ text: "See events", href: "https://www.meetup.com/home" }] } },
+  { name: "a plumber's real invoice sent through Xero", m: { fromName: "Bob's Plumbing", from: "messaging-service@post.xero.com", replyTo: "bob@bobsplumbing.test", auth: PASS,
+    subject: "Invoice INV-0042 from Bob's Plumbing for Linda", body: "Hi Linda, here's invoice INV-0042 for $240.00. View your bill online: https://in.xero.com/AbCdEf. Thanks, Bob",
+    links: [{ text: "View bill", href: "https://in.xero.com/AbCdEf" }] } },
+  { name: "a real Adecco job alert from adecco.com", m: { fromName: "Adecco", from: "jobs@adecco.com", auth: PASS,
+    subject: "New jobs matching your profile", body: "Three new jobs near you match your profile.",
+    links: [{ text: "See the jobs", href: "https://www.adecco.com/en-us/jobs" }] } },
+  { name: "a friend called Edward Norton sharing photos", m: { fromName: "Edward Norton", from: "ed.norton@example-mail.test", auth: PASS,
+    subject: "Photos from Sunday", body: "Here are the photos from Sunday lunch!", links: [{ text: "Album", href: "https://photos.example.test/album/42" }] } },
+  { name: "a newspaper renewal notice with a phone number", m: { fromName: "The Boston Globe", from: "billing@globe.com", auth: PASS,
+    subject: "Your subscription renews soon", body: "Your subscription renews on November 1 for $29.99. To cancel, call 1-888-694-5623.", links: [] } },
+  { name: "a genuine Google Calendar invitation", m: { fromName: "Margaret Lee", from: "calendar-notification@google.com", auth: PASS,
+    subject: "Invitation: Lunch @ Thu Nov 5, 12pm", body: "Margaret Lee has invited you to Lunch. Join with Google Meet.",
+    links: [{ text: "Join with Google Meet", href: "https://meet.google.com/abc-defg-hij" }, { text: "Yes", href: "https://calendar.google.com/calendar/event?action=RESPOND" }] } },
   { name: "French newsletter", m: { fromName: "Fnac", from: "newsletter@fnac.com", auth: PASS,
     subject: "Les nouveautés de la semaine", body: "Découvrez nos nouveautés livres et musique. Livraison gratuite en magasin.",
     links: [{ text: "Découvrir", href: "https://click.fnac.com/abc" }] } },
@@ -59,6 +72,10 @@ test("legit: a genuine Société Générale secure-message notice stays Safe (sa
   assert.equal(v.verdict, "safe", v.reasons.map((r) => r.text).join(" | "));
 });
 
+test("legit: a plumber's real Xero invoice stays Safe (replies to the business are normal)", () => {
+  assert.equal(run(LEGIT.find((l) => l.name.includes("Xero")).m).verdict, "safe");
+});
+
 test("legit: an advert naming another brand stays Safe, not just not-Scam", () => {
   assert.equal(run(LEGIT[3].m).verdict, "safe");
 });
@@ -75,6 +92,14 @@ const SCAMS = [
     links: [{ text: "Update now", href: "https://amaz0n-billing.top/update" }] } },
   { name: "gift-card request from an unknown sender", m: { fromName: "Pastor John", from: "pastor.john.office@freemail.test", auth: PASS,
     subject: "Quick favor", body: "I need you to buy 4 Apple gift cards of $100 for the church today. Keep it between us, send me the codes.", links: [] } },
+  // Found by the Codex red-team review (2026-10-26).
+  { name: "callback invoice: surprise Geek Squad renewal with a number to call", m: { fromName: "Renewal Team", from: "billing@support-ledger.test", auth: PASS,
+    subject: "Your Geek Squad renewal", body: "Your annual plan renewed for $389.99. For cancellation call 202-555-0148.", links: [] } },
+  { name: "real PayPal invoice email carrying a scammer's callback number", m: { fromName: "PayPal", from: "service@paypal.com", auth: PASS,
+    subject: "Invoice from Help Desk", body: "You owe $499 for annual protection. To cancel call 202-555-0148.",
+    links: [{ text: "View invoice", href: "https://www.paypal.com/invoice/p/EXAMPLE" }] } },
+  { name: "display name with an invisible character inside PayPal", m: { fromName: "P\u200bayPal", from: "noreply@account-support.test", auth: PASS,
+    subject: "Account review", body: "Review your account at https://account-support.test", links: [{ text: "https://account-support.test", href: "https://account-support.test" }] } },
 ];
 
 for (const { name, m } of SCAMS) {
