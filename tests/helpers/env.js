@@ -10,5 +10,6 @@ process.env.WORKER = "0";
 delete process.env.META_MODEL_API_KEY;
 delete process.env.RESEND_API_KEY;
 delete process.env.HIBP_API_KEY;
+delete process.env.ABUSECH_AUTH_KEY;
 delete process.env.GMAIL_PUBSUB_TOPIC;
 delete process.env.GMAIL_PUBSUB_SUBSCRIPTION;

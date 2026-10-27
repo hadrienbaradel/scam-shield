@@ -6,6 +6,12 @@
 // - Fetches refuse private, loopback and link-local addresses (SSRF), send
 //   no cookies, stop after 5 redirects, 5 seconds and 256 KB, and never
 //   submit anything.
+// - Known malware and phishing sites come from abuse.ch URLhaus (with the
+//   Spamhaus DBL status it reports). Only the host name is sent, never the
+//   full link, which can carry the reader's address or a personal token;
+//   the full link is compared here against the links the answer lists.
+//   The answers only feed the verdict at check time: abuse.ch's terms do
+//   not allow using them to train or tune anything.
 // Output uses the same shape as the seed manifests' mockLinkInspection, so
 // lib/linkInspector.js and the detector need no change.
 
@@ -14,6 +20,7 @@ import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { Agent, fetch as undiciFetch } from "undici";
 import { domainOf, sameOrSub, BRANDS, FREE_HOSTING_SUFFIXES } from "../../lib/brands.js";
+import { config } from "../config.js";
 
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "rb.gy", "cutt.ly", "is.gd", "ow.ly", "buff.ly", "shorturl.at", "tiny.cc"];
 const TWO_PART_SUFFIXES = ["co.uk", "com.br", "com.au", "co.jp", "gouv.fr", "gov.uk", "com.mx", "co.nz", "org.uk", "ac.uk"];
@@ -178,7 +185,75 @@ export function describePage(html = "") {
 // Builds the link_inspection map for one message. Link domains belonging
 // to the claimed brand or already known from the user's real mail are not
 // looked up at all.
-export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, maxResolved = 5, fetchImpl, checkHost } = {}) {
+// ------------------------------------------------------ abuse.ch URLhaus ---
+const URLHAUS_HOST = "https://urlhaus-api.abuse.ch/v1/host/";
+// Shared services where one user's malware says nothing about the next
+// link: only the exact listed link counts there, never the host.
+const SHARED_HOSTS = ["github.com", "raw.githubusercontent.com", "objects.githubusercontent.com", "gitlab.com", "bitbucket.org",
+  "cdn.discordapp.com", "media.discordapp.net", "dropbox.com", "www.dropbox.com", "dl.dropboxusercontent.com", "mediafire.com",
+  "www.mediafire.com", "pastebin.com", "transfer.sh", "drive.google.com", "docs.google.com", "storage.googleapis.com",
+  "firebasestorage.googleapis.com", "1drv.ms", "onedrive.live.com", "s3.amazonaws.com", "archive.org", "bitbucket.io"];
+const BAD_DBL = ["phishing_domain", "spammer_domain", "botnet_cc_domain"];
+const urlhausCache = new Map();
+const urlhausCalls = [];
+export const urlhausState = { off: null };
+
+// What URLhaus knows about a host: null when unknown (no key, refused,
+// timed out, too many lookups this minute), { listed: false } or the listing.
+export async function urlhausHost(host, { key = config.abusechKey, fetchImpl = fetch, perMinute = 60 } = {}) {
+  const h = String(host || "").toLowerCase();
+  if (!key || urlhausState.off || !h.includes(".") || h.endsWith(".test") || (isIP(h) && isPrivateAddress(h))) return null;
+  const hit = urlhausCache.get(h);
+  if (hit && hit.at > Date.now() - 6 * 3600000) return hit.data;
+  while (urlhausCalls.length && urlhausCalls[0] < Date.now() - 60000) urlhausCalls.shift();
+  if (urlhausCalls.length >= perMinute) return null;
+  urlhausCalls.push(Date.now());
+  let data = null;
+  try {
+    const res = await fetchImpl(URLHAUS_HOST, {
+      method: "POST", body: new URLSearchParams({ host: h }), signal: AbortSignal.timeout(4000),
+      headers: { "user-agent": "ScamShield/1.0 (link check, abuse.ch fair use)", "Auth-Key": key, "content-type": "application/x-www-form-urlencoded" },
+    });
+    const j = await res.json().catch(() => ({}));
+    const status = j.query_status || j.query_staus;
+    if (status === "unknown_auth_key" || res.status === 401) {
+      // Loud and lasting: a refused key must not look like "no threats found".
+      urlhausState.off = "abuse.ch refused ABUSECH_AUTH_KEY (unknown_auth_key)";
+      console.warn(`URLhaus lookups stopped: ${urlhausState.off}`);
+      return null;
+    }
+    if (status === "no_results") data = { listed: false };
+    else if (status === "ok") {
+      data = { listed: true, dbl: j.blacklists?.spamhaus_dbl || null,
+        urls: (j.urls || []).map((u) => ({ url: u.url, online: u.url_status === "online", threat: u.threat || null, tags: u.tags || [] })) };
+    }
+  } catch { data = null; }
+  if (data) {
+    urlhausCache.set(h, { data, at: Date.now() });
+    if (urlhausCache.size > 5000) urlhausCache.delete(urlhausCache.keys().next().value);
+  }
+  return data;
+}
+
+const sameUrl = (a, b) => {
+  const n = (u) => { try { const x = new URL(u); return `${x.hostname.toLowerCase()}${x.pathname.replace(/\/$/, "")}${x.search}`; } catch { return String(u); } };
+  return n(a) === n(b);
+};
+
+// Turns a host listing into what the detector needs about one link.
+export function urlhausVerdict(data, href) {
+  if (!data?.listed) return null;
+  const host = domainOf(href);
+  const exact = data.urls.find((u) => sameUrl(u.url, href));
+  const dblBad = BAD_DBL.includes(data.dbl);
+  const hostBad = dblBad || (!SHARED_HOSTS.includes(host) && !String(data.dbl || "").startsWith("abused_") && data.urls.some((u) => u.online));
+  if (!exact && !hostBad) return null;
+  const tags = [...new Set((exact ? [exact] : data.urls).flatMap((u) => u.tags || []))].slice(0, 5);
+  return { exact: Boolean(exact), hostBad, online: exact ? exact.online : data.urls.some((u) => u.online), dbl: data.dbl, phishing: /phishing/.test(data.dbl || ""), tags };
+}
+
+// ------------------------------------------------------ message links ---
+export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, maxResolved = 5, fetchImpl, checkHost, urlhausFetch } = {}) {
   const rdapFetch = fetchImpl || fetch;
   const resolved = new Set();
   const known = new Set(ctx.knownLinkDomains || []);
@@ -191,11 +266,19 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
     .slice(0, maxDomains);
   const asOf = Date.parse(message.date) || Date.now();
   await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl: rdapFetch, asOf }))));
+  // URLhaus by exact host (malware sits on one subdomain of a free host).
+  const hosts = [...new Set(links.map((l) => domainOf(l.href)))]
+    .filter((h) => h && !known.has(registrableDomain(h)) && (SHARED_HOSTS.includes(h) || !brandDomains.some((b) => sameOrSub(h, b))))
+    .slice(0, maxDomains);
+  const listings = new Map();
+  await Promise.all(hosts.map(async (h) => listings.set(h, await urlhausHost(h, urlhausFetch ? { fetchImpl: urlhausFetch } : {}))));
   for (const link of links) {
     const startDomain = domainOf(link.href);
     const entry = {};
     const age = ages.get(registrableDomain(startDomain));
     if (age !== undefined && age !== null) entry.domain_age_days = age;
+    const listed = urlhausVerdict(listings.get(startDomain), link.href);
+    if (listed) entry.urlhaus = listed;
     // At most a few distinct sites are visited per check, however many links.
     if ((resolve || SHORTENERS.includes(startDomain)) && (resolved.has(startDomain) || resolved.size < maxResolved)) {
       resolved.add(startDomain);
@@ -206,6 +289,10 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
         if (r.page_shows) entry.page_shows = r.page_shows;
         const finalAge = await domainAgeDays(domainOf(r.final_url), { fetchImpl: rdapFetch, asOf });
         if (finalAge !== null) entry.domain_age_days = finalAge;
+        if (!entry.urlhaus && domainOf(r.final_url) !== startDomain) {
+          const finalListed = urlhausVerdict(await urlhausHost(domainOf(r.final_url), urlhausFetch ? { fetchImpl: urlhausFetch } : {}), r.final_url);
+          if (finalListed) entry.urlhaus = finalListed;
+        }
       } catch (e) {
         if (/ENOTFOUND|getaddrinfo/i.test(String(e.code || e.cause?.code || e.message))) entry.dns_status = "NXDOMAIN";
       }

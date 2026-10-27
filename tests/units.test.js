@@ -6,7 +6,9 @@ import { encrypt, decrypt, pkcePair, sha256 } from "../src/crypto.js";
 import { gmailClient, normalizeMessage, parseAuthResults, htmlToText } from "../src/google/gmail.js";
 import { extractOrder, buildContext, correspondents, withGuardians, forgetItem } from "../src/context/builder.js";
 import { decideAction, isProtectedSender } from "../src/sync/actions.js";
-import { isPrivateAddress, registrableDomain, resolveLink, describePage, domainAgeDays, inspectMessageLinks } from "../src/links/resolver.js";
+import { isPrivateAddress, registrableDomain, resolveLink, describePage, domainAgeDays, inspectMessageLinks, urlhausHost, urlhausState } from "../src/links/resolver.js";
+import { config } from "../src/config.js";
+import { detect } from "../lib/detector.js";
 import { parseFeed } from "../src/jobs/threatfeed.js";
 import { parseEml } from "../src/google/eml.js";
 import { gmailMessage } from "./helpers/fake-gmail.js";
@@ -191,6 +193,56 @@ test("links: RDAP domain age, and only unknown domains are looked up", async () 
   assert.equal(out["https://pay.fresh-scam.top/x"].domain_age_days, 4);
   assert.ok(!seen.some((u) => u.includes("chase.com") || u.includes("cvs.com")), "brand and known domains are never looked up");
   assert.ok(!seen.some((u) => u.includes("rdap.org")), "registries are queried directly");
+});
+
+test("links: URLhaus gets host names only, and shared hosts need the exact link", async () => {
+  const listings = {
+    "files.evil-host.example": { query_status: "ok", blacklists: { spamhaus_dbl: "not listed" }, urls: [{ url: "http://files.evil-host.example/a.exe", url_status: "online", threat: "malware_download", tags: ["exe"] }] },
+    "raw.githubusercontent.com": { query_status: "ok", blacklists: { spamhaus_dbl: "abused_legit_malware" }, urls: [{ url: "https://raw.githubusercontent.com/bad/repo/main/x.ps1", url_status: "online", threat: "malware_download", tags: [] }] },
+    "login.phish-host.example": { query_status: "ok", blacklists: { spamhaus_dbl: "phishing_domain" }, urls: [{ url: "http://login.phish-host.example/old", url_status: "offline", threat: "malware_download", tags: [] }] },
+  };
+  const sent = [];
+  const urlhausFetch = async (url, init) => {
+    sent.push({ url, body: String(init.body), key: init.headers["Auth-Key"] });
+    const host = new URLSearchParams(String(init.body)).get("host");
+    return new Response(JSON.stringify(listings[host] || { query_status: "no_results" }), { status: 200 });
+  };
+  const noRdap = async () => new Response("{}", { status: 404 });
+  const links = [
+    { text: "Invoice", href: "https://files.evil-host.example/invoice?to=reader@example.com" },
+    { text: "Script", href: "https://raw.githubusercontent.com/bad/repo/main/x.ps1" },
+    { text: "Readme", href: "https://raw.githubusercontent.com/good/repo/main/README.md" },
+    { text: "Sign in", href: "https://login.phish-host.example/new" },
+    { text: "Shop", href: "https://shop.clean.example/" },
+  ];
+  assert.deepEqual(await inspectMessageLinks({ links }, {}, { fetchImpl: noRdap, urlhausFetch }), {}, "no key, no lookup");
+  assert.equal(sent.length, 0);
+  config.abusechKey = "test-key";
+  try {
+    const out = await inspectMessageLinks({ links }, {}, { fetchImpl: noRdap, urlhausFetch });
+    assert.ok(sent.every((s) => /^host=[^&/?]+$/.test(s.body) && s.key === "test-key"), "only the host leaves, with the key header");
+    assert.ok(!sent.some((s) => s.body.includes("reader")), "the reader's address in the link is never sent");
+    assert.equal(out[links[0].href].urlhaus.hostBad, true);
+    assert.equal(out[links[1].href].urlhaus.exact, true);
+    assert.equal(out[links[2].href], undefined, "another file on a shared host is not condemned");
+    assert.equal(out[links[3].href].urlhaus.phishing, true);
+    assert.equal(out[links[4].href], undefined);
+    // A listed link outranks a known contact: accounts get hacked.
+    const v = detect({ locale: "en-US", patternCards: [], mockLinkInspection: out,
+      personalContext: { trustedContacts: [{ name: "Ann", email: "ann@example.com", relation: "friend" }] },
+      message: { channel: "email", from: "ann@example.com", fromName: "Ann", subject: "photos", body: "here you go", links: [links[0]], auth: "" } });
+    assert.equal(v.verdict, "scam");
+    // A refused key stops the lookups for good and says so.
+    const refused = async () => new Response(JSON.stringify({ query_status: "unknown_auth_key" }), { status: 403 });
+    assert.equal(await urlhausHost("new-host.example", { fetchImpl: refused }), null);
+    assert.match(urlhausState.off, /refused/);
+    let called = false;
+    assert.equal(await urlhausHost("other-host.example", { fetchImpl: async () => { called = true; } }), null);
+    assert.equal(called, false);
+  } finally {
+    config.abusechKey = "";
+    urlhausState.off = null;
+  }
 });
 
 test("threat feed: parses RSS and Atom", () => {

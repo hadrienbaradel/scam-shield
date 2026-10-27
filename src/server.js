@@ -86,6 +86,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`Scam Shield on ${config.baseUrl}`);
   console.log(`  Google sign-in: ${googleConfigured() ? "configured" : "NOT configured (demo only) — see docs/GOOGLE_SETUP.md"}`);
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
+  console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);
   startJobs();
   const shutdown = async () => { stopJobs(); await app.close(); await pool.end(); process.exit(0); };
   process.on("SIGINT", shutdown);

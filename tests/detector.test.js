@@ -85,6 +85,9 @@ test("the address alone gives away misspelt brands, free sign-in pages and perso
   assert.equal(bareLink("https://xfinitty-signin-test.weebly.com/"), "scam");
   assert.equal(bareLink("https://docs-share.test/view#victim@example.com"), "scam");
   assert.equal(inspectLink({ text: "x", href: "https://login.example.top/" }).riskyTld, true);
+  // The host decides, not an email address or fake "user" part inside the link.
+  assert.equal(inspectLink({ text: "x", href: "https://login.example.top/?email=victim@gmail.com" }).finalDomain, "login.example.top");
+  assert.equal(inspectLink({ text: "x", href: "https://paypal.com@pay-check.example.top/" }).finalDomain, "pay-check.example.top");
 });
 
 test("ordinary addresses that look a little like those traps stay safe", () => {

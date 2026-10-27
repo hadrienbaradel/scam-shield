@@ -20,6 +20,8 @@ export const config = {
   },
   resend: { apiKey: env.RESEND_API_KEY || "", from: env.MAIL_FROM || "Scam Shield <alerts@example.test>" },
   hibpKey: env.HIBP_API_KEY || "",
+  // abuse.ch URLhaus lookups (fair use, not-for-profit): host names only.
+  abusechKey: env.ABUSECH_AUTH_KEY || "",
   adminEmails: list(env.ADMIN_EMAILS),
   pollSeconds: Number(env.SYNC_POLL_SECONDS || 120),
   worker: env.WORKER !== "0",

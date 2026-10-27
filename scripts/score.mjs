@@ -2,9 +2,13 @@
 // compares to PRD ground truth. Usage:
 //   node scripts/score.mjs            (human report)
 //   node scripts/score.mjs --json out.json
+//   node --env-file-if-exists=.env scripts/score.mjs --muse   (full Muse Spark check, paid API;
+//     answers are cached in .runtime/eval/muse-cache.json so a re-run is free)
 import { readFile, writeFile } from "node:fs/promises";
 import { detect } from "../lib/detector.js";
 import { validateVerdict } from "../lib/schema.js";
+import { checkMessage, museConfigured, museModel } from "../lib/muse.js";
+import { fileCache, usageSummary } from "./muse-file-cache.mjs";
 
 const root = new URL("../", import.meta.url);
 const load = async (p) => JSON.parse(await readFile(new URL(p, root), "utf8"));
@@ -16,25 +20,37 @@ const profiles = {
 const cards = await load("data/patterns/cards.json");
 const { cases } = await load("testcases/cases.json");
 
-const rows = [];
-for (const c of cases) {
+const useMuse = process.argv.includes("--muse");
+if (useMuse && !museConfigured()) {
+  console.error("--muse needs META_MODEL_API_KEY (set it with: node scripts/set-env.mjs META_MODEL_API_KEY=...)");
+  process.exit(2);
+}
+const cache = useMuse ? await fileCache(new URL(".runtime/eval/muse-cache.json", root).pathname) : null;
+
+// The Muse calls run side by side (lib/muse.js allows four at a time).
+const rows = await Promise.all(cases.map(async (c) => {
   const started = Date.now();
-  const v = detect({
+  const input = {
     locale: c.locale,
     message: c.message,
     personalContext: profiles[c.profile],
     patternCards: cards,
     threadHistory: c.threadHistory || [],
     mockLinkInspection: c.mockLinkInspection || {},
-  });
+    linkInspection: c.mockLinkInspection || {},
+  };
+  const detector = detect(input);
+  const v = useMuse ? await checkMessage(input, { cache }) : detector;
   const schemaErrs = validateVerdict(v);
   const allowed = [c.expected, ...(c.acceptable || [])];
   const pass = allowed.includes(v.verdict) && schemaErrs.length === 0;
   const falseScam = c.set === "C" && v.verdict === "scam";
-  rows.push({ id: c.id, set: c.set, expected: c.expected, got: v.verdict, pass, falseScam,
-    confidence: v.confidence, ms: Date.now() - started, schemaErrs,
-    reasons: v.reasons.map((r) => r.text) });
-}
+  return { id: c.id, set: c.set, expected: c.expected, got: v.verdict, detector: detector.verdict, pass, falseScam,
+    confidence: v.confidence, ms: Date.now() - started, schemaErrs, source: v.source, degraded: Boolean(v.degraded),
+    guardrail: v.guardrail || null, usage: v.usage || null, latency_ms: v.latency_ms,
+    reasons: v.reasons.map((r) => r.text) };
+}));
+if (cache) await cache.save();
 
 const bySet = {};
 for (const r of rows) {
@@ -43,11 +59,19 @@ for (const r of rows) {
   if (r.pass) bySet[r.set].pass++;
 }
 const falseScams = rows.filter((r) => r.falseScam);
-console.log("Scam Shield regression (PRD pass criteria: A 100%, C no false Scam)");
-for (const r of rows) console.log(`${r.pass ? "PASS" : "FAIL"} ${r.id.padEnd(4)} set ${r.set} expected=${r.expected} got=${r.got} conf=${r.confidence}`);
+console.log(`Scam Shield regression (PRD pass criteria: A 100%, C no false Scam)${useMuse ? ` with Muse Spark (${museModel()})` : ""}`);
+for (const r of rows) {
+  const extra = useMuse ? ` detector=${r.detector}${r.degraded ? " DEGRADED" : ""}${r.guardrail ? ` guardrail=${JSON.stringify(r.guardrail).slice(0, 60)}` : ""}` : "";
+  console.log(`${r.pass ? "PASS" : "FAIL"} ${r.id.padEnd(4)} set ${r.set} expected=${r.expected} got=${r.got} conf=${r.confidence}${extra}`);
+}
 for (const [s, v] of Object.entries(bySet)) console.log(`Set ${s}: ${v.pass}/${v.total}`);
 console.log(`False Scam on legit (C): ${falseScams.length} (target 0 in this seed set)`);
 console.log(`Overall: ${rows.filter((r) => r.pass).length}/${rows.length}`);
+if (useMuse) {
+  const u = usageSummary(rows.map((r) => ({ source: r.source, usage: r.usage, latency_ms: r.latency_ms, degraded: r.degraded })));
+  console.log(`Muse: ${u.calls} paid calls, ${u.cached} cached, ${u.degraded} degraded (fell back to the detector) · tokens in ${u.promptTokens} / out ${u.completionTokens} · median ${u.medianMs} ms`);
+  console.log(`Muse changed the detector's verdict on ${rows.filter((r) => r.got !== r.detector).length} of ${rows.length} cases.`);
+}
 if (process.argv.includes("--json")) {
   const out = process.argv[process.argv.indexOf("--json") + 1] || "predictions.json";
   await writeFile(out, JSON.stringify(rows, null, 2));

@@ -14,7 +14,7 @@ Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). 
 - **Checks anything else**: pasted text messages and WhatsApps, and screenshots or photos (read by Muse Spark, never stored).
 - **Android companion** ([android/](android/)) screens incoming texts on the phone and sends only risky ones for a verdict.
 - **Threat feed**: daily IC3 and cybermalveillance.gouv.fr alerts become *candidate* pattern cards. They can only reach "active" after human review on the admin page.
-- **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, and redirects followed only on request or for URL shorteners, with an SSRF guard.
+- **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, known malware and phishing sites from abuse.ch URLhaus (host name only, set `ABUSECH_AUTH_KEY`), and redirects followed only on request or for URL shorteners, with an SSRF guard.
 - Built for 60+: 19px+ type with a three-step size setting, 64px buttons, read aloud, EN/FR, one decision per screen.
 
 ## Run it locally
