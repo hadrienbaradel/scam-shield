@@ -7,7 +7,7 @@ Google Cloud project: **`scam-shield-hb26`** (number 917832658614, owned by Hadr
 - Project created; **Gmail API** and **Cloud Pub/Sub API** enabled.
 - Pub/Sub topic `projects/scam-shield-hb26/topics/gmail-push`, with `gmail-api-push@system.gserviceaccount.com` allowed to publish (that is how Gmail announces new mail).
 - Pull subscription `projects/scam-shield-hb26/subscriptions/gmail-push-local`, read by the local worker. No public URL is needed.
-- `.env` holds `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION` and `ADMIN_EMAILS`.
+- `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION` and `ADMIN_EMAILS` are keys in the encrypted credentials: `make secrets-keys` shows which are set, `make secrets-set KEY=value` sets one (rules in `_product/docs/secrets.md`).
 
 The worker authenticates to Pub/Sub with Application Default Credentials if present (`gcloud auth application-default login`), otherwise with the signed-in gcloud CLI account.
 
@@ -25,12 +25,12 @@ Google has no command line for creating the consent screen or the OAuth client o
    - Authorized JavaScript origins: `http://localhost:3000`
    - Authorized redirect URIs: `http://localhost:3000/auth/google/callback`
    - Click **Create**, then **Download JSON** in the dialog (the secret is shown only once).
-5. Back in the repo, store it without copying the secret by hand or printing `.env`:
+5. Back in the repo, store it without copying the secret by hand or printing anything:
    ```bash
-   node --env-file-if-exists=.env scripts/import-google-client.mjs ~/Downloads/client_secret_*.json
+   node scripts/import-google-client.mjs ~/Downloads/client_secret_*.json   # into the encrypted config/credentials.enc
    npm start   # then open http://localhost:3000
    ```
-   The script checks the client is a Web application of this project with the right redirect URI and origin. (By hand instead: `node scripts/set-env.mjs GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…`.)
+   The script checks the client is a Web application of this project with the right redirect URI and origin. (By hand instead: `make secrets-set GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…`.)
 6. Sign in, allow Gmail access, wait for the first pass over recent mail, then check it from the database (no email is printed):
    ```bash
    npm run gate

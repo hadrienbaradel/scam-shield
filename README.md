@@ -1,6 +1,7 @@
 # Scam Shield
+<!-- CI badge: added when .github/workflows/ci.yml lands -->
 
-**Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Product requirements: [docs/PRD.md](docs/PRD.md). Current status, measurements and open items: [docs/STATUS.md](docs/STATUS.md).
+**Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Features and where each one stands: [_product/spec.md](_product/spec.md). The original PRD and the first status notes stay in [docs/](docs/) for history.
 
 Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). Gmail already blocks most phishing in bulk. What it does not do is explain, in words a frightened 74-year-old can act on at 9pm, *why* a message is dangerous and *what to do instead*, or check it against *her* life ("your parcel comes by Amazon Logistics, not Chronopost").
 
@@ -17,44 +18,56 @@ Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). 
 - **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, known malware and phishing sites from abuse.ch URLhaus (host name only, set `ABUSECH_AUTH_KEY`), and redirects followed only on request or for URL shorteners, with an SSRF guard.
 - Built for 60+: 19px+ type with a three-step size setting, 64px buttons, read aloud, EN/FR, one decision per screen.
 
-## Run it locally
+## Quick start
 
-Needs Node 22+ and PostgreSQL 14+ (`brew install postgresql@14 && brew services start postgresql@14`).
+Needs Node 22.9+ (`.nvmrc` says 24; `nvm install` reads it) and Docker, which runs Postgres for you (details, including a local PostgreSQL already on port 5432: [_product/docs/infra.md](_product/docs/infra.md)). Three commands:
 
 ```bash
-createdb scam_shield && createdb scam_shield_test
-npm install
-npm run setup        # creates .env with a fresh encryption key, migrates the database
-npm start            # http://localhost:3000
+make install   # fresh clone to ready: dependencies, master key + credentials, Postgres image
+make server    # Postgres up, databases, migrations, then the app at http://localhost:3000
+make test      # every suite (make check adds the coverage threshold: what CI runs)
 ```
+
+`make` alone lists every command with a one-line help; `make doctor` says what is missing when something does not work.
 
 Without Google keys the app runs the public examples (`/#/demo`). To connect real Gmail, follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md): the Google Cloud project and Pub/Sub are already set up, and the OAuth client is a 5-minute console step. To switch on Muse Spark:
 
 ```bash
-node scripts/set-env.mjs META_MODEL_API_KEY=...   # from dev.meta.ai; never printed
+make secrets-set META_MODEL_API_KEY=...   # from dev.meta.ai; stored encrypted, never printed
 ```
+
+Keys live in `config/credentials.enc`, committed and encrypted; `config/master.key` opens it and is never committed (a teammate passes it out of band and `make secrets-init` pastes it; on your own, `make secrets-init` makes a fresh one). `node scripts/set-env.mjs KEY=value` is a deprecated shim that forwards to `make secrets-set`. Rules: [_product/docs/secrets.md](_product/docs/secrets.md).
 
 Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sign-in and cookies depend on it.
 
-| Script | What it does |
+| Command | What it does |
 |---|---|
-| `npm start` / `npm run dev` | Server plus background jobs (`dev` restarts on change) |
-| `npm test` | 146 tests: engine, real-mail regression, server units, Muse Spark against a fake API, integration against Postgres |
-| `npm run score` | PRD pass criteria on the seed cases (A 100%, no false Scam on C); `-- --muse` runs them through Muse Spark |
-| `npm run gate` | After a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions, safety checks (no email printed) |
+| `make server` / `make start` | Server plus background jobs (`server` brings Postgres up and restarts on change; `start` is what production runs) |
+| `make test` / `make coverage` / `make check` | Every suite: engine, real-mail regression, server units, the model layer against fake APIs, the scripts, integration against Postgres (skipped when it is down); `check` adds the line-coverage threshold. `TEST_DB_SUFFIX=<name>` gives a run its own test database |
+| `make score` / `make score-muse` | PRD pass criteria on the seed cases (A 100%, no false Scam on C); `score-muse` runs them through Muse Spark |
+| `make gate` | After a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions, safety checks (no email printed) |
 | `node scripts/eval-corpus.mjs` / `eval-urls.mjs` | Accuracy on public corpora and phishing URL lists (data stays in `.runtime/eval/`) |
-| `npm run migrate` | Apply database migrations |
-| `node scripts/set-env.mjs KEY=value` | Set `.env` keys without displaying the file |
+| `make db-migrate` | Apply database migrations (`make server` does it at start too) |
+| `make secrets-set KEY=value` | Store a key encrypted; `make secrets-keys` lists names and whether each is set, never a value |
+| `node scripts/docs-check.mjs` | Product docs in step with the code: spec links, statuses, keywords, indexes, stale advice |
+
+## Product docs
+
+The product side lives in [_product/](_product/README.md). [_product/spec.md](_product/spec.md) has one row per feature with its status (Idea, Planned, Partial, Built, Dropped) and an Ideas table; `_product/specs/` holds the detail per feature; next to them sit competitors, research, marketing and the rules agents and humans follow (`_product/docs/`). Spec first, then code; docs move with the code.
 
 ## Layout
 
 ```
-lib/       engine: detector, brands, context, pattern cards, verdict schema, Muse Spark layer, link inspector, threat-feed safeguards
-src/       server: Fastify app, routes, Google OAuth + Gmail client, sync worker, context builder, link resolver, guardians, jobs
-public/    web app (vanilla JS modules, no build), privacy and terms pages
-android/   Kotlin companion app
-prompts/   Muse Spark system prompt (from the PRD)
-testcases/ PRD regression cases;  tests/  node:test suites;  docs/  PRD map and Google setup
+lib/        engine: detector, brands, context, pattern cards, verdict schema, the LLM layer (lib/llm), Muse prompts and guardrails, link inspector, threat-feed safeguards
+src/        server: Fastify app, routes, Google OAuth + Gmail client, sync worker, context builder, link resolver, guardians, jobs, migrations
+public/     web app (vanilla JS modules, no build), privacy and terms pages
+android/    Kotlin companion app
+prompts/    Muse Spark system prompt (from the PRD)
+scripts/    the developer commands behind the make targets (doctor, credentials, score, gate, evals, docs-check, session brief)
+config/     credentials.enc (committed, encrypted), credentials.example (every key, documented), master.key (never committed)
+.infra/     dev/ Docker Compose Postgres (data in .infra/dev/_volumes/); prod/ Dockerfile, compose and Ansible skeleton
+_product/   spec, feature specs, competitors, research, marketing, and the rules in _product/docs/
+testcases/  PRD regression cases;  tests/  node:test suites;  docs/  Google setup, original PRD and status notes
 ```
 
 ## Privacy and safety rules in the code
@@ -67,6 +80,26 @@ testcases/ PRD regression cases;  tests/  node:test suites;  docs/  PRD map and 
 - Muse Spark runs in Standard mode only; a `-contributor` model id is refused before any request leaves.
 - Delete my account: stops Gmail push, revokes Google access, erases every row.
 
+## Built during the hackathon
+
+The rules count only what was built during the event, from the kickoff on Monday Oct 26, 2026, 12:00 PM ET. The first commit (the hackathon backbone) landed on Oct 26 at 20:12 ET and every commit since is dated after kickoff. Built so far, with statuses in [_product/spec.md](_product/spec.md):
+
+- Gmail connection and scanning (not yet verified on a live inbox)
+- Verdict engine: rules + Muse Spark, one strict JSON verdict per message
+- Life context, "What Scam Shield knows about you" (not yet verified live)
+- Senior web app and verdict screen
+- Reversible mail actions: label, move only with consent, Put it back (not yet verified live)
+- Trusted person loop
+- Check something else: pasted text, screenshot, .eml
+- Android SMS companion (emulator only)
+- Threat feed and pattern cards (live feeds not yet verified)
+- Demo mode: the public examples for Linda (US) and Françoise (FR)
+- Privacy controls and account deletion
+
+[Hadrien: confirm how much of the backbone in the first commit (d43ced6) was written after the 12:00 PM ET kickoff, so the video's "original contributions" statement is exact.]
+
 ## Status (Oct 26, 2026)
+
+Superseded on 2026-10-27 by [_product/spec.md](_product/spec.md), which carries each feature's status, and by `_product/research/feasibility.md` for the open technical questions; kept as written.
 
 Working locally end to end on the fake-Gmail integration tests, the demo, and the Android emulator. Waiting on: the Google OAuth client (console step), the Muse Spark API key, a live Gmail run, and a Chrome extension (next). Public deployment (Railway EU) comes after Google verification planning.

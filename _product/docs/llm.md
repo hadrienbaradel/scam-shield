@@ -6,7 +6,7 @@ Every AI check is one model call through `lib/llm`, so the model can change with
 
 ## Switching providers
 
-Set keys with `node scripts/set-env.mjs KEY=value`; providers read the environment on every call, so a change applies to the next request (restart the server anyway so `/api/status` and the startup line agree).
+Set keys with `make secrets-set KEY=value` (`_product/docs/secrets.md`); providers read the environment on every call, so a change applies to the next request (restart the server anyway so `/api/status` and the startup line agree).
 
 | Variable | Meaning |
 |---|---|

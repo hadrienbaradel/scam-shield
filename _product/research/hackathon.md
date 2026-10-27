@@ -1,3 +1,4 @@
+Keywords: hackathon, rules, judging, rubric, deadline, submission, prizes, cerebral valley
 # Meta Global AI Developer Hackathon: rules, dates, judging, prizes (researched 2026-10-27)
 
 Facts below come from the official event page and the Official Rules embedded in it (cerebralvalley.ai), from the participant guide (behind login; its text was verified through two participants' committed copies, which match the Official Rules wherever they overlap) and from the organizers' kickoff slide relayed by Hadrien. Everything else is marked "(unverified)". Strategy and the day-by-day plan: [how-to-win.md](how-to-win.md). Other teams: [hackathon-other-teams.md](hackathon-other-teams.md).

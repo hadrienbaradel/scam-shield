@@ -1,6 +1,9 @@
 # Scam Shield — PRD (backbone summary, Oct 26 2026)
 
-Full PRD by Hadrien Baradel (Oct 26, 2026) is the source of truth; this file maps it to the code in this repo. Team: Hadrien (product), Vlad (CTO). Indie Developer track, theme "Build for Your World". Build Oct 26 – Nov 4, 2026; due Nov 4, 9:00 PM ET.
+> Superseded on 2026-10-27 by `_product/spec.md` (features, statuses, ideas) and the feature files under `_product/specs/`.
+> Kept for history: it maps Hadrien's full PRD (Oct 26, 2026) to the code at the end of the first sprint; the team keeps the spec current, not this file.
+
+Full PRD by Hadrien Baradel (Oct 26, 2026) was the starting point; this file maps it to the code in this repo as of Oct 26. Team: Hadrien (product), Vlad (CTO). Indie Developer track, theme "Build for Your World". Build Oct 26 – Nov 4, 2026; due Nov 4, 9:00 PM ET.
 
 ## Wedge
 

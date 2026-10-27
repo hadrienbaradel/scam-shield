@@ -1,3 +1,4 @@
+Keywords: hackathon, other teams, competition, indie track, scam checkers
 # Other teams in the Meta Global AI Developer Hackathon (snapshot 2026-10-27, day 2 of 10)
 
 How this was gathered: GitHub search for repositories naming the event (about 60 found by Oct 27, 11:30 UTC), the `meta-hackathon` topic page, web search for posts and READMEs. The official gallery and community voting are switched off until Nov 9, so nothing is public on the CV platform yet. Every line is self-described by its team; almost all are solo Indie entries at scaffold or day-1 stage, none has a video yet. Treat all of it as "(unverified)". Rules and judging: [hackathon.md](hackathon.md). Strategy: [how-to-win.md](how-to-win.md).
