@@ -2,9 +2,6 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { analyzeEmail } from "./lib/rules.js";
-import { explainEmail } from "./lib/explain.js";
-import { DEMO_EMAILS } from "./lib/demo.js";
 import { checkMessage, museConfigured } from "./lib/muse.js";
 import { authUrl, exchangeCode, gmailConfigured, gmailConnected, listInbox } from "./lib/gmail.js";
 
@@ -91,14 +88,6 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/profiles") return json(res, 200, PROFILES);
     if (url.pathname === "/api/patterns") return json(res, 200, CARDS);
-
-    if (url.pathname === "/api/analyze" && req.method === "POST") {
-      const { email } = await bodyJson(req);
-      if (!email?.body && !email?.subject) return json(res, 400, { error: "email required" });
-      const result = analyzeEmail(email);
-      const explanation = await explainEmail(email, result);
-      return json(res, 200, { ...result, explanation });
-    }
 
     if (url.pathname === "/api/trusted-contact" && req.method === "POST") {
       const { contactName = "my trusted person", email, analysis, verdict } = await bodyJson(req);
