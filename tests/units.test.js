@@ -8,6 +8,7 @@ import { extractOrder, buildContext, correspondents, withGuardians, forgetItem }
 import { decideAction, isProtectedSender } from "../src/sync/actions.js";
 import { isPrivateAddress, registrableDomain, resolveLink, describePage, domainAgeDays, inspectMessageLinks } from "../src/links/resolver.js";
 import { parseFeed } from "../src/jobs/threatfeed.js";
+import { parseEml } from "../src/google/eml.js";
 import { gmailMessage } from "./helpers/fake-gmail.js";
 
 const KEY = process.env.TOKEN_ENC_KEY;
@@ -157,7 +158,8 @@ test("links: RDAP domain age, and only unknown domains are looked up", async () 
   const seen = [];
   const fetchImpl = async (url) => {
     seen.push(url);
-    if (url.includes("rdap.org/domain/fresh-scam.top")) return new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: new Date(Date.now() - 4 * 86400000).toISOString() }] }), { status: 200 });
+    if (url === "https://data.iana.org/rdap/dns.json") return new Response(JSON.stringify({ services: [[["top"], ["https://rdap.example-registry.test/"]], [["com"], ["https://rdap.verisign.test/com/v1/"]]] }), { status: 200 });
+    if (url.includes("rdap.example-registry.test/domain/fresh-scam.top")) return new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: new Date(Date.now() - 4 * 86400000).toISOString() }] }), { status: 200 });
     return new Response("{}", { status: 404 });
   };
   assert.equal(await domainAgeDays("www.fresh-scam.top", { fetchImpl }), 4);
@@ -166,6 +168,7 @@ test("links: RDAP domain age, and only unknown domains are looked up", async () 
   ] }, { knownLinkDomains: ["cvs.com"] }, { fetchImpl });
   assert.equal(out["https://pay.fresh-scam.top/x"].domain_age_days, 4);
   assert.ok(!seen.some((u) => u.includes("chase.com") || u.includes("cvs.com")), "brand and known domains are never looked up");
+  assert.ok(!seen.some((u) => u.includes("rdap.org")), "registries are queried directly");
 });
 
 test("threat feed: parses RSS and Atom", () => {
@@ -173,4 +176,37 @@ test("threat feed: parses RSS and Atom", () => {
   const atom = `<feed><entry><title>Faux SMS Ameli</title><link href="https://www.cybermalveillance.gouv.fr/a"/><summary>Carte Vitale</summary><updated>2026-10-21T00:00:00Z</updated></entry></feed>`;
   assert.deepEqual(parseFeed(rss).map((i) => [i.title, i.url, i.summary]), [["Scammers Impersonating USPS", "https://www.ic3.gov/PSA/2026/1", "Text messages claiming a package is on hold."]]);
   assert.equal(parseFeed(atom)[0].url, "https://www.cybermalveillance.gouv.fr/a");
+});
+
+test("eml: a downloaded email parses into the same shape as Gmail sync", async () => {
+  const eml = [
+    "Authentication-Results: mx.google.com;",
+    "       dkim=pass header.i=@aol.com;",
+    "       spf=pass (google.com: domain of x@aol.com designates 1.2.3.4) smtp.mailfrom=x@aol.com;",
+    "       dmarc=pass (p=REJECT) header.from=aol.com",
+    "From: Societe GeneraIe <X@AOL.COM>",
+    "To: someone@example.test",
+    "Subject: =?UTF-8?Q?Alerte_de_s=C3=A9curit=C3=A9?=",
+    "Date: Fri, 13 Feb 2026 04:54:00 +0000",
+    "MIME-Version: 1.0",
+    'Content-Type: multipart/alternative; boundary="b"',
+    "",
+    "--b",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: quoted-printable",
+    "",
+    "Op=C3=A9ration inhabituelle. Acc=C3=A9der au service antifraude.",
+    "--b",
+    "Content-Type: text/html; charset=UTF-8",
+    "",
+    '<p>Opération inhabituelle.</p><a href="https://3.massemiaks.test/">Accéder au service antifraude</a>',
+    "--b--", "",
+  ].join("\r\n");
+  const m = await parseEml(Buffer.from(eml));
+  assert.equal(m.fromName, "Societe GeneraIe");
+  assert.equal(m.from, "x@aol.com");
+  assert.equal(m.subject, "Alerte de sécurité");
+  assert.equal(m.auth, "spf=pass dkim=pass dmarc=pass");
+  assert.match(m.body, /Opération inhabituelle/);
+  assert.deepEqual(m.links, [{ href: "https://3.massemiaks.test/", text: "Accéder au service antifraude" }]);
 });

@@ -182,3 +182,22 @@ test("HTTP: deleting the account erases every row", opts, async () => {
   }
   assert.equal((await app.inject({ url: "/api/checks", headers: h })).statusCode, 401);
 });
+
+test("HTTP: an uploaded .eml is checked and not stored", opts, async () => {
+  const user = await makeUser({ email: "eml-upload@example.test", locale: "fr-FR" });
+  const eml = ["Authentication-Results: mx.google.com; dkim=pass header.i=@aol.com; spf=pass smtp.mailfrom=x@aol.com; dmarc=pass header.from=aol.com",
+    "From: Societe GeneraIe <x@aol.com>", "Subject: Alerte de securite - Transaction suspecte", "Date: Fri, 13 Feb 2026 04:54:00 +0000",
+    "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "",
+    '<p>Operation inhabituelle de 700 EUR. Signalez-la immediatement :</p><a href="https://3.massemiaks.test/">Acceder au service antifraude</a>', ""].join("\r\n");
+  const form = new FormData();
+  form.append("email", new Blob([eml], { type: "message/rfc822" }), "alerte.eml");
+  const req = new Request("http://x/", { method: "POST", body: form });
+  const res = await app.inject({ method: "POST", url: "/api/check/eml", payload: Buffer.from(await req.arrayBuffer()),
+    headers: { cookie: await sessionFor(user), origin: ORIGIN, "content-type": req.headers.get("content-type") } });
+  assert.equal(res.statusCode, 200, res.body);
+  assert.equal(res.json().verdict.verdict, "scam");
+  assert.ok(res.json().verdict.reasons.some((r) => /lettres qui se ressemblent/.test(r.text)), "explains the look-alike name");
+  const row = await one("SELECT * FROM checks WHERE id = $1", [res.json().checkId]);
+  assert.equal(row.channel, "email_file");
+  assert.ok(!JSON.stringify(row).includes("Operation inhabituelle"));
+});

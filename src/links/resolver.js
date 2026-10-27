@@ -1,5 +1,5 @@
 // Live link checks, built so that checking a link never helps a scammer.
-// - Domain age comes from RDAP (public registry data): no visit to the link.
+// - Domain age comes from RDAP (the registry's public data): no visit to the link.
 // - The redirect chain is followed only for URL shorteners or when the user
 //   asks "where does this link really go?", because opening a scammer's
 //   tracking link tells them the address is live.
@@ -11,7 +11,7 @@
 
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { domainOf, sameOrSub, BRANDS } from "../../lib/brands.js";
+import { domainOf, sameOrSub, BRANDS, FREE_HOSTING_SUFFIXES } from "../../lib/brands.js";
 
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "rb.gy", "cutt.ly", "is.gd", "ow.ly", "buff.ly", "shorturl.at", "tiny.cc"];
 const TWO_PART_SUFFIXES = ["co.uk", "com.br", "com.au", "co.jp", "gouv.fr", "gov.uk", "com.mx", "co.nz", "org.uk", "ac.uk"];
@@ -45,27 +45,49 @@ async function assertPublicHost(url) {
 }
 
 // ---------------------------------------------------------------- RDAP ---
+// Registration date straight from the domain's registry, found through
+// IANA's RDAP bootstrap file (RFC 9224). No third-party proxy.
+const UA = { "user-agent": "ScamShield/1.0 (domain age check)" };
+let bootstrap = { at: 0, services: null };
+async function rdapBase(tld, fetchImpl) {
+  if (!bootstrap.services || bootstrap.at < Date.now() - DAY) {
+    const res = await fetchImpl("https://data.iana.org/rdap/dns.json", { headers: UA, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error(`IANA bootstrap ${res.status}`);
+    bootstrap = { at: Date.now(), services: (await res.json()).services || [] };
+  }
+  const svc = bootstrap.services.find(([tlds]) => tlds.includes(tld));
+  return svc ? svc[1][0].replace(/\/?$/, "/") : null;
+}
+
 const ageCache = new Map();
-export async function domainAgeDays(domain, { fetchImpl = fetch } = {}) {
+// Age in days at `asOf` (the message's date, so an old email is judged as
+// it was when it arrived: a domain registered the day it was sent).
+export async function domainAgeDays(domain, { fetchImpl = fetch, asOf = Date.now() } = {}) {
+  const reg = await registrationDate(domain, { fetchImpl });
+  return reg ? Math.max(0, Math.floor((new Date(asOf).getTime() - reg.getTime()) / DAY)) : null;
+}
+
+export async function registrationDate(domain, { fetchImpl = fetch } = {}) {
   const d = registrableDomain(domain);
-  if (!d || !d.includes(".") || d.endsWith(".test") || isIP(d)) return null;
+  if (!d || !d.includes(".") || d.endsWith(".test") || isIP(d) || FREE_HOSTING_SUFFIXES.some((x) => `.${d}`.endsWith(x))) return null;
   const hit = ageCache.get(d);
-  if (hit && hit.at > Date.now() - DAY) return hit.days;
-  let days = null;
+  if (hit && hit.at > Date.now() - DAY) return hit.reg;
+  let reg = null;
   try {
-    const res = await fetchImpl(`https://rdap.org/domain/${encodeURIComponent(d)}`, {
-      headers: { accept: "application/rdap+json" }, signal: AbortSignal.timeout(4000), redirect: "follow",
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const reg = (data.events || []).find((e) => e.eventAction === "registration")?.eventDate;
-      if (reg) days = Math.max(0, Math.floor((Date.now() - new Date(reg).getTime()) / DAY));
-    } else if (res.status === 404) {
-      days = null;
+    const base = await rdapBase(d.split(".").pop(), fetchImpl);
+    if (base) {
+      const res = await fetchImpl(`${base}domain/${encodeURIComponent(d)}`, {
+        headers: { ...UA, accept: "application/rdap+json" }, signal: AbortSignal.timeout(4000), redirect: "follow",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const when = (data.events || []).find((e) => e.eventAction === "registration")?.eventDate;
+        if (when && !Number.isNaN(Date.parse(when))) reg = new Date(when);
+      }
     }
-  } catch { days = null; }
-  ageCache.set(d, { days, at: Date.now() });
-  return days;
+  } catch { reg = null; }
+  ageCache.set(d, { reg, at: Date.now() });
+  return reg;
 }
 
 // ------------------------------------------------------- redirect chain ---
@@ -131,7 +153,8 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
   const domains = [...new Set(links.map((l) => registrableDomain(domainOf(l.href))))]
     .filter((d) => d && !known.has(d) && !brandDomains.some((b) => sameOrSub(d, b)))
     .slice(0, maxDomains);
-  await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl }))));
+  const asOf = Date.parse(message.date) || Date.now();
+  await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl, asOf }))));
   for (const link of links) {
     const startDomain = domainOf(link.href);
     const entry = {};
@@ -143,7 +166,7 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
         entry.final_url = r.final_url;
         entry.redirects = r.redirects;
         if (r.page_shows) entry.page_shows = r.page_shows;
-        const finalAge = await domainAgeDays(domainOf(r.final_url), { fetchImpl });
+        const finalAge = await domainAgeDays(domainOf(r.final_url), { fetchImpl, asOf });
         if (finalAge !== null) entry.domain_age_days = finalAge;
       } catch (e) {
         if (/ENOTFOUND|getaddrinfo/i.test(String(e.code || e.message))) entry.dns_status = "NXDOMAIN";

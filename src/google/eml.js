@@ -1,0 +1,32 @@
+// Raw email files (.eml): downloaded from Gmail ("Download message") or
+// forwarded as attachments. Parsed into the same message shape as Gmail
+// sync, so the checks are identical. The file itself is never stored.
+
+import { simpleParser } from "mailparser";
+import { htmlToText, linksFromHtml, linksFromText, parseAuthResults } from "./gmail.js";
+
+export async function parseEml(source) {
+  const mail = await simpleParser(source, { skipImageLinks: true, skipTextToHtml: true });
+  const from = mail.from?.value?.[0] || {};
+  const replyTo = mail.replyTo?.value?.[0]?.address?.toLowerCase() || "";
+  const authHeaders = mail.headerLines
+    .filter((h) => h.key === "authentication-results")
+    .map((h) => ({ name: "Authentication-Results", value: h.line.replace(/^authentication-results:\s*/i, "").replace(/\r?\n\s+/g, " ") }));
+  const html = typeof mail.html === "string" ? mail.html : "";
+  const body = (mail.text || htmlToText(html) || "").trim();
+  const seen = new Set();
+  const links = [...linksFromHtml(html), ...linksFromText(mail.text || "")]
+    .filter((l) => (seen.has(l.href) ? false : seen.add(l.href)))
+    .slice(0, 40);
+  return {
+    channel: "email",
+    fromName: from.name || "",
+    from: (from.address || "").toLowerCase(),
+    replyTo: replyTo && replyTo !== (from.address || "").toLowerCase() ? replyTo : "",
+    subject: mail.subject || "",
+    date: mail.date ? mail.date.toISOString() : "",
+    body: body.slice(0, 6000),
+    links,
+    auth: parseAuthResults(authHeaders),
+  };
+}

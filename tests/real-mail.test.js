@@ -48,6 +48,17 @@ for (const { name, m } of LEGIT) {
   });
 }
 
+test("legit: a genuine Société Générale secure-message notice stays Safe (same wording as the A7 scam)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const cards = JSON.parse(await readFile(new URL("../data/patterns/cards.json", import.meta.url), "utf8"));
+  const sgCtx = { ...emptyContext("Françoise"), providers: [{ type: "bank", name: "Société Générale", realDomains: ["societegenerale.fr", "sg.fr"] }] };
+  const v = detect({ locale: "fr-FR", personalContext: sgCtx, patternCards: cards, message: { channel: "email", fromName: "Société Générale",
+    from: "messagerie@societegenerale.fr", auth: PASS, subject: "Nouveau message dans votre messagerie sécurisée",
+    body: "Bonjour, vous avez 1 nouveau message dans votre messagerie sécurisée. Connectez-vous à votre Espace Client pour le consulter.",
+    links: [{ text: "Accéder à mon Espace Client", href: "https://particuliers.sg.fr/icd/cbo/index-authsec.html" }] } });
+  assert.equal(v.verdict, "safe", v.reasons.map((r) => r.text).join(" | "));
+});
+
 test("legit: an advert naming another brand stays Safe, not just not-Scam", () => {
   assert.equal(run(LEGIT[3].m).verdict, "safe");
 });

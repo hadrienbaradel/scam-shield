@@ -659,6 +659,67 @@
           "page_shows": "Le site ne répond pas : le sous-domaine redirect.bouyguestelecom.fr pointe vers une adresse supprimée (vérifié le 26 oct. 2026, Google et Cloudflare DNS)"
         }
       }
+    },
+    {
+      "id": "A6",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "source": "Real phishing email received 2026-02-13, shared by Hadrien 2026-10-26. Recipient details removed; scam addresses kept as received.",
+      "message": {
+        "channel": "email",
+        "fromName": "Societe GeneraIe",
+        "from": "zefregpoerkgpo@aol.com",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Alerte de sécurité - Transaction suspecte",
+        "date": "2026-02-13T04:54:00Z",
+        "body": "Alerte de sécurité - Transaction suspecte\n\nBonjour,\nDétails de l'alerte :\n• Date : 13 février 2026\n• Action : Ajout de carte sur nouveau terminal\n• Montant du débit : 700,00 EUR\nNous avons détecté une opération inhabituelle sur votre compte. Par mesure de sécurité, nous avons temporairement restreint certaines fonctionnalités de votre carte.\n\nSi vous n'êtes pas à l'origine de cette opération, vous devez la signaler immédiatement pour bloquer la transaction et sécuriser votre accès :\nAccéder au service antifraude\nSi vous avez déjà validé cette opération via votre application mobile, vous pouvez ignorer ce message.\n\nSociété Générale - SA au capital de 1 046 405 540 EUR - 552 120 222 RCS Paris\nCeci est un message automatique, merci de ne pas y répondre.\n\nConsulter le site officiel particuliers.sg.fr",
+        "links": [
+          {
+            "text": "Accéder au service antifraude",
+            "href": "https://3.massemiaks.com/"
+          },
+          {
+            "text": "Consulter le site officiel particuliers.sg.fr",
+            "href": "https://particuliers.sg.fr/"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://3.massemiaks.com/": {
+          "domain_age_days": 0
+        }
+      },
+      "notes": "Display name uses a capital I for the l of Générale; personal AOL mailbox; domain registered the day of sending (RDAP: 2026-02-13); decoy link to the real particuliers.sg.fr."
+    },
+    {
+      "id": "A7",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "source": "Real phishing email received 2026-10-05, shared by Hadrien 2026-10-26. Recipient name replaced by the test persona, tracking token redacted.",
+      "message": {
+        "channel": "email",
+        "fromName": "SG",
+        "from": "noreply@certdata.com.br",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Françoise, nouveau message dans votre messagerie",
+        "date": "2026-10-05T05:29:49Z",
+        "body": "SG - Messagerie securisee\n\nBonjour Françoise,\n\nVous avez 1 message non lu dans votre messagerie securisee SG depuis le 05/10/2026.\n\nPour le consulter, connectez-vous a votre espace client :\nhttps://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/\n\nCet e-mail vous a ete envoye automatiquement par votre banque.\nPour votre securite, ne communiquez jamais vos identifiants par e-mail.",
+        "links": [
+          {
+            "text": "Accéder à ma messagerie SG",
+            "href": "https://u46337456.ct.sendgrid.net/ls/click?upn=REDACTED"
+          },
+          {
+            "text": "https://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/",
+            "href": "https://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/"
+          }
+        ]
+      },
+      "notes": "Hijacked Brazilian business mailbox sending through SendGrid; generic 'new secure message' lure also used by the real bank; link chain medium.com -> free website builder (bolt.host)."
     }
   ]
 }

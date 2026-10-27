@@ -6,6 +6,7 @@
 import { requireUser } from "../auth.js";
 import { many, one } from "../db/pool.js";
 import { normalizeMessage, header, parseAddress, linksFromText } from "../google/gmail.js";
+import { parseEml } from "../google/eml.js";
 import { extractFromImage, museConfigured } from "../../lib/muse.js";
 import { clientFor, mapLimit, sharedFrom } from "../sync/worker.js";
 import { runCheck, recordCheck } from "../sync/checker.js";
@@ -144,6 +145,18 @@ export default async function mailRoutes(app) {
     const { verdict } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
     return { checkId: check.id, verdict, message };
+  });
+
+  // An email file (.eml): downloaded from a webmail or forwarded as an
+  // attachment. Parsed in memory, never stored.
+  app.post("/api/check/eml", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const file = await request.file();
+    if (!file || !/\.eml$/i.test(file.filename || "") && !/message\/rfc822/i.test(file.mimetype)) return reply.code(400).send({ error: "Please choose an email file (.eml)." });
+    const message = await parseEml(await file.toBuffer());
+    if (!message.from && !message.body) return reply.code(422).send({ error: "no_message", message: "We could not read an email in this file." });
+    const { verdict } = await runCheck({ user: request.user, message });
+    const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "email_file" });
+    return { checkId: check.id, verdict, message: { ...message, body: message.body.slice(0, 2000) } };
   });
 
   // "Ask my trusted person". For Gmail messages the server fetches what to

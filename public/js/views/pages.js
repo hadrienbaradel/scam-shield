@@ -101,6 +101,8 @@ export function renderCheck(root, status) {
         <div class="stack">
           <h2>${t("photo_title")}</h2><p>${t("photo_lead")}</p>
           ${status.museConfigured ? `<label class="btn btn-gold btn-big file-btn">${t("photo_btn")}<input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>` : `<p class="banner caution">${t("photo_needs_muse")}</p>`}
+          <h2>${t("eml_title")}</h2><p>${t("eml_lead")}</p>
+          <label class="btn btn-light-dark btn-big file-btn">${t("eml_btn")}<input id="emlInput" type="file" accept=".eml,message/rfc822" hidden></label>
         </div>
       </div>
       <div id="checkResult" aria-live="polite"></div>
@@ -117,6 +119,15 @@ export function renderCheck(root, status) {
     ev.preventDefault();
     $("#checkResult").innerHTML = `<div class="verdict caution"><h3>${t("checking")}</h3></div>`;
     try { show(await api("/api/check/text", { method: "POST", body: Object.fromEntries(new FormData(ev.target)) })); } catch (e) { $("#checkResult").innerHTML = `<p class="banner danger">${esc(e.message)}</p>`; }
+  });
+  $("#emlInput").addEventListener("change", async (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    $("#checkResult").innerHTML = `<div class="verdict caution"><h3>${t("checking")}</h3><p>${t("please_wait")}</p></div>`;
+    const form = new FormData();
+    form.append("email", file);
+    try { show(await api("/api/check/eml", { method: "POST", form })); } catch (e) { $("#checkResult").innerHTML = `<p class="banner danger">${esc(e.message)}</p>`; }
+    ev.target.value = "";
   });
   $("#photoInput")?.addEventListener("change", async (ev) => {
     const file = ev.target.files[0];
