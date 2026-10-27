@@ -74,6 +74,42 @@ test("free-hosting subdomain for a bank page is a strong signal", () => {
   assert.equal(ins.isFreeHosting, true);
 });
 
+// A bare link from an unknown sender: only the address can raise the alarm.
+const bareLink = (href) => detect({
+  locale: "en-US", personalContext: {}, patternCards: [],
+  message: { channel: "sms", from: "+1 555-0100", fromName: "", subject: "", body: href, links: [{ text: href, href }], auth: "" },
+}).verdict;
+
+test("the address alone gives away misspelt brands, free sign-in pages and personalised traps", () => {
+  assert.equal(bareLink("https://www.pyapal-help.com.tw/"), "scam");
+  assert.equal(bareLink("https://xfinitty-signin-test.weebly.com/"), "scam");
+  assert.equal(bareLink("https://docs-share.test/view#victim@example.com"), "scam");
+  assert.equal(inspectLink({ text: "x", href: "https://login.example.top/" }).riskyTld, true);
+});
+
+test("ordinary addresses that look a little like those traps stay safe", () => {
+  // Subdomains of real sites are not misspellings (finance ≈ Binance).
+  assert.equal(inspectLink({ text: "x", href: "https://finance.yahoo.com/quote/X" }).typosquat, null);
+  // Newsletters put your address in unsubscribe and preference links.
+  assert.equal(bareLink("https://news.example.com/update.cfm?email=reader@example.com"), "safe");
+  // A sign-in word inside a blog post's title is not a sign-in page.
+  assert.equal(inspectLink({ text: "x", href: "https://acme.blogspot.com/2007/08/acme-is-hiring-account-managers.html" }).credentialWords, false);
+});
+
+test("Google's own country sites, old services and blogs count as Google's", async () => {
+  const { belongsTo, brandByName } = await import("../lib/brands.js");
+  const google = brandByName("Google");
+  for (const d of ["maps.google.co.uk", "www.google.de", "google.com.au", "code.googlecode.com"]) assert.equal(belongsTo(d, google), true, d);
+  for (const d of ["google-verify.top", "evilgoogle.co.uk"]) assert.equal(belongsTo(d, google), false, d);
+  const alert = detect({
+    locale: "en-US", personalContext: {}, patternCards: [],
+    message: { channel: "email", from: "googlealerts-noreply@google.com", fromName: "Google Alerts", subject: "Google Alert - gardening",
+      body: "News: new rose varieties https://roses.blogspot.com/ and https://www.gardening-weekly.test/roses", auth: "",
+      links: [{ text: "roses", href: "https://roses.blogspot.com/" }, { text: "Gardening weekly", href: "https://www.gardening-weekly.test/roses" }] },
+  });
+  assert.notEqual(alert.verdict, "scam");
+});
+
 test("prompt injection inside a message is treated as evidence, not instructions", () => {
   const v = detect({
     locale: "en-US",
