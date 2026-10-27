@@ -73,6 +73,14 @@ for (const { name, m } of SCAMS) {
   });
 }
 
+test("a text from a phone number is never described as a website address", () => {
+  const v = run({ channel: "sms", fromName: "", from: "5551234",
+    body: "USPS: Your package is on hold. Pay $1.99 today: https://usps-redeliver.top/pay",
+    links: [{ text: "https://usps-redeliver.top/pay", href: "https://usps-redeliver.top/pay" }] });
+  assert.equal(v.verdict, "scam");
+  assert.ok(!v.reasons.some((r) => /website address is [\d.]+/.test(r.text)), v.reasons.map((r) => r.text).join(" | "));
+});
+
 test("authenticated brand mail that fits history is marked _authentic for the model guardrail", () => {
   const amazonCtx = { ...ctx, providers: [{ type: "retail", name: "Amazon", realDomains: ["amazon.com"] }] };
   const v = run(LEGIT[4].m, amazonCtx);
