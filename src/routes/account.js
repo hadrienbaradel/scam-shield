@@ -14,6 +14,8 @@ import { revokeAndForget, tokenStatus } from "../google/tokens.js";
 import { audit } from "../sync/actions.js";
 import { jobStatus } from "../jobs/scheduler.js";
 
+const rebuilds = new Map();
+
 export default async function accountRoutes(app) {
   app.get("/api/health", async () => ({ ok: true }));
 
@@ -97,7 +99,11 @@ export default async function accountRoutes(app) {
       return { breaches: ctx.breaches };
     });
 
-    priv.post("/api/context/rebuild", async (request) => {
+    // A rebuild reads hundreds of messages: once per 10 minutes per person.
+    priv.post("/api/context/rebuild", async (request, reply) => {
+      const last = rebuilds.get(request.user.id) || 0;
+      if (last > Date.now() - 10 * 60000) return reply.code(429).send({ error: "Already looking through your mailbox. Try again in a few minutes." });
+      rebuilds.set(request.user.id, Date.now());
       rebuildContext({ user: request.user, client: clientFor(request.user.id) }).catch((e) => request.log.error(e, "context rebuild failed"));
       return { started: true };
     });

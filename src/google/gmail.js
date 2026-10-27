@@ -30,9 +30,16 @@ export function gmailClient(getToken, { fetchImpl = fetch } = {}) {
         signal: AbortSignal.timeout(20000),
       });
       if (res.ok) return res.status === 204 ? null : res.json();
-      if ((res.status === 429 || res.status >= 500) && attempt < 3) { await sleep(500 * 2 ** attempt); continue; }
-      const data = await res.json().catch(() => ({}));
-      const err = new Error(`Gmail ${method} ${path.split("?")[0]} ${res.status}: ${data.error?.message || ""}`.trim());
+      const data = res.status === 403 ? await res.clone().json().catch(() => ({})) : null;
+      const quota = res.status === 403 && /rateLimitExceeded|userRateLimitExceeded|quota/i.test(JSON.stringify(data || {}));
+      if ((res.status === 429 || res.status >= 500 || quota) && attempt < 3) {
+        // Honour Retry-After when Google sends it; otherwise back off with jitter.
+        const retryAfter = Number(res.headers.get("retry-after"));
+        await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 30) * 1000 : 500 * 2 ** attempt + Math.random() * 250);
+        continue;
+      }
+      const errData = data || await res.json().catch(() => ({}));
+      const err = new Error(`Gmail ${method} ${path.split("?")[0]} ${res.status}: ${errData.error?.message || ""}`.trim());
       err.status = res.status;
       throw err;
     }

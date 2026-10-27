@@ -11,6 +11,8 @@ import { acceptInvite } from "../guardians.js";
 import { syncUser } from "../sync/worker.js";
 import { renewWatches } from "../jobs/scheduler.js";
 
+const OAUTH_COOKIE = "ss_oauth";
+
 export default async function authRoutes(app) {
   const limited = { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } };
 
@@ -20,14 +22,22 @@ export default async function authRoutes(app) {
     const invite = typeof request.query.invite === "string" ? request.query.invite.slice(0, 200) : null;
     const state = randomToken();
     const { verifier, challenge } = pkcePair();
-    await q("INSERT INTO oauth_states (state_hash, verifier, mode, invite) VALUES ($1, $2, $3, $4)", [sha256(state), verifier, mode, invite]);
+    // Login-CSRF defense: the sign-in can only be completed by the browser
+    // that started it (PKCE alone does not bind it to a browser).
+    const browser = randomToken();
+    reply.setCookie(OAUTH_COOKIE, browser, { path: "/auth/google", httpOnly: true, sameSite: "lax", secure: config.secureCookies, maxAge: 900 });
+    await q("INSERT INTO oauth_states (state_hash, verifier, mode, invite, browser_hash) VALUES ($1, $2, $3, $4, $5)",
+      [sha256(state), verifier, mode, invite, sha256(browser)]);
     return reply.redirect(authUrl({ state, challenge, mode }));
   });
 
   app.get("/auth/google/callback", limited, async (request, reply) => {
     const { code, state, error } = request.query;
     if (error) return reply.redirect(`/?signin=${encodeURIComponent(error === "access_denied" ? "cancelled" : "error")}`);
-    const st = state && await one("DELETE FROM oauth_states WHERE state_hash = $1 AND created_at > now() - interval '15 minutes' RETURNING *", [sha256(state)]);
+    const browser = request.cookies?.[OAUTH_COOKIE];
+    reply.clearCookie(OAUTH_COOKIE, { path: "/auth/google" });
+    const st = state && browser && await one(`DELETE FROM oauth_states WHERE state_hash = $1 AND browser_hash = $2
+                                              AND created_at > now() - interval '15 minutes' RETURNING *`, [sha256(state), sha256(browser)]);
     if (!st || !code) return reply.redirect("/?signin=expired");
 
     const tokens = await exchangeCode(code, st.verifier);

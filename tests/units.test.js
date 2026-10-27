@@ -144,13 +144,22 @@ test("actions: what happens to a message for each verdict", () => {
 });
 
 test("links: private networks are refused before any request", async () => {
-  for (const ip of ["127.0.0.1", "10.1.2.3", "192.168.68.54", "172.20.0.1", "169.254.169.254", "::1", "fd00::1", "::ffff:127.0.0.1", "100.64.0.1"]) assert.ok(isPrivateAddress(ip), ip);
-  for (const ip of ["8.8.8.8", "2606:4700::1111"]) assert.ok(!isPrivateAddress(ip), ip);
+  for (const ip of ["127.0.0.1", "10.1.2.3", "192.168.68.54", "172.20.0.1", "169.254.169.254", "::1", "fd00::1", "::ffff:127.0.0.1", "100.64.0.1",
+    // Codex's bypasses: IPv4-mapped IPv6 in hex, plus other special ranges.
+    "::ffff:7f00:1", "::ffff:a9fe:a9fe", "0:0:0:0:0:ffff:7f00:1", "192.0.0.8", "198.18.0.1", "64:ff9b::7f00:1", "2001:db8::1", "::", "fe80::1", "0.0.0.0"]) {
+    assert.ok(isPrivateAddress(ip), ip);
+  }
+  for (const ip of ["8.8.8.8", "2606:4700::1111", "::ffff:8.8.8.8", "::ffff:808:808"]) assert.ok(!isPrivateAddress(ip), ip);
+  assert.ok(isPrivateAddress("not-an-ip"), "anything unparseable is refused");
   let fetched = false;
   await assert.rejects(resolveLink("http://127.0.0.1/admin", { fetchImpl: async () => { fetched = true; } }), /private/);
   await assert.rejects(resolveLink("http://169.254.169.254/latest/meta-data/", { fetchImpl: async () => { fetched = true; } }), /private/);
   await assert.rejects(resolveLink("file:///etc/passwd", { fetchImpl: async () => { fetched = true; } }), /refusing/);
+  await assert.rejects(resolveLink("http://2130706433/", { fetchImpl: async () => { fetched = true; } }), /private/, "decimal IPv4 is normalised");
+  await assert.rejects(resolveLink("http://[::ffff:7f00:1]/", { fetchImpl: async () => { fetched = true; } }), /private/);
   assert.equal(fetched, false);
+  // DNS rebinding: a name that resolves to an internal address is refused at connect time.
+  await assert.rejects(resolveLink("http://localhost/", { checkHost: async () => {} }), (e) => e.cause?.code === "EPRIVATE");
 });
 
 test("links: follows redirects to the final page and describes it", async () => {

@@ -53,9 +53,15 @@ export async function acceptInvite({ token, user }) {
   return updated;
 }
 
+const DAILY_ALERT_CAP = 20;
+
 export async function alertGuardians({ senior, checkId, shared, guardianshipIds = null, auto = false }) {
+  // Budgets: one alert per message per guardian, at most 20 a day.
+  const sentToday = Number((await one("SELECT count(*) AS n FROM alerts WHERE senior_id = $1 AND created_at > now() - interval '1 day'", [senior.id])).n);
+  if (sentToday >= DAILY_ALERT_CAP) throw Object.assign(new Error("Daily limit of alerts reached. Please call your trusted person instead."), { statusCode: 429 });
+  const already = new Set(checkId ? (await many("SELECT guardianship_id FROM alerts WHERE check_id = $1", [checkId])).map((r) => r.guardianship_id) : []);
   const targets = (await many("SELECT * FROM guardianships WHERE senior_id = $1 AND status = 'active'", [senior.id]))
-    .filter((g) => !guardianshipIds || guardianshipIds.includes(g.id));
+    .filter((g) => (!guardianshipIds || guardianshipIds.includes(g.id)) && !already.has(g.id));
   const F = fr(senior);
   const who = senior.name || senior.email;
   const sentTo = [];
@@ -90,10 +96,12 @@ export async function alertGuardians({ senior, checkId, shared, guardianshipIds 
   return sentTo;
 }
 
+// A link stops working when it expires or when the senior removes that
+// guardian: nothing shared is shown after that.
 export async function alertByToken(token) {
   return one(`SELECT a.*, g.guardian_name, g.guardian_id, u.name AS senior_name, u.email AS senior_email, u.locale AS senior_locale
               FROM alerts a JOIN guardianships g ON g.id = a.guardianship_id JOIN users u ON u.id = a.senior_id
-              WHERE a.answer_hash = $1`, [sha256(token)]);
+              WHERE a.answer_hash = $1 AND g.status = 'active' AND a.answer_expires_at > now()`, [sha256(token)]);
 }
 
 // Single use: the first answer wins; the token is erased with it.

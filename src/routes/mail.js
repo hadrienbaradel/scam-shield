@@ -173,9 +173,10 @@ export default async function mailRoutes(app) {
       try { message = normalizeMessage(await clientFor(request.user.id).getMessage(check.gmail_message_id)); } catch (e) { return gmailError(reply, e); }
     }
     if (!message) return reply.code(400).send({ error: "message required" });
+    const active = await many("SELECT id, guardian_name FROM guardianships WHERE senior_id = $1 AND status = 'active'", [request.user.id]);
+    if (!active.length) return reply.code(409).send({ error: "no_guardian", message: "Add a trusted person first." });
     const sentTo = await alertGuardians({ senior: request.user, checkId: check.id, shared: sharedFrom(message, check.verdict, Boolean(includeText)), guardianshipIds });
-    if (!sentTo.length) return reply.code(409).send({ error: "no_guardian", message: "Add a trusted person first." });
-    return { sentTo };
+    return { sentTo, alreadyAsked: sentTo.length === 0 };
   });
 
   app.get("/api/answers", async (request) => ({ answers: await answersForSenior(request.user.id, request.query.since || null) }));

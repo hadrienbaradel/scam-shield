@@ -42,7 +42,8 @@ export async function buildApp({ logger = true } = {}) {
     hsts: config.secureCookies,
     crossOriginEmbedderPolicy: false,
   });
-  await app.register(rateLimit, { global: false });
+  // Limits count per signed-in person (per IP otherwise), after sign-in is known.
+  await app.register(rateLimit, { global: false, hook: "preHandler", keyGenerator: (request) => request.user?.id || request.ip });
   await app.register(multipart, { limits: { fileSize: 8 * 1024 * 1024, files: 1 } });
   app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 4096 },
     (request, body, done) => done(null, Object.fromEntries(new URLSearchParams(body))));
@@ -56,7 +57,7 @@ export async function buildApp({ logger = true } = {}) {
     const from = request.headers.origin || (request.headers.referer ? new URL(request.headers.referer).origin : null);
     if (from !== origin) return reply.code(403).send({ error: `Requests must come from ${origin}` });
   });
-  app.addHook("preHandler", async (request) => {
+  app.addHook("onRequest", async (request) => {
     // Phone requests carry a bearer token and are authenticated per route.
     if (!request.user && !/^Bearer\s/i.test(request.headers.authorization || "")) request.user = await loadUser(request);
   });

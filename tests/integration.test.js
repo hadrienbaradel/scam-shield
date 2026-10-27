@@ -110,7 +110,9 @@ test("HTTP: guardian invitation, one-tap answer (GET never answers, single use),
   const message = { channel: "sms", from: "+1 555-0199", body: "USPS: your package is on hold, pay $1.99 now https://usps-redeliver.test/pay" };
   const checked = (await app.inject({ method: "POST", url: "/api/check/text", headers: h, payload: message })).json();
   const ask = await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: checked.checkId, message: checked.message, includeText: false } });
-  assert.deepEqual(ask.json(), { sentTo: ["Thomas"] });
+  assert.deepEqual(ask.json(), { sentTo: ["Thomas"], alreadyAsked: false });
+  const again = await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: checked.checkId, message: checked.message } });
+  assert.deepEqual(again.json(), { sentTo: [], alreadyAsked: true }, "the same guardian is never asked twice about one message");
   const alertMail = await one("SELECT * FROM outbox WHERE to_email = 'thomas2@example.test' AND subject LIKE '%scam%'");
   assert.ok(!alertMail.text_body.includes("pay $1.99 now"), "message text not shared unless the senior ticks the box");
   const answerToken = alertMail.text_body.match(/\/answer\/([\w-]+)/)[1];
@@ -129,6 +131,36 @@ test("HTTP: guardian invitation, one-tap answer (GET never answers, single use),
   const dash = (await app.inject({ url: "/api/guardian/alerts", headers: { cookie: await sessionFor(guardian) } })).json();
   assert.equal(dash.alerts.length, 1);
   assert.equal(dash.protecting[0].name, "Linda");
+
+  // Removing the guardian kills their pending links at once.
+  const second = (await app.inject({ method: "POST", url: "/api/check/text", headers: h, payload: { ...message, body: `${message.body} again` } })).json();
+  await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: second.checkId, message: second.message } });
+  const mail2 = await one("SELECT text_body FROM outbox WHERE to_email = 'thomas2@example.test' AND subject LIKE '%scam%' ORDER BY created_at DESC LIMIT 1");
+  const token2 = mail2.text_body.match(/\/answer\/([\w-]+)/)[1];
+  const g = await one("SELECT id FROM guardianships WHERE senior_id = $1", [senior.id]);
+  await app.inject({ method: "DELETE", url: `/api/guardians/${g.id}`, headers: h });
+  assert.match((await app.inject({ url: `/answer/${token2}` })).body, /already used or has expired/);
+});
+
+test("HTTP: sign-in can only be completed by the browser that started it (login CSRF)", opts, async () => {
+  const start = await app.inject({ url: "/auth/google?mode=gmail" });
+  assert.equal(start.statusCode, 302);
+  const state = new URL(start.headers.location).searchParams.get("state");
+  const cookie = start.cookies.find((c) => c.name === "ss_oauth");
+  assert.ok(cookie?.httpOnly && state);
+  // Another browser (no cookie, or someone else's cookie) cannot use this state.
+  for (const headers of [{}, { cookie: "ss_oauth=someone-else" }]) {
+    const res = await app.inject({ url: `/auth/google/callback?code=attacker-code&state=${state}`, headers });
+    assert.equal(res.headers.location, "/?signin=expired");
+  }
+  assert.ok(await one("SELECT 1 FROM oauth_states WHERE browser_hash IS NOT NULL"), "the real browser can still finish");
+});
+
+test("HTTP: re-reading the mailbox is limited to once per 10 minutes", opts, async () => {
+  const user = await makeUser({ email: "rebuild@example.test" });
+  const h = { cookie: await sessionFor(user), origin: ORIGIN };
+  assert.equal((await app.inject({ method: "POST", url: "/api/context/rebuild", headers: h, payload: {} })).statusCode, 200);
+  assert.equal((await app.inject({ method: "POST", url: "/api/context/rebuild", headers: h, payload: {} })).statusCode, 429);
 });
 
 test("HTTP: phone pairing, SMS check, ask, answers, revoked token", opts, async () => {

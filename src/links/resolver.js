@@ -9,8 +9,10 @@
 // Output uses the same shape as the seed manifests' mockLinkInspection, so
 // lib/linkInspector.js and the detector need no change.
 
+import dns from "node:dns";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
+import { Agent, fetch as undiciFetch } from "undici";
 import { domainOf, sameOrSub, BRANDS, FREE_HOSTING_SUFFIXES } from "../../lib/brands.js";
 
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "rb.gy", "cutt.ly", "is.gd", "ow.ly", "buff.ly", "shorturl.at", "tiny.cc"];
@@ -24,16 +26,48 @@ export function registrableDomain(host = "") {
   return TWO_PART_SUFFIXES.includes(lastTwo) ? parts.slice(-3).join(".") : lastTwo;
 }
 
-export function isPrivateAddress(ip) {
-  if (isIP(ip) === 4) {
-    const [a, b] = ip.split(".").map(Number);
-    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
-      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
-  }
-  const v = ip.toLowerCase();
-  if (v.startsWith("::ffff:")) return isPrivateAddress(v.slice(7));
-  return v === "::1" || v === "::" || v.startsWith("fc") || v.startsWith("fd") || v.startsWith("fe80") || v.startsWith("ff");
+// Every non-public range (RFC 6890 special-purpose registries), checked
+// with Node's BlockList. IPv6 addresses that embed an IPv4 one (::ffff:,
+// incl. the hex form ::ffff:7f00:1) are judged by the IPv4 they carry.
+const BLOCKED = new BlockList();
+for (const [net, prefix] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16],
+  ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.88.99.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15],
+  ["198.51.100.0", 24], ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4]]) BLOCKED.addSubnet(net, prefix, "ipv4");
+for (const [net, prefix] of [["::", 127], ["64:ff9b::", 96], ["64:ff9b:1::", 48], ["100::", 64], ["2001::", 23], ["2001:db8::", 32],
+  ["2002::", 16], ["fc00::", 7], ["fe80::", 10], ["fec0::", 10], ["ff00::", 8]]) BLOCKED.addSubnet(net, prefix, "ipv6");
+
+function embeddedIPv4(ip) {
+  const v = ip.toLowerCase().replace(/^\[|\]$/g, "");
+  const m = v.match(/^(?:0{0,4}:){0,5}(?:0{0,4}:)?ffff:(.+)$/) || (v.startsWith("::ffff:") ? [null, v.slice(7)] : null);
+  if (!m) return null;
+  if (isIP(m[1]) === 4) return m[1];
+  const hex = m[1].split(":");
+  if (hex.length !== 2 || !hex.every((h) => /^[0-9a-f]{1,4}$/.test(h))) return null;
+  const n = (parseInt(hex[0], 16) << 16 >>> 0) + parseInt(hex[1], 16);
+  return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
 }
+
+export function isPrivateAddress(ip) {
+  const v4 = isIP(ip) === 4 ? ip : embeddedIPv4(ip);
+  if (v4) return BLOCKED.check(v4, "ipv4");
+  return isIP(ip) === 6 ? BLOCKED.check(ip, "ipv6") : true;
+}
+
+// DNS-rebinding defense: the connection is made to the very address that
+// passed the check (the lookup itself refuses private answers), so a second
+// resolution can never swap in an internal address.
+function safeLookup(hostname, options, callback) {
+  dns.lookup(hostname, { all: true, family: options?.family || 0 }, (err, addresses) => {
+    if (err) return callback(err);
+    if (!addresses.length || addresses.some((a) => isPrivateAddress(a.address))) {
+      return callback(Object.assign(new Error("refusing private network address"), { code: "EPRIVATE" }));
+    }
+    if (options?.all) return callback(null, addresses);
+    return callback(null, addresses[0].address, addresses[0].family);
+  });
+}
+const pinnedAgent = new Agent({ connect: { lookup: safeLookup, timeout: 5000 }, maxRedirections: 0 });
+const pinnedFetch = (url, init) => undiciFetch(url, { ...init, dispatcher: pinnedAgent });
 
 async function assertPublicHost(url) {
   const u = new URL(url);
@@ -91,7 +125,7 @@ export async function registrationDate(domain, { fetchImpl = fetch } = {}) {
 }
 
 // ------------------------------------------------------- redirect chain ---
-export async function resolveLink(url, { maxHops = 5, timeoutMs = 5000, fetchImpl = fetch, checkHost = assertPublicHost } = {}) {
+export async function resolveLink(url, { maxHops = 5, timeoutMs = 5000, fetchImpl = pinnedFetch, checkHost = assertPublicHost } = {}) {
   const redirects = [];
   let current = url;
   for (let hop = 0; hop <= maxHops; hop++) {
@@ -144,7 +178,9 @@ export function describePage(html = "") {
 // Builds the link_inspection map for one message. Link domains belonging
 // to the claimed brand or already known from the user's real mail are not
 // looked up at all.
-export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, fetchImpl = fetch, checkHost } = {}) {
+export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, maxResolved = 5, fetchImpl, checkHost } = {}) {
+  const rdapFetch = fetchImpl || fetch;
+  const resolved = new Set();
   const known = new Set(ctx.knownLinkDomains || []);
   const brandDomains = BRANDS.flatMap((b) => b.domains);
   const out = {};
@@ -154,22 +190,24 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
     .filter((d) => d && !known.has(d) && !brandDomains.some((b) => sameOrSub(d, b)))
     .slice(0, maxDomains);
   const asOf = Date.parse(message.date) || Date.now();
-  await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl, asOf }))));
+  await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl: rdapFetch, asOf }))));
   for (const link of links) {
     const startDomain = domainOf(link.href);
     const entry = {};
     const age = ages.get(registrableDomain(startDomain));
     if (age !== undefined && age !== null) entry.domain_age_days = age;
-    if (resolve || SHORTENERS.includes(startDomain)) {
+    // At most a few distinct sites are visited per check, however many links.
+    if ((resolve || SHORTENERS.includes(startDomain)) && (resolved.has(startDomain) || resolved.size < maxResolved)) {
+      resolved.add(startDomain);
       try {
-        const r = await resolveLink(link.href, { fetchImpl, ...(checkHost ? { checkHost } : {}) });
+        const r = await resolveLink(link.href, { ...(fetchImpl ? { fetchImpl } : {}), ...(checkHost ? { checkHost } : {}) });
         entry.final_url = r.final_url;
         entry.redirects = r.redirects;
         if (r.page_shows) entry.page_shows = r.page_shows;
-        const finalAge = await domainAgeDays(domainOf(r.final_url), { fetchImpl, asOf });
+        const finalAge = await domainAgeDays(domainOf(r.final_url), { fetchImpl: rdapFetch, asOf });
         if (finalAge !== null) entry.domain_age_days = finalAge;
       } catch (e) {
-        if (/ENOTFOUND|getaddrinfo/i.test(String(e.code || e.message))) entry.dns_status = "NXDOMAIN";
+        if (/ENOTFOUND|getaddrinfo/i.test(String(e.code || e.cause?.code || e.message))) entry.dns_status = "NXDOMAIN";
       }
     }
     if (Object.keys(entry).length) out[link.href] = entry;
