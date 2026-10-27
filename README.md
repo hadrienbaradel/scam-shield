@@ -1,6 +1,6 @@
 # Scam Shield
 
-**Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Product requirements: [docs/PRD.md](docs/PRD.md).
+**Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Product requirements: [docs/PRD.md](docs/PRD.md). Current status, measurements and open items: [docs/STATUS.md](docs/STATUS.md).
 
 Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). Gmail already blocks most phishing in bulk. What it does not do is explain, in words a frightened 74-year-old can act on at 9pm, *why* a message is dangerous and *what to do instead*, or check it against *her* life ("your parcel comes by Amazon Logistics, not Chronopost").
 
@@ -39,8 +39,10 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 | Script | What it does |
 |---|---|
 | `npm start` / `npm run dev` | Server plus background jobs (`dev` restarts on change) |
-| `npm test` | 84 tests: engine, real-mail regression, server units, Muse Spark against a fake API, integration against Postgres |
-| `npm run score` | PRD pass criteria on the seed cases (A 100%, no false Scam on C) |
+| `npm test` | 146 tests: engine, real-mail regression, server units, Muse Spark against a fake API, integration against Postgres |
+| `npm run score` | PRD pass criteria on the seed cases (A 100%, no false Scam on C); `-- --muse` runs them through Muse Spark |
+| `npm run gate` | After a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions, safety checks (no email printed) |
+| `node scripts/eval-corpus.mjs` / `eval-urls.mjs` | Accuracy on public corpora and phishing URL lists (data stays in `.runtime/eval/`) |
 | `npm run migrate` | Apply database migrations |
 | `node scripts/set-env.mjs KEY=value` | Set `.env` keys without displaying the file |
 

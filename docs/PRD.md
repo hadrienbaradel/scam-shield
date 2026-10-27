@@ -32,7 +32,7 @@ Generic checkers judge one message in isolation. Scam Shield judges it against t
 - B set: 10/12 or better → seed covers B1, B2, B6–B12, all passing.
 - D set: all passing in seed form.
 
-Run `npm test` (46+ checks) and `npm run score` (31/31 cases).
+Run `npm test` (146 tests) and `npm run score` (36/36 cases). Measured accuracy and open items: [STATUS.md](STATUS.md).
 
 ## Not yet built (PRD P0/P1 remaining)
 
