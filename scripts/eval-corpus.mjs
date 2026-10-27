@@ -16,6 +16,7 @@
 // label 1 = phishing/spam, 0 = legitimate. Only subjects and sender domains
 // are printed, never bodies.
 
+import "../lib/credentials.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { detect } from "../lib/detector.js";
@@ -34,7 +35,7 @@ const seed = Number(opt("--seed", 1));
 const useMuse = args.includes("--muse");
 if (useMuse) args.splice(args.indexOf("--muse"), 1);
 if (useMuse && !museConfigured()) {
-  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (node scripts/set-env.mjs META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
+  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (make secrets-set META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
   process.exit(2);
 }
 if (useMuse && !sample && !limit) {

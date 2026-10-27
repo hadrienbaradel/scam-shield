@@ -1,9 +1,11 @@
 // Stores a downloaded Google OAuth client (Cloud Console → Clients →
-// Download JSON) in .env, so the secret is never copied by hand or shown.
+// Download JSON) in the encrypted credentials, so the secret is never copied
+// by hand or shown.
 // Usage: node scripts/import-google-client.mjs ~/Downloads/client_secret_XXXX.json
 // Checks it is a Web client for this project with this app's redirect URI.
+import "../lib/credentials.js";
 import { readFileSync } from "node:fs";
-import { setEnv } from "./set-env.mjs";
+import { setKeys } from "../lib/credentialStore.js";
 
 const file = process.argv[2];
 if (!file) { console.error("usage: node scripts/import-google-client.mjs path/to/client_secret.json"); process.exit(2); }
@@ -20,7 +22,7 @@ if (web.project_id && web.project_id !== "scam-shield-hb26") problems.push(`proj
 if (!(web.redirect_uris || []).includes(redirect)) problems.push(`redirect URI ${redirect} is missing (has: ${(web.redirect_uris || []).join(", ") || "none"})`);
 if (!(web.javascript_origins || []).includes(base)) problems.push(`JavaScript origin ${base} is missing`);
 
-for (const key of setEnv([["GOOGLE_CLIENT_ID", web.client_id], ["GOOGLE_CLIENT_SECRET", web.client_secret]])) console.log(`set ${key}`);
+for (const key of setKeys([["GOOGLE_CLIENT_ID", web.client_id], ["GOOGLE_CLIENT_SECRET", web.client_secret]])) console.log(`set ${key} (config/credentials.enc, commit it)`);
 console.log(`client …${web.client_id.slice(-30)}`);
 if (problems.length) { console.log(`Fix in the Cloud Console, then sign-in will work:\n- ${problems.join("\n- ")}`); process.exit(1); }
 console.log(`Redirect ${redirect} and origin ${base} match. You can delete the downloaded file now.`);

@@ -26,7 +26,7 @@ Area is the part of the product or repo (Engine, Sync, Guardians, Android, Spec,
 
 ## Never committed
 
-- Secrets: `.env`, `.env.*` (except `.env.example`), `.tokens.json`, `*.keystore`, `config/master.key`, downloaded Google client JSON, a key pasted in any file. Keys go through `node scripts/set-env.mjs KEY=value`.
+- Secrets: `.env`, `.env.*`, `.tokens.json`, `*.keystore`, `config/master.key`, downloaded Google client JSON, a key pasted in any file. Keys go into the encrypted `config/credentials.enc` through `make secrets-set KEY=value` (`_product/docs/secrets.md`).
 - Real people's data: `.runtime/`, eval corpora, screenshots of a real inbox.
 - `node_modules/`, build output, `.context/`.
 - A secret that lands in a commit is rotated; a rewritten history does not un-leak it.

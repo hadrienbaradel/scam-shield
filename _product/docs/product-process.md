@@ -64,7 +64,7 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 |---|---|
 | Code behavior (what the user sees or gets) | `specs/<feature>.md` + the status in `spec.md` |
 | A new idea, from anyone, in any channel | a row in the Ideas table of `spec.md`; a `specs/` file once it has more than one line of detail |
-| New env var or key | `_product/docs/secrets.md` + `.env.example` |
+| New env var or key | `_product/docs/secrets.md` + `config/credentials.example` (+ `REQUIRED_KEYS` in `lib/credentialStore.js` when the product cannot run without it) |
 | New make target or script | Makefile help comment (no Makefile yet: the README script table) + `_product/docs/dx.md` |
 | New LLM provider or model | `_product/docs/llm.md` |
 | New research | `research/<topic>.md` + a line in `research.md` |

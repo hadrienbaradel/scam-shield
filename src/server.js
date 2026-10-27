@@ -3,6 +3,7 @@
 // cookie, Origin check on every state-changing request from a browser,
 // per-route rate limits, loopback-only unless HOST says otherwise.
 
+import "../lib/credentials.js";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";

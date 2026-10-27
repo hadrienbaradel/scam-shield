@@ -3,6 +3,7 @@
 // card a reviewer has since changed).
 // CLI: npm run migrate
 
+import "../../lib/credentials.js";
 import { readdir, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { pool } from "./pool.js";

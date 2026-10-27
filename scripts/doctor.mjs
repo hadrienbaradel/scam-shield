@@ -1,9 +1,9 @@
 // Scam Shield doctor: what is missing on this machine to run the app and its
-// tests. It prints names and present/missing only, never a value from .env or
-// the environment (API keys, the token key, database credentials).
+// tests. It prints names and present/missing only, never a value (API keys,
+// the token key, database credentials, the master key).
 //
 //   node scripts/doctor.mjs                  every check
-//   node scripts/doctor.mjs db testdb        only these: node, deps, env, db, testdb, port
+//   node scripts/doctor.mjs db testdb        only these: node, deps, secrets, db, testdb, port
 //   --quiet   print problems only            --strict   warnings fail too
 //
 // Exit 1 when something required is missing, 0 otherwise. `make doctor` runs
@@ -13,15 +13,18 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createServer } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// The store module has no side effects: a missing master key is a report line here, never an exit.
+import { REQUIRED_KEYS, credentialsStatus, loadCredentials, rel } from "../lib/credentialStore.js";
+
+export { parseDotenv as parseEnvFile } from "../lib/credentialStore.js";
 
 const root = new URL("../", import.meta.url);
 const at = (p) => fileURLToPath(new URL(p, root));
 
 // The npm scripts use --env-file-if-exists (Node 22.9+) and `npm run check`
-// uses the built-in coverage thresholds (22.8+). package.json's engines field
-// is looser than that; this is the version that actually works.
+// uses the built-in coverage thresholds (22.8+); engines in package.json says so.
 export const WORKING_NODE = "22.9.0";
-export const CHECKS = ["node", "deps", "env", "db", "testdb", "port"];
+export const CHECKS = ["node", "deps", "secrets", "db", "testdb", "port"];
 export const DB_FIX = "make db-up (Docker) or brew services start postgresql@14 && make db-create";
 
 // "localhost:5432/scam_shield": host, port and database only, never credentials.
@@ -49,33 +52,14 @@ export function versionGte(a, b) {
   return true;
 }
 
-// KEY=value lines of a .env file → Map(key → value). Values are only ever
-// tested for presence; nothing in this file prints one.
-export function parseEnvFile(text) {
-  const out = new Map();
-  for (const raw of String(text).split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const m = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-    if (!m) continue;
-    let v = m[2].trim();
-    if (v.length >= 2 && ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))) v = v.slice(1, -1);
-    out.set(m[1], v);
-  }
-  return out;
-}
-
-// Same precedence as `node --env-file-if-exists=.env`: the shell wins over the file.
+// The credentials go into process.env first, the shell (and .env, when node
+// was started with --env-file) winning, so every check sees what the app sees.
+// `from` says where a value came from; values are only ever tested for presence.
 function settings() {
-  const file = at(".env");
-  const hasFile = existsSync(file);
-  const fromFile = hasFile ? parseEnvFile(readFileSync(file, "utf8")) : new Map();
-  const get = (key) => {
-    if (process.env[key]) return { value: process.env[key], from: "environment" };
-    if (fromFile.get(key)) return { value: fromFile.get(key), from: ".env" };
-    return null;
-  };
-  return { hasFile, get };
+  const status = credentialsStatus();
+  const loaded = status.ok ? loadCredentials().loaded : [];
+  const get = (key) => (process.env[key] ? { value: process.env[key], from: loaded.includes(key) ? "credentials" : "environment" } : null);
+  return { status, get, strayEnv: existsSync(at(".env")) };
 }
 
 const results = [];
@@ -103,19 +87,31 @@ function checkDeps() {
   return ok("dependencies installed (node_modules)");
 }
 
-function checkEnv(s) {
-  if (s.hasFile) ok(".env present");
-  else fail(".env missing: make setup creates it from .env.example with a fresh TOKEN_ENC_KEY");
+// Master key, encrypted file, required keys by name, and a stray .env.
+function checkSecrets(s) {
+  const { status } = s;
+  const file = rel(status.file);
+  if (status.error && !status.keyFrom) fail(status.error);
+  else if (!status.keyFrom) fail(`no master key and no ${file} yet: make secrets-init`);
+  else {
+    ok(`master key present (${status.keyFrom})`);
+    if (status.ok) ok(`${file} decrypts (${status.keys.length} keys)`);
+    else if (status.error) fail(status.error);
+    else fail(`${file} missing: make secrets-init creates it, git checkout ${file} restores the team's`);
+  }
   const key = s.get("TOKEN_ENC_KEY");
   if (key && key.value.length >= 40) ok(`TOKEN_ENC_KEY present (${key.from})`);
-  else if (s.hasFile || key) fail("TOKEN_ENC_KEY missing or too short: node scripts/set-env.mjs TOKEN_ENC_KEY=$(node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\")");
+  else fail("TOKEN_ENC_KEY missing or too short: make setup adds one to the credentials (node scripts/setup.mjs --no-db)");
   const google = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"].filter((k) => !s.get(k));
   if (google.length) warn(`Google sign-in off, demo only: ${google.join(" and ")} missing (docs/GOOGLE_SETUP.md, then node scripts/import-google-client.mjs <downloaded json>)`);
   else ok("Google sign-in configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET present)");
   if (s.get("META_MODEL_API_KEY")) ok("Muse Spark on (META_MODEL_API_KEY present)");
-  else warn("Muse Spark off, detector only: META_MODEL_API_KEY missing (node scripts/set-env.mjs META_MODEL_API_KEY=...)");
+  else warn("Muse Spark off, detector only: META_MODEL_API_KEY missing (make secrets-set META_MODEL_API_KEY=...)");
+  const missing = REQUIRED_KEYS.filter((k) => !s.get(k));
+  info(missing.length ? `required keys missing: ${missing.join(", ")} (make secrets-set KEY=value)` : `required keys all present: ${REQUIRED_KEYS.join(", ")}`);
   const optional = ["ABUSECH_AUTH_KEY", "RESEND_API_KEY", "HIBP_API_KEY", "GMAIL_PUBSUB_TOPIC", "GMAIL_PUBSUB_SUBSCRIPTION"];
   info(`optional: ${optional.map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
+  if (s.strayEnv) warn(".env still exists: run make secrets-import (moves its keys into config/credentials.enc), then delete it (rm .env); it keeps winning over the credentials until then");
 }
 
 async function connect(url) {
@@ -144,7 +140,7 @@ async function checkDb(s, { test = false } = {}) {
   const r = await connect(url);
   if (r.state === "nodeps") return info(`${label} ${where}: not checked until dependencies are installed`);
   if (r.state === "nodb") return bad(`${label}: ${r.message} on ${describeDbUrl(url).split("/")[0]}: make db-create${consequence}`);
-  if (r.state === "auth") return bad(`${label} ${where}: ${r.message}: node scripts/set-env.mjs DATABASE_URL=postgres://user:password@localhost/scam_shield${consequence}`);
+  if (r.state === "auth") return bad(`${label} ${where}: ${r.message}: make secrets-set DATABASE_URL=postgres://user:password@localhost/scam_shield${consequence}`);
   if (r.state === "down") return bad(`${label} not reachable at ${where}: ${r.message}. Fix: ${DB_FIX}${consequence}`);
   try {
     if (test) return ok(`test database ${where}`);
@@ -174,7 +170,8 @@ function checkPort(s) {
 export async function run(argv) {
   const quiet = argv.includes("--quiet");
   const strict = argv.includes("--strict");
-  const wanted = argv.filter((a) => !a.startsWith("--"));
+  // "env" is the old name of the secrets check.
+  const wanted = argv.filter((a) => !a.startsWith("--")).map((w) => (w === "env" ? "secrets" : w));
   const unknown = wanted.filter((w) => !CHECKS.includes(w));
   if (unknown.length) {
     console.error(`unknown check: ${unknown.join(", ")} (choose from ${CHECKS.join(", ")})`);
@@ -183,7 +180,7 @@ export async function run(argv) {
   const selected = wanted.length ? wanted : CHECKS;
   const s = settings();
   const runners = {
-    node: () => checkNode(), deps: () => checkDeps(), env: () => checkEnv(s),
+    node: () => checkNode(), deps: () => checkDeps(), secrets: () => checkSecrets(s),
     db: () => checkDb(s), testdb: () => checkDb(s, { test: true }), port: () => checkPort(s),
   };
   for (const name of CHECKS) if (selected.includes(name)) await runners[name]();

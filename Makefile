@@ -1,16 +1,20 @@
 # Scam Shield developer commands. `make` lists them; `make setup` is the first one.
 # GNU Make 3.81 (the macOS default) or newer, on macOS and Linux.
-# Nothing here prints a secret: .env is read by the app and by scripts/doctor.mjs, never shown.
+# Nothing here prints a secret: keys live encrypted in config/credentials.enc (make secrets-keys
+# shows names only); config/master.key opens it and is never committed (_product/docs/secrets.md).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help setup doctor deps dev start test coverage check score score-muse \
-        db-up db-down db-destroy db-create db-migrate gate clean clean-all
+        db-up db-down db-destroy db-create db-migrate gate clean clean-all \
+        secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
 NODE   ?= node
 NPM    ?= npm
 ENV    := --env-file-if-exists=.env
 DOCTOR := $(NODE) scripts/doctor.mjs
+CRED   := $(NODE) scripts/credentials.mjs
+FILE   ?= .env
 
 # Postgres in Docker, for a machine without PostgreSQL (make db-up).
 PG_CONTAINER ?= scam-shield-pg
@@ -26,23 +30,24 @@ help:
 	printf "\n$${b}Scam Shield$${r}  Node $$($(NODE) --version 2>/dev/null || echo 'NOT FOUND: nvm install, or https://nodejs.org')  -  new here? run: make setup\n"; \
 	awk -v b="$$b" -v c="$$c" -v r="$$r" 'BEGIN { FS = ":.*## " } \
 	  /^##@ / { printf "\n%s%s%s\n", b, substr($$0, 5), r } \
-	  /^[a-zA-Z0-9_-]+:.*## / { printf "  %s%-11s%s %s\n", c, $$1, r, $$2 }' $(MAKEFILE_LIST); \
+	  /^[a-zA-Z0-9_-]+:.*## / { printf "  %s%-14s%s %s\n", c, $$1, r, $$2 }' $(MAKEFILE_LIST); \
 	echo
 
-setup: ## Fresh clone to running: Node check, npm ci, .env, database, next steps
+setup: ## Fresh clone to running: Node check, npm ci, master key + credentials, database, next steps
 	@command -v $(NODE) >/dev/null || { echo "Node is not installed: nvm install (reads .nvmrc), or https://nodejs.org"; exit 1; }
 	@$(DOCTOR) node --quiet
 	@$(MAKE) --no-print-directory deps
+	@$(CRED) init || true
 	@if $(DOCTOR) db --quiet; then \
 	  $(NODE) $(ENV) scripts/setup.mjs && ($(MAKE) --no-print-directory db-create || true); \
 	else \
-	  echo "The database is not ready (see above): writing .env now, the migration runs when it is."; \
-	  $(NODE) scripts/setup.mjs 2>/dev/null | grep -v '^Database' || true; \
+	  echo "The database is not ready (see above): the migration runs when it is (make db-up, or make db-migrate)."; \
+	  $(NODE) $(ENV) scripts/setup.mjs --no-db || true; \
 	fi
-	@$(DOCTOR) env --quiet || true
-	@printf "\nNext:\n  make dev       start the app at http://localhost:3000 (demo mode until the Google keys are set)\n  make doctor    what is still missing\n  Google sign-in: docs/GOOGLE_SETUP.md    Muse Spark: node scripts/set-env.mjs META_MODEL_API_KEY=...\n\n"
+	@$(DOCTOR) secrets --quiet || true
+	@printf "\nNext:\n  make dev       start the app at http://localhost:3000 (demo mode until the Google keys are set)\n  make doctor    what is still missing\n  Keys: make secrets-set META_MODEL_API_KEY=...   Google sign-in: docs/GOOGLE_SETUP.md   rules: _product/docs/secrets.md\n  Joining the team: get config/master.key from a teammate, then make secrets-init. On your own: rm config/credentials.enc, then make secrets-init.\n\n"
 
-doctor: ## What is missing: Node, dependencies, .env keys (names only), Postgres, port 3000
+doctor: ## What is missing: Node, dependencies, master key + credentials (names only), Postgres, port 3000
 	@$(DOCTOR)
 
 ##@ Run
@@ -65,7 +70,8 @@ coverage: deps ## Tests with coverage: table on screen, coverage/lcov.info for t
 	@$(DOCTOR) testdb --quiet
 	@$(NPM) run coverage
 
-check: deps ## What CI runs: all tests, line coverage above the threshold (needs Postgres)
+check: deps ## What CI runs: master.key not in git, all tests, line coverage above the threshold (needs Postgres)
+	@if git ls-files --error-unmatch config/master.key >/dev/null 2>&1; then echo "config/master.key is tracked by git: git rm --cached config/master.key, then make secrets-rotate (a committed key is leaked)"; exit 1; fi
 	@$(NPM) run check
 
 score: deps ## PRD pass criteria on the seed cases (detector only, no API key needed)
@@ -73,6 +79,29 @@ score: deps ## PRD pass criteria on the seed cases (detector only, no API key ne
 
 score-muse: deps ## The same through Muse Spark (paid API; answers cached in .runtime/eval)
 	@$(NODE) $(ENV) scripts/score.mjs --muse
+
+##@ Secrets  (config/credentials.enc is committed, encrypted; config/master.key never is)
+
+secrets-init: ## First time: create config/master.key (or paste the team's) and config/credentials.enc
+	@$(CRED) init
+
+secrets-set: ## make secrets-set KEY=value [KEY2=value2], or make secrets-set alone and paste KEY=value lines
+	@$(CRED) set $(MAKEOVERRIDES)
+
+secrets-edit: ## Open the decrypted keys in VISUAL or EDITOR (vi by default), re-encrypt on exit
+	@$(CRED) edit
+
+secrets-keys: ## Key names and whether each is set (never a value)
+	@$(CRED) keys
+
+secrets-check: ## Required keys present? Exit 1 with the missing names if not
+	@$(CRED) check
+
+secrets-import: ## Move a dotenv file into the credentials: make secrets-import FILE=.env (then delete the file)
+	@$(CRED) import $(FILE)
+
+secrets-rotate: ## New master key, file re-encrypted; share the key again (and rotate provider keys if it leaked)
+	@$(CRED) rotate
 
 ##@ Data
 
@@ -121,15 +150,13 @@ gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety 
 
 ##@ Ops
 
-clean: ## Remove coverage output and logs (keeps node_modules, .env and the .runtime caches)
+clean: ## Remove coverage output and logs (never node_modules, config/master.key or the .runtime caches)
 	@rm -rf coverage *.log
 	@echo "removed coverage/ and logs"
 
 clean-all: clean ## clean, plus node_modules (the next make command reinstalls)
 	@rm -rf node_modules
 	@echo "removed node_modules/"
-
-# --- secrets (managed by scripts/credentials.mjs; targets added later) ---
 
 # Dependencies: npm ci whenever package.json or the lock file changed since the last install.
 deps: node_modules/.package-lock.json

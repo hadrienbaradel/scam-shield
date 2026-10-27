@@ -4,6 +4,7 @@
 //   node scripts/score.mjs --json out.json
 //   node --env-file-if-exists=.env scripts/score.mjs --muse   (full Muse Spark check, paid API;
 //     answers are cached in .runtime/eval/muse-cache.json so a re-run is free)
+import "../lib/credentials.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { detect } from "../lib/detector.js";
 import { validateVerdict, pickVerdictFields } from "../lib/schema.js";
@@ -22,7 +23,7 @@ const { cases } = await load("testcases/cases.json");
 
 const useMuse = process.argv.includes("--muse");
 if (useMuse && !museConfigured()) {
-  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (node scripts/set-env.mjs META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
+  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (make secrets-set META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
   process.exit(2);
 }
 const cache = useMuse ? await fileCache(new URL(".runtime/eval/muse-cache.json", root).pathname) : null;

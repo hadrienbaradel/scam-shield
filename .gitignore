@@ -4,7 +4,6 @@ node_modules/
 *.log
 .DS_Store
 .env.*
-!.env.example
 .runtime/
 android/.gradle/
 android/build/
@@ -13,3 +12,5 @@ android/local.properties
 *.keystore
 .context/
 coverage/
+config/master.key
+config/*.key
