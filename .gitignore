@@ -3,3 +3,11 @@ node_modules/
 .tokens.json
 *.log
 .DS_Store
+.env.*
+!.env.example
+.runtime/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
