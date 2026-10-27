@@ -1,0 +1,74 @@
+# Scam Shield CI: the Node suite against the same compose Postgres as `make server`, and
+# the Android companion's debug APK (a separate job, so a Gradle problem never blocks the
+# Node one). No secret is needed: the tests set their own environment (tests/helpers/env.js),
+# and `make score` runs with the credentials autoload pointed at a file that does not exist.
+# Badge: https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node tests, coverage, score
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The compose Postgres (.infra/dev/docker-compose.yml) with a fixed superuser name
+      # instead of the developer's OS user; the app and the tests connect as that user.
+      PG_USER: postgres
+      DATABASE_URL: postgres://postgres@127.0.0.1:5432/scam_shield
+      TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/scam_shield_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Postgres (the dev compose file, waits for healthy)
+        run: docker compose -f .infra/dev/docker-compose.yml up -d --wait
+      - name: make check (master.key not tracked, all tests, coverage threshold)
+        run: make check
+      - name: make score (PRD pass criteria, detector only)
+        run: make score
+        env:
+          CREDENTIALS_FILE: ${{ github.workspace }}/config/ci-has-no-credentials.enc
+      - name: Coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+      - name: Postgres logs
+        if: failure()
+        run: docker compose -f .infra/dev/docker-compose.yml logs postgres
+
+  android:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build the debug APK and run the unit tests
+        run: chmod +x gradlew && ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - name: Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: scam-shield-companion-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

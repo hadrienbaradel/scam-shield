@@ -7,7 +7,7 @@ import { describeDbUrl, minVersion, versionGte, parseEnvFile, WORKING_NODE } fro
 const doctor = new URL("../scripts/doctor.mjs", import.meta.url).pathname;
 // Resolves with { code, output } whatever the exit code.
 const run = (args, env) => new Promise((resolve) => {
-  execFile(process.execPath, [doctor, ...args], { env: { ...process.env, ...env }, timeout: 20000 },
+  execFile(process.execPath, [doctor, ...args], { env: { ...process.env, TEST_DB_SUFFIX: "", ...env }, timeout: 20000 },
     (err, stdout, stderr) => resolve({ code: err ? err.code : 0, output: `${stdout}${stderr}` }));
 });
 

@@ -3,16 +3,22 @@
 // the token key, database credentials, the master key).
 //
 //   node scripts/doctor.mjs                  every check
-//   node scripts/doctor.mjs db testdb        only these: node, deps, secrets, db, testdb, port
+//   node scripts/doctor.mjs db testdb        only these: node, deps, secrets, docker, db, testdb, port
 //   --quiet   print problems only            --strict   warnings fail too
+// docker: the CLI, the daemon, the compose plugin, the compose Postgres of
+// .infra/dev/docker-compose.yml, its data folder and its port (no Docker is a
+// warning: a local PostgreSQL works too). testdb honours TEST_DB_SUFFIX.
 //
 // Exit 1 when something required is missing, 0 otherwise. `make doctor` runs
 // it whole; `make setup`, `make test` and `npm run check` run single checks to
 // stop early with a one-line fix instead of a stack trace.
 
+import { execFile } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { createServer } from "node:net";
+import { connect as netConnect, createServer } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
+import { sanitizeSuffix, testDatabaseUrl } from "../src/db/testDatabase.js";
 // The store module has no side effects: a missing master key is a report line here, never an exit.
 import { REQUIRED_KEYS, credentialsStatus, loadCredentials, rel } from "../lib/credentialStore.js";
 
@@ -24,8 +30,10 @@ const at = (p) => fileURLToPath(new URL(p, root));
 // The npm scripts use --env-file-if-exists (Node 22.9+) and `npm run check`
 // uses the built-in coverage thresholds (22.8+); engines in package.json says so.
 export const WORKING_NODE = "22.9.0";
-export const CHECKS = ["node", "deps", "secrets", "db", "testdb", "port"];
-export const DB_FIX = "make db-up (Docker) or brew services start postgresql@14 && make db-create";
+export const CHECKS = ["node", "deps", "secrets", "docker", "db", "testdb", "port"];
+export const DB_FIX = "make server (Docker Compose; make db-up for Postgres alone) or brew services start postgresql@14 && make db-create";
+export const COMPOSE_FILE = ".infra/dev/docker-compose.yml";
+export const DATA_DIR = ".infra/dev/_volumes/postgres";
 
 // "localhost:5432/scam_shield": host, port and database only, never credentials.
 export function describeDbUrl(url) {
@@ -114,6 +122,56 @@ function checkSecrets(s) {
   if (s.strayEnv) warn(".env still exists: run make secrets-import (moves its keys into config/credentials.enc), then delete it (rm .env); it keeps winning over the credentials until then");
 }
 
+const execFileP = promisify(execFile);
+// stdout of a command, or null when it is missing, fails or hangs. PG_USER reaches compose as the Makefile sets it.
+async function output(cmd, args) {
+  try {
+    const env = { ...process.env, PG_USER: process.env.PG_USER || process.env.USER || "postgres" };
+    return (await execFileP(cmd, args, { timeout: 10000, env })).stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+const portInUse = (port, host = "127.0.0.1") => new Promise((resolve) => {
+  const socket = netConnect({ port, host });
+  socket.once("connect", () => { socket.end(); resolve(true); });
+  socket.once("error", () => resolve(false));
+  socket.setTimeout(1500, () => { socket.destroy(); resolve(false); });
+});
+
+// Docker CLI, daemon, compose plugin, then the compose Postgres: state, data folder, port.
+async function checkDocker() {
+  const port = Number(process.env.PG_PORT || 5432);
+  const daemon = await output("docker", ["version", "--format", "{{.Server.Version}}"]);
+  if (daemon === null) {
+    return (await output("docker", ["--version"])) === null
+      ? warn("Docker not found: install OrbStack or Docker Desktop for make server (or run PostgreSQL yourself: README, then make db-create)")
+      : warn("Docker is installed but its daemon is not running: start OrbStack or Docker Desktop, then make server");
+  }
+  const compose = await output("docker", ["compose", "version", "--short"]);
+  if (compose === null) return warn(`Docker ${daemon} without the compose plugin: install Docker Compose v2, then make server`);
+  ok(`Docker ${daemon}, Compose ${compose}`);
+  const initialized = existsSync(at(`${DATA_DIR}/PG_VERSION`));
+  const data = initialized ? `data in ${DATA_DIR}` : existsSync(at(DATA_DIR)) ? `${DATA_DIR} is empty, the first start initializes it` : `${DATA_DIR} is created at the first start`;
+  let row = null;
+  const ps = await output("docker", ["compose", "-f", at(COMPOSE_FILE), "ps", "--all", "--format", "json", "postgres"]);
+  if (ps) {
+    try { row = (ps.startsWith("[") ? JSON.parse(ps) : ps.split("\n").filter(Boolean).map((l) => JSON.parse(l)))[0] || null; } catch { row = null; }
+  }
+  if (row?.State === "running") {
+    const health = row.Health || "no healthcheck";
+    return health === "healthy" ? ok(`compose postgres running (healthy) on 127.0.0.1:${port}, ${data}`)
+      : warn(`compose postgres running but ${health}: make db-logs`);
+  }
+  const busy = await portInUse(port);
+  if (row) info(`compose postgres ${row.State || "stopped"}: make server (or make db-up) starts it; ${data}`);
+  else info(`compose postgres not created yet: make server (or make db-up) starts it; ${data}`);
+  return busy
+    ? info(`something else listens on 127.0.0.1:${port} (a local PostgreSQL?): make db-up would fail to bind; use it with make db-create, or stop it, or set PG_PORT`)
+    : info(`port ${port} is free for the compose postgres`);
+}
+
 async function connect(url) {
   let pg;
   try { pg = (await import("pg")).default; } catch { return { state: "nodeps" }; }
@@ -132,13 +190,16 @@ async function connect(url) {
 async function checkDb(s, { test = false } = {}) {
   const key = test ? "TEST_DATABASE_URL" : "DATABASE_URL";
   const found = s.get(key);
-  const url = found?.value || (test ? "postgres://localhost/scam_shield_test" : "postgres://localhost/scam_shield");
-  const where = `${describeDbUrl(url)} (${key} ${found ? `from ${found.from}` : "default"})`;
+  const suffix = test ? sanitizeSuffix(process.env.TEST_DB_SUFFIX) : "";
+  if (test && process.env.TEST_DB_SUFFIX && !suffix) warn(`TEST_DB_SUFFIX has no usable character ([a-z0-9_] after lower-casing): the default test database is used`);
+  const url = test ? testDatabaseUrl({ TEST_DATABASE_URL: found?.value, TEST_DB_SUFFIX: suffix }) : found?.value || "postgres://localhost/scam_shield";
+  const where = `${describeDbUrl(url)} (${key} ${found ? `from ${found.from}` : "default"}${suffix ? `, TEST_DB_SUFFIX ${suffix}` : ""})`;
   const label = test ? "test database" : "Postgres";
   const bad = test ? warn : fail;
   const consequence = test ? "; the integration tests skip without it" : "";
   const r = await connect(url);
   if (r.state === "nodeps") return info(`${label} ${where}: not checked until dependencies are installed`);
+  if (r.state === "nodb" && suffix) return ok(`test database ${where}: not there yet, the tests create it on first use (make db-test-clean drops it)`);
   if (r.state === "nodb") return bad(`${label}: ${r.message} on ${describeDbUrl(url).split("/")[0]}: make db-create${consequence}`);
   if (r.state === "auth") return bad(`${label} ${where}: ${r.message}: make secrets-set DATABASE_URL=postgres://user:password@localhost/scam_shield${consequence}`);
   if (r.state === "down") return bad(`${label} not reachable at ${where}: ${r.message}. Fix: ${DB_FIX}${consequence}`);
@@ -180,7 +241,7 @@ export async function run(argv) {
   const selected = wanted.length ? wanted : CHECKS;
   const s = settings();
   const runners = {
-    node: () => checkNode(), deps: () => checkDeps(), secrets: () => checkSecrets(s),
+    node: () => checkNode(), deps: () => checkDeps(), secrets: () => checkSecrets(s), docker: () => checkDocker(),
     db: () => checkDb(s), testdb: () => checkDb(s, { test: true }), port: () => checkPort(s),
   };
   for (const name of CHECKS) if (selected.includes(name)) await runners[name]();

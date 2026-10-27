@@ -1,9 +1,13 @@
 import "./env.js";
 import { pool, one } from "../../src/db/pool.js";
 import { migrate } from "../../src/db/migrate.js";
+import { ensureDatabase } from "../../src/db/testDatabase.js";
 import { randomToken, sha256 } from "../../src/crypto.js";
 
+// Postgres reachable? A missing test database (the TEST_DB_SUFFIX copy of a
+// fresh agent, or scam_shield_test itself) is created first; resetDb migrates it.
 export async function dbAvailable() {
+  try { await ensureDatabase(process.env.DATABASE_URL); } catch { return false; }
   try { await pool.query("SELECT 1"); return true; } catch { return false; }
 }
 

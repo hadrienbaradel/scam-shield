@@ -187,14 +187,14 @@ test("CLI: init, set, keys, import, check, unset, rotate; only show prints a val
   const editor = join(sb.dir, "fake-editor.sh");
   writeFileSync(editor, `#!/bin/sh\nprintf 'EDITED=${secrets[4]}\\n' >> "$1"\n`);
   chmodSync(editor, 0o755);
-  const tmpDirs = () => readdirSync(tmpdir()).filter((d) => d.startsWith("scam-shield-credentials-")).length;
+  const tmpDirs = () => readdirSync(sb.dir).filter((d) => d.startsWith("scam-shield-credentials-")).length;
   const dirsBefore = tmpDirs();
-  r = await run(["edit"], { ...sb.env, EDITOR: editor });
+  r = await run(["edit"], { ...sb.env, EDITOR: editor, TMPDIR: sb.dir });
   quiet.push(r.output);
   assert.equal(r.code, 0, r.output);
   assert.match(r.stdout, /^saved .*credentials\.enc: 7 keys\n$/);
   assert.equal(tmpDirs(), dirsBefore, "the temp copy is deleted");
-  r = await run(["edit"], { ...sb.env, EDITOR: "false" });
+  r = await run(["edit"], { ...sb.env, EDITOR: "false", TMPDIR: sb.dir });
   quiet.push(r.output);
   assert.equal(r.code, 1);
   assert.match(r.stderr, /false exited with 1: nothing saved/);

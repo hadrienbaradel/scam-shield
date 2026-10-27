@@ -1,0 +1,93 @@
+# Scam Shield on one Debian or Ubuntu host with Docker Compose. UNTESTED ON A REAL HOST (README.md).
+#   ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass
+# Secrets come from an Ansible vault (group_vars/scam_shield/vault.yml): vault_master_key
+# (64 hex characters, the content of config/master.key) and vault_postgres_password (letters
+# and digits). The other variables have defaults below; override them in the inventory.
+- name: Scam Shield host
+  hosts: scam_shield
+  become: true
+  vars:
+    scam_shield_repo: https://github.com/hadrienbaradel/scam-shield.git
+    scam_shield_branch: main
+    scam_shield_dir: /opt/scam-shield
+    scam_shield_base_url: "http://{{ ansible_host }}:3000"
+    scam_shield_app_port: 3000
+    scam_shield_app_bind: 127.0.0.1
+    scam_shield_compose: "docker compose -f {{ scam_shield_dir }}/.infra/prod/docker-compose.yml"
+    deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_architecture, 'amd64') }}"
+  pre_tasks:
+    - name: The secrets must come from the vault
+      ansible.builtin.assert:
+        that:
+          - vault_master_key is defined
+          - vault_postgres_password is defined
+        fail_msg: define vault_master_key and vault_postgres_password in an ansible-vault file
+  tasks:
+    - name: Packages Docker's repository needs
+      ansible.builtin.apt:
+        name: [ca-certificates, curl, git, gnupg]
+        state: present
+        update_cache: true
+    - name: Keyrings folder
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+    - name: Docker's apt key
+      ansible.builtin.get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+    - name: Docker's apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ deb_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+        state: present
+    - name: Docker Engine and the compose plugin
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+        state: present
+        update_cache: true
+    - name: Docker running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+    - name: The repository at the branch (local changes on the host are discarded)
+      ansible.builtin.git:
+        repo: "{{ scam_shield_repo }}"
+        dest: "{{ scam_shield_dir }}"
+        version: "{{ scam_shield_branch }}"
+        force: true
+    - name: Data folder for Postgres
+      ansible.builtin.file:
+        path: "{{ scam_shield_dir }}/.infra/prod/_volumes/postgres"
+        state: directory
+        mode: "0700"
+    - name: Compose environment from the vault (never shown)
+      ansible.builtin.copy:
+        dest: "{{ scam_shield_dir }}/.infra/prod/.env"
+        mode: "0600"
+        content: |
+          MASTER_KEY={{ vault_master_key }}
+          POSTGRES_PASSWORD={{ vault_postgres_password }}
+          BASE_URL={{ scam_shield_base_url }}
+          APP_PORT={{ scam_shield_app_port }}
+          APP_BIND={{ scam_shield_app_bind }}
+      no_log: true
+    - name: Build and start the app and Postgres
+      ansible.builtin.command:
+        cmd: "{{ scam_shield_compose }} up -d --build --wait"
+      changed_when: true
+    - name: Migrations (the app applies them at start too; this reports the result)
+      ansible.builtin.command:
+        cmd: "{{ scam_shield_compose }} exec -T app node src/db/migrate.js"
+      register: migrate
+      changed_when: "'Applied' in migrate.stdout"
+    - name: Health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ scam_shield_app_port }}/api/health"
+      register: health
+      until: health.status == 200
+      retries: 10
+      delay: 3
+      when: scam_shield_app_bind in ['127.0.0.1', '0.0.0.0']

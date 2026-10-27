@@ -1,12 +1,15 @@
-# Scam Shield developer commands. `make` lists them; `make setup` is the first one.
+# Scam Shield developer commands. `make` lists them; `make install` then `make server` is the whole story.
 # GNU Make 3.81 (the macOS default) or newer, on macOS and Linux.
 # Nothing here prints a secret: keys live encrypted in config/credentials.enc (make secrets-keys
 # shows names only); config/master.key opens it and is never committed (_product/docs/secrets.md).
+# Infrastructure lives in .infra/: dev/docker-compose.yml (Postgres, data in dev/_volumes/postgres)
+# and prod/ (Dockerfile, compose, Ansible). _product/docs/infra.md explains it.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
-.PHONY: help setup doctor deps dev start test coverage check score score-muse \
-        db-up db-down db-destroy db-create db-migrate gate clean clean-all \
+.PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
+        db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
+        prod-build prod-smoke clean clean-all \
         secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
 NODE   ?= node
@@ -16,51 +19,64 @@ DOCTOR := $(NODE) scripts/doctor.mjs
 CRED   := $(NODE) scripts/credentials.mjs
 FILE   ?= .env
 
-# Postgres in Docker, for a machine without PostgreSQL (make db-up).
-PG_CONTAINER ?= scam-shield-pg
-PG_IMAGE     ?= postgres:16-alpine
-PG_PORT      ?= 5432
-PG_USER      ?= $(shell whoami)
-PG_DBS       := scam_shield scam_shield_test
+# Postgres in Docker Compose (.infra/dev/docker-compose.yml): loopback only, trust authentication,
+# superuser = your OS user name, so the default postgres://localhost/scam_shield needs no password.
+COMPOSE  := docker compose -f .infra/dev/docker-compose.yml
+PG_PORT  ?= 5432
+PG_USER  ?= $(shell whoami)
+PG_DBS   := scam_shield scam_shield_test
+PG_DATA  := .infra/dev/_volumes/postgres
+DB       ?= scam_shield
+# make test TEST_DB_SUFFIX=<name>: the suite runs on scam_shield_test_<name> (created on first use),
+# so agents can run tests side by side. Exported for compose, the doctor and the tests.
+TEST_DB_SUFFIX ?=
+export PG_PORT PG_USER TEST_DB_SUFFIX
+
+# Production image and compose (.infra/prod), tried locally by make prod-build and make prod-smoke.
+PROD_COMPOSE := docker compose -f .infra/prod/docker-compose.yml
+PROD_IMAGE   ?= scam-shield:local
+SMOKE_PORT   ?= 3100
 
 ##@ Setup
 
 help:
 	@if [ -t 1 ]; then b=$$(tput bold); c=$$(tput setaf 6); r=$$(tput sgr0); else b=; c=; r=; fi; \
-	printf "\n$${b}Scam Shield$${r}  Node $$($(NODE) --version 2>/dev/null || echo 'NOT FOUND: nvm install, or https://nodejs.org')  -  new here? run: make setup\n"; \
+	printf "\n$${b}Scam Shield$${r}  Node $$($(NODE) --version 2>/dev/null || echo 'NOT FOUND: nvm install, or https://nodejs.org')  -  new here? make install, then make server\n"; \
 	awk -v b="$$b" -v c="$$c" -v r="$$r" 'BEGIN { FS = ":.*## " } \
 	  /^##@ / { printf "\n%s%s%s\n", b, substr($$0, 5), r } \
 	  /^[a-zA-Z0-9_-]+:.*## / { printf "  %s%-14s%s %s\n", c, $$1, r, $$2 }' $(MAKEFILE_LIST); \
 	echo
 
-setup: ## Fresh clone to running: Node check, npm ci, master key + credentials, database, next steps
+install: ## Fresh clone to ready: Node check, npm ci, master key + credentials, Postgres image pulled; then make server
 	@command -v $(NODE) >/dev/null || { echo "Node is not installed: nvm install (reads .nvmrc), or https://nodejs.org"; exit 1; }
 	@$(DOCTOR) node --quiet
 	@$(MAKE) --no-print-directory deps
-	@$(CRED) init || true
-	@if $(DOCTOR) db --quiet; then \
-	  $(NODE) $(ENV) scripts/setup.mjs && ($(MAKE) --no-print-directory db-create || true); \
-	else \
-	  echo "The database is not ready (see above): the migration runs when it is (make db-up, or make db-migrate)."; \
-	  $(NODE) $(ENV) scripts/setup.mjs --no-db || true; \
-	fi
+	@if [ -z "$$MASTER_KEY" ] && [ ! -f config/master.key ]; then $(CRED) init || true; fi
+	@$(NODE) $(ENV) scripts/setup.mjs --no-db || true
+	@if command -v docker >/dev/null && docker info >/dev/null 2>&1; then \
+	  $(COMPOSE) pull --quiet postgres && echo "Postgres image ready (.infra/dev/docker-compose.yml, data will live in $(PG_DATA))"; \
+	else echo "Docker is not running or not installed (OrbStack or Docker Desktop): make server needs it, or run PostgreSQL yourself (README) then make db-create"; fi
 	@$(DOCTOR) secrets --quiet || true
-	@printf "\nNext:\n  make dev       start the app at http://localhost:3000 (demo mode until the Google keys are set)\n  make doctor    what is still missing\n  Keys: make secrets-set META_MODEL_API_KEY=...   Google sign-in: docs/GOOGLE_SETUP.md   rules: _product/docs/secrets.md\n  Joining the team: get config/master.key from a teammate, then make secrets-init. On your own: rm config/credentials.enc, then make secrets-init.\n\n"
+	@printf "\nNext:\n  make server    Postgres (Docker Compose) + migrations + the app at http://localhost:3000 (demo mode until the Google keys are set)\n  make doctor    what is still missing\n  Keys: make secrets-set META_MODEL_API_KEY=...   Google sign-in: docs/GOOGLE_SETUP.md   rules: _product/docs/secrets.md\n  Joining the team: get config/master.key from a teammate, then make secrets-init. On your own: rm config/credentials.enc, then make secrets-init.\n\n"
 
-doctor: ## What is missing: Node, dependencies, master key + credentials (names only), Postgres, port 3000
+setup: install ## Alias of make install (older docs)
+
+doctor: ## What is missing: Node, dependencies, master key + credentials (names only), Docker + compose Postgres, databases, port 3000
 	@$(DOCTOR)
 
 ##@ Run
 
-dev: deps ## Server with restart on change, at http://localhost:3000
-	@$(DOCTOR) db --quiet
+server: deps ## One command: Postgres up (compose, waits for healthy), databases, migrations, then the app with restart on change
+	@$(MAKE) --no-print-directory db-up
 	@$(NPM) run dev
 
-start: deps ## Server without the watcher (what production runs)
+dev: server ## Alias of make server
+
+start: deps ## Server without the watcher (what production runs); Postgres must be up (make db-up)
 	@$(DOCTOR) db --quiet
 	@$(NPM) start
 
-##@ Quality
+##@ Quality  (make test TEST_DB_SUFFIX=<name> gives this run its own scam_shield_test_<name>)
 
 test: deps ## All tests (the integration tests skip when Postgres is down)
 	@$(DOCTOR) testdb --quiet
@@ -70,7 +86,10 @@ coverage: deps ## Tests with coverage: table on screen, coverage/lcov.info for t
 	@$(DOCTOR) testdb --quiet
 	@$(NPM) run coverage
 
-check: deps ## What CI runs: master.key not in git, all tests, line coverage above the threshold (needs Postgres)
+docs-check: ## Product docs in sync: spec links, statuses, keywords, indexes, CLAUDE.md links, stale references
+	@node scripts/docs-check.mjs
+
+check: deps docs-check ## What CI runs: docs in sync, master.key not in git, all tests, line coverage above the threshold (needs Postgres)
 	@if git ls-files --error-unmatch config/master.key >/dev/null 2>&1; then echo "config/master.key is tracked by git: git rm --cached config/master.key, then make secrets-rotate (a committed key is leaked)"; exit 1; fi
 	@$(NPM) run check
 
@@ -103,54 +122,75 @@ secrets-import: ## Move a dotenv file into the credentials: make secrets-import 
 secrets-rotate: ## New master key, file re-encrypted; share the key again (and rotate provider keys if it leaked)
 	@$(CRED) rotate
 
-##@ Data
+##@ Data  (Postgres from .infra/dev/docker-compose.yml, data in .infra/dev/_volumes/postgres)
 
-db-up: ## Postgres in Docker: start or create it, create both databases, migrate
-	@command -v docker >/dev/null || { echo "Docker not found: install PostgreSQL instead (README), then make db-create"; exit 1; }
-	@if docker ps --format '{{.Names}}' | grep -qx '$(PG_CONTAINER)'; then \
-	  echo "$(PG_CONTAINER) is already running"; \
-	elif docker ps -a --format '{{.Names}}' | grep -qx '$(PG_CONTAINER)'; then \
-	  docker start $(PG_CONTAINER) >/dev/null && echo "started $(PG_CONTAINER)"; \
-	elif $(NODE) -e "const s=require('net').connect($(PG_PORT),'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))" 2>/dev/null; then \
-	  echo "Something already listens on port $(PG_PORT) (a local PostgreSQL?): use it with make db-create, or stop it first"; exit 1; \
-	else \
-	  docker run -d --name $(PG_CONTAINER) -p 127.0.0.1:$(PG_PORT):5432 \
-	    -e POSTGRES_USER='$(PG_USER)' -e POSTGRES_DB=scam_shield -e POSTGRES_HOST_AUTH_METHOD=trust \
-	    -v $(PG_CONTAINER)-data:/var/lib/postgresql/data $(PG_IMAGE) >/dev/null \
-	    && echo "created $(PG_CONTAINER): $(PG_IMAGE) on 127.0.0.1:$(PG_PORT), superuser $(PG_USER), no password (localhost only)"; \
-	fi
-	@for i in $$(seq 1 30); do docker exec $(PG_CONTAINER) pg_isready -q -h localhost -U '$(PG_USER)' >/dev/null 2>&1 && break; sleep 1; done
+db-up: ## Postgres via Docker Compose: start it (waits for healthy), create both databases, migrate
+	@if command -v docker >/dev/null; then \
+	  if [ -z "$$($(COMPOSE) ps -q --status running postgres 2>/dev/null)" ] \
+	     && $(NODE) -e "const s=require('net').connect($(PG_PORT),'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))" 2>/dev/null; then \
+	    echo "Something already listens on 127.0.0.1:$(PG_PORT) (a local PostgreSQL? the old scam-shield-pg container?): use it with make db-create, stop it, or make server PG_PORT=5433"; exit 1; \
+	  fi; \
+	  $(COMPOSE) up -d --wait --quiet-pull postgres; \
+	elif $(DOCTOR) db --quiet >/dev/null 2>&1; then echo "Docker not found; using the PostgreSQL already listening"; \
+	else echo "Docker not found: install OrbStack or Docker Desktop (make server), or run PostgreSQL yourself (README) then make db-create"; exit 1; fi
 	@$(MAKE) --no-print-directory db-create db-migrate
 
-db-down: ## Stop the Docker Postgres (data is kept; make db-up restarts it)
-	@docker stop $(PG_CONTAINER) >/dev/null && echo "stopped $(PG_CONTAINER)"
+db-down: ## Stop and remove the compose Postgres container (the data stays in .infra/dev/_volumes/postgres)
+	@$(COMPOSE) down --remove-orphans && echo "stopped; data kept in $(PG_DATA) (make db-up restarts it, make db-destroy wipes it)"
 
-db-destroy: ## Remove the Docker Postgres and its data (both databases are lost)
-	@docker rm -f $(PG_CONTAINER) >/dev/null 2>&1 || true
-	@docker volume rm $(PG_CONTAINER)-data >/dev/null 2>&1 || true
-	@echo "removed $(PG_CONTAINER) and its data"
+db-destroy: ## Remove the compose Postgres AND its data folder (asks first; FORCE=1 skips the question)
+	@if [ "$(FORCE)" != "1" ]; then printf "Delete $(PG_DATA) (scam_shield, scam_shield_test and every agent copy)? [y/N] "; read -r a; case "$$a" in y|Y) ;; *) echo "kept"; exit 1;; esac; fi
+	@$(COMPOSE) down -v --remove-orphans >/dev/null 2>&1 || true
+	@rm -rf $(PG_DATA) 2>/dev/null || docker run --rm -v "$(CURDIR)/.infra/dev/_volumes:/v" postgres:16-alpine rm -rf /v/postgres
+	@echo "removed the compose Postgres and $(PG_DATA)"
 
-db-create: ## Create the scam_shield and scam_shield_test databases (local PostgreSQL or the Docker one)
-	@if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx '$(PG_CONTAINER)'; then create="docker exec $(PG_CONTAINER) createdb -U $(PG_USER)"; \
+db-create: ## Create scam_shield and scam_shield_test if missing (the compose Postgres, or a local one via createdb)
+	@if [ -n "$$($(COMPOSE) ps -q --status running postgres 2>/dev/null)" ]; then create="$(COMPOSE) exec -T postgres createdb -U $(PG_USER)"; \
 	elif command -v createdb >/dev/null; then create="createdb"; \
-	else echo "No createdb on PATH and no $(PG_CONTAINER) container: make db-up (Docker), or install PostgreSQL (README)"; exit 1; fi; \
+	else echo "No Postgres: make db-up (Docker Compose), or install PostgreSQL (README) then make db-create"; exit 1; fi; \
 	for db in $(PG_DBS); do \
 	  if out=$$($$create $$db 2>&1); then echo "created database $$db"; \
 	  elif echo "$$out" | grep -q 'already exists'; then echo "database $$db exists"; \
 	  else echo "$$out"; exit 1; fi; \
 	done
 
-db-migrate: deps ## Apply the migrations in src/db/migrations (make dev does it at start too)
+db-migrate: deps ## Apply the migrations in src/db/migrations (make server does it at start too)
 	@$(DOCTOR) db --quiet
 	@$(NPM) run migrate
+
+db-logs: ## Follow the compose Postgres logs
+	@$(COMPOSE) logs -f --tail=100 postgres
+
+db-shell: ## psql on the compose Postgres: make db-shell [DB=scam_shield_test]
+	@$(COMPOSE) exec postgres psql -U $(PG_USER) -d $(DB)
+
+db-test-clean: deps ## Drop every scam_shield_test_<suffix> database (the agents' copies), never scam_shield_test
+	@$(NPM) run --silent test:db-clean
 
 gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety checks (no mail printed)
 	@$(DOCTOR) db --quiet
 	@$(NPM) run gate
 
+##@ Prod  (.infra/prod: Dockerfile, docker-compose.yml, ansible/; untested on a real host)
+
+prod-build: ## Build the production image here (node:24-alpine, npm ci --omit=dev, non-root): PROD_IMAGE=scam-shield:local
+	@docker build -f .infra/prod/Dockerfile -t $(PROD_IMAGE) .
+
+prod-smoke: ## Run the prod compose locally on port 3100 with throwaway data, curl /api/health, stop it (needs the master key)
+	@[ -n "$$MASTER_KEY" ] || [ -f config/master.key ] || { echo "No master key: make secrets-init (or set MASTER_KEY)"; exit 1; }
+	@export MASTER_KEY="$${MASTER_KEY:-$$(cat config/master.key)}" POSTGRES_PASSWORD=smoke APP_PORT=$(SMOKE_PORT) BASE_URL=http://localhost:$(SMOKE_PORT); \
+	smoke="$(PROD_COMPOSE) -f .infra/prod/docker-compose.smoke.yml -p scam-shield-smoke"; status=0; \
+	$$smoke up -d --build --wait || status=$$?; \
+	if [ $$status -eq 0 ]; then \
+	  if out=$$(curl -fsS --max-time 10 http://127.0.0.1:$(SMOKE_PORT)/api/health); then echo "GET /api/health on 127.0.0.1:$(SMOKE_PORT): $$out"; else echo "GET /api/health failed"; status=1; fi; \
+	fi; \
+	[ $$status -eq 0 ] || $$smoke logs --tail=40 app; \
+	$$smoke down -v --remove-orphans >/dev/null 2>&1; \
+	if [ $$status -eq 0 ]; then echo "prod smoke OK (stopped, throwaway data removed)"; else echo "prod smoke FAILED"; exit $$status; fi
+
 ##@ Ops
 
-clean: ## Remove coverage output and logs (never node_modules, config/master.key or the .runtime caches)
+clean: ## Remove coverage output and logs (never node_modules, config/master.key, the .runtime caches or the data folders)
 	@rm -rf coverage *.log
 	@echo "removed coverage/ and logs"
 

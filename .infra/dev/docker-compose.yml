@@ -1,0 +1,36 @@
+# Scam Shield local infrastructure: one Postgres, loopback only, data in a bind mount
+# at .infra/dev/_volumes/postgres (ignored by git). `make server` starts it (compose up
+# --wait); `make db-logs`, `make db-shell`, `make db-down`, `make db-destroy`.
+#
+# Dev credentials are not secrets: trust authentication (no password), and the
+# superuser is your OS user name (PG_USER, then USER, then postgres), so the app's
+# default postgres://localhost/scam_shield works as with a Homebrew PostgreSQL.
+# CI sets PG_USER=postgres. The first start also creates scam_shield_test
+# (postgres/initdb/10-test-database.sql); TEST_DB_SUFFIX databases are created by
+# the test helper on first use (_product/docs/infra.md).
+name: scam-shield
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # Docker's default bridge, no per-project network: the service is reached through the
+    # published port only, and a machine full of compose projects runs out of subnets
+    # ("all predefined address pools have been fully subnetted").
+    network_mode: bridge
+    environment:
+      POSTGRES_USER: ${PG_USER:-${USER:-postgres}}
+      POSTGRES_DB: scam_shield
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:${PG_PORT:-5432}:5432"
+    volumes:
+      - ./_volumes/postgres:/var/lib/postgresql/data
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -h 127.0.0.1: the init-only server listens on the socket alone, so healthy means initialized.
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d scam_shield"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s

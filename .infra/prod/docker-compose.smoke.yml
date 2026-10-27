@@ -1,0 +1,16 @@
+# make prod-smoke: the prod compose with throwaway data in a named volume (compose down -v
+# removes it) instead of the _volumes/postgres bind mount, a local image tag, and both
+# services on Docker's default bridge (a legacy link gives the app the "postgres" name), so
+# the smoke runs on a machine that has no subnet left for one more network. Not for a host.
+services:
+  app:
+    image: scam-shield:smoke
+    network_mode: bridge
+    links:
+      - postgres
+  postgres:
+    network_mode: bridge
+    volumes:
+      - smoke-data:/var/lib/postgresql/data
+volumes:
+  smoke-data:
