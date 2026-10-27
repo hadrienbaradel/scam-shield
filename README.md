@@ -1,73 +1,70 @@
 # Scam Shield
 
-**Senior-first scam protection that judges a message against the user's own life — their real orders, bank, carrier and known breaches. Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai/events/global-hackathon) (Oct 26 – Nov 4, 2026, Indie track, “Build for Your World”). Team: Hadrien (product) and Vlad (CTO). Full mapping in [docs/PRD.md](docs/PRD.md).**
+**Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Product requirements: [docs/PRD.md](docs/PRD.md).
 
-Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3), up 59% in one year — the most of any age group. Gmail already blocks most phishing in bulk. What it does not do is explain, in words a frightened 74-year-old can act on at 9pm, *why* an email is dangerous and *what to do instead*. That is the gap Scam Shield fills.
+Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). Gmail already blocks most phishing in bulk. What it does not do is explain, in words a frightened 74-year-old can act on at 9pm, *why* a message is dangerous and *what to do instead*, or check it against *her* life ("your parcel comes by Amazon Logistics, not Chronopost").
 
 ## What it does
 
-1. **Connects to your real Gmail** (read-only — it can never send, move or delete mail), or runs on a built-in demo inbox modelled on real IC3 scam patterns.
-2. **Checks every email with deterministic rules first**: sender/brand mismatch, hidden link destinations, reply-to tricks, urgency and gift-card/wire/crypto lures, failed SPF/DKIM. Every flag points at something concrete in the email.
-3. **Muse Spark explains it like a patient family member**: one huge verdict (“STOP. This looks like a scam.”), why in plain sentences, and exact next steps. No jargon, never “100% safe”.
-4. **“Ask a trusted person”**: one tap prepares a calm safety note for a daughter, son or friend to review *before* the user clicks anything. Nothing is sent automatically.
-5. **Built for 50+ eyes and hands**: 19px+ type, 64px buttons, high contrast, read-aloud verdicts, one decision per screen.
+- **Connects to the user's Gmail** (Google sign-in) and checks every new inbox message within seconds (Gmail push via Pub/Sub, with polling as a backup).
+- **Learns a personal context from their own genuine mail**: providers and the addresses they really write from, recent orders and carriers, subscriptions, the people they write to. Data breaches can be ticked in settings, or looked up via HIBP. Every item can be seen and removed.
+- **Judges with Meta's Muse Spark** (`muse-spark-1.3`, Standard mode only, so nothing trains Meta's models). A deterministic detector gathers the evidence, is the fallback when the API is unavailable, and acts as a two-way guardrail: the model can neither clear a proven scam nor condemn an authenticated sender the user knows.
+- **Acts, reversibly.** Suspicious mail gets a "Scam Shield/Check first" label. Scams get "Scam Shield/Scam" and are moved out of the inbox if the user chose that. **It never sends, never trashes, never deletes**, and authenticated mail from someone the user knows is never moved. **Put it back** undoes any move and teaches the sender.
+- **Ask my trusted person.** One tap shows a guardian exactly what the senior chose to share. The guardian answers *Scam / Real / I'll call you* by email link or on their dashboard, and the answer appears live on the senior's screen.
+- **Checks anything else**: pasted text messages and WhatsApps, and screenshots or photos (read by Muse Spark, never stored).
+- **Android companion** ([android/](android/)) screens incoming texts on the phone and sends only risky ones for a verdict.
+- **Threat feed**: daily IC3 and cybermalveillance.gouv.fr alerts become *candidate* pattern cards. They can only reach "active" after human review on the admin page.
+- **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, and redirects followed only on request or for URL shorteners, with an SSRF guard.
+- Built for 60+: 19px+ type with a three-step size setting, 64px buttons, read aloud, EN/FR, one decision per screen.
 
-## Run it
+## Run it locally
 
-```bash
-npm start
-# open http://localhost:3000
-```
-
-No keys needed: it starts on the demo inbox. Node 20+, zero dependencies.
-
-## Connect real Gmail
-
-1. [Google Cloud Console](https://console.cloud.google.com/) → create a project → enable the **Gmail API**.
-2. APIs & Services → Credentials → **OAuth client ID** (Web application).
-3. Authorized redirect URI: `http://localhost:3000/auth/google/callback`
-4. Export the credentials and start:
+Needs Node 22+ and PostgreSQL 14+ (`brew install postgresql@14 && brew services start postgresql@14`).
 
 ```bash
-export GOOGLE_CLIENT_ID="..."
-export GOOGLE_CLIENT_SECRET="..."
-npm start
+createdb scam_shield && createdb scam_shield_test
+npm install
+npm run setup        # creates .env with a fresh encryption key, migrates the database
+npm start            # http://localhost:3000
 ```
 
-Then click **Connect my Gmail**. Scope requested: `gmail.readonly` only. Tokens are stored locally in `.tokens.json` (gitignored) — a production version would use encrypted server-side storage and a full privacy review.
-
-## Use Muse Spark (Meta Model API)
-
-Grab your key/model from the hackathon portal, then:
+Without Google keys the app runs the public examples (`/#/demo`). To connect real Gmail, follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md): the Google Cloud project and Pub/Sub are already set up, and the OAuth client is a 5-minute console step. To switch on Muse Spark:
 
 ```bash
-export META_MODEL_API_KEY="..."
-export META_MODEL_API_URL="..."   # chat-completions endpoint from the portal
-export META_MODEL_NAME="..."      # Muse Spark model id from the portal
-npm start
+node scripts/set-env.mjs META_MODEL_API_KEY=...   # from dev.meta.ai; never printed
 ```
 
-The rules engine always decides the verdict. Muse Spark only writes the explanation — if the API is unreachable, a built-in plain-language explainer takes over so the product never goes silent.
+Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sign-in and cookies depend on it.
 
-## Test
+| Script | What it does |
+|---|---|
+| `npm start` / `npm run dev` | Server plus background jobs (`dev` restarts on change) |
+| `npm test` | 84 tests: engine, real-mail regression, server units, Muse Spark against a fake API, integration against Postgres |
+| `npm run score` | PRD pass criteria on the seed cases (A 100%, no false Scam on C) |
+| `npm run migrate` | Apply database migrations |
+| `node scripts/set-env.mjs KEY=value` | Set `.env` keys without displaying the file |
 
-```bash
-npm test          # schema, detector, safeguards + every A/B/C/D regression case
-npm run score     # PRD pass-criteria report (A 100%, C zero false Scam)
+## Layout
+
+```
+lib/       engine: detector, brands, context, pattern cards, verdict schema, Muse Spark layer, link inspector, threat-feed safeguards
+src/       server: Fastify app, routes, Google OAuth + Gmail client, sync worker, context builder, link resolver, guardians, jobs
+public/    web app (vanilla JS modules, no build), privacy and terms pages
+android/   Kotlin companion app
+prompts/   Muse Spark system prompt (from the PRD)
+testcases/ PRD regression cases;  tests/  node:test suites;  docs/  PRD map and Google setup
 ```
 
-The seed suite in [testcases/cases.json](testcases/cases.json) covers Hadrien's French cases (fake Bouygues, fake Société Générale, €69.90 IBAN debit, Chronopost SMS), US cases (USPS, tolls, SSA, Bitcoin ATM, fake Prime), AI-era cases (voice clone, new-number, QR-adjacent, romance thread, sextortion, recovery) and the legitimate mail we must never flag.
+## Privacy and safety rules in the code
 
-## Hackathon roadmap (to Nov 4)
+- Mail bodies are never stored. The database keeps verdicts, message ids and sender domains for 90 days, plus what a senior explicitly shared with a guardian.
+- Google tokens are encrypted with AES-256-GCM. Sessions, invitations, one-tap links and phone tokens are stored only as hashes.
+- The Gmail client has no send, trash or delete methods, and refuses SPAM/TRASH labels.
+- A one-tap email link only opens a confirmation page, so a mail scanner opening the link can't answer for the guardian. Each link works once.
+- Strict CSP (no inline scripts), Origin check on every browser write, rate limits, server bound to loopback by default.
+- Muse Spark runs in Standard mode only; a `-contributor` model id is refused before any request leaves.
+- Delete my account: stops Gmail push, revokes Google access, erases every row.
 
-- [x] Rules engine + plain-language explainer + demo inbox
-- [x] Real Gmail OAuth (read-only) + trusted-contact note
-- [ ] Live Muse Spark endpoint from the portal wired and tuned on real scam samples
-- [ ] Forward-to-check address (forward any email, get the verdict back)
-- [ ] SMS/WhatsApp delivery of the trusted-person note
-- [ ] 5-user test with adults 65+, record the demo video on their words, not ours
+## Status (Oct 26, 2026)
 
-## Honesty notes
-
-- Detection is heuristic. The UI never claims an email is guaranteed safe.
-- This is a hackathon build: no mail is stored server-side beyond the local token file, and pasted/demo emails never leave the machine except to the Meta Model API when you configure it.
+Working locally end to end on the fake-Gmail integration tests, the demo, and the Android emulator. Waiting on: the Google OAuth client (console step), the Muse Spark API key, a live Gmail run, and a Chrome extension (next). Public deployment (Railway EU) comes after Google verification planning.

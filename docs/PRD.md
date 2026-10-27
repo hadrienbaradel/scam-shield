@@ -12,16 +12,18 @@ Generic checkers judge one message in isolation. Scam Shield judges it against t
 |---|---|
 | Fixed verdict JSON (verdict, confidence, headline, reasons[{text,evidence}], action, real_company_says, impersonated_brand, scam_type, matched_pattern_ids, escalate_to_guardian, guardian_summary, language) | [lib/schema.js](../lib/schema.js) |
 | Muse Spark system prompt, verbatim from PRD | [prompts/scam-shield-system.md](../prompts/scam-shield-system.md) |
-| Tagged prompt builder + Meta Model API call (Standard mode only) + schema check + detector fallback | [lib/muse.js](../lib/muse.js) |
+| Tagged prompt builder + Meta Model API call (api.meta.ai, `muse-spark-1.3`, Standard mode enforced by model id) + schema check + two-way guardrail + detector fallback; screenshot transcription; pattern-card extraction | [lib/muse.js](../lib/muse.js) |
 | Deterministic detector: auth, sender/link vs brand, final-redirect judging, free-hosting, domain age, breach-data, carrier/order fit, pressure/payment, hacked-contact, thread trajectory, prompt-injection as signal | [lib/detector.js](../lib/detector.js) |
-| Personal context shape + learning from legit mail | [lib/context.js](../lib/context.js), [data/profiles/](../data/profiles) |
+| Personal context shape + learning from legit mail (real inbox: providers, orders/carriers, subscriptions, correspondents, breaches) | [lib/context.js](../lib/context.js), [src/context/builder.js](../src/context/builder.js) |
 | Pattern cards + safeguards (candidate caps at be_careful, never flag real brand domains, 90-day retirement) | [lib/patterns.js](../lib/patterns.js), [lib/threatfeed.js](../lib/threatfeed.js), [data/patterns/cards.json](../data/patterns/cards.json) |
-| Link inspector (mock offline, sandbox fetch placeholder) | [lib/linkInspector.js](../lib/linkInspector.js) |
-| First-pass rules (legacy UI path) | [lib/rules.js](../lib/rules.js) |
-| Gmail OAuth read-only, inbox import | [lib/gmail.js](../lib/gmail.js) |
+| Link inspector + live checks (RDAP domain age, on-demand redirect resolution, SSRF guard) | [lib/linkInspector.js](../lib/linkInspector.js), [src/links/resolver.js](../src/links/resolver.js) |
+| Google sign-in (PKCE), gmail.modify, allow-listed Gmail client, sync worker, Scam Shield labels, move + put back, Pub/Sub push | [src/google/](../src/google), [src/sync/](../src/sync) |
+| Guardian loop: invite, share preview, one-tap answer, live answer on the senior's screen | [src/guardians.js](../src/guardians.js), [src/routes/guardians.js](../src/routes/guardians.js) |
+| Threat-feed job (IC3, cybermalveillance.gouv.fr) + review page | [src/jobs/threatfeed.js](../src/jobs/threatfeed.js), `#/admin` |
+| Android SMS companion | [android/](../android) |
 | Regression cases A/B/C/D + Linda/Françoise seed, SMS seed | [testcases/cases.json](../testcases/cases.json), [testcases/sms_seed.json](../testcases/sms_seed.json) |
 | Scoring harness vs PRD pass criteria | [scripts/score.mjs](../scripts/score.mjs) (`npm run score`) |
-| Senior web UI (20pt, 56px+ buttons, verdict card, Ask a trusted person, read-aloud FR/EN) | [public/](../public) |
+| Senior web app (19px+ with size setting, 64px buttons, verdict card, Ask my trusted person, read-aloud FR/EN, screenshot check, what we know about you, delete account) | [public/](../public) |
 
 ## PRD pass criteria, current status
 
@@ -34,14 +36,13 @@ Run `npm test` (46+ checks) and `npm run score` (31/31 cases).
 
 ## Not yet built (PRD P0/P1 remaining)
 
+- Live run on real Gmail (needs the OAuth client, docs/GOOGLE_SETUP.md) and the Muse Spark key; then the 200-legit-mail false-positive gate on real inboxes.
 - Real .eml import from Françoise's Gmail (`messages.import`, redacted) replacing synthetic A-case bodies.
-- Gmail "Scam Shield" label + move out of inbox (needs `gmail.modify`; position app as a simplified senior email client for Google verification — see PRD risks).
-- Sandboxed link screenshot service (headless browser, isolated container).
-- Android SMS companion (Muse Glimmer on-device pre-screen), iOS screenshot/share-sheet check.
-- Voice-note check (Muse Voice Transcribe), QR/logo spotting (SAM 3.1), Muse Image for "Scam of the week".
-- Guardian one-tap answer (Scam / Real / Call me) landing back on the senior's screen; web push or WhatsApp delivery.
-- Threat-feed cron (FTC/IC3, cybermalveillance.gouv.fr, phishunt) + one-page review screen. No Reddit scraping; API application pending.
-- 200-legit-mail false-positive gate, 3-senior filmed comprehension test (under 10s), latency/cost instrumentation.
+- Chrome extension ("Check this" in Gmail web and on pages).
+- Sandboxed link screenshot service (headless browser, isolated container); today redirects and page title/forms only.
+- iOS share-sheet check; voice-note check (Muse Voice Transcribe); QR/logo spotting (SAM 3.1); Muse Image for "Scam of the week"; Muse Glimmer on-device runtime in the Android pre-screen slot.
+- FTC feed (no working RSS URL found yet).
+- Google verification + CASA, public deployment (Railway EU), 3-senior filmed comprehension test.
 
 ## Privacy and platform constraints (from PRD)
 
