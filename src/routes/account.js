@@ -5,7 +5,7 @@
 import { requireUser, endSession } from "../auth.js";
 import { config, googleConfigured, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
-import { museConfigured, museModel } from "../../lib/muse.js";
+import { museConfigured, museModel, voiceConfigured } from "../../lib/muse.js";
 import { urlhausState } from "../links/resolver.js";
 import { subscribe } from "../notify/sse.js";
 import { KNOWN_BREACHES, forgetItem } from "../context/builder.js";
@@ -27,6 +27,7 @@ export default async function accountRoutes(app) {
     return {
       googleConfigured: googleConfigured(),
       museConfigured: museConfigured(),
+      voiceConfigured: voiceConfigured(),
       museModel: museConfigured() ? museModel() : null,
       urlhaus: !config.abusechKey ? "off" : urlhausState.off ? "refused" : "on",
       instantChecks: pubsubConfigured() ? jobStatus.pubsub : "off",

@@ -172,3 +172,26 @@ test("the same request is served from the cache, not paid twice", async () => {
   assert.equal(capture.length, 1);
   assert.match(again.source, /cached/);
 });
+
+test("voice: Muse Voice Transcribe gets a multipart WAV request and its lines become one transcript", async () => {
+  const { transcribeVoice, voiceConfigured } = await import("../lib/muse.js");
+  assert.equal(voiceConfigured(), false);
+  await assert.rejects(transcribeVoice({ wav: Buffer.from("RIFF") }), /needs META_MODEL_API_KEY/);
+  process.env.META_MODEL_API_KEY = "test-key";
+  let seen;
+  const fetchImpl = async (url, opts) => {
+    seen = { url, method: opts.method, auth: opts.headers.authorization, accept: opts.headers.accept,
+      request: JSON.parse(await opts.body.get("request").text()), audio: opts.body.get("audio") };
+    return new Response("Grandma, it's me.\nI had an accident, please send money.\n", { status: 200 });
+  };
+  const out = await transcribeVoice({ wav: Buffer.from("RIFF0000WAVEfmt "), fetchImpl });
+  assert.equal(out.text, "Grandma, it's me. I had an accident, please send money.");
+  assert.match(seen.url, /\/v1\/asr\/transcribe$/);
+  assert.equal(seen.method, "POST");
+  assert.equal(seen.auth, "Bearer test-key");
+  assert.equal(seen.accept, "text/plain");
+  assert.deepEqual(seen.request, { model: "muse-voice-transcribe-1.0", audioEncoding: "WAV", mode: "PUSH_TO_TALK" });
+  assert.equal(seen.audio.type, "audio/wav");
+  const failing = async () => new Response(JSON.stringify({ error: { message: "audio over 10 minutes" } }), { status: 400 });
+  await assert.rejects(transcribeVoice({ wav: Buffer.from("RIFF"), fetchImpl: failing }), /Muse Voice Transcribe 400: audio over 10 minutes/);
+});

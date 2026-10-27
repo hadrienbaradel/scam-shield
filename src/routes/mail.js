@@ -7,7 +7,7 @@ import { requireUser } from "../auth.js";
 import { many, one } from "../db/pool.js";
 import { normalizeMessage, header, parseAddress, linksFromText } from "../google/gmail.js";
 import { parseEml } from "../google/eml.js";
-import { extractFromImage, museConfigured } from "../../lib/muse.js";
+import { extractFromImage, museConfigured, transcribeVoice, voiceConfigured } from "../../lib/muse.js";
 import { clientFor, mapLimit, sharedFrom, finishAction } from "../sync/worker.js";
 import { runCheck, recordCheck } from "../sync/checker.js";
 import { putBack, fileAsScam, decideAction } from "../sync/actions.js";
@@ -148,6 +148,29 @@ export default async function mailRoutes(app) {
     const { verdict } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
     return { checkId: check.id, verdict, message };
+  });
+
+  // A voice note or voicemail: Muse Voice Transcribe turns it into words,
+  // then it is judged like any message. The page sends 16 kHz mono WAV; the
+  // recording is never stored, only the check (verdict, no audio).
+  app.post("/api/check/voice", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
+    if (!voiceConfigured()) return reply.code(503).send({ error: "voice_needs_muse", message: "Checking voice messages needs Meta's Muse Voice Transcribe, which is not switched on here yet." });
+    const file = await request.file();
+    const wav = file ? await file.toBuffer() : null;
+    if (!wav || wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
+      return reply.code(400).send({ error: "Please choose a voice recording." });
+    }
+    let transcript;
+    try { ({ text: transcript } = await transcribeVoice({ wav })); } catch (e) {
+      request.log.warn({ err: e.message }, "voice transcription failed");
+      return reply.code(502).send({ error: "voice_failed", message: "We could not listen to this recording right now. Please try again in a minute." });
+    }
+    if (!transcript) return reply.code(422).send({ error: "no_speech", message: "We could not hear any words in this recording." });
+    const caller = String(file.fields?.from?.value || "").slice(0, 200);
+    const message = { channel: "voice_transcript", from: caller, fromName: caller || "Voice message", subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
+    const { verdict } = await runCheck({ user: request.user, message });
+    const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "voice" });
+    return { checkId: check.id, verdict, message, transcript };
   });
 
   // An email file (.eml): downloaded from a webmail or forwarded as an

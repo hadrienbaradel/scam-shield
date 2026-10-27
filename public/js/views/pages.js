@@ -6,6 +6,7 @@ import { api } from "../api.js";
 import { t, ago, getLang, dateTime } from "../i18n.js";
 import { $, $$, esc, verdictCard, readAloud, toast, pill, busy } from "../ui.js";
 import { openAsk } from "./mail.js";
+import { toWav16k } from "../audio.js";
 
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
 
@@ -101,6 +102,8 @@ export function renderCheck(root, status) {
         <div class="stack">
           <h2>${t("photo_title")}</h2><p>${t("photo_lead")}</p>
           ${status.museConfigured ? `<button id="photoBtn" class="btn btn-gold btn-big" type="button">${t("photo_btn")}</button><input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>` : `<p class="banner caution">${t("photo_needs_muse")}</p>`}
+          <h2>${t("voice_title")}</h2><p>${t("voice_lead")}</p>
+          ${status.voiceConfigured ? `<button id="voiceBtn" class="btn btn-gold btn-big" type="button">${t("voice_btn")}</button><input id="voiceInput" type="file" accept="audio/*" hidden>` : `<p class="banner caution">${t("voice_needs_muse")}</p>`}
           <h2>${t("eml_title")}</h2><p>${t("eml_lead")}</p>
           <button id="emlBtn" class="btn btn-light-dark btn-big" type="button">${t("eml_btn")}</button><input id="emlInput" type="file" accept=".eml,message/rfc822" hidden>
         </div>
@@ -109,7 +112,7 @@ export function renderCheck(root, status) {
     </section>`;
   const show = (out) => {
     const r = $("#checkResult");
-    r.innerHTML = `${verdictCard(out.verdict)}<div class="action-row"><button class="btn btn-navy btn-big" id="ra">${t("read_aloud")}</button>
+    r.innerHTML = `${verdictCard(out.verdict)}${out.transcript ? `<h3>${t("voice_heard")}</h3><pre class="mail-body">${esc(out.transcript)}</pre>` : ""}<div class="action-row"><button class="btn btn-navy btn-big" id="ra">${t("read_aloud")}</button>
       ${out.verdict.verdict !== "safe" ? `<button class="btn btn-gold btn-big" id="ask">${t("ask_trusted")}</button>` : ""}</div><div id="askPanel"></div>`;
     $("#ra").addEventListener("click", () => readAloud(out.verdict));
     $("#ask")?.addEventListener("click", () => openAsk({ checkId: out.checkId, verdict: out.verdict, message: out.message, target: $("#askPanel"), provided: true }));
@@ -123,6 +126,24 @@ export function renderCheck(root, status) {
   // Real, focusable buttons open the hidden file pickers.
   $("#photoBtn")?.addEventListener("click", () => $("#photoInput").click());
   $("#emlBtn").addEventListener("click", () => $("#emlInput").click());
+  $("#voiceBtn")?.addEventListener("click", () => $("#voiceInput").click());
+  $("#voiceInput")?.addEventListener("change", async (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    $("#checkResult").innerHTML = `<div class="verdict caution"><h3>${t("checking")}</h3><p>${t("please_wait")}</p></div>`;
+    let wav;
+    try { wav = await toWav16k(file); } catch {
+      $("#checkResult").innerHTML = `<p class="banner danger">${t("voice_unreadable")}</p>`;
+      ev.target.value = "";
+      return;
+    }
+    const form = new FormData();
+    form.append("audio", wav, "voice.wav");
+    try { show(await api("/api/check/voice", { method: "POST", form })); } catch (e) {
+      $("#checkResult").innerHTML = `<p class="banner danger">${esc(e.data?.error === "no_speech" ? t("voice_none") : e.message)}</p>`;
+    }
+    ev.target.value = "";
+  });
   $("#emlInput").addEventListener("change", async (ev) => {
     const file = ev.target.files[0];
     if (!file) return;

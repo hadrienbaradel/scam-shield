@@ -75,6 +75,49 @@ test("Gmail sync: learns the context, moves the scam, leaves real mail alone, ne
   assert.ok(gmail.modifications.every((m) => ![...m.add, ...m.remove].some((l) => ["TRASH", "SPAM"].includes(l))));
 });
 
+// A multipart upload with one file, as the browser sends it.
+function oneFile(field, filename, type, content) {
+  const boundary = `----scamshield${Date.now()}`;
+  const payload = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="${filename}"\r\nContent-Type: ${type}\r\n\r\n`),
+    content, Buffer.from(`\r\n--${boundary}--\r\n`)]);
+  return { payload, headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
+}
+
+test("HTTP: a voice message is transcribed by Muse Voice Transcribe, judged, and neither audio nor words are kept", opts, async () => {
+  const user = await makeUser({ email: "linda.voice@example.test", name: "Linda", locale: "en-US" });
+  const h = { cookie: await sessionFor(user), origin: ORIGIN };
+  const wav = Buffer.concat([Buffer.from("RIFF\x24\x00\x00\x00WAVEfmt ", "latin1"), Buffer.alloc(64)]);
+  const upload = oneFile("audio", "voice.wav", "audio/wav", wav);
+  const noKey = await app.inject({ method: "POST", url: "/api/check/voice", headers: { ...h, ...upload.headers }, payload: upload.payload });
+  assert.equal(noKey.statusCode, 503);
+  assert.equal(noKey.json().error, "voice_needs_muse");
+
+  process.env.META_MODEL_API_KEY = "test-key";
+  const realFetch = globalThis.fetch;
+  const heard = "Grandma it's me, I had an accident and I'm in jail. Please buy $2,000 in gift cards today and don't tell mom.";
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("/asr/transcribe")) return new Response(`${heard}\n`, { status: 200 });
+    if (String(url).includes("/chat/completions")) return new Response("{}", { status: 500 });
+    return realFetch(url, init);
+  };
+  try {
+    const notAudio = oneFile("audio", "note.txt", "text/plain", Buffer.from("hello"));
+    assert.equal((await app.inject({ method: "POST", url: "/api/check/voice", headers: { ...h, ...notAudio.headers }, payload: notAudio.payload })).statusCode, 400);
+    const res = await app.inject({ method: "POST", url: "/api/check/voice", headers: { ...h, ...upload.headers }, payload: upload.payload });
+    assert.equal(res.statusCode, 200);
+    const out = res.json();
+    assert.equal(out.transcript, heard);
+    assert.equal(out.verdict.verdict, "scam", "gift cards and secrecy: the detector's verdict stands when the AI check fails");
+    const row = await one("SELECT * FROM checks WHERE id = $1", [out.checkId]);
+    assert.equal(row.channel, "voice");
+    assert.ok(!JSON.stringify(row).includes("in jail"), "the words are not stored");
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.META_MODEL_API_KEY;
+  }
+});
+
 test("HTTP: sign-in required, Origin enforced, pasted text checked without storing it", opts, async () => {
   assert.equal((await app.inject({ url: "/api/inbox" })).statusCode, 401);
   const user = await makeUser({ email: "francoise@example.test", name: "Françoise", locale: "fr-FR" });
