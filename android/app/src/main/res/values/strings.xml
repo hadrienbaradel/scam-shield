@@ -67,4 +67,5 @@
     <string name="reason_code">It asks for a code.</string>
     <string name="reason_money">It asks for money.</string>
     <string name="reason_new_number">Someone says they have a new number.</string>
+    <string name="reason_family_emergency">Someone calls you family and says they are in trouble or need money.</string>
 </resources>

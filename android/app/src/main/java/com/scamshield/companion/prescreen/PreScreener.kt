@@ -12,7 +12,7 @@ interface PreScreener {
     fun assess(from: String, body: String): PreScreen
 }
 
-enum class Signal { LINK, URGENCY, GIFT_CARD, CRYPTO, CODE_ASK, MONEY_ASK, NEW_NUMBER }
+enum class Signal { LINK, URGENCY, GIFT_CARD, CRYPTO, CODE_ASK, MONEY_ASK, NEW_NUMBER, FAMILY_EMERGENCY }
 
 data class PreScreen(
     /** True when the text should be sent to the server for a full check. */
@@ -39,6 +39,7 @@ class RegexPreScreener : PreScreener {
         for ((signal, regex) in RISK_PATTERNS) {
             if (regex.containsMatchIn(body)) signals += signal
         }
+        if (isFamilyEmergency(body)) signals += Signal.FAMILY_EMERGENCY
         return PreScreen(shouldSend = signals.isNotEmpty(), signals = signals)
     }
 
@@ -53,12 +54,36 @@ class RegexPreScreener : PreScreener {
         val CODE_ASK = ci(
             """(verification code|one-time code|security code|send (me|back) the code|code you (received|got)|code de (vérification|validation)|renvoyez.*code)"""
         )
+        // Server verbs, plus "cover"/"lend" and the French "régler", "virer", "rembourser"
+        // (accent-optional, common conjugations). The added verbs are matched as whole
+        // words so "calendar" or "discover" do not count.
         val MONEY_ASK = ci(
-            """(send|pay|buy|transfer|wire|envoyer|payer|acheter|transférer).{0,40}(\$|€|£|\d+\s*(dollars|euros|usd|eur))"""
+            """(send|pay|buy|transfer|wire|envoyer|payer|acheter|transférer|$WS(?:cover(?:s|ing)?|lend(?:s|ing)?|r[eéè]gl(?:er|ez|es|e)|vir(?:er|ez|es|e)|rembours(?:er|ez|es|e))$WE).{0,40}(\$|€|£|\d+\s*(dollars|euros|usd|eur))"""
         )
         // Server pattern plus the French past-tense form ("j'ai changé de numéro"),
         // accent-tolerant because many people type without accents.
         val NEW_NUMBER = ci("""(changed my number|new number|nouveau numéro|chang[eé] de num[eé]ro)""")
+
+        /** Word edges that also work around accented letters (Java's \\b does not, on every JVM). */
+        private const val WS = """(?<![\p{L}\p{N}])"""
+        private const val WE = """(?![\p{L}\p{N}])"""
+
+        // Family-emergency ("grandparent") scam: a relative's form of address plus trouble or
+        // a money request. Accents optional, any case.
+        val FAMILY_ADDRESS = ci(
+            """$WS(mamie|mamy|papi|papy|grand[- ]?m[eè]re|grand[- ]?p[eè]re|maman|papa|mum|mom|dad|grandma|grandpa|granny|nana)$WE"""
+        )
+        val FAMILY_TROUBLE = ci(
+            WS + "(" +
+                """cass[eé]e?s?|perdu mon (t[eé]l[eé]phone|portable)|nouveau num[eé]ro|chang[eé] de num[eé]ro|""" +
+                """accidents?|h[oô]pital|hospitali[sz]ed|hospital|prison|jail|police|""" +
+                """in trouble|lost my phone|broken phone|phone is broken|broke my phone|new number|changed my number""" +
+                ")" + WE
+        )
+
+        fun isFamilyEmergency(body: String): Boolean =
+            FAMILY_ADDRESS.containsMatchIn(body) &&
+                (FAMILY_TROUBLE.containsMatchIn(body) || MONEY_ASK.containsMatchIn(body))
 
         private val RISK_PATTERNS = listOf(
             Signal.URGENCY to URGENCY,

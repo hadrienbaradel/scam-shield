@@ -79,6 +79,43 @@ class RegexPreScreenerTest {
 
     @Test fun new_number_fr_without_accents() = assertSends("Coucou c'est moi, j'ai change de numero", Signal.NEW_NUMBER)
 
+    // --- Money verbs added after review ---------------------------------------------------
+
+    @Test fun money_ask_fr_regler() = assertSends("Peux-tu régler 890 euros au réparateur ?", Signal.MONEY_ASK)
+
+    @Test fun money_ask_fr_virer_without_accents() = assertSends("Tu peux me virer 300 € ce soir", Signal.MONEY_ASK)
+
+    @Test fun money_ask_fr_rembourser() = assertSends("Il faut rembourser 450 euros avant lundi", Signal.MONEY_ASK)
+
+    @Test fun money_ask_en_cover_and_lend() {
+        assertSends("Can you cover \$300 for the repair?", Signal.MONEY_ASK)
+        assertSends("Could you lend me 200 dollars until Friday", Signal.MONEY_ASK)
+    }
+
+    @Test fun added_money_verbs_need_a_whole_word() =
+        assertStaysOnPhone("Check the calendar, the ticket is 20 dollars")
+
+    // --- Family emergency (grandparent scam) ------------------------------------------------
+
+    @Test fun family_emergency_fr_broken_phone_money_is_sent() = assertSends(
+        "Bonjour Mamie, mon téléphone est cassé. Peux-tu régler 890 euros au réparateur ? Je te rembourse demain.",
+        Signal.FAMILY_EMERGENCY,
+        Signal.MONEY_ASK,
+    )
+
+    @Test fun family_visit_fr_stays_on_phone() = assertStaysOnPhone("Mamie, on arrive dimanche à midi, bisous")
+
+    @Test fun family_emergency_en_jail_is_sent() =
+        assertSends("Grandma I'm in jail, I need \$2,000 for bail, don't tell mom", Signal.FAMILY_EMERGENCY)
+
+    @Test fun family_lunch_en_stays_on_phone() = assertStaysOnPhone("Hi Mom, lunch Sunday?")
+
+    @Test fun family_emergency_fr_without_accents_and_uppercase() =
+        assertSends("GRAND-MERE je suis a l'HOPITAL, appelle ce numero", Signal.FAMILY_EMERGENCY)
+
+    @Test fun family_word_inside_another_word_does_not_count() =
+        assertStaysOnPhone("The moment the hospital opens, call Damon")
+
     // --- Benign texts stay on the phone ---------------------------------------------------
 
     @Test fun benign_texts_stay_on_phone() {

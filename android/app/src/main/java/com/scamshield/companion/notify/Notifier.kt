@@ -20,6 +20,8 @@ object Notifier {
     const val CHANNEL_ALERTS = "scam_alerts"
     const val CHANNEL_STATUS = "scam_status"
     const val STATUS_NOTIFICATION_ID = 1
+    /** Alerts are posted as (tag = per-text key, id = this), so one text owns one slot. */
+    private const val ALERT_NOTIFICATION_ID = 2
 
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
@@ -35,22 +37,31 @@ object Notifier {
         )
     }
 
-    /** Server verdict. Callers must not pass "safe" verdicts (they are ignored quietly). */
-    fun showVerdict(context: Context, check: StoredCheck) {
+    /**
+     * Server verdict. Callers must not pass "safe" verdicts (use [cancel] instead).
+     * [key] identifies the text: the same key replaces that text's earlier fallback alert.
+     */
+    fun showVerdict(context: Context, check: StoredCheck, key: String = check.checkId) {
         val v = check.verdict
         val text = v.actionText.ifBlank { v.reasons.firstOrNull()?.text.orEmpty() }
-        post(context, check.checkId, v.headline, text, colorFor(context, v.verdict))
+        post(context, key, check.checkId, v.headline, text, colorFor(context, v.verdict))
     }
 
     /** Server unreachable / not paired: local warning in the phone's language. */
-    fun showFallback(context: Context, check: StoredCheck) {
+    fun showFallback(context: Context, check: StoredCheck, key: String = check.checkId) {
         post(
             context,
+            key,
             check.checkId,
             context.getString(R.string.fallback_title),
             context.getString(R.string.fallback_notification),
             colorFor(context, "be_careful"),
         )
+    }
+
+    /** Removes the alert for one text (e.g. its fallback, once the server says it is safe). */
+    fun cancel(context: Context, key: String) {
+        NotificationManagerCompat.from(context).cancel(key, ALERT_NOTIFICATION_ID)
     }
 
     fun statusNotification(context: Context): Notification =
@@ -61,7 +72,7 @@ object Notifier {
             .setOngoing(true)
             .build()
 
-    private fun post(context: Context, checkId: String, title: String, text: String, color: Int) {
+    private fun post(context: Context, key: String, checkId: String, title: String, text: String, color: Int) {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -70,7 +81,8 @@ object Notifier {
             .putExtra(VerdictActivity.EXTRA_CHECK_ID, checkId)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pending = PendingIntent.getActivity(
-            context, checkId.hashCode(), open,
+            // Same request code per text, so FLAG_UPDATE_CURRENT repoints it at the new check.
+            context, key.hashCode(), open,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         // Lock screen shows only a neutral line; the headline appears once unlocked.
@@ -95,7 +107,7 @@ object Notifier {
             .setAutoCancel(true)
             .setContentIntent(pending)
             .build()
-        NotificationManagerCompat.from(context).notify(checkId.hashCode(), n)
+        NotificationManagerCompat.from(context).notify(key, ALERT_NOTIFICATION_ID, n)
     }
 
     fun colorFor(context: Context, verdict: String): Int = ContextCompat.getColor(

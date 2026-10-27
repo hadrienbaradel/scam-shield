@@ -67,4 +67,5 @@
     <string name="reason_code">Il demande un code.</string>
     <string name="reason_money">Il demande de l\'argent.</string>
     <string name="reason_new_number">Quelqu\'un dit avoir changé de numéro.</string>
+    <string name="reason_family_emergency">Quelqu\'un se dit de votre famille, en difficulté ou à court d\'argent.</string>
 </resources>

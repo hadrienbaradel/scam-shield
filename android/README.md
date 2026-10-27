@@ -2,9 +2,10 @@
 
 A sideloaded Android app that watches incoming texts for the senior. Texts that look risky are checked by the Scam Shield server, and the senior sees one big, plain-language verdict screen they can act on.
 
-- **Privacy:** an on-device pre-screen decides what leaves the phone. Only texts with a link (`https://…` or a bare domain like `usps-redeliver.top`) or a risk pattern (urgency, gift cards, crypto, code request, money request, "new number") are sent to the server. Every other text stays on the phone.
+- **Privacy:** an on-device pre-screen decides what leaves the phone. Only texts with a link (`https://…` or a bare domain like `usps-redeliver.top`) or a risk pattern (urgency, gift cards, crypto, code request, money request, "new number", family emergency) are sent to the server. Every other text stays on the phone.
+- **At rest:** the sender and body of a queued text are sealed (AES-256-GCM, Android Keystore key) before they go into WorkManager's database, and stored checks are sealed with the same key. Stored checks are capped at 20 and deleted after 7 days.
 - **Verdict screen:** headline ≥ 28sp, body ≥ 20sp, buttons 72dp, and one decision per screen. Red = scam, amber = be careful, green = safe. Actions: "Read it to me" (TextToSpeech at rate 0.9, French or US English), "Ask my trusted person" (then `/answers` is polled every 10 s), and OK.
-- **Offline:** if the server is unreachable (or the phone is not paired), a local warning is shown instead: *"This text has warning signs. Don't tap any link. Ask someone you trust."* / *"Ce SMS présente des signes d'arnaque. N'appuyez sur aucun lien. Demandez à un proche."*
+- **Offline:** if the server is unreachable, the check is retried with exponential backoff (30 s, then doubling; 6 attempts in all) and the real verdict replaces the local warning when it arrives. A safe verdict removes it. A 401 (token revoked, which also unpairs) or another 4xx except 408/429 stops at once. Meanwhile (or when the phone is not paired) a local warning is shown once per text: *"This text has warning signs. Don't tap any link. Ask someone you trust."* / *"Ce SMS présente des signes d'arnaque. N'appuyez sur aucun lien. Demandez à un proche."*
 - **Languages:** EN and FR (`res/values`, `res/values-fr`). The Verdict screen follows `verdict.language`.
 
 App id `com.scamshield.companion`, minSdk 26, target/compile SDK 35, Kotlin 2.1, Compose + Material 3, AGP 8.7.3, Gradle 8.11.1 (wrapper).
@@ -15,15 +16,16 @@ App id `com.scamshield.companion`, minSdk 26, target/compile SDK 35, Kotlin 2.1,
 app/src/main/java/com/scamshield/companion/
   prescreen/PreScreener.kt   PreScreener interface + RegexPreScreener (swap in an on-device model via PreScreeners.current)
   sms/SmsReceiver.kt         SMS_RECEIVED receiver, joins multipart PDUs, runs the pre-screen
-  sms/CheckSmsWorker.kt      WorkManager job: POST /check off the main thread, notify or fall back
+  sms/CheckSmsWorker.kt      WorkManager job: POST /check off the main thread, notify, fall back once, retry with backoff
   net/ApiClient.kt           HttpURLConnection + org.json client for the 4 device endpoints
   net/Models.kt              contract models + parsers, QR payload parsing
-  data/Session.kt            server + device token (token AES-GCM-encrypted with an Android Keystore key)
-  data/CheckStore.kt         last 20 checks, so a notification can reopen its verdict
+  data/LocalCrypto.kt        AES-GCM sealer + Android Keystore keys (device token; SMS content)
+  data/Session.kt            server + device token (token sealed with its Keystore key)
+  data/CheckStore.kt         last 20 checks (sealed, 7-day expiry), so a notification can reopen its verdict
   notify/Notifier.kt         "Scam alerts" channel (high importance), neutral lock-screen version
   MainActivity.kt            pairing / home (permissions, last warning, disconnect)
   VerdictActivity.kt         verdict, read aloud, ask trusted person, answers polling
-app/src/test/...             JUnit: pre-screen (EN/FR) + API JSON contract
+app/src/test/...             JUnit: pre-screen (EN/FR), API JSON contract, sealing, retention, retry policy
 app/src/debug/res/xml/network_security_config.xml   cleartext allowed (debug only)
 app/src/main/res/xml/network_security_config.xml    cleartext forbidden (release)
 tools/mock-server.mjs        zero-dependency Node 22 mock of the device API
@@ -56,7 +58,7 @@ Disk usage: about 5.7 GB SDK (3.8 GB of it the system image), 1.8 GB AVD, 1.2 GB
 
 ```bash
 cd android
-./gradlew test            # 33 JUnit tests: pre-screen EN/FR + API contract parsing
+./gradlew test            # 64 JUnit tests: pre-screen EN/FR, API contract, AES-GCM sealing, retention, retry policy
 ./gradlew assembleDebug   # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -112,5 +114,5 @@ Any 401 clears the token and returns to the pairing screen. A `safe` verdict pro
 
 - Sideload only. `RECEIVE_SMS` is a restricted permission on Play, which is not a target here.
 - QR pairing uses `zxing-android-embedded` with payload `{"v":1,"server":"…","code":"…"}`. Pasting that JSON into the code field also works. QR scanning was not exercised on the headless emulator.
-- The regex pre-screen ports the server patterns and adds the French past tense `chang[eé] de num[eé]ro` to `newNumber`. Bare domains are matched against a TLD allow-list, so "thanks.me"-style typos do not ship harmless texts.
-- Messages queued for a check sit briefly in WorkManager's private database. Backups and device transfer exclude the session, checks and that database.
+- The regex pre-screen ports the server patterns and adds the French past tense `chang[eé] de num[eé]ro` to `newNumber`, the money verbs cover/lend/régler/virer/rembourser, and a family-emergency rule: a family form of address (mamie, papi, grand-mère, maman, mom, grandma, nana…) together with trouble (broken or lost phone, new number, accident, hospital, jail, police…) or a money request. Bare domains are matched against a TLD allow-list, so "thanks.me"-style typos do not ship harmless texts.
+- Messages queued for a check sit in WorkManager's private database only in sealed form (the delivery time and signal names stay in clear). If the Keystore key is lost, the queued text cannot be read and only the local warning is shown. Backups and device transfer exclude the session, checks and that database.
