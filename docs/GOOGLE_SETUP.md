@@ -24,11 +24,16 @@ Google has no command line for creating the consent screen or the OAuth client o
    - Application type: **Web application**. Name: `Scam Shield local`.
    - Authorized JavaScript origins: `http://localhost:3000`
    - Authorized redirect URIs: `http://localhost:3000/auth/google/callback`
-   - Click **Create** and copy the Client ID and Client secret.
-5. Back in the repo, store them without printing `.env`:
+   - Click **Create**, then **Download JSON** in the dialog (the secret is shown only once).
+5. Back in the repo, store it without copying the secret by hand or printing `.env`:
    ```bash
-   node scripts/set-env.mjs GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com GOOGLE_CLIENT_SECRET=xxxx
+   node --env-file-if-exists=.env scripts/import-google-client.mjs ~/Downloads/client_secret_*.json
    npm start   # then open http://localhost:3000
+   ```
+   The script checks the client is a Web application of this project with the right redirect URI and origin. (By hand instead: `node scripts/set-env.mjs GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…`.)
+6. Sign in, allow Gmail access, wait for the first pass over recent mail, then check it from the database (no email is printed):
+   ```bash
+   npm run gate
    ```
 
 ## What testers will see, and the limits of Testing mode
