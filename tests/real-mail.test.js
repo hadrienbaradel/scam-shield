@@ -176,6 +176,28 @@ for (const [name, locale, m] of LOOKALIKE_LEGIT) {
   });
 }
 
+// Public-corpus findings (Zenodo 8339691, 2026-10-26): whole scam families
+// the rules did not know, and genuine look-alikes that must stay Safe.
+test("scam: an advance-fee ('419') proposal is caught", () => {
+  const v = run({ fromName: "Barrister James Okoro", from: "jokoro.chambers@freemail.test", auth: "", subject: "URGENT BUSINESS PROPOSAL",
+    body: "I am the attorney to the late Mr. Williams who died with his family. He left US$12,500,000 in a dormant account and I need a foreign partner as next of kin. Please send your full name, address and telephone number so we can release the funds. You will receive 30% for your assistance. This is strictly confidential.", links: [] });
+  assert.equal(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+});
+test("scam: a fake 'mailbox full' warning is caught without any brand", () => {
+  const v = run({ fromName: "Mail Administrator", from: "admin@kommune-mail.test", auth: "", subject: "Mailbox Warning!!!",
+    body: "Your mailbox has exceeded its storage limit and will be suspended within 24 hours. Click here to validate your e-mail account and restore full access.", links: [] });
+  assert.equal(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+});
+for (const [name, m] of [
+  ["a sign-up 'verify your email' with no threat", { fromName: "Garden Forum", from: "hello@gardenforum.test", auth: PASS, subject: "Please verify your email", body: "Welcome! Please verify your email address by clicking the link below.", links: [{ text: "Verify", href: "https://gardenforum.test/verify?t=1" }] }],
+  ["football news about a transfer fee", { fromName: "Sports Daily", from: "news@sportsdaily.test", auth: PASS, subject: "Transfer news", body: "The club confirmed a transfer fee of €80 million for the striker, the director of football said in a confidential briefing.", links: [] }],
+  ["a concert ticket from Live Nation", { fromName: "Live Nation", from: "tickets@livenation.test", auth: PASS, subject: "Your tickets", body: "Your tickets are ready.", links: [{ text: "View tickets", href: "https://livenation.test/t" }] }],
+  ["a newsletter linking apple.slashdot.org", { fromName: "Slashdot", from: "newsletter@slashdot.org", auth: PASS, subject: "Stories for today", body: "Apple releases a new update.", links: [{ text: "Read", href: "https://apple.slashdot.org/story/1" }] }],
+  ["developers discussing 'send the code'", { fromName: "Dev List", from: "dev@lists.example.test", auth: PASS, subject: "Re: patch", body: "Can you send the code you wrote for the parser? I will review it tomorrow.", links: [] }],
+]) {
+  test(`legit: ${name} is never Scam`, () => assert.notEqual(run(m).verdict, "scam", run(m).reasons.map((r) => r.text).join(" | ")));
+}
+
 test("authenticated brand mail that fits history is marked _authentic for the model guardrail", () => {
   const amazonCtx = { ...ctx, providers: [{ type: "retail", name: "Amazon", realDomains: ["amazon.com"] }] };
   const v = run(LEGIT[4].m, amazonCtx);
