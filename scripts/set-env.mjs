@@ -1,28 +1,18 @@
-// Sets keys in .env without printing the file (it holds secrets).
-// Usage: node scripts/set-env.mjs KEY=value [KEY2=value2 ...]
+// Deprecated: keys now live in the encrypted config/credentials.enc (_product/docs/secrets.md). Same usage, forwarded:
+//   node scripts/set-env.mjs KEY=value [...]   ==   make secrets-set KEY=value   ==   node scripts/credentials.mjs set KEY=value
+// Without the master key yet (a teammate who has not received it), the keys
+// go to .env instead, never printed, so setup is not blocked.
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { credentialsStatus, setLines } from "../lib/credentialStore.js";
 
-const path = new URL("../.env", import.meta.url);
-
-// pairs: [[key, value], ...]. Returns the keys written.
-export function setEnv(pairs) {
-  let text = existsSync(path) ? readFileSync(path, "utf8") : "";
-  for (const [key, value] of pairs) {
-    const line = `${key}=${value}`;
-    const re = new RegExp(`^#?\\s*${key}=.*$`, "m");
-    text = re.test(text) ? text.replace(re, () => line) : `${text.replace(/\n?$/, "\n")}${line}\n`;
-  }
-  writeFileSync(path, text, { mode: 0o600 });
-  return pairs.map(([key]) => key);
+const args = process.argv.slice(2);
+if ((credentialsStatus().error || "").startsWith("No master key for ")) {
+  const env = new URL("../.env", import.meta.url);
+  const pairs = args.filter((a) => a.indexOf("=") > 0).map((a) => [a.slice(0, a.indexOf("=")), a.slice(a.indexOf("=") + 1)]);
+  writeFileSync(env, setLines(existsSync(env) ? readFileSync(env, "utf8") : "", pairs), { mode: 0o600 });
+  for (const [key] of pairs) console.log(`set ${key} (in .env: no master key yet for config/credentials.enc)`);
+  process.exit(0);
 }
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const pairs = [];
-  for (const arg of process.argv.slice(2)) {
-    const i = arg.indexOf("=");
-    if (i < 1) { console.error(`skip: ${arg.split("=")[0]} (expected KEY=value)`); continue; }
-    pairs.push([arg.slice(0, i), arg.slice(i + 1)]);
-  }
-  for (const key of setEnv(pairs)) console.log(`set ${key}`);
-}
+console.error("note: scripts/set-env.mjs is deprecated, use make secrets-set KEY=value (forwarding)");
+process.exit(spawnSync(process.execPath, [new URL("./credentials.mjs", import.meta.url).pathname, "set", ...args], { stdio: "inherit" }).status ?? 1);

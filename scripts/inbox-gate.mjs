@@ -4,6 +4,7 @@
 // was done in Gmail.
 //   node --env-file-if-exists=.env scripts/inbox-gate.mjs [--email you@gmail.com]
 // Exit 0 when every gate passes, 1 otherwise.
+import "../lib/credentials.js";
 import { many, one, pool } from "../src/db/pool.js";
 
 const args = process.argv.slice(2);

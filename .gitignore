@@ -4,7 +4,6 @@ node_modules/
 *.log
 .DS_Store
 .env.*
-!.env.example
 .runtime/
 android/.gradle/
 android/build/
@@ -12,3 +11,11 @@ android/app/build/
 android/local.properties
 *.keystore
 .context/
+coverage/
+config/master.key
+config/*.key
+# Docker bind mounts (.infra/dev/_volumes/postgres, .infra/prod/_volumes/postgres); the .gitkeep stays
+.infra/**/_volumes/*
+!.infra/**/_volumes/.gitkeep
+.infra/prod/ansible/inventory.ini
+.infra/prod/ansible/group_vars/

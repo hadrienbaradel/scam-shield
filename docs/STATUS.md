@@ -1,5 +1,8 @@
 # Scam Shield: status for Vlad (2026-10-27)
 
+> Superseded on 2026-10-27 by `_product/spec.md` (features, statuses, ideas); the measurements and decisions below stay as recorded.
+> Kept for history: update the spec and the feature files under `_product/specs/`, not this file.
+
 Where the project stands after the first build sprint (Oct 26–27), what has been measured, what was decided and why, and what is left before the hackathon deadline (**Nov 4, 9pm ET**). Product scope is in [PRD.md](PRD.md); setup in [../README.md](../README.md) and [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
 ## TL;DR
@@ -110,7 +113,7 @@ Scripts: `node scripts/eval-corpus.mjs [--muse --sample N] files…`, `node scri
 
 ```bash
 npm install && npm run setup                    # .env with a fresh encryption key, DB migrated
-node scripts/set-env.mjs META_MODEL_API_KEY=…   # keys go in by script, .env is never printed
+make secrets-set META_MODEL_API_KEY=…           # stored encrypted in config/credentials.enc, never printed
 npm start                                       # http://localhost:3000 (demo at /#/demo without Google keys)
 npm test && npm run score                       # gate every push on both
 npm run gate                                    # after a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions

@@ -1,0 +1,15 @@
+# Build context for .infra/prod/Dockerfile (BuildKit reads this file, next to the Dockerfile).
+# Only lib, src, public, prompts, data, testcases, package files and config/credentials.enc
+# are copied; everything else stays out, the master key above all.
+**
+!package.json
+!package-lock.json
+!lib
+!src
+!public
+!prompts
+!data
+!testcases
+!config/credentials.enc
+**/.DS_Store
+**/*.log

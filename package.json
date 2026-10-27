@@ -6,15 +6,20 @@
   "private": true,
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "start": "node --env-file-if-exists=.env src/server.js",
-    "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=lib --watch-path=public src/server.js",
-    "migrate": "node --env-file-if-exists=.env src/db/migrate.js",
+    "start": "node --env-file-if-exists=.env --import ./lib/credentials.js src/server.js",
+    "dev": "node --env-file-if-exists=.env --import ./lib/credentials.js --watch-path=src --watch-path=lib --watch-path=public src/server.js",
+    "migrate": "node --env-file-if-exists=.env --import ./lib/credentials.js src/db/migrate.js",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
-    "score": "node scripts/score.mjs",
-    "gate": "node --env-file-if-exists=.env scripts/inbox-gate.mjs"
+    "test:db-clean": "node --env-file-if-exists=.env --import ./lib/credentials.js src/db/testDatabase.js clean",
+    "coverage": "mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
+    "check": "node scripts/doctor.mjs testdb --quiet --strict && mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-coverage-lines=84 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
+    "doctor": "node scripts/doctor.mjs",
+    "credentials": "node scripts/credentials.mjs",
+    "score": "node --import ./lib/credentials.js scripts/score.mjs",
+    "gate": "node --env-file-if-exists=.env --import ./lib/credentials.js scripts/inbox-gate.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.9"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",

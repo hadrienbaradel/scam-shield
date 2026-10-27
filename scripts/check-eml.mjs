@@ -1,6 +1,7 @@
 // Check .eml files from the command line with the same engine as the app.
 // Usage: node --env-file-if-exists=.env scripts/check-eml.mjs [--profile linda|francoise] file.eml...
 // Prints the verdict and reasons, never the message body.
+import "../lib/credentials.js";
 import { readFile } from "node:fs/promises";
 import { parseEml } from "../src/google/eml.js";
 import { checkMessage } from "../lib/muse.js";
