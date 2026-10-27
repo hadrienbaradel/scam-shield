@@ -15,7 +15,10 @@ export async function sendEmail({ to, subject, text, html }) {
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    await q("INSERT INTO outbox (to_email, subject, text_body, html_body, sent_via) VALUES ($1, $2, $3, $4, 'resend')", [to, subject, text, html || null]);
+    // Delivered copies are kept for 7 days without their one-tap links:
+    // those are bearer secrets and belong only in the recipient's inbox.
+    const scrub = (s) => String(s || "").replace(/\/(answer|invite)\/[A-Za-z0-9_-]+/g, "/$1/[link removed]");
+    await q("INSERT INTO outbox (to_email, subject, text_body, html_body, sent_via) VALUES ($1, $2, $3, NULL, 'resend')", [to, subject, scrub(text)]);
     return { via: "resend" };
   }
   await q("INSERT INTO outbox (to_email, subject, text_body, html_body, sent_via) VALUES ($1, $2, $3, $4, 'local-outbox')", [to, subject, text, html || null]);

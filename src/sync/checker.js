@@ -5,7 +5,7 @@
 import { checkMessage } from "../../lib/muse.js";
 import { domainOf } from "../../lib/brands.js";
 import { emptyContext } from "../../lib/context.js";
-import { many, one } from "../db/pool.js";
+import { many, one, q } from "../db/pool.js";
 import { withGuardians } from "../context/builder.js";
 import { inspectMessageLinks } from "../links/resolver.js";
 
@@ -26,12 +26,19 @@ export async function runCheck({ user, message, threadHistory = [], resolveLinks
   const verdict = await checkMessage({
     locale: user.locale || "en-US", message, personalContext: ctx, patternCards: await liveCards(),
     threadHistory, mockLinkInspection: linkInspection, linkInspection,
-  });
+  }, { cache: llmCacheFor(user.id) });
   return { verdict, ctx, linkInspection };
 }
 
 // The insert is also the claim: of two workers checking the same message,
 // only one gets a row back and may touch Gmail.
+// The same request is never paid for twice (30 days, per user, deleted
+// with the account).
+export const llmCacheFor = (userId) => ({
+  get: async (key) => (await one("SELECT verdict FROM llm_cache WHERE key = $1 AND created_at > now() - interval '30 days'", [key]))?.verdict || null,
+  set: (key, verdict) => q("INSERT INTO llm_cache (key, user_id, verdict) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING", [key, userId, verdict]),
+});
+
 export async function recordCheck({ userId, message, verdict, channel = "email", action = "none", planned = null }) {
   return one(`INSERT INTO checks (user_id, gmail_message_id, gmail_thread_id, channel, sender_domain, verdict, verdict_value, source, latency_ms, action, planned)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
