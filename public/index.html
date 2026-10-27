@@ -3,94 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scam Shield — Is this real, for you?</title>
+<title>Scam Shield</title>
+<meta name="description" content="Senior-first scam protection that checks each message against your own life.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#16283f">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">
+  <a class="brand" href="#/">
     <div class="shield" aria-hidden="true">✓</div>
-    <div>
-      <p class="brand-name">Scam Shield</p>
-      <p class="brand-sub">It knows your life, so scammers can't fake it</p>
-    </div>
-  </div>
-  <div class="top-actions">
-    <span id="modeBadge" class="badge">Demo inbox</span>
-    <a id="connectBtn" class="btn btn-light" href="/auth/google">Connect my Gmail</a>
-  </div>
+    <div><p class="brand-name">Scam Shield</p><p class="brand-sub" id="tagline"></p></div>
+  </a>
+  <div class="top-actions"><span id="who" class="who"></span><nav id="nav" class="nav" aria-label="Main"></nav></div>
 </header>
-
-<main class="layout">
-  <section class="inbox-pane" aria-label="Your emails">
-    <div class="pane-head">
-      <h1>Your emails</h1>
-      <p id="inboxHint">Tap any email. We check it before you act.</p>
-    </div>
-    <div id="emailList" class="email-list" role="listbox" aria-label="Emails"></div>
-
-    <details class="paste-box">
-      <summary>Check an email that is not listed here</summary>
-      <form id="pasteForm">
-        <label>Who sent it?<input name="from" autocomplete="off" placeholder="e.g. alerts@some-bank.com"></label>
-        <label>Subject<input name="subject" autocomplete="off" placeholder="Subject line"></label>
-        <label>Email text<textarea name="body" rows="6" placeholder="Paste the whole email text here"></textarea></label>
-        <button class="btn btn-navy btn-big" type="submit">Check this email</button>
-      </form>
-    </details>
-  </section>
-
-  <section class="reader-pane" aria-label="Email and safety check">
-    <div id="emptyState" class="empty">
-      <p class="empty-big">Choose an email on the left.</p>
-      <p>We will tell you, in plain words:</p>
-      <ul>
-        <li>Should you stop, pause, or relax?</li>
-        <li>Why — shown step by step</li>
-        <li>What to do next</li>
-      </ul>
-      <p class="reassure">We only read. We never send, move, or delete your email.</p>
-    </div>
-
-    <article id="reader" hidden>
-      <p id="mailMeta" class="mail-meta"></p>
-      <h2 id="mailSubject"></h2>
-      <div id="verdict" class="verdict" role="alert"></div>
-
-      <div class="action-row">
-        <button id="readAloudBtn" class="btn btn-navy btn-big" type="button">🔊 Read this to me</button>
-        <button id="askBtn" class="btn btn-gold btn-big" type="button">Ask a trusted person</button>
-      </div>
-
-      <div id="trustedPanel" class="trusted" hidden>
-        <h3>Ask someone you trust</h3>
-        <label>Who should we prepare this for?
-          <input id="contactName" value="Sarah, my daughter" autocomplete="off">
-        </label>
-        <button id="makeSummaryBtn" class="btn btn-navy" type="button">Make my safety note</button>
-        <textarea id="summaryText" rows="8" readonly aria-label="Safety note to send"></textarea>
-        <div class="action-row">
-          <button id="copyBtn" class="btn btn-light-dark" type="button">Copy the note</button>
-          <a id="mailtoBtn" class="btn btn-gold" href="#">Open in my email app</a>
-        </div>
-        <p class="small">Nothing is sent automatically. You choose if and when to send it.</p>
-      </div>
-
-      <h3>Why we say this</h3>
-      <ul id="whyList" class="why-list"></ul>
-      <h3>What to do now</h3>
-      <ol id="stepsList" class="steps-list"></ol>
-      <p id="sourceLine" class="small"></p>
-
-      <h3>The email itself</h3>
-      <pre id="mailBody" class="mail-body"></pre>
-    </article>
-  </section>
-</main>
-
-<footer class="footer">
-  <p>Scam Shield is a helper, not a guarantee. If money is involved, always call the number on your card or statement — never a number from an email.</p>
-</footer>
-<script src="/app.js"></script>
+<main id="view" class="main"></main>
+<footer class="footer"><p id="footerText"></p><p><a id="privacyLink" href="/privacy.html"></a> · <a id="termsLink" href="/terms.html"></a></p></footer>
+<script type="module" src="/js/main.js"></script>
 </body>
 </html>

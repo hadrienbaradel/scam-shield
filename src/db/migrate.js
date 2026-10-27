@@ -38,7 +38,7 @@ export async function migrate(db = pool) {
   return applied;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const applied = await migrate();
   console.log(applied.length ? `Applied: ${applied.join(", ")}` : "Database is up to date.");
   await pool.end();

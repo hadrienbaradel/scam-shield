@@ -1,0 +1,10 @@
+{
+  "name": "Scam Shield",
+  "short_name": "Scam Shield",
+  "description": "Senior-first scam protection that checks each message against your own life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef1f5",
+  "theme_color": "#16283f",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

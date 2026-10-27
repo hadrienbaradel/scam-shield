@@ -122,7 +122,7 @@ export function describePage(html = "") {
 // Builds the link_inspection map for one message. Link domains belonging
 // to the claimed brand or already known from the user's real mail are not
 // looked up at all.
-export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, fetchImpl = fetch } = {}) {
+export async function inspectMessageLinks(message, ctx = {}, { resolve = false, maxDomains = 8, fetchImpl = fetch, checkHost } = {}) {
   const known = new Set(ctx.knownLinkDomains || []);
   const brandDomains = BRANDS.flatMap((b) => b.domains);
   const out = {};
@@ -139,7 +139,7 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
     if (age !== undefined && age !== null) entry.domain_age_days = age;
     if (resolve || SHORTENERS.includes(startDomain)) {
       try {
-        const r = await resolveLink(link.href, { fetchImpl });
+        const r = await resolveLink(link.href, { fetchImpl, ...(checkHost ? { checkHost } : {}) });
         entry.final_url = r.final_url;
         entry.redirects = r.redirects;
         if (r.page_shows) entry.page_shows = r.page_shows;

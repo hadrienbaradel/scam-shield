@@ -5,6 +5,9 @@
 // to the signed-in gcloud CLI account for local development.
 
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { GoogleAuth } from "google-auth-library";
 import { config } from "../config.js";
@@ -13,8 +16,13 @@ const run = promisify(execFile);
 const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/pubsub"] });
 let cliToken = { value: null, until: 0 };
 
+// Only ask ADC when credentials exist: otherwise google-auth-library probes
+// the cloud metadata server and stalls for seconds on a laptop.
+const hasAdc = () => Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+  || existsSync(join(homedir(), ".config", "gcloud", "application_default_credentials.json"));
+
 async function bearer() {
-  try {
+  if (hasAdc()) try {
     const client = await auth.getClient();
     const { token } = await client.getAccessToken();
     if (token) return token;

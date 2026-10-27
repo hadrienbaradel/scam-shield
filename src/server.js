@@ -57,7 +57,8 @@ export async function buildApp({ logger = true } = {}) {
     if (from !== origin) return reply.code(403).send({ error: `Requests must come from ${origin}` });
   });
   app.addHook("preHandler", async (request) => {
-    if (!request.user && !request.url.startsWith("/api/devices/") ) request.user = await loadUser(request);
+    // Phone requests carry a bearer token and are authenticated per route.
+    if (!request.user && !/^Bearer\s/i.test(request.headers.authorization || "")) request.user = await loadUser(request);
   });
 
   await app.register(authRoutes);
@@ -77,7 +78,7 @@ export async function buildApp({ logger = true } = {}) {
   return app;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await migrate();
   const app = await buildApp({ logger: { level: process.env.LOG_LEVEL || "info" } });
   await app.listen({ port: config.port, host: config.host });
