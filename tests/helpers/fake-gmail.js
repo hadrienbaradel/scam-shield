@@ -3,6 +3,15 @@
 
 const b64 = (s) => Buffer.from(s, "utf8").toString("base64url");
 
+// Gmail's real header shape: each result names the domain it vouches for,
+// aligned with the From address.
+export function googleAuthResults(auth, from) {
+  const addr = (String(from).match(/<([^>]+)>/)?.[1] || String(from)).toLowerCase();
+  const domain = addr.split("@").pop();
+  const r = (k) => String(auth).match(new RegExp(`${k}=(\\w+)`))?.[1] || "none";
+  return `mx.google.com; dkim=${r("dkim")} header.i=@${domain} header.s=s1; spf=${r("spf")} (google.com: domain of ${addr}) smtp.mailfrom=${addr}; dmarc=${r("dmarc")} (p=REJECT) header.from=${domain}`;
+}
+
 export function gmailMessage({ id, threadId, from, subject, text = "", html = "", auth = "spf=pass dkim=pass dmarc=pass", labels = ["INBOX"], date = Date.now(), to }) {
   const parts = [];
   if (text) parts.push({ mimeType: "text/plain", headers: [{ name: "Content-Type", value: "text/plain; charset=utf-8" }], body: { data: b64(text) } });
@@ -13,7 +22,7 @@ export function gmailMessage({ id, threadId, from, subject, text = "", html = ""
       mimeType: "multipart/alternative",
       headers: [
         { name: "From", value: from }, { name: "Subject", value: subject }, ...(to ? [{ name: "To", value: to }] : []),
-        { name: "Authentication-Results", value: `mx.google.com; ${auth.replaceAll(" ", "; ")}` },
+        { name: "Authentication-Results", value: googleAuthResults(auth, from) },
       ],
       parts,
     },

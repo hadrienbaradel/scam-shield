@@ -52,10 +52,20 @@ test("gmail: html-only mail becomes readable text, latin-1 is decoded", () => {
   assert.equal(normalizeMessage(latin).body, "Françoise");
 });
 
-test("gmail: authentication results prefer Google's own header", () => {
-  const h = [{ name: "Authentication-Results", value: "evil.example; spf=pass" },
-    { name: "Authentication-Results", value: "mx.google.com; dkim=fail header.i=@x; spf=softfail smtp.mailfrom=x; dmarc=fail (p=REJECT)" }];
-  assert.equal(parseAuthResults(h), "spf=softfail dkim=fail dmarc=fail");
+test("gmail: only Gmail's topmost, aligned authentication result counts", () => {
+  const AR = (value) => ({ name: "Authentication-Results", value });
+  // Failures are reported as failures.
+  assert.equal(parseAuthResults([AR("mx.google.com; dkim=fail header.i=@x.test; spf=softfail smtp.mailfrom=a@x.test; dmarc=fail (p=REJECT) header.from=x.test")], "a@x.test"),
+    "spf=fail dkim=fail dmarc=fail");
+  // A sender-written header below Gmail's is ignored; one above it means Gmail did not write the top one.
+  assert.equal(parseAuthResults([AR("mx.google.com; spf=fail smtp.mailfrom=a@chase.test"), AR("mx.google.com; spf=pass smtp.mailfrom=a@chase.test")], "a@chase.test"), "spf=fail dkim=none dmarc=none");
+  assert.equal(parseAuthResults([AR("evil.example; spf=pass"), AR("mx.google.com; spf=pass smtp.mailfrom=a@chase.test")], "a@chase.test"), "spf=none dkim=none dmarc=none");
+  assert.equal(parseAuthResults([AR("mx.google.com.evil.test; spf=pass smtp.mailfrom=a@b.test")], "a@b.test"), "spf=none dkim=none dmarc=none");
+  // A pass for another domain (the email service's) proves nothing about the From domain.
+  assert.equal(parseAuthResults([AR("mx.google.com; dkim=pass header.i=@sendgrid.info; spf=pass smtp.mailfrom=bounce@sendgrid.net; dmarc=fail header.from=chase.test")], "alerts@chase.test"),
+    "spf=none dkim=none dmarc=fail");
+  assert.equal(parseAuthResults([AR("mx.google.com; dkim=pass header.i=@certdata.com.br; dkim=pass header.i=@sendgrid.info; spf=pass smtp.mailfrom=bounces+1@em6365.certdata.com.br; dmarc=pass header.from=certdata.com.br")], "noreply@certdata.com.br"),
+    "spf=pass dkim=pass dmarc=pass");
 });
 
 test("gmail client: refuses trash/spam, retries 429, sends bearer token", async () => {
@@ -183,6 +193,7 @@ test("threat feed: parses RSS and Atom", () => {
 
 test("eml: a downloaded email parses into the same shape as Gmail sync", async () => {
   const eml = [
+    "Received: from relay.aol.test (relay.aol.test. [66.163.188.110]) by mx.google.com with ESMTPS id x1; Fri, 13 Feb 2026 04:54:01 -0800 (PST)",
     "Authentication-Results: mx.google.com;",
     "       dkim=pass header.i=@aol.com;",
     "       spf=pass (google.com: domain of x@aol.com designates 1.2.3.4) smtp.mailfrom=x@aol.com;",
@@ -210,6 +221,11 @@ test("eml: a downloaded email parses into the same shape as Gmail sync", async (
   assert.equal(m.from, "x@aol.com");
   assert.equal(m.subject, "Alerte de sécurité");
   assert.equal(m.auth, "spf=pass dkim=pass dmarc=pass");
+  assert.equal(m.authVerified, true);
   assert.match(m.body, /Opération inhabituelle/);
+  // The same file without Gmail's delivery hop: its claims are unverified.
+  const forged = await parseEml(Buffer.from(eml.split("\r\n").filter((l) => !l.startsWith("Received:")).join("\r\n")));
+  assert.equal(forged.auth, "spf=none dkim=none dmarc=none");
+  assert.equal(forged.authVerified, false);
   assert.deepEqual(m.links, [{ href: "https://3.massemiaks.test/", text: "Accéder au service antifraude" }]);
 });

@@ -9,9 +9,14 @@ export async function parseEml(source) {
   const mail = await simpleParser(source, { skipImageLinks: true, skipTextToHtml: true });
   const from = mail.from?.value?.[0] || {};
   const replyTo = mail.replyTo?.value?.[0]?.address?.toLowerCase() || "";
-  const authHeaders = mail.headerLines
-    .filter((h) => h.key === "authentication-results")
-    .map((h) => ({ name: "Authentication-Results", value: h.line.replace(/^authentication-results:\s*/i, "").replace(/\r?\n\s+/g, " ") }));
+  const unfold = (h) => h.line.replace(/^[^:]+:\s*/, "").replace(/\r?\n\s+/g, " ");
+  const authHeaders = mail.headerLines.filter((h) => h.key === "authentication-results")
+    .map((h) => ({ name: "Authentication-Results", value: unfold(h) }));
+  // A file can say anything about itself. Its authentication is trusted
+  // only if Gmail visibly received it: the first hop arriving "from"
+  // somewhere was accepted "by mx.google.com". Otherwise: unverified.
+  const firstInbound = mail.headerLines.filter((h) => h.key === "received").map(unfold).find((v) => /\bfrom\b/i.test(v)) || "";
+  const viaGmail = /\bby mx\.google\.com\b/i.test(firstInbound);
   const html = typeof mail.html === "string" ? mail.html : "";
   const body = (mail.text || htmlToText(html) || "").trim();
   const seen = new Set();
@@ -27,6 +32,8 @@ export async function parseEml(source) {
     date: mail.date ? mail.date.toISOString() : "",
     body: body.slice(0, 6000),
     links,
-    auth: parseAuthResults(authHeaders),
+    auth: viaGmail ? parseAuthResults(authHeaders, from.address || "") : "spf=none dkim=none dmarc=none",
+    authVerified: viaGmail,
+    attachments: (mail.attachments || []).map((a) => ({ filename: a.filename || "", mimeType: a.contentType || "", size: a.size || 0 })),
   };
 }

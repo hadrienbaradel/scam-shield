@@ -148,12 +148,40 @@ export function linksFromText(text = "") {
   return [...String(text).matchAll(/\bhttps?:\/\/[^\s<>"')\]]+/gi)].map((m) => ({ href: m[0].replace(/[.,;:!?]+$/, ""), text: m[0].replace(/[.,;:!?]+$/, "") }));
 }
 
-// Gmail's own verdicts on the message, from mx.google.com's header.
-export function parseAuthResults(headers) {
-  const all = (headers || []).filter((h) => h.name.toLowerCase() === "authentication-results").map((h) => h.value);
-  const mine = all.find((v) => /^\s*mx\.google\.com/i.test(v)) || all[0] || "";
-  const get = (k) => mine.match(new RegExp(`\\b${k}=(\\w+)`, "i"))?.[1]?.toLowerCase() || "none";
-  return `spf=${get("spf")} dkim=${get("dkim")} dmarc=${get("dmarc")}`;
+const registrable = (d = "") => {
+  const parts = String(d).toLowerCase().replace(/[>\s]/g, "").split(".").filter(Boolean);
+  const two = parts.slice(-2).join(".");
+  return ["co.uk", "com.br", "com.au", "gouv.fr", "co.jp", "com.mx", "org.uk"].includes(two) ? parts.slice(-3).join(".") : two;
+};
+
+// Gmail's own verdict on the message. Only the TOPMOST
+// Authentication-Results header counts, and only when Gmail wrote it
+// (authserv-id exactly "mx.google.com"): anything lower down could have
+// been written by the sender. A pass counts only when it is aligned with
+// the visible From domain: a DKIM signature by sendgrid.info proves
+// nothing about certdata.com.br. Unverifiable -> "none".
+export function parseAuthResults(headers, fromAddress = "") {
+  const first = (headers || []).find((h) => h.name.toLowerCase() === "authentication-results")?.value || "";
+  if (!/^\s*mx\.google\.com\s*;/i.test(first)) return "spf=none dkim=none dmarc=none";
+  const from = registrable(String(fromAddress).split("@").pop());
+  const results = [...first.matchAll(/\b(spf|dkim|dmarc)=(\w+)([^;]*)/gi)].map((m) => ({ kind: m[1].toLowerCase(), result: m[2].toLowerCase(), props: m[3] }));
+  const domainIn = (props, key) => registrable((props.match(new RegExp(`${key}=@?(?:[^@\\s;]*@)?([a-z0-9.-]+)`, "i")) || [])[1] || "");
+  const verdictFor = (kind, key) => {
+    const rs = results.filter((r) => r.kind === kind);
+    if (rs.some((r) => r.result === "pass" && (!from || domainIn(r.props, key) === from))) return "pass";
+    if (rs.some((r) => ["fail", "softfail", "permerror"].includes(r.result))) return "fail";
+    return "none";
+  };
+  return `spf=${verdictFor("spf", "smtp\\.mailfrom")} dkim=${verdictFor("dkim", "header\\.[id]")} dmarc=${verdictFor("dmarc", "header\\.from")}`;
+}
+
+// Files attached to the message (name, type, size): web-page attachments
+// (.html, .svg) are a classic way to hide a fake login page.
+export function attachmentsOf(part, out = []) {
+  if (!part) return out;
+  if (part.filename) out.push({ filename: part.filename, mimeType: part.mimeType || "", size: part.body?.size || 0 });
+  for (const p of part.parts || []) attachmentsOf(p, out);
+  return out;
 }
 
 export function normalizeMessage(msg) {
@@ -180,7 +208,8 @@ export function normalizeMessage(msg) {
     body: body.slice(0, 6000),
     snippet: decodeEntities(msg.snippet || ""),
     links,
-    auth: parseAuthResults(h),
+    auth: parseAuthResults(h, from.email),
+    attachments: attachmentsOf(msg.payload),
     labelIds: msg.labelIds || [],
     isBulk: Boolean(header(h, "List-Unsubscribe") || /bulk|list/i.test(header(h, "Precedence"))),
   };

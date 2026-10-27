@@ -47,6 +47,13 @@ test("guardrail: the model cannot condemn an authenticated sender from the user'
   assert.equal(v.verdict, "be_careful");
 });
 
+test("an official domain alone is not personal history: the model's Scam stands", async () => {
+  fakeApi(verdict("scam"));
+  const noHistory = { ...ctx, knownSenders: [], providers: [] };
+  const v = await checkMessage({ locale: "en-US", message: realChase, personalContext: noHistory, patternCards: [] });
+  assert.equal(v.verdict, "scam");
+});
+
 test("Contributor-mode models are refused; the detector answers instead", async () => {
   const capture = [];
   fakeApi(verdict("safe"), { capture });

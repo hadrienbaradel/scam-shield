@@ -127,6 +127,55 @@ test("a text from a phone number is never described as a website address", () =>
   assert.ok(!v.reasons.some((r) => /website address is [\d.]+/.test(r.text)), v.reasons.map((r) => r.text).join(" | "));
 });
 
+// Codex red-team review, round 2 (2026-10-26): lures that need no brand.
+const L = (b) => [...b.matchAll(/https?:\/\/\S+/g)].map((x) => ({ text: x[0], href: x[0] }));
+const RED_TEAM = [
+  ["toll text with a payment link", "en-US", { channel: "sms", from: "+12025550148", body: "Road services: Your toll balance is $6.40. Settle at https://road-balance.test" }],
+  ["CPF rights 'expiring tonight'", "fr-FR", { channel: "sms", from: "+33612345678", body: "Votre dossier CPF expire ce soir. Retrouvez vos droits sur https://droits-formation.test" }],
+  ["EDF refund asking for details", "fr-FR", { fromName: "Service énergie", from: "contact@regul-energie.test", auth: PASS, subject: "EDF remboursement", body: "Un avoir de 148 euros vous attend. Complétez votre dossier sur https://regul-energie.test" }],
+  ["'Bonjour Mamie' broken phone, pay the repairer", "fr-FR", { channel: "whatsapp", from: "+33612345678", body: "Bonjour Mamie, mon téléphone est cassé. Peux-tu régler 890 euros au réparateur ? Je te rembourse demain." }],
+  ["web-page attachment posing as a voicemail", "en-US", { fromName: "Microsoft 365", from: "voicemail@vm-notify.test", auth: PASS, subject: "New voicemail", body: "You have a new voicemail. Open the attached file to listen.", attachments: [{ filename: "voicemail.html", mimeType: "text/html" }] }],
+  ["Medicare member number through a link", "en-US", { fromName: "Member services", from: "notice@verify-benefit.test", auth: PASS, subject: "Coverage update", body: "Medicare requires your member number to retain coverage. Submit it at https://verify-benefit.test" }],
+  ["link asking an app to read the mailbox", "en-US", { fromName: "Photo share", from: "family@photo-share.test", auth: PASS, subject: "Family album", body: "View our reunion photos and approve Album Helper to read your mailbox.",
+    links: [{ text: "View album", href: "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&scope=https://mail.google.com/" }] }],
+];
+for (const [name, locale, m] of RED_TEAM) {
+  test(`scam: ${name} is caught`, () => {
+    const v = detect({ locale, personalContext: ctx, message: { channel: "email", subject: "", fromName: "", auth: "", ...m, links: m.links || L(m.body) } });
+    assert.equal(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+  });
+}
+
+test("a 'scan this code' statement is at least Be careful (a QR code hides its address)", () => {
+  const v = run({ fromName: "Document service", from: "notice@shared-doc.test", auth: PASS, subject: "Your pension statement",
+    body: "Your statement is attached. Scan the square image to review your pension details.", links: [], attachments: [{ filename: "pension.pdf", mimeType: "application/pdf" }] });
+  assert.notEqual(v.verdict, "safe");
+});
+
+test("a known contact's real address sending a link to a 3-day-old site is Be careful, not Safe", () => {
+  const withEthan = { ...ctx, trustedContacts: [{ name: "Ethan", email: "ethan@example-mail.test", relation: "grandson" }] };
+  const message = { channel: "email", fromName: "Ethan", from: "ethan@example-mail.test", auth: PASS, subject: "look at this",
+    body: "Grandma look at this photo of us https://photos-share.top/x", links: [{ text: "https://photos-share.top/x", href: "https://photos-share.top/x" }] };
+  const v = detect({ locale: "en-US", personalContext: withEthan, message, mockLinkInspection: { "https://photos-share.top/x": { domain_age_days: 3 } } });
+  assert.equal(v.verdict, "be_careful");
+  assert.equal(v._authentic, false, "a possibly hacked contact never shields the AI's verdict");
+  assert.equal(detect({ locale: "en-US", personalContext: withEthan, message: { ...message, body: "See you Sunday Grandma!", links: [] } }).verdict, "safe");
+});
+
+const LOOKALIKE_LEGIT = [
+  ["a family text about Sunday lunch", "fr-FR", { channel: "sms", from: "+33600000000", body: "Mamie, on arrive dimanche à midi, bisous" }],
+  ["a refund already issued", "en-US", { fromName: "Amazon.com", from: "returns@amazon.com", auth: PASS, subject: "Your refund", body: "Your refund of $45.00 has been issued to your original payment method.", links: [] }],
+  ["a real toll statement by authenticated email", "en-US", { fromName: "SunPass", from: "statements@sunpass.com", auth: PASS, subject: "Your toll statement", body: "Your toll invoice of $12.40 is ready. View it at https://www.sunpass.com/account" }],
+  ["a PDF invoice from a tradesman", "fr-FR", { fromName: "Atelier Martin", from: "billing@plombier.test", auth: PASS, subject: "Facture", body: "Veuillez trouver votre facture en pièce jointe.", attachments: [{ filename: "facture-042.pdf", mimeType: "application/pdf" }], links: [] }],
+  ["a calendar invitation file", "en-US", { fromName: "Margaret Lee", from: "margaret.lee@example-mail.test", auth: PASS, subject: "Lunch", body: "See invite attached.", attachments: [{ filename: "invite.ics", mimeType: "text/calendar" }], links: [] }],
+];
+for (const [name, locale, m] of LOOKALIKE_LEGIT) {
+  test(`legit: ${name} stays Safe`, () => {
+    const v = detect({ locale, personalContext: ctx, message: { channel: "email", subject: "", fromName: "", auth: "", ...m, links: m.links || L(m.body) } });
+    assert.equal(v.verdict, "safe", v.reasons.map((r) => r.text).join(" | "));
+  });
+}
+
 test("authenticated brand mail that fits history is marked _authentic for the model guardrail", () => {
   const amazonCtx = { ...ctx, providers: [{ type: "retail", name: "Amazon", realDomains: ["amazon.com"] }] };
   const v = run(LEGIT[4].m, amazonCtx);
