@@ -10,6 +10,9 @@
     "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=lib --watch-path=public src/server.js",
     "migrate": "node --env-file-if-exists=.env src/db/migrate.js",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "coverage": "mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
+    "check": "node scripts/doctor.mjs testdb --quiet --strict && mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-coverage-lines=84 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
+    "doctor": "node scripts/doctor.mjs",
     "score": "node scripts/score.mjs",
     "gate": "node --env-file-if-exists=.env scripts/inbox-gate.mjs"
   },
