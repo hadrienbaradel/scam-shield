@@ -1,0 +1,28 @@
+{
+  "userName": "Françoise",
+  "knownSenders": [
+    { "name": "Bouygues Telecom", "email": "factures@bouyguestelecom.fr", "brand": "Bouygues Telecom" },
+    { "name": "Société Générale", "email": "releves@societegenerale.fr", "brand": "Société Générale" },
+    { "name": "Fnac", "email": "commandes@fnac.com", "brand": null },
+    { "name": "Doctolib", "email": "rappels@doctolib.fr", "brand": null }
+  ],
+  "knownLinkDomains": ["click.fnac.com", "mail.doctolib.fr"],
+  "providers": [
+    { "type": "telecom", "name": "Bouygues Telecom", "realDomains": ["bouyguestelecom.fr"] },
+    { "type": "bank", "name": "Société Générale", "realDomains": ["societegenerale.fr", "sg.fr"] },
+    { "type": "health", "name": "Ameli", "realDomains": ["ameli.fr"] }
+  ],
+  "orders": [
+    { "merchant": "Amazon", "carrier": "Amazon Logistics", "tracking": "AMZ-FR-881", "items": "chaussons", "date": "2026-10-20" },
+    { "merchant": "Fnac", "carrier": "Chronopost", "tracking": "CH-FR-2291", "items": "livre", "date": "2026-10-22" }
+  ],
+  "breaches": [
+    { "source": "Bouygues Telecom", "date": "2025", "leaked": ["name", "address", "IBAN", "BIC"] },
+    { "source": "Free", "date": "2024", "leaked": ["name", "address", "IBAN"] }
+  ],
+  "trustedContacts": [
+    { "name": "Hadrien", "email": "hadrien@example-mail.test", "phone": "+33 6 55 01 42", "relation": "petit-fils (guardian)", "normalTopics": ["famille"] },
+    { "name": "Thomas", "email": "thomas-fr@example-mail.test", "phone": "+33 6 55 01 30", "relation": "petit-fils", "normalTopics": ["famille"] }
+  ],
+  "subscriptions": ["Bouygues Bbox", "Société Générale e-relevés"]
+}

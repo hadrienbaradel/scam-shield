@@ -1,0 +1,16 @@
+{
+  "name": "scam-shield",
+  "version": "0.2.0",
+  "description": "Scam Shield: senior-first Gmail + SMS scam protection judging messages against the user's own life. Meta Global AI Developer Hackathon, Indie track.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/rules.test.js tests/detector.test.js",
+    "score": "node scripts/score.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

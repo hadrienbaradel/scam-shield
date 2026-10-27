@@ -1,0 +1,30 @@
+{
+  "userName": "Linda",
+  "knownSenders": [
+    { "name": "Chase", "email": "statements@chase.com", "brand": "Chase" },
+    { "name": "Amazon", "email": "orders@amazon.com", "brand": "Amazon" },
+    { "name": "EZDriveMA", "email": "statements@ezdrivema.com", "brand": "E-ZPass" },
+    { "name": "Ethan Miller", "email": "ethan.miller@example-mail.test" },
+    { "name": "Mark Reynolds", "email": "mark.reynolds@example-mail.test" },
+    { "name": "CVS Pharmacy", "email": "refills@cvs.com", "brand": null }
+  ],
+  "knownLinkDomains": ["click.em.cvs.com", "email.amazon.com"],
+  "providers": [
+    { "type": "bank", "name": "Chase", "realDomains": ["chase.com"] },
+    { "type": "toll", "name": "E-ZPass", "realDomains": ["ezdrivema.com", "e-zpassny.com"] },
+    { "type": "health", "name": "Medicare", "realDomains": ["medicare.gov"] },
+    { "type": "retail", "name": "Amazon", "realDomains": ["amazon.com"] }
+  ],
+  "orders": [
+    { "merchant": "Amazon", "carrier": "Amazon Logistics", "tracking": "TBA123456", "items": "slippers", "date": "2026-10-20" }
+  ],
+  "breaches": [
+    { "source": "a retail mailing list", "date": "2024", "leaked": ["name", "address", "old password"] }
+  ],
+  "trustedContacts": [
+    { "name": "Ethan Miller", "email": "ethan.miller@example-mail.test", "phone": "+1 555-0142", "relation": "grandson", "normalTopics": ["family events", "photos"] },
+    { "name": "Mark Reynolds", "email": "mark.reynolds@example-mail.test", "phone": "+1 555-0117", "relation": "cousin", "normalTopics": ["family events"] },
+    { "name": "Thomas", "email": "thomas@example-mail.test", "phone": "+1 555-0130", "relation": "grandson (guardian)", "normalTopics": ["family"] }
+  ],
+  "subscriptions": ["Amazon Prime", "CVS CarePass"]
+}

@@ -1,0 +1,664 @@
+{
+  "description": "Scam Shield regression suite from the PRD (Oct 26 2026). All scam addresses end in .test and can never resolve. Expected = required verdict; acceptable = also passing for ambiguous PRD cases.",
+  "cases": [
+    {
+      "id": "A1",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Bouygues Telecom",
+        "from": "service@contestation-bouygues.test",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=fail dkim=fail dmarc=fail",
+        "subject": "Votre facture Bouygues est disponible",
+        "body": "Madame, votre nouvelle facture est disponible. Pour la consulter ou contester un prélèvement, cliquez ici : [bouyguestelecom.fr](https://contestation-bouygues.test/facture). Merci de votre confiance.",
+        "links": [
+          {
+            "text": "bouyguestelecom.fr",
+            "href": "https://contestation-bouygues.test/facture"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://contestation-bouygues.test/facture": {
+          "final_url": "https://contestation-bouygues.test/facture",
+          "domain_age_days": 6,
+          "page_shows": "Copie d'une page de connexion demandant vos codes bancaires"
+        }
+      }
+    },
+    {
+      "id": "A2",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Société Générale",
+        "from": "alertes@sg-securite-verification.test",
+        "claimedBrand": "Société Générale",
+        "auth": "spf=fail dkim=none dmarc=fail",
+        "subject": "Sécurisez votre compte dès maintenant",
+        "body": "Madame, une activité inhabituelle a été détectée. Confirmez vos codes pour sécuriser votre compte : [societegenerale.fr](https://sg-verification.test/login). Sans action de votre part, votre compte sera bloqué.",
+        "links": [
+          {
+            "text": "societegenerale.fr",
+            "href": "https://sg-verification.test/login"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://sg-verification.test/login": {
+          "final_url": "https://sg-verification.test/login",
+          "domain_age_days": 4,
+          "page_shows": "Copie de la page de connexion Société Générale demandant les codes"
+        }
+      }
+    },
+    {
+      "id": "A3",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Bouygues Telecom",
+        "from": "facturation@bbox-notifications.test",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=fail dkim=none dmarc=fail",
+        "subject": "Votre facture Bbox du mois d'octobre",
+        "body": "Madame, votre facture Bbox de 29,99 € est disponible dans votre espace client : [Voir ma facture](https://bbox-notifications.test/espace-client). Bouygues Telecom vous remercie.",
+        "links": [
+          {
+            "text": "Voir ma facture",
+            "href": "https://bbox-notifications.test/espace-client"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://bbox-notifications.test/espace-client": {
+          "final_url": "https://bbox-notifications.test/espace-client",
+          "domain_age_days": 3,
+          "page_shows": "Copie parfaite de l'espace client Bouygues"
+        }
+      }
+    },
+    {
+      "id": "A3b",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Bouygues Telecom",
+        "from": "service@contestation-bouygues.test",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=softfail dkim=none dmarc=fail",
+        "subject": "Avis de prélèvement de 69,90 €",
+        "body": "Madame, un prélèvement de 69,90 € sera effectué sur votre compte FR76 3000 3000 3000 3000 3000 1234 pour votre abonnement Classplus Pro. Vous disposez de 7 jours ouvrés pour le contester : [Contester ce prélèvement](https://contestation-prelevement.test/fr)",
+        "links": [
+          {
+            "text": "Contester ce prélèvement",
+            "href": "https://contestation-prelevement.test/fr"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://contestation-prelevement.test/fr": {
+          "final_url": "https://contestation-prelevement.test/fr",
+          "domain_age_days": 5,
+          "page_shows": "Copie d'une page bancaire demandant vos codes de banque en ligne"
+        }
+      }
+    },
+    {
+      "id": "A4",
+      "set": "A",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "sms",
+        "fromName": "+33 7 55 01 99",
+        "from": "sms@chronopost-suivi.test",
+        "claimedBrand": "Chronopost",
+        "subject": "",
+        "body": "Chronopost : votre colis est en attente. Payez 1,99 € de frais pour le reprogrammer : https://chronopost-suivi.test/payer",
+        "links": [
+          {
+            "text": "https://chronopost-suivi.test/payer",
+            "href": "https://chronopost-suivi.test/payer"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C1",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Bouygues Telecom",
+        "from": "factures@bouyguestelecom.fr",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Votre facture Bbox du mois d'octobre",
+        "body": "Madame, votre facture Bbox de 29,99 € est disponible dans votre espace client. Merci de votre confiance, Bouygues Telecom.",
+        "links": []
+      }
+    },
+    {
+      "id": "C2",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Bouygues Telecom",
+        "from": "factures@bouyguestelecom.fr",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Information importante concernant vos données",
+        "body": "Madame, nous vous informons qu'un incident de sécurité a pu exposer vos coordonnées et votre IBAN. Nous vous recommandons la vigilance face aux messages demandant vos codes. Bouygues Telecom ne vous demandera jamais vos codes bancaires.",
+        "links": []
+      }
+    },
+    {
+      "id": "C3",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Société Générale",
+        "from": "releves@societegenerale.fr",
+        "claimedBrand": "Société Générale",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Votre e-relevé d'octobre est disponible",
+        "body": "Madame, votre e-relevé d'octobre est disponible dans votre espace client Société Générale. Ne communiquez jamais vos codes.",
+        "links": []
+      }
+    },
+    {
+      "id": "C4",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "message": {
+        "channel": "sms",
+        "fromName": "Chronopost",
+        "from": "sms@chronopost.fr",
+        "claimedBrand": "Chronopost",
+        "subject": "",
+        "body": "Chronopost : votre colis Fnac CH-FR-2291 sera livré demain entre 9h et 13h. Suivi sur chronopost.fr",
+        "links": []
+      }
+    },
+    {
+      "id": "D1",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0199",
+        "from": "sms@usps-hold.test",
+        "claimedBrand": "USPS",
+        "subject": "",
+        "body": "USPS: your package is on hold. Pay a $1.99 redelivery fee today: https://usps-hold.test/pay",
+        "links": [
+          {
+            "text": "https://usps-hold.test/pay",
+            "href": "https://usps-hold.test/pay"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://usps-hold.test/pay": {
+          "final_url": "https://usps-hold.test/pay",
+          "domain_age_days": 2,
+          "page_shows": "Copy of a USPS page asking for card details"
+        }
+      }
+    },
+    {
+      "id": "D2",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0188",
+        "from": "sms@ezpass-pay.test",
+        "claimedBrand": "E-ZPass",
+        "subject": "",
+        "body": "E-ZPass: unpaid toll of $4.50. Pay today to avoid a $50 late fee: https://ezpass-pay.test/toll",
+        "links": [
+          {
+            "text": "https://ezpass-pay.test/toll",
+            "href": "https://ezpass-pay.test/toll"
+          }
+        ]
+      }
+    },
+    {
+      "id": "D3",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Social Security Administration",
+        "from": "alerts@ssa-benefits-update.test",
+        "claimedBrand": "Social Security",
+        "auth": "spf=fail dkim=fail dmarc=fail",
+        "subject": "Your benefits are suspended - call now",
+        "body": "Your Social Security benefits are suspended effective immediately. Call this number now to restore them and verify your identity.",
+        "links": []
+      }
+    },
+    {
+      "id": "D4",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0177",
+        "from": "sms@chase-alert.test",
+        "claimedBrand": "Chase",
+        "subject": "",
+        "body": "Chase fraud alert: did you send $1,250? Reply NO to stop it. Then send money to yourself to protect your account.",
+        "links": []
+      }
+    },
+    {
+      "id": "D5",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Federal Agent - FTC",
+        "from": "agent@ftc-secure-case.test",
+        "claimedBrand": "IRS",
+        "auth": "spf=fail dkim=fail",
+        "subject": "Urgent: protect your savings today",
+        "body": "I am a federal agent. Your savings are at risk. Do not tell your bank. Move your money today to a Bitcoin ATM to protect it. Keep this secret.",
+        "links": []
+      }
+    },
+    {
+      "id": "D6",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "screenshot",
+        "fromName": "Browser pop-up",
+        "from": "",
+        "claimedBrand": "Microsoft",
+        "subject": "Screenshot of a browser pop-up",
+        "body": "Screenshot text: MICROSOFT SECURITY WARNING. Your computer is infected. Call Microsoft support now at 1-555-0166. Do not close this window.",
+        "links": []
+      }
+    },
+    {
+      "id": "D7",
+      "set": "D",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Amazon",
+        "from": "billing@amazon-renewal-pay.test",
+        "claimedBrand": "Amazon",
+        "auth": "spf=fail dkim=fail dmarc=fail",
+        "subject": "Your Prime renewal of $139 failed",
+        "body": "Your Amazon Prime renewal of $139 failed. Update your payment information now: [amazon.com](https://amazon-renewal-pay.test/pay)",
+        "links": [
+          {
+            "text": "amazon.com",
+            "href": "https://amazon-renewal-pay.test/pay"
+          }
+        ]
+      }
+    },
+    {
+      "id": "B6",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Linda",
+        "from": "linda@example-mail.test",
+        "subject": "I filmed you - pay in 48 hours",
+        "body": "I filmed you through your webcam. Pay $1,500 in Bitcoin in 48 hours or I send the video to everyone. Your old password is: sunshine42. Pay in bitcoin now.",
+        "links": []
+      }
+    },
+    {
+      "id": "B7",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "message": {
+        "channel": "email",
+        "fromName": "Mark Reynolds",
+        "from": "mark.reynolds@example-mail.test",
+        "replyTo": "mark.reynolds.help@freemail.test",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Need a favor, please keep it between us",
+        "body": "Linda I'm in Madrid and my wallet was stolen. Can you buy 4 Apple gift cards of $200 and send me the codes? Please don't tell Carol.",
+        "links": []
+      }
+    },
+    {
+      "id": "B8",
+      "set": "B",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Ameli",
+        "from": "renouvellement@ameli-carte-vitale.test",
+        "claimedBrand": "Ameli",
+        "auth": "spf=fail dkim=fail dmarc=fail",
+        "subject": "Renouvelez votre carte Vitale, Françoise",
+        "body": "Madame Françoise, domiciliée à Lyon, renouvelez votre carte Vitale dès maintenant. Des frais de 1,99 € sont demandés : [ameli.fr](https://ameli-carte-vitale.test/payer)",
+        "links": [
+          {
+            "text": "ameli.fr",
+            "href": "https://ameli-carte-vitale.test/payer"
+          }
+        ]
+      }
+    },
+    {
+      "id": "B9",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Norton Billing",
+        "from": "invoice@antivirus-renewal-call.test",
+        "auth": "spf=fail dkim=fail",
+        "subject": "Your antivirus renewed for $399 - call to cancel",
+        "body": "Your antivirus renewed for $399 today. If this is a mistake, call this number now to cancel and get a refund.",
+        "links": []
+      }
+    },
+    {
+      "id": "B10",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0155",
+        "from": "+1 555-0155",
+        "subject": "",
+        "body": "Hi Grandma, sorry, I sent you my WhatsApp verification code by mistake. Can you send it back to me please? It's the 6-digit code you just received.",
+        "links": []
+      }
+    },
+    {
+      "id": "B11",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "message": {
+        "channel": "email",
+        "fromName": "Harrison Recovery Law Firm",
+        "from": "claims@recovery-law-fees.test",
+        "auth": "spf=fail dkim=fail",
+        "subject": "We can recover your lost money",
+        "body": "Our law firm can recover money you lost to scams. Pay an upfront fee of $850 today by wire transfer and we will start your case immediately.",
+        "links": []
+      }
+    },
+    {
+      "id": "B12",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "threadHistory": [
+        {
+          "body": "You are so beautiful and kind, I think of you every day, dear Linda."
+        },
+        {
+          "body": "Your family would not understand us. Keep our talks between us, my love."
+        }
+      ],
+      "message": {
+        "channel": "email",
+        "fromName": "James",
+        "from": "james@example-mail.test",
+        "subject": "A small help, my dear",
+        "body": "My dear, I need a small help. Invest $2,000 in crypto with me and we will build our future together.",
+        "links": []
+      }
+    },
+    {
+      "id": "B1",
+      "set": "B",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "acceptable": [
+        "be_careful"
+      ],
+      "message": {
+        "channel": "voice_transcript",
+        "fromName": "Numéro inconnu",
+        "from": "+33 7 55 01 77",
+        "claimedContact": "Hadrien",
+        "subject": "Message vocal WhatsApp (transcription)",
+        "body": "Mamie, j'ai eu un accident, envoie 2 000 € tout de suite, n'en parle pas à papa. C'est urgent, garde ça secret.",
+        "links": []
+      }
+    },
+    {
+      "id": "B2",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0161",
+        "from": "+1 555-0161",
+        "claimedContact": "Ethan Miller",
+        "subject": "",
+        "body": "Hi Grandma, it's Ethan. I changed my number, this is my new one. Can you send $300 today? I'll explain later.",
+        "links": []
+      }
+    },
+    {
+      "id": "C5",
+      "set": "C",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Ethan Miller",
+        "from": "ethan.miller@example-mail.test",
+        "auth": "spf=pass dkim=pass",
+        "subject": "Photos from Sunday",
+        "body": "Hi Grandma, here are the photos from Sunday lunch. Love, Ethan. https://photos.google.com/share/example",
+        "links": [
+          {
+            "text": "https://photos.google.com/share/example",
+            "href": "https://photos.google.com/share/example"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C6",
+      "set": "C",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "CVS Pharmacy",
+        "from": "refills@cvs.com",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Your prescription is ready, Linda",
+        "body": "Hi Linda, your prescription is ready for pickup at CVS. View it here: [cvs.com](https://click.em.cvs.com/refill)",
+        "links": [
+          {
+            "text": "cvs.com",
+            "href": "https://click.em.cvs.com/refill"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C7",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Doctolib",
+        "from": "rappels@doctolib.fr",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Rappel : rendez-vous demain à 10h",
+        "body": "Madame, rappel de votre rendez-vous demain à 10h avec le Dr Martin. Merci de venir 10 minutes en avance.",
+        "links": []
+      }
+    },
+    {
+      "id": "C8",
+      "set": "C",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "acceptable": [
+        "safe"
+      ],
+      "message": {
+        "channel": "email",
+        "fromName": "Chase",
+        "from": "statements@chase.com",
+        "claimedBrand": "Chase",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Security alert: new device connected",
+        "body": "A new device connected to your Chase account. If this was not you, call the number on the back of your card.",
+        "links": []
+      }
+    },
+    {
+      "id": "C9",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "be_careful",
+      "acceptable": [
+        "safe"
+      ],
+      "message": {
+        "channel": "email",
+        "fromName": "ANTAI",
+        "from": "avis@antai.gouv.fr",
+        "claimedBrand": "ANTAI",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Avis de contravention",
+        "body": "Madame, un avis de contravention a été émis pour votre véhicule. Consultez-le vous-même sur antai.gouv.fr avec le numéro d'avis figurant sur le document papier.",
+        "links": []
+      }
+    },
+    {
+      "id": "L1",
+      "set": "C",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "safe",
+      "message": {
+        "channel": "email",
+        "fromName": "Amazon",
+        "from": "orders@amazon.com",
+        "claimedBrand": "Amazon",
+        "auth": "spf=pass dkim=pass dmarc=pass",
+        "subject": "Your Amazon order was delivered",
+        "body": "Hello Linda, your order of slippers was delivered Oct 21 by Amazon Logistics. Thank you for shopping with Amazon.",
+        "links": []
+      }
+    },
+    {
+      "id": "C10",
+      "set": "C",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "be_careful",
+      "note": "Real Bouygues password-change notification (anonymized from a real inbox, Oct 25 2026). Auth passes on bouygues-telecom.fr, links land on bouyguestelecom.fr via an app tracker. Must never be Scam (PRD C8 analogue). The adj.st button fallback (redirect.bouyguestelecom.fr) is a dangling CNAME to a deleted target (NXDOMAIN) — a broken link in a genuine email, not impersonation.",
+      "message": {
+        "channel": "email",
+        "fromName": "Espace Client Bouygues Telecom",
+        "from": "espaceclient@bouygues-telecom.fr",
+        "replyTo": "espaceclient@bouygues-telecom.fr",
+        "claimedBrand": "Bouygues Telecom",
+        "auth": "spf=pass dkim=pass dmarc=pass header.from=bouygues-telecom.fr",
+        "subject": "Nouveau mot de passe enregistré",
+        "body": "Oui, nous avons bien fait le changement. Nous avons bien enregistré la modification de votre mot de passe de connexion à l'Espace Client. Ce changement ne vous dit rien ? Si vous n'êtes pas à l'origine de cette modification, il vaut mieux sécuriser tout de suite les accès à votre Espace Client. Bouton : Mon Espace Client.",
+        "links": [
+          {
+            "text": "Mon Espace Client",
+            "href": "https://3fzy.adj.st/home?adj_t=bie49u4"
+          },
+          {
+            "text": "bouyguestelecom.fr",
+            "href": "https://www.bouyguestelecom.fr/"
+          },
+          {
+            "text": "assistance.bouyguestelecom.fr",
+            "href": "https://www.assistance.bouyguestelecom.fr/s/"
+          }
+        ]
+      },
+      "mockLinkInspection": {
+        "https://3fzy.adj.st/home?adj_t=bie49u4": {
+          "redirects": [
+            "https://3fzy.adj.st/home",
+            "https://redirect.bouyguestelecom.fr/mon-compte/dashboard"
+          ],
+          "final_url": "https://redirect.bouyguestelecom.fr/mon-compte/dashboard",
+          "dns_status": "NXDOMAIN",
+          "domain_age_days": null,
+          "page_shows": "Le site ne répond pas : le sous-domaine redirect.bouyguestelecom.fr pointe vers une adresse supprimée (vérifié le 26 oct. 2026, Google et Cloudflare DNS)"
+        }
+      }
+    }
+  ]
+}

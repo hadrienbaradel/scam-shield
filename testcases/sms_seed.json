@@ -1,0 +1,85 @@
+{
+  "description": "SMS / voice seed set for the Android test phone (PRD D1,D2,A4,B1,B2,B10 + legit C4). Push via adb/emulator/sender app.",
+  "messages": [
+    {
+      "id": "A4",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "from": "sms@chronopost-suivi.test",
+      "body": "Chronopost : votre colis est en attente. Payez 1,99 € de frais pour le reprogrammer : https://chronopost-suivi.test/payer",
+      "claimedBrand": "Chronopost",
+      "claimedContact": null
+    },
+    {
+      "id": "C4",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "safe",
+      "from": "sms@chronopost.fr",
+      "body": "Chronopost : votre colis Fnac CH-FR-2291 sera livré demain entre 9h et 13h. Suivi sur chronopost.fr",
+      "claimedBrand": "Chronopost",
+      "claimedContact": null
+    },
+    {
+      "id": "D1",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "from": "sms@usps-hold.test",
+      "body": "USPS: your package is on hold. Pay a $1.99 redelivery fee today: https://usps-hold.test/pay",
+      "claimedBrand": "USPS",
+      "claimedContact": null
+    },
+    {
+      "id": "D2",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "from": "sms@ezpass-pay.test",
+      "body": "E-ZPass: unpaid toll of $4.50. Pay today to avoid a $50 late fee: https://ezpass-pay.test/toll",
+      "claimedBrand": "E-ZPass",
+      "claimedContact": null
+    },
+    {
+      "id": "D4",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "from": "sms@chase-alert.test",
+      "body": "Chase fraud alert: did you send $1,250? Reply NO to stop it. Then send money to yourself to protect your account.",
+      "claimedBrand": "Chase",
+      "claimedContact": null
+    },
+    {
+      "id": "B10",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "from": "+1 555-0155",
+      "body": "Hi Grandma, sorry, I sent you my WhatsApp verification code by mistake. Can you send it back to me please? It's the 6-digit code you just received.",
+      "claimedBrand": null,
+      "claimedContact": null
+    },
+    {
+      "id": "B1",
+      "profile": "francoise",
+      "locale": "fr-FR",
+      "expected": "scam",
+      "from": "+33 7 55 01 77",
+      "body": "Mamie, j'ai eu un accident, envoie 2 000 € tout de suite, n'en parle pas à papa. C'est urgent, garde ça secret.",
+      "claimedBrand": null,
+      "claimedContact": "Hadrien"
+    },
+    {
+      "id": "B2",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "from": "+1 555-0161",
+      "body": "Hi Grandma, it's Ethan. I changed my number, this is my new one. Can you send $300 today? I'll explain later.",
+      "claimedBrand": null,
+      "claimedContact": "Ethan Miller"
+    }
+  ]
+}
