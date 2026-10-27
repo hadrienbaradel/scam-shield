@@ -1,0 +1,109 @@
+package com.scamshield.companion.notify
+
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.scamshield.companion.R
+import com.scamshield.companion.VerdictActivity
+import com.scamshield.companion.net.StoredCheck
+
+object Notifier {
+    const val CHANNEL_ALERTS = "scam_alerts"
+    const val CHANNEL_STATUS = "scam_status"
+    const val STATUS_NOTIFICATION_ID = 1
+
+    fun ensureChannels(context: Context) {
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_ALERTS, context.getString(R.string.channel_alerts_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.channel_alerts_desc)
+                enableVibration(true)
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_STATUS, context.getString(R.string.channel_status_name), NotificationManager.IMPORTANCE_MIN)
+        )
+    }
+
+    /** Server verdict. Callers must not pass "safe" verdicts (they are ignored quietly). */
+    fun showVerdict(context: Context, check: StoredCheck) {
+        val v = check.verdict
+        val text = v.actionText.ifBlank { v.reasons.firstOrNull()?.text.orEmpty() }
+        post(context, check.checkId, v.headline, text, colorFor(context, v.verdict))
+    }
+
+    /** Server unreachable / not paired: local warning in the phone's language. */
+    fun showFallback(context: Context, check: StoredCheck) {
+        post(
+            context,
+            check.checkId,
+            context.getString(R.string.fallback_title),
+            context.getString(R.string.fallback_notification),
+            colorFor(context, "be_careful"),
+        )
+    }
+
+    fun statusNotification(context: Context): Notification =
+        NotificationCompat.Builder(context, CHANNEL_STATUS)
+            .setSmallIcon(R.drawable.ic_stat_shield)
+            .setContentTitle(context.getString(R.string.checking_text))
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .build()
+
+    private fun post(context: Context, checkId: String, title: String, text: String, color: Int) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val open = Intent(context, VerdictActivity::class.java)
+            .putExtra(VerdictActivity.EXTRA_CHECK_ID, checkId)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val pending = PendingIntent.getActivity(
+            context, checkId.hashCode(), open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        // Lock screen shows only a neutral line; the headline appears once unlocked.
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_stat_shield)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentText(context.getString(R.string.notification_public))
+            .setColor(color)
+            .build()
+
+        val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_stat_shield)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setColor(color)
+            .setColorized(false)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        NotificationManagerCompat.from(context).notify(checkId.hashCode(), n)
+    }
+
+    fun colorFor(context: Context, verdict: String): Int = ContextCompat.getColor(
+        context,
+        when (verdict) {
+            "scam" -> R.color.verdict_scam
+            "safe" -> R.color.verdict_safe
+            else -> R.color.verdict_careful
+        },
+    )
+}

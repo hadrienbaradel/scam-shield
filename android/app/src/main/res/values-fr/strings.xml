@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scam Shield</string>
+
+    <!-- Notifications -->
+    <string name="channel_alerts_name">Alertes arnaque</string>
+    <string name="channel_alerts_desc">Avertissements sur les SMS suspects</string>
+    <string name="channel_status_name">Vérification des SMS</string>
+    <string name="checking_text">Vérification d\'un SMS…</string>
+    <string name="notification_public">Un SMS demande votre attention.</string>
+    <string name="fallback_title">Signes d\'arnaque dans un SMS</string>
+    <string name="fallback_notification">Ce SMS présente des signes d\'arnaque. N\'appuyez sur aucun lien. Demandez à un proche.</string>
+    <string name="fallback_headline">Ce SMS présente des signes d\'arnaque.</string>
+    <string name="fallback_action">N\'appuyez sur aucun lien. Demandez à un proche.</string>
+
+    <!-- Association -->
+    <string name="pair_title">Connecter ce téléphone</string>
+    <string name="pair_intro">Sur le site Scam Shield, ouvrez « Ajouter mon téléphone ». Tapez le code affiché, ou scannez le QR code.</string>
+    <string name="pair_server_label">Adresse du serveur</string>
+    <string name="pair_code_label">Code d\'association</string>
+    <string name="pair_button">Connecter</string>
+    <string name="pair_busy">Connexion…</string>
+    <string name="pair_scan">Scanner le QR code</string>
+    <string name="pair_scan_prompt">Pointez l\'appareil photo vers le QR code à l\'écran</string>
+    <string name="pair_error_code">Ce code n\'a pas fonctionné. Vérifiez-le et réessayez.</string>
+    <string name="pair_error_network">Impossible de joindre Scam Shield. Vérifiez internet et l\'adresse du serveur.</string>
+    <string name="pair_error_qr">Ce QR code n\'est pas un code Scam Shield.</string>
+    <string name="pair_error_empty">Veuillez taper le code d\'association.</string>
+
+    <!-- Accueil -->
+    <string name="home_protected">Vous êtes protégé(e), %1$s.</string>
+    <string name="home_protected_noname">Vous êtes protégé(e).</string>
+    <string name="home_explain">Scam Shield vérifie les SMS qui contiennent un lien ou qui demandent de l\'argent ou un code. Vos autres SMS ne quittent jamais ce téléphone.</string>
+    <string name="home_perm_needed">Scam Shield a besoin de votre accord pour voir les nouveaux SMS et vous prévenir.</string>
+    <string name="home_perm_button">Autoriser</string>
+    <string name="home_perm_settings_hint">Si rien ne se passe, ouvrez les Réglages et autorisez les SMS et les notifications.</string>
+    <string name="home_open_settings">Ouvrir les Réglages</string>
+    <string name="home_last_warning">Voir le dernier avertissement</string>
+    <string name="home_unpair">Déconnecter ce téléphone</string>
+
+    <!-- Verdict -->
+    <string name="label_scam">ARNAQUE</string>
+    <string name="label_careful">PRUDENCE</string>
+    <string name="label_safe">SEMBLE SÛR</string>
+    <string name="verdict_from">SMS de %1$s</string>
+    <string name="real_company_says">Ce que dit la vraie entreprise :</string>
+    <string name="btn_read">Lisez-le-moi</string>
+    <string name="btn_stop_reading">Arrêter la lecture</string>
+    <string name="btn_ask">Demander à mon proche</string>
+    <string name="btn_ok">OK</string>
+    <string name="ask_sending">Envoi…</string>
+    <string name="ask_sent">Envoyé à %1$s</string>
+    <string name="ask_none">Aucun proche n\'est encore configuré.</string>
+    <string name="ask_error">Envoi impossible. Vérifiez internet et réessayez.</string>
+    <string name="ask_waiting">Sa réponse s\'affichera ici.</string>
+    <string name="names_and">et</string>
+    <string name="answer_scam">%1$s dit : c\'est une arnaque. Supprimez-le.</string>
+    <string name="answer_real">%1$s dit : c\'est un vrai message.</string>
+    <string name="answer_call_me">%1$s va vous appeler.</string>
+    <string name="tts_unavailable">La lecture à voix haute n\'est pas disponible sur ce téléphone.</string>
+
+    <!-- Raisons hors ligne (signaux du pré-filtre sur le téléphone) -->
+    <string name="reason_link">Il contient un lien.</string>
+    <string name="reason_urgency">Il cherche à vous presser.</string>
+    <string name="reason_gift_card">Il parle de cartes cadeaux.</string>
+    <string name="reason_crypto">Il parle de crypto ou de Bitcoin.</string>
+    <string name="reason_code">Il demande un code.</string>
+    <string name="reason_money">Il demande de l\'argent.</string>
+    <string name="reason_new_number">Quelqu\'un dit avoir changé de numéro.</string>
+</resources>

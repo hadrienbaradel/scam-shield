@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_bg">#0D47A1</color>
+    <color name="verdict_scam">#B71C1C</color>
+    <color name="verdict_careful">#FFB300</color>
+    <color name="verdict_safe">#1B5E20</color>
+</resources>

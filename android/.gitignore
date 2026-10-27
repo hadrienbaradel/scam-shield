@@ -1,0 +1,21 @@
+# Gradle / Android build output
+.gradle/
+.kotlin/
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Machine-specific
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Signing material never goes in git
+*.keystore
+*.jks
+
+# Keep the wrapper jar even if a global ignore drops *.jar
+!gradle/wrapper/gradle-wrapper.jar

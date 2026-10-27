@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scam Shield</string>
+
+    <!-- Notifications -->
+    <string name="channel_alerts_name">Scam alerts</string>
+    <string name="channel_alerts_desc">Warnings about suspicious texts</string>
+    <string name="channel_status_name">Checking texts</string>
+    <string name="checking_text">Checking a text…</string>
+    <string name="notification_public">A text needs your attention.</string>
+    <string name="fallback_title">Warning signs in a text</string>
+    <string name="fallback_notification">This text has warning signs. Don\'t tap any link. Ask someone you trust.</string>
+    <string name="fallback_headline">This text has warning signs.</string>
+    <string name="fallback_action">Don\'t tap any link. Ask someone you trust.</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Connect this phone</string>
+    <string name="pair_intro">On the Scam Shield website, open “Add my phone”. Type the code you see there, or scan the QR code.</string>
+    <string name="pair_server_label">Server address</string>
+    <string name="pair_code_label">Pairing code</string>
+    <string name="pair_button">Connect</string>
+    <string name="pair_busy">Connecting…</string>
+    <string name="pair_scan">Scan the QR code</string>
+    <string name="pair_scan_prompt">Point the camera at the QR code on the screen</string>
+    <string name="pair_error_code">That code did not work. Check it and try again.</string>
+    <string name="pair_error_network">Cannot reach Scam Shield. Check the internet and the server address.</string>
+    <string name="pair_error_qr">This QR code is not a Scam Shield code.</string>
+    <string name="pair_error_empty">Please type the pairing code.</string>
+
+    <!-- Home -->
+    <string name="home_protected">You are protected, %1$s.</string>
+    <string name="home_protected_noname">You are protected.</string>
+    <string name="home_explain">Scam Shield checks texts that contain a link or ask for money or a code. Your other texts never leave this phone.</string>
+    <string name="home_perm_needed">Scam Shield needs your permission to see new texts and to warn you.</string>
+    <string name="home_perm_button">Allow</string>
+    <string name="home_perm_settings_hint">If nothing happens, open Settings and allow SMS and notifications.</string>
+    <string name="home_open_settings">Open Settings</string>
+    <string name="home_last_warning">See the last warning</string>
+    <string name="home_unpair">Disconnect this phone</string>
+
+    <!-- Verdict -->
+    <string name="label_scam">SCAM</string>
+    <string name="label_careful">BE CAREFUL</string>
+    <string name="label_safe">LOOKS SAFE</string>
+    <string name="verdict_from">Text from %1$s</string>
+    <string name="real_company_says">What the real company says:</string>
+    <string name="btn_read">Read it to me</string>
+    <string name="btn_stop_reading">Stop reading</string>
+    <string name="btn_ask">Ask my trusted person</string>
+    <string name="btn_ok">OK</string>
+    <string name="ask_sending">Sending…</string>
+    <string name="ask_sent">Sent to %1$s</string>
+    <string name="ask_none">No trusted person is set up yet.</string>
+    <string name="ask_error">Could not send. Check the internet and try again.</string>
+    <string name="ask_waiting">Their answer will appear here.</string>
+    <string name="names_and">and</string>
+    <string name="answer_scam">%1$s says: it\'s a scam. Delete it.</string>
+    <string name="answer_real">%1$s says: it\'s real.</string>
+    <string name="answer_call_me">%1$s will call you.</string>
+    <string name="tts_unavailable">Reading aloud is not available on this phone.</string>
+
+    <!-- Offline reasons (on-device pre-screen signals) -->
+    <string name="reason_link">It contains a link.</string>
+    <string name="reason_urgency">It tries to rush you.</string>
+    <string name="reason_gift_card">It mentions gift cards.</string>
+    <string name="reason_crypto">It mentions crypto or Bitcoin.</string>
+    <string name="reason_code">It asks for a code.</string>
+    <string name="reason_money">It asks for money.</string>
+    <string name="reason_new_number">Someone says they have a new number.</string>
+</resources>
