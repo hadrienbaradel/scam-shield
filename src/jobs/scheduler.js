@@ -7,7 +7,7 @@
 
 import { config, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
-import { syncUser, usersToSync, clientFor } from "../sync/worker.js";
+import { syncUser, usersToSync, clientFor, mapLimit } from "../sync/worker.js";
 import { pullGmailEvents } from "../google/pubsub.js";
 import { runThreatFeed } from "./threatfeed.js";
 import { runRetention } from "./retention.js";
@@ -23,8 +23,9 @@ function note(err, where) {
   jobStatus.errors = [line, ...jobStatus.errors].slice(0, 20);
 }
 
+// Several mailboxes at a time, so one slow mailbox never delays the rest.
 async function pollAll() {
-  for (const { id } of await usersToSync()) await syncUser(id).catch((e) => note(e, "sync"));
+  await mapLimit(await usersToSync(), 4, ({ id }) => syncUser(id).catch((e) => note(e, "sync")));
   jobStatus.lastPoll = new Date().toISOString();
 }
 

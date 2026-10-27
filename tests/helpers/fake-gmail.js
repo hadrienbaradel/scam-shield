@@ -44,6 +44,10 @@ export function fakeGmail({ email = "linda@example.test", messages = [] } = {}) 
   return {
     modifications, store,
     deliver(m) { store.set(m.id, structuredClone(m)); historyId++; history.push({ id: String(historyId), messagesAdded: [{ message: { id: m.id, labelIds: m.labelIds } }] }); },
+    // A message that comes back into the inbox (e.g. "Not spam").
+    returnToInbox(m) { store.set(m.id, structuredClone({ ...m, labelIds: [...new Set([...m.labelIds, "INBOX"])] })); historyId++;
+      history.push({ id: String(historyId), labelsAdded: [{ message: { id: m.id, labelIds: ["INBOX"] }, labelIds: ["INBOX"] }] }); },
+    forgetHistory() { history.length = 0; this.historyExpired = true; },
     profile: async () => ({ emailAddress: email, historyId: String(historyId) }),
     listMessages: async (query = {}) => ({ messages: [...store.values()].filter((m) => matches(m, query)).slice(0, query.maxResults || 100).map((m) => ({ id: m.id, threadId: m.threadId })) }),
     getMessage: async (id) => {
@@ -51,7 +55,10 @@ export function fakeGmail({ email = "linda@example.test", messages = [] } = {}) 
       return structuredClone(store.get(id));
     },
     getThread: async (id) => ({ id, messages: [...store.values()].filter((m) => m.threadId === id) }),
-    listHistory: async (start) => ({ history: history.filter((h) => Number(h.id) > Number(start)), historyId: String(historyId) }),
+    async listHistory(start) {
+      if (this.historyExpired) { this.historyExpired = false; const e = new Error("history too old"); e.status = 404; throw e; }
+      return { history: history.filter((h) => Number(h.id) > Number(start)), historyId: String(historyId) };
+    },
     listLabels: async () => ({ labels }),
     createLabel: async (name) => { const l = { id: `Label_${labels.length}`, name }; labels.push(l); return l; },
     modifyLabels: async (id, { add = [], remove = [] }) => {

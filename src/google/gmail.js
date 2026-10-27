@@ -52,8 +52,10 @@ export function gmailClient(getToken, { fetchImpl = fetch } = {}) {
     getMessage: (id, format = "full", metadataHeaders) =>
       call(`/messages/${encodeURIComponent(id)}`, { query: { format, metadataHeaders } }),
     getThread: (id) => call(`/threads/${encodeURIComponent(id)}`, { query: { format: "full" } }),
+    // New mail, and mail that comes back into the inbox (from spam,
+    // un-archived) — both need a check.
     listHistory: (startHistoryId, pageToken) =>
-      call("/history", { query: { startHistoryId, historyTypes: "messageAdded", labelId: "INBOX", pageToken } }),
+      call("/history", { query: { startHistoryId, historyTypes: ["messageAdded", "labelAdded"], labelId: "INBOX", pageToken } }),
     listLabels: () => call("/labels"),
     createLabel: (name, color) => call("/labels", { method: "POST",
       body: { name, labelListVisibility: "labelShow", messageListVisibility: "show", ...(color ? { color } : {}) } }),

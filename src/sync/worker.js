@@ -5,7 +5,7 @@
 // (triggered by push notifications, or by the poller as a backup).
 
 import { config } from "../config.js";
-import { many, one, q } from "../db/pool.js";
+import { many, one, q, pool } from "../db/pool.js";
 import { gmailClient, ensureLabels, normalizeMessage } from "../google/gmail.js";
 import { accessTokenFor } from "../google/tokens.js";
 import { ReauthNeeded } from "../google/oauth.js";
@@ -55,7 +55,22 @@ export function syncUser(userId, opts = {}) {
   return entry.promise;
 }
 
-async function syncOnce(userId, { client: injected } = {}) {
+// One sync per user across ALL server processes: a Postgres advisory lock,
+// held for the duration of the sync. A second process simply skips.
+async function syncOnce(userId, opts = {}) {
+  const lease = await pool.connect();
+  try {
+    const { rows } = await lease.query("SELECT pg_try_advisory_lock(hashtext($1)) AS ok", [`sync:${userId}`]);
+    if (!rows[0].ok) return { skipped: "another process is syncing this user" };
+    try { return await syncLocked(userId, opts); } finally {
+      await lease.query("SELECT pg_advisory_unlock(hashtext($1))", [`sync:${userId}`]).catch(() => {});
+    }
+  } finally {
+    lease.release();
+  }
+}
+
+async function syncLocked(userId, { client: injected } = {}) {
   const user = await one("SELECT * FROM users WHERE id = $1", [userId]);
   const state = await one("SELECT * FROM gmail_state WHERE user_id = $1", [userId]);
   if (!user || !state) return;
@@ -70,7 +85,7 @@ async function syncOnce(userId, { client: injected } = {}) {
     }
     await reconcilePending({ user, client, labels });
     const stats = state.backfill_done
-      ? await incremental({ user, state, client, labels })
+      ? await incremental({ user, state: await one("SELECT * FROM gmail_state WHERE user_id = $1", [userId]), client, labels })
       : await backfill({ user, state, client, labels });
     await q("UPDATE gmail_state SET sync_status = 'ok', sync_error = NULL, last_sync_at = now() WHERE user_id = $1", [userId]);
     publish(userId, "sync", { status: "ok", ...stats });
@@ -129,15 +144,20 @@ async function incremental({ user, state, client, labels }) {
       const res = await client.listHistory(state.history_id, pageToken);
       for (const h of res.history || []) {
         for (const a of h.messagesAdded || []) if ((a.message.labelIds || []).includes("INBOX")) ids.add(a.message.id);
+        for (const a of h.labelsAdded || []) if ((a.labelIds || []).includes("INBOX")) ids.add(a.message.id);
       }
       latest = res.historyId || latest;
       pageToken = res.nextPageToken;
     } while (pageToken);
   } catch (e) {
     if (e.status !== 404) throw e;
-    // History id too old (Gmail keeps about a week): re-check recent mail.
-    for (const id of await listIds(client, { labelIds: ["INBOX"], q: "newer_than:3d" }, 100)) ids.add(id);
+    // Gmail no longer has history that old (about a week). Take the NEW
+    // position first, so nothing arriving during the rescan is lost, then
+    // rescan everything since the last good sync (a day of margin),
+    // page by page. Already-checked messages are skipped cheaply.
     latest = (await client.profile()).historyId;
+    const since = Math.floor(((state.last_sync_at?.getTime() || Date.now() - 7 * 86400000) - 86400000) / 1000);
+    for (const id of await listIds(client, { labelIds: ["INBOX"], q: `after:${since}` }, 2000)) ids.add(id);
   }
   let checked = 0;
   for (const id of ids) if (await checkAndAct({ user, client, labels, id })) checked++;

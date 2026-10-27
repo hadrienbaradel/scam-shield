@@ -261,3 +261,32 @@ test("mail safety: without recorded consent a scam is labeled, never moved; a cr
   assert.equal((await one("SELECT action FROM checks WHERE user_id = $1 AND gmail_message_id = 'u-crash'", [fresh.id])).action, "moved");
   assert.ok(!gmail.store.get("u-crash").labelIds.includes("INBOX"));
 });
+
+test("sync: expired history rescans since the last sync, mail returning to the inbox is checked, one sync per user across processes", opts, async () => {
+  const user = await makeUser({ email: "robust@example.test", gmail: true });
+  const gmail = fakeGmail({ email: "robust@example.test", messages: [scamUsps("r1")] });
+  await syncUser(user.id, { client: gmail });
+  assert.equal((await many("SELECT 1 FROM checks WHERE user_id = $1", [user.id])).length, 1);
+
+  // Gmail has forgotten our position: the rescan still finds new mail.
+  gmail.store.set("r2", scamUsps("r2"));
+  gmail.forgetHistory();
+  await syncUser(user.id, { client: gmail });
+  assert.ok(await one("SELECT 1 FROM checks WHERE user_id = $1 AND gmail_message_id = 'r2'", [user.id]), "found by the rescan");
+
+  // A message moved back from Spam into the inbox gets a check.
+  gmail.returnToInbox(scamUsps("r3"));
+  await syncUser(user.id, { client: gmail });
+  assert.ok(await one("SELECT 1 FROM checks WHERE user_id = $1 AND gmail_message_id = 'r3'", [user.id]), "checked when it came back");
+
+  // Another server process holds this user's sync lock: this one skips.
+  const other = await pool.connect();
+  await other.query("SELECT pg_advisory_lock(hashtext($1))", [`sync:${user.id}`]);
+  gmail.deliver(scamUsps("r4"));
+  await syncUser(user.id, { client: gmail });
+  assert.equal(await one("SELECT 1 FROM checks WHERE user_id = $1 AND gmail_message_id = 'r4'", [user.id]), null);
+  await other.query("SELECT pg_advisory_unlock(hashtext($1))", [`sync:${user.id}`]);
+  other.release();
+  await syncUser(user.id, { client: gmail });
+  assert.ok(await one("SELECT 1 FROM checks WHERE user_id = $1 AND gmail_message_id = 'r4'", [user.id]));
+});

@@ -9,7 +9,20 @@ import { pool } from "./pool.js";
 
 const dir = new URL("./migrations/", import.meta.url);
 
+// Two servers starting together must not both apply a migration: the whole
+// run holds a Postgres advisory lock.
 export async function migrate(db = pool) {
+  const lock = await db.connect();
+  try {
+    await lock.query("SELECT pg_advisory_lock(hashtext('scam-shield-migrations'))");
+    return await migrateLocked(db);
+  } finally {
+    await lock.query("SELECT pg_advisory_unlock(hashtext('scam-shield-migrations'))").catch(() => {});
+    lock.release();
+  }
+}
+
+async function migrateLocked(db) {
   await db.query("CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
   const done = new Set((await db.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
   const applied = [];
