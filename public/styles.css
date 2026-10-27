@@ -100,7 +100,7 @@ select{display:block;width:100%;margin-top:.35rem;padding:.8rem;border:2px solid
 
 .btn-danger{background:var(--red);color:#fff}
 .btn-ok{background:var(--green);color:#fff}
-.small-btn{padding:.3rem .6rem;font-size:.8rem;margin-left:.5rem}
+.small-btn{min-height:44px;padding:.5rem .9rem;font-size:.95rem;margin-left:.5rem}
 .choice-row{display:flex;gap:.8rem;flex-wrap:wrap}
 .choice-row .btn{flex:1 1 200px}
 .btn.chosen{background:var(--navy);color:#fff}
@@ -108,7 +108,15 @@ select{display:block;width:100%;margin-top:.35rem;padding:.8rem;border:2px solid
 .choice input,.check input{width:28px;height:28px;margin:.15rem 0 0;flex:0 0 auto;display:inline-block}
 .check{display:flex;gap:.7rem;align-items:center;font-weight:400}
 fieldset{border:2px solid var(--line);border-radius:10px;margin:.8rem 0}
-.file-btn{position:relative}
+.skip-link{position:absolute;left:-9999px;top:0;background:var(--gold);color:var(--navy2);padding:.8rem 1.2rem;font-weight:700;z-index:20}
+.skip-link:focus{left:1rem;top:1rem}
+.email-list{list-style:none;margin:0;padding:0}
+.email-item{display:block}
+.email-item span{display:block}
+.email-item[aria-current="true"]{border-color:var(--navy);background:#eef4fb;box-shadow:inset 6px 0 0 var(--navy)}
+.next-step{font-size:1.2rem;font-weight:700}
+button[disabled]{opacity:.6;cursor:wait}
+#backToList{margin-bottom:1rem}
 
 .banner{padding:1rem 1.2rem;border-radius:12px;border:2px solid;font-weight:700}
 .banner.danger{background:var(--red-bg);border-color:var(--red);color:#7a271a}
@@ -140,3 +148,6 @@ fieldset{border:2px solid var(--line);border-radius:10px;margin:.8rem 0}
 .toast.danger{background:var(--red)}
 .toast.ok{background:var(--green)}
 @media (max-width:900px){.two-col{grid-template-columns:1fr}.hero h1{font-size:2rem}}
+[tabindex="-1"]:focus:not(:focus-visible){outline:none}
+h1[tabindex="-1"]:focus,h2[tabindex="-1"]:focus{outline:none}
+[hidden]{display:none !important}

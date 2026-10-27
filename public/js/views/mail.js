@@ -2,8 +2,8 @@
 // Gmail, with the verdict, undo, link check and "Ask my trusted person".
 
 import { api } from "../api.js";
-import { t, ago } from "../i18n.js";
-import { $, $$, esc, pill, verdictCard, readAloud, toast } from "../ui.js";
+import { t, ago, dateTime } from "../i18n.js";
+import { $, $$, esc, pill, verdictCard, readAloud, toast, focusHeading, busy } from "../ui.js";
 
 let state = { box: "inbox", messages: [], current: null, detail: null };
 
@@ -23,10 +23,10 @@ export async function renderMail(root, status, box = "inbox") {
     <div id="syncLine">${syncLine(status)}</div>
     <div class="layout">
       <section class="inbox-pane" aria-label="${t("nav_inbox")}">
-        <nav class="box-tabs" aria-label="Folders">
+        <nav class="box-tabs" aria-label="${t("folders")}">
           ${["inbox", "scam", "careful"].map((b) => `<a class="tab${b === box ? " active" : ""}" href="#/${b === "inbox" ? "inbox" : `folder/${b}`}">${t(`box_${b}`)}</a>`).join("")}
         </nav>
-        <div id="emailList" class="email-list" role="listbox" aria-label="${t("nav_inbox")}"><p>${t("please_wait")}</p></div>
+        <ul id="emailList" class="email-list" aria-label="${t(`box_${box}`)}"><li>${t("please_wait")}</li></ul>
       </section>
       <section class="reader-pane" aria-live="polite">
         <div id="emptyState" class="empty">
@@ -56,26 +56,35 @@ function renderList() {
   const list = $("#emailList");
   if (!state.messages.length) { list.innerHTML = `<p class="reassure">${t("empty_box")}</p>`; return; }
   list.innerHTML = state.messages.map((m, i) => `
-    <button class="email-item${m.unread ? " unread" : ""}" role="option" data-i="${i}" aria-selected="${state.current === m.id}">
-      <p class="email-from">${esc(m.fromName || m.from)}</p>
-      <p class="email-subject">${esc(m.subject || "(no subject)")}</p>
-      <p class="email-date">${esc(new Date(m.date).toLocaleString())}</p>
+    <li><button class="email-item${m.unread ? " unread" : ""}" data-i="${i}"${state.current === m.id ? ' aria-current="true"' : ""}>
+      <span class="email-from">${esc(m.fromName || m.from)}</span>
+      <span class="email-subject">${esc(m.subject || t("no_subject"))}</span>
+      <span class="email-date">${esc(dateTime(m.date))}</span>
       ${pill(m.check)}
-    </button>`).join("");
+    </button></li>`).join("");
   $$(".email-item", list).forEach((b) => b.addEventListener("click", () => openMessage(state.messages[Number(b.dataset.i)].id)));
 }
 
-export async function openMessage(id) {
+const narrow = () => window.matchMedia("(max-width: 900px)").matches;
+
+export async function openMessage(id, { keepFocus = false } = {}) {
   state.current = id;
   renderList();
   $("#emptyState").hidden = true;
   const reader = $("#reader");
   reader.hidden = false;
   reader.innerHTML = `<div class="verdict caution"><h3>${t("checking")}</h3><p>${t("please_wait")}</p></div>`;
+  if (narrow()) reader.scrollIntoView({ behavior: "smooth", block: "start" });
   try {
-    state.detail = await api(`/api/messages/${encodeURIComponent(id)}`);
+    const detail = await api(`/api/messages/${encodeURIComponent(id)}`);
+    // The person may have opened another email meanwhile: never show (or
+    // act on) a late answer for a message that is no longer on screen.
+    if (state.current !== id) return;
+    state.detail = detail;
     renderReader();
+    if (!keepFocus) focusHeading(reader);
   } catch (e) {
+    if (state.current !== id) return;
     reader.innerHTML = `<div class="verdict caution"><h3>${t("check_failed")}</h3><p>${esc(e.message)} ${t("check_failed_tip")}</p></div>`;
   }
 }
@@ -88,11 +97,13 @@ function answerLine(a) {
 function renderReader() {
   const { message: m, check, answers } = state.detail;
   const reader = $("#reader");
+  const id = m.id;
   const v = check?.verdict;
   const actionNote = check?.restored ? "" : check?.action === "moved" ? `<p class="note">${t("moved_note")}</p>` : check?.action === "labeled" ? `<p class="note">${t("labeled_note")}</p>` : "";
   reader.innerHTML = `
-    <p class="mail-meta">${esc(m.fromName)} &lt;${esc(m.from)}&gt; · ${esc(new Date(m.date).toLocaleString())}</p>
-    <h2 id="mailSubject">${esc(m.subject || "(no subject)")}</h2>
+    ${narrow() ? `<button id="backToList" class="btn btn-light-dark" type="button">${t("back_to_list")}</button>` : ""}
+    <p class="mail-meta">${esc(m.fromName)} &lt;${esc(m.from)}&gt; · ${esc(dateTime(m.date))}</p>
+    <h2 id="mailSubject">${esc(m.subject || t("no_subject"))}</h2>
     <div id="answers">${(answers || []).map(answerLine).join("")}</div>
     ${v ? verdictCard(v) : `<div class="verdict caution"><h3>${t("not_checked")}</h3><button class="btn btn-navy btn-big" id="checkNow">${t("check_now")}</button></div>`}
     ${actionNote}
@@ -109,35 +120,36 @@ function renderReader() {
       <button id="linksBtn" class="btn btn-light-dark" type="button">${t("where_links")}</button><div id="linkResult"></div>` : ""}
     <h3>${t("the_message")}</h3>
     <pre class="mail-body">${esc(m.body)}</pre>`;
-  $("#checkNow")?.addEventListener("click", () => recheck(false));
+  // Every action is bound to THIS message's id, never to "the current one".
+  $("#backToList")?.addEventListener("click", () => $("#emailList button[aria-current]")?.focus() || $("#emailList")?.scrollIntoView());
+  $("#checkNow")?.addEventListener("click", (e) => busy(e.currentTarget, () => recheck(id, false)));
   $("#readAloudBtn")?.addEventListener("click", () => readAloud(v));
   $("#askBtn")?.addEventListener("click", () => openAsk({ checkId: check.id, verdict: v, message: m, target: $("#askPanel") }));
-  $("#putBackBtn")?.addEventListener("click", () => act("put-back", t("put_back_done")));
-  $("#fileScamBtn")?.addEventListener("click", () => act("file-as-scam", t("file_scam_done")));
-  $("#linksBtn")?.addEventListener("click", () => recheck(true));
+  $("#putBackBtn")?.addEventListener("click", (e) => busy(e.currentTarget, () => act(id, "put-back", t("put_back_done"))));
+  $("#fileScamBtn")?.addEventListener("click", (e) => busy(e.currentTarget, () => act(id, "file-as-scam", t("file_scam_done"))));
+  $("#linksBtn")?.addEventListener("click", (e) => busy(e.currentTarget, () => recheck(id, true)));
 }
 
-async function recheck(links) {
+async function recheck(id, links) {
   const target = links ? $("#linkResult") : $("#reader");
   if (links) target.innerHTML = `<p>${t("links_checking")}</p>`;
   try {
-    const out = await api(`/api/messages/${encodeURIComponent(state.current)}/check`, { method: "POST", body: { links } });
+    const out = await api(`/api/messages/${encodeURIComponent(id)}/check`, { method: "POST", body: { links } });
+    if (state.current !== id) return;
     if (links) {
       const rows = Object.entries(out.linkInspection || {}).filter(([, i]) => i.final_url);
       target.innerHTML = rows.length ? `<ul class="link-list">${rows.map(([href, i]) => `<li>${esc(new URL(href).hostname)} ${t("link_goes")} <strong>${esc(new URL(i.final_url).hostname)}</strong>${i.domain_age_days != null ? ` · ${i.domain_age_days} d` : ""}${i.page_shows ? `<br><span class="small">${esc(i.page_shows)}</span>` : ""}</li>`).join("")}</ul>` : "";
     }
-    await openMessage(state.current);
+    await openMessage(id, { keepFocus: true });
     loadList(true);
   } catch (e) { toast(e.message, "danger"); }
 }
 
-async function act(path, done) {
-  try {
-    await api(`/api/messages/${encodeURIComponent(state.current)}/${path}`, { method: "POST", body: {} });
-    toast(done, "ok");
-    await loadList(true);
-    await openMessage(state.current);
-  } catch (e) { toast(e.message, "danger"); }
+async function act(id, path, done) {
+  await api(`/api/messages/${encodeURIComponent(id)}/${path}`, { method: "POST", body: {} });
+  toast(done, "ok");
+  await loadList(true);
+  if (state.current === id) await openMessage(id, { keepFocus: true });
 }
 
 // Shared with "Check something": preview exactly what will be shared.
@@ -155,20 +167,18 @@ export async function openAsk({ checkId, verdict, message, target, provided = fa
       <label class="check"><input type="checkbox" id="includeText"> ${t("ask_include_text")}</label>
       <button id="sendAsk" class="btn btn-gold btn-big" type="button">${esc(t("ask_send", { names: active.map((g) => g.name).join(", ") }))}</button>
     </div>`;
-  $("#sendAsk", target).addEventListener("click", async () => {
+  $("#sendAsk", target).addEventListener("click", (ev) => busy(ev.currentTarget, async () => {
     const ids = $$("input[name=g]:checked", target).map((i) => i.value);
-    try {
-      const out = await api("/api/ask", { method: "POST", body: { checkId, guardianshipIds: ids, includeText: $("#includeText", target).checked, message: provided ? message : undefined } });
-      target.innerHTML = `<p class="answer info">${esc(t("ask_sent", { names: out.sentTo.join(", ") }))}</p>`;
-    } catch (e) { toast(e.message, "danger"); }
-  });
+    const out = await api("/api/ask", { method: "POST", body: { checkId, guardianshipIds: ids, includeText: $("#includeText", target).checked, message: provided ? message : undefined } });
+    target.innerHTML = `<p class="answer info">${esc(out.alreadyAsked ? t("ask_already") : t("ask_sent", { names: out.sentTo.join(", ") }))}</p>`;
+  }));
 }
 
 // Live events from the server.
 export function onCheck() { loadList(true); }
 export function onAnswer(a) {
   toast(t(`answer_${a.answer}`, { name: a.guardianName }), a.answer === "scam" ? "danger" : "ok");
-  if (state.current && state.detail?.check?.id === a.checkId) openMessage(state.current);
+  if (state.current && state.detail?.check?.id === a.checkId) openMessage(state.current, { keepFocus: true });
 }
 export function onSync(status) {
   const el = $("#syncLine");

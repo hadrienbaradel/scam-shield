@@ -15,19 +15,38 @@ export function pill(check) {
   return `<span class="pill ${verdictClass(v)}">${t(v === "scam" ? "pill_scam" : v === "be_careful" ? "pill_careful" : "pill_safe")}</span>`;
 }
 
+// One next step, said once; certainty in words, not a precise-looking
+// percentage the model cannot back up.
 export function verdictCard(v) {
-  const steps = [v.action_text, v.real_company_says].filter(Boolean);
+  const sure = v.confidence >= 0.9 ? "sure_high" : v.confidence >= 0.75 ? "sure_mid" : "sure_low";
   return `
     <div class="verdict ${verdictClass(v.verdict)}" role="alert">
       <h3>${esc(v.headline)}</h3>
-      <p>${esc(v.action_text)}</p>
-      <p class="score">${t("confidence", { n: Math.round((v.confidence || 0) * 100) })}</p>
+      <p class="next-step">${esc(v.action_text)}</p>
+      <p class="score">${t(sure)}</p>
     </div>
     <h3>${t("why")}</h3>
     <ul class="why-list">${(v.reasons || []).map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>
-    <h3>${t("what_now")}</h3>
-    <ol class="steps-list">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+    ${v.real_company_says ? `<p class="note">${esc(v.real_company_says)}</p>` : ""}
     <p class="small">${esc(t("checked_by", { source: v.source || "Scam Shield" }))}</p>`;
+}
+
+// Moves keyboard and screen-reader focus to a freshly drawn heading.
+export function focusHeading(root = document) {
+  const h = root.querySelector("h1, h2");
+  if (!h) return;
+  h.setAttribute("tabindex", "-1");
+  h.focus({ preventScroll: false });
+}
+
+// Disables a button while its action runs; shows errors instead of
+// leaving the screen pretending something was saved.
+export async function busy(button, fn, label) {
+  const before = button?.textContent;
+  if (button) { button.disabled = true; if (label) button.textContent = label; }
+  try { return await fn(); } catch (e) { toast(e.message, "danger"); return undefined; } finally {
+    if (button) { button.disabled = false; if (label) button.textContent = before; }
+  }
 }
 
 export function readAloud(v) {

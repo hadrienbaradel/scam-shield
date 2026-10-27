@@ -48,7 +48,7 @@ const STRINGS = {
     labeled_note: "We added a Scam Shield label. It is still in your inbox.",
     ask_title: "Ask someone you trust", ask_preview: "This is what they will see:", ask_include_text: "Also show them the text of the message",
     ask_send: "Send to {names}", ask_sent: "Sent to {names}. Their answer will appear here.", ask_none: "Add a trusted person first, on the “My trusted people” page.",
-    ask_to: "Who should see it?",
+    ask_to: "Who should see it?", ask_already: "You already asked about this message. Their answer will appear here.",
     answer_scam: "{name} says: it's a scam. Delete it, don't reply.", answer_real: "{name} says: it's a real message.", answer_call_me: "{name} will call you about it.",
     answer_waiting: "Waiting for {name}'s answer…",
     check_title: "Check something that is not in your email", check_lead: "A text message, a WhatsApp, a letter, a pop-up on your screen: paste the words or send a picture.",
@@ -84,6 +84,9 @@ const STRINGS = {
     demo_signin: "Protect my own email",
     footer: "Scam Shield is a helper, not a guarantee. If money is involved, always call the number on your card or statement — never a number from a message.",
     privacy: "Privacy", terms: "Terms",
+    no_subject: "(no subject)", folders: "Folders", skip: "Skip to content", back_to_list: "← Back to my emails",
+    sure_high: "We are very sure.", sure_mid: "We are fairly sure.", sure_low: "We are not sure: be careful.",
+    retry: "Try again", saving: "Saving…", load_failed: "Scam Shield could not load. Check your internet connection.",
     error_generic: "Something went wrong. To be safe, do not click anything in the message.",
     when_now: "just now", when_min: "{n} min ago", when_hour: "{n} h ago", when_day: "{n} days ago",
   },
@@ -133,7 +136,7 @@ const STRINGS = {
     labeled_note: "Nous avons ajouté une étiquette Scam Shield. Il est toujours dans votre boîte.",
     ask_title: "Demander à une personne de confiance", ask_preview: "Voici ce qu'elle verra :", ask_include_text: "Lui montrer aussi le texte du message",
     ask_send: "Envoyer à {names}", ask_sent: "Envoyé à {names}. La réponse s'affichera ici.", ask_none: "Ajoutez d'abord un proche de confiance, dans « Mes proches de confiance ».",
-    ask_to: "Qui doit le voir ?",
+    ask_to: "Qui doit le voir ?", ask_already: "Vous avez déjà demandé pour ce message. La réponse s'affichera ici.",
     answer_scam: "{name} dit : c'est une arnaque. Supprimez-le, ne répondez pas.", answer_real: "{name} dit : c'est un vrai message.", answer_call_me: "{name} va vous appeler à ce sujet.",
     answer_waiting: "En attente de la réponse de {name}…",
     check_title: "Vérifier un message qui n'est pas dans vos e-mails", check_lead: "Un SMS, un WhatsApp, un courrier, une fenêtre sur votre écran : collez le texte ou envoyez une photo.",
@@ -169,6 +172,9 @@ const STRINGS = {
     demo_signin: "Protéger mes propres e-mails",
     footer: "Scam Shield est une aide, pas une garantie. S'il est question d'argent, appelez toujours le numéro au dos de votre carte — jamais un numéro trouvé dans un message.",
     privacy: "Confidentialité", terms: "Conditions",
+    no_subject: "(sans objet)", folders: "Dossiers", skip: "Aller au contenu", back_to_list: "← Retour à mes e-mails",
+    sure_high: "Nous en sommes très sûrs.", sure_mid: "Nous en sommes plutôt sûrs.", sure_low: "Nous ne sommes pas sûrs : prudence.",
+    retry: "Réessayer", saving: "Enregistrement…", load_failed: "Scam Shield n'a pas pu se charger. Vérifiez votre connexion internet.",
     error_generic: "Un problème est survenu. Par prudence, ne cliquez sur rien dans le message.",
     when_now: "à l'instant", when_min: "il y a {n} min", when_hour: "il y a {n} h", when_day: "il y a {n} jours",
   },
@@ -181,6 +187,8 @@ export function t(key, vars = {}) {
   const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
 }
+export const dateTime = (iso) => new Date(iso).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { dateStyle: "medium", timeStyle: "short" });
+
 export function ago(iso) {
   if (!iso) return "";
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);

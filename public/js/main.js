@@ -2,8 +2,8 @@
 
 import { api, events } from "./api.js";
 import { t, setLang, getLang } from "./i18n.js";
-import { $, esc } from "./ui.js";
-import { renderMail, onCheck, onAnswer, onSync } from "./views/mail.js";
+import { $, esc, focusHeading } from "./ui.js";
+import { renderMail, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
 import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
 
 let status = null;
@@ -20,6 +20,7 @@ function applyPrefs() {
 function renderChrome() {
   const u = status.user;
   $("#tagline").textContent = t("tagline");
+  $("#skipLink").textContent = t("skip");
   $("#footerText").textContent = t("footer");
   $("#privacyLink").textContent = t("privacy");
   $("#termsLink").textContent = t("terms");
@@ -40,6 +41,11 @@ function renderChrome() {
 }
 
 async function route() {
+  await draw();
+  if (!location.hash.startsWith("#/inbox") && !location.hash.startsWith("#/folder")) focusHeading(view());
+}
+
+async function draw() {
   const hash = location.hash || "#/";
   const root = view();
   const u = status.user;
@@ -73,10 +79,23 @@ async function refresh(reroute = true) {
       context: () => {},
       alert: () => { if (location.hash.startsWith("#/guardian")) route(); },
       guardian: () => { if (location.hash.startsWith("#/people")) route(); },
+    }, async () => {
+      status = await api("/api/status");
+      onSync(status);
+      loadList(true);
+      if (location.hash.startsWith("#/guardian")) route();
     });
   }
   if (reroute) await route();
 }
 
 window.addEventListener("hashchange", () => { renderChrome(); route(); });
-refresh();
+
+// Startup must never leave a blank page: say what happened and offer a retry.
+async function start() {
+  try { await refresh(); } catch {
+    $("#view").innerHTML = `<section class="card narrow"><p class="banner danger">${esc(t("load_failed"))}</p><button id="retryStart" class="btn btn-navy btn-big">${esc(t("retry"))}</button></section>`;
+    $("#retryStart").addEventListener("click", start);
+  }
+}
+start();

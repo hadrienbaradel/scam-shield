@@ -15,8 +15,13 @@ export async function api(path, { method = "GET", body, form } = {}) {
   return data;
 }
 
-export function events(handlers) {
+// Live events. After a dropped connection, onReconnect refetches what may
+// have changed meanwhile (no event is replayed by the server).
+export function events(handlers, onReconnect) {
   const es = new EventSource("/api/events");
+  let dropped = false;
+  es.addEventListener("error", () => { dropped = true; });
+  es.addEventListener("open", () => { if (dropped) { dropped = false; onReconnect?.(); } });
   for (const [type, fn] of Object.entries(handlers)) es.addEventListener(type, (e) => fn(JSON.parse(e.data || "{}")));
   return es;
 }

@@ -3,8 +3,8 @@
 // guardian answers, scam-report review, and the public examples.
 
 import { api } from "../api.js";
-import { t, ago, getLang } from "../i18n.js";
-import { $, $$, esc, verdictCard, readAloud, toast, pill } from "../ui.js";
+import { t, ago, getLang, dateTime } from "../i18n.js";
+import { $, $$, esc, verdictCard, readAloud, toast, pill, busy } from "../ui.js";
 import { openAsk } from "./mail.js";
 
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
@@ -100,9 +100,9 @@ export function renderCheck(root, status) {
         </form>
         <div class="stack">
           <h2>${t("photo_title")}</h2><p>${t("photo_lead")}</p>
-          ${status.museConfigured ? `<label class="btn btn-gold btn-big file-btn">${t("photo_btn")}<input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>` : `<p class="banner caution">${t("photo_needs_muse")}</p>`}
+          ${status.museConfigured ? `<button id="photoBtn" class="btn btn-gold btn-big" type="button">${t("photo_btn")}</button><input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>` : `<p class="banner caution">${t("photo_needs_muse")}</p>`}
           <h2>${t("eml_title")}</h2><p>${t("eml_lead")}</p>
-          <label class="btn btn-light-dark btn-big file-btn">${t("eml_btn")}<input id="emlInput" type="file" accept=".eml,message/rfc822" hidden></label>
+          <button id="emlBtn" class="btn btn-light-dark btn-big" type="button">${t("eml_btn")}</button><input id="emlInput" type="file" accept=".eml,message/rfc822" hidden>
         </div>
       </div>
       <div id="checkResult" aria-live="polite"></div>
@@ -120,6 +120,9 @@ export function renderCheck(root, status) {
     $("#checkResult").innerHTML = `<div class="verdict caution"><h3>${t("checking")}</h3></div>`;
     try { show(await api("/api/check/text", { method: "POST", body: Object.fromEntries(new FormData(ev.target)) })); } catch (e) { $("#checkResult").innerHTML = `<p class="banner danger">${esc(e.message)}</p>`; }
   });
+  // Real, focusable buttons open the hidden file pickers.
+  $("#photoBtn")?.addEventListener("click", () => $("#photoInput").click());
+  $("#emlBtn").addEventListener("click", () => $("#emlInput").click());
   $("#emlInput").addEventListener("change", async (ev) => {
     const file = ev.target.files[0];
     if (!file) return;
@@ -191,11 +194,17 @@ export async function renderSettings(root, status, refresh) {
       <button id="rebuild" class="btn btn-light-dark btn-big">${t("k_rebuild")}</button>
     </section>
     <section class="card"><h2>${t("history_title")}</h2><p class="small">${t("history_lead")}</p>
-      <ul class="history">${events.slice(0, 30).map((e) => `<li><span class="small">${esc(new Date(e.at).toLocaleString())}</span> ${esc(e.event.replaceAll("_", " "))}</li>`).join("")}</ul></section>
+      <ul class="history">${events.slice(0, 30).map((e) => `<li><span class="small">${esc(dateTime(e.at))}</span> ${esc(e.event.replaceAll("_", " "))}</li>`).join("")}</ul></section>
     <section class="card danger-zone"><h2>${t("delete_title")}</h2><p>${t("delete_lead")}</p><div id="deleteArea"><button id="deleteBtn" class="btn btn-danger btn-big">${t("delete_btn")}</button></div></section>`;
-  const save = async (body) => { await api("/api/me", { method: "PATCH", body }); toast(t("saved"), "ok"); await refresh(false); };
-  $$(".set-lang", root).forEach((b) => b.addEventListener("click", () => save({ locale: b.dataset.l })));
-  $$(".set-size", root).forEach((b) => b.addEventListener("click", () => save({ textScale: Number(b.dataset.s) })));
+  // Saves re-draw the whole screen from the server, so what is shown is
+  // what was saved (or the error), never a stale choice.
+  const save = (body, button) => busy(button, async () => {
+    await api("/api/me", { method: "PATCH", body });
+    toast(t("saved"), "ok");
+    await refresh(true);
+  }, t("saving"));
+  $$(".set-lang", root).forEach((b) => b.addEventListener("click", () => save({ locale: b.dataset.l }, b)));
+  $$(".set-size", root).forEach((b) => b.addEventListener("click", () => save({ textScale: Number(b.dataset.s) }, b)));
   $$("input[name=mode]", root).forEach((r) => r.addEventListener("change", () => save({ actMode: r.value })));
   $("#autoAlert").addEventListener("change", (e) => save({ autoAlert: e.target.checked }));
   $$("input[name=breach]", root).forEach((c) => c.addEventListener("change", async () => {
