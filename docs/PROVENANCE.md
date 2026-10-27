@@ -1,6 +1,8 @@
 # What was built during the hackathon
 
-Scam Shield was written during the Meta Global AI Developer Hackathon. The event began with the kickoff livestream on **Monday, Oct 26, 2026**, announced by the organizers for "12:00 PM EST (9:00 AM PT)". Eastern clocks were on daylight time that day, so that is 12:00 PM EDT (16:00 UTC) if "EST" meant Eastern time, or 17:00 UTC if it was literal. We will ask the organizers to confirm and record their answer here.
+Scam Shield was written during the Meta Global AI Developer Hackathon. The event began with the kickoff livestream on **Monday, Oct 26, 2026 at 12:00 PM ET**: the participant guide states "All times are in Eastern Time (ET)", and Eastern clocks were on daylight time that day, so the kickoff was 12:00 PM EDT (16:00 UTC). The event page reads "Oct 26 at 12:00 PM – Nov 4 at 9:00 PM".
+
+The guide also lists a "Building period: Oct 27 – Nov 4". Our work started after the kickoff on Oct 26, and most of it was done that evening: 25 of the first 27 commits are from Oct 26 between 8:12 PM and 11:56 PM ET. We will ask the organizers to confirm that work after the kickoff on Oct 26 counts as built during the event, and record their answer here.
 
 All times below are Eastern daylight time (UTC−4) on Oct 26 unless stated. They come from the files' creation times and the git history, which anyone can check.
 
