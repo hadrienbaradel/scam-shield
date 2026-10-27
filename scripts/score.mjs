@@ -7,7 +7,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { detect } from "../lib/detector.js";
 import { validateVerdict, pickVerdictFields } from "../lib/schema.js";
-import { checkMessage, museConfigured, museModel } from "../lib/muse.js";
+import { checkMessage, museConfigured, museLabel, museModel } from "../lib/muse.js";
 import { fileCache, usageSummary } from "./muse-file-cache.mjs";
 
 const root = new URL("../", import.meta.url);
@@ -22,7 +22,7 @@ const { cases } = await load("testcases/cases.json");
 
 const useMuse = process.argv.includes("--muse");
 if (useMuse && !museConfigured()) {
-  console.error("--muse needs META_MODEL_API_KEY (set it with: node scripts/set-env.mjs META_MODEL_API_KEY=...)");
+  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (node scripts/set-env.mjs META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
   process.exit(2);
 }
 const cache = useMuse ? await fileCache(new URL(".runtime/eval/muse-cache.json", root).pathname) : null;
@@ -59,7 +59,7 @@ for (const r of rows) {
   if (r.pass) bySet[r.set].pass++;
 }
 const falseScams = rows.filter((r) => r.falseScam);
-console.log(`Scam Shield regression (PRD pass criteria: A 100%, C no false Scam)${useMuse ? ` with Muse Spark (${museModel()})` : ""}`);
+console.log(`Scam Shield regression (PRD pass criteria: A 100%, C no false Scam)${useMuse ? ` with ${museLabel()} (${museModel()})` : ""}`);
 for (const r of rows) {
   const extra = useMuse ? ` detector=${r.detector}${r.degraded ? " DEGRADED" : ""}${r.guardrail ? ` guardrail=${JSON.stringify(r.guardrail).slice(0, 60)}` : ""}` : "";
   console.log(`${r.pass ? "PASS" : "FAIL"} ${r.id.padEnd(4)} set ${r.set} expected=${r.expected} got=${r.got} conf=${r.confidence}${extra}`);

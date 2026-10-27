@@ -22,7 +22,7 @@ import { detect } from "../lib/detector.js";
 import { emptyContext } from "../lib/context.js";
 import { domainOf } from "../lib/brands.js";
 import { htmlToText, linksFromHtml, linksFromText, parseAddress } from "../src/google/gmail.js";
-import { checkMessage, museConfigured, museModel } from "../lib/muse.js";
+import { checkMessage, museConfigured, museLabel, museModel } from "../lib/muse.js";
 import { fileCache, usageSummary } from "./muse-file-cache.mjs";
 
 const args = process.argv.slice(2);
@@ -34,7 +34,7 @@ const seed = Number(opt("--seed", 1));
 const useMuse = args.includes("--muse");
 if (useMuse) args.splice(args.indexOf("--muse"), 1);
 if (useMuse && !museConfigured()) {
-  console.error("--muse needs META_MODEL_API_KEY (set it with: node scripts/set-env.mjs META_MODEL_API_KEY=...)");
+  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (node scripts/set-env.mjs META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
   process.exit(2);
 }
 if (useMuse && !sample && !limit) {
@@ -130,7 +130,7 @@ if (cache) await cache.save();
 const report = {};
 for (const engine of engines) {
 const summary = summaries[engine];
-if (useMuse) console.log(`\n######## ${engine === "muse" ? `Muse Spark (${museModel()}) with detector evidence` : "Detector only"}`);
+if (useMuse) console.log(`\n######## ${engine === "muse" ? `${museLabel()} (${museModel()}) with detector evidence` : "Detector only"}`);
 for (const s of summary) {
   console.log(`\n== ${s.file}: ${s.rows} messages in ${s.ms} ms`);
   if (s.positives) console.log(`   label 1 (${s.positives}): Scam ${pct(s.scam, s.positives)} · Be careful ${pct(s.careful, s.positives)} · flagged ${pct(s.scam + s.careful, s.positives)} · missed (Safe) ${pct(s.missed, s.positives)}`);
