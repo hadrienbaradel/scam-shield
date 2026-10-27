@@ -159,7 +159,7 @@ test("links: RDAP domain age, and only unknown domains are looked up", async () 
   const fetchImpl = async (url) => {
     seen.push(url);
     if (url === "https://data.iana.org/rdap/dns.json") return new Response(JSON.stringify({ services: [[["top"], ["https://rdap.example-registry.test/"]], [["com"], ["https://rdap.verisign.test/com/v1/"]]] }), { status: 200 });
-    if (url.includes("rdap.example-registry.test/domain/fresh-scam.top")) return new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: new Date(Date.now() - 4 * 86400000).toISOString() }] }), { status: 200 });
+    if (url.includes("rdap.example-registry.test/domain/fresh-scam.top")) return new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: new Date(Date.now() - 4.5 * 86400000).toISOString() }] }), { status: 200 });
     return new Response("{}", { status: 404 });
   };
   assert.equal(await domainAgeDays("www.fresh-scam.top", { fetchImpl }), 4);
