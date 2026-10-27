@@ -3,6 +3,7 @@ import "./helpers/env.js";
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { checkMessage, extractFromImage, compactContext, buildUserPrompt, redactForModel, breaker } from "../lib/muse.js";
+import { detect } from "../lib/detector.js";
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; delete process.env.META_MODEL_API_KEY; delete process.env.META_MODEL_NAME; breaker.failures = 0; breaker.openUntil = 0; });
@@ -106,6 +107,18 @@ test("the model never receives contacts' names, addresses or phones, only what b
   assert.deepEqual(c.recent_orders, [], "orders only when the message is about a delivery");
   const fromEthan = compactContext(ctx, { from: "ethan@example.test", fromName: "Ethan", subject: "hi", body: "hello" });
   assert.deepEqual(fromEthan.sender_is_trusted_contact, { relation: "grandson" });
+  // A name anyone can type is a claim, not the person.
+  const posing = compactContext(ctx, { from: "ethan.new@gmail.test", fromName: "Ethan", subject: "hi", body: "send money" });
+  assert.equal(posing.sender_is_trusted_contact, null);
+  assert.deepEqual(posing.claims_to_be_trusted_contact, { relation: "grandson", from_their_saved_address_or_number: false });
+  assert.equal(compactContext(ctx, { channel: "sms", from: "+15550142", body: "hi" }).sender_is_trusted_contact?.relation, "grandson", "same number, other formatting");
+  // The detector's evidence tells the user the saved address; the model never sees it.
+  const input = { locale: "en-US", personalContext: ctx, patternCards: [], threadHistory: [],
+    message: { channel: "email", from: "ethan.new@gmail.test", fromName: "Ethan", subject: "photos", body: "Hi Grandma, photos here", links: [] } };
+  const v = detect(input);
+  assert.ok(v.reasons.some((r) => r.text.includes("ethan@example.test")), "the user is told which address is the real one");
+  const prompt = buildUserPrompt(input, { findings: v._signals.map((x) => ({ fact: x.forModel || x.text })) });
+  assert.ok(!prompt.includes("ethan@example.test") && !prompt.includes("0142"), "saved address and number stay out of the prompt");
 });
 
 test("personal numbers, codes and the user's name are replaced before the model sees them", () => {

@@ -39,7 +39,7 @@ Work through these checks before answering.
 - Bank, telecom, toll, utility: is it really their provider, and does the message match how that company writes to them?
 - Real personal data in the message (name, address, IBAN, an old password) does NOT prove it is genuine when `<personal_context>` shows a breach that leaked that data. Treat it as a reason for caution, and say so.
 - Pressure and payment: deadlines in hours, threats (arrest, suspension, fees), secrecy ("don't tell your bank or family"), and payment methods legitimate organizations don't use this way: gift cards, crypto or crypto ATMs, wires to a "safe account", sending money to yourself, cash or cards handed to a courier, verification codes read back.
-- Known contacts: if the sender is a trusted contact but the request is out of character (money, gift cards, secrecy, a new number, a different reply-to), the account may be hacked or impersonated.
+- Known contacts: `sender_is_trusted_contact` means the message comes from that person's saved address or number; if the request is out of character (money, gift cards, secrecy, a different reply-to), their account may be hacked. `claims_to_be_trusted_contact` means it only uses their name from another address or number ("new number"): never treat that as the real person; the safe step is calling them on the number the user already has.
 - Pattern cards: an "active" card matching the brand, channel and request supports a scam verdict. A "candidate" card can support at most be_careful.
 - Threads: judge the direction of the whole conversation. Flattery, then isolation from family, then money is a scam pattern even when each message alone looks harmless.
 
