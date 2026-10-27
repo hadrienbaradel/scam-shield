@@ -20,6 +20,7 @@ export async function liveCards() {
 }
 
 export async function runCheck({ user, message, threadHistory = [], resolveLinks = false }) {
+  // (resolveLinks: follow redirects too, only when the person asks)
   const ctx = await loadContext(user);
   const linkInspection = await inspectMessageLinks(message, ctx, { resolve: resolveLinks });
   const verdict = await checkMessage({
@@ -29,10 +30,12 @@ export async function runCheck({ user, message, threadHistory = [], resolveLinks
   return { verdict, ctx, linkInspection };
 }
 
-export async function recordCheck({ userId, message, verdict, channel = "email", action = "none" }) {
-  return one(`INSERT INTO checks (user_id, gmail_message_id, gmail_thread_id, channel, sender_domain, verdict, verdict_value, source, latency_ms, action)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+// The insert is also the claim: of two workers checking the same message,
+// only one gets a row back and may touch Gmail.
+export async function recordCheck({ userId, message, verdict, channel = "email", action = "none", planned = null }) {
+  return one(`INSERT INTO checks (user_id, gmail_message_id, gmail_thread_id, channel, sender_domain, verdict, verdict_value, source, latency_ms, action, planned)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
               ON CONFLICT (user_id, gmail_message_id) DO NOTHING RETURNING *`,
   [userId, message.id && channel === "email" ? message.id : null, message.threadId || null, channel,
-    domainOf(message.from || "") || null, verdict, verdict.verdict, verdict.source || null, verdict.latency_ms || null, action]);
+    domainOf(message.from || "") || null, verdict, verdict.verdict, verdict.source || null, verdict.latency_ms || null, action, planned]);
 }

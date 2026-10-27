@@ -2,10 +2,11 @@
 // (tested on its own), then the Gmail calls.
 // - safe: nothing.
 // - be_careful: label "Scam Shield/Check first", stays in the inbox.
-// - scam: label "Scam Shield/Scam"; moved out of the inbox when the user
-//   chose that, EXCEPT for an authenticated sender this user already knows
-//   (a known sender, a provider's real address, a trusted contact). Those
-//   are labeled only: a mistake must never hide real mail.
+// - scam: label "Scam Shield/Scam"; moved out of the inbox only when the
+//   person explicitly chose "move" (consent recorded), the AI check did not
+//   fail half-way, and the sender is not an authenticated sender this user
+//   already knows (a known sender, a provider's real address, a trusted
+//   contact). Otherwise labeled only: a mistake must never hide real mail.
 // Every move can be undone with "Put it back".
 
 import { domainOf, sameOrSub } from "../../lib/brands.js";
@@ -22,12 +23,13 @@ export function isProtectedSender(message, ctx = {}) {
     || (ctx.trustedContacts || []).some((c) => c.email?.toLowerCase() === from);
 }
 
-export function decideAction({ verdict, message, ctx, actMode }) {
+export function decideAction({ verdict, message, ctx, actMode, moveConsent = false }) {
   if (verdict.verdict === "safe") return { label: null, removeInbox: false, protectedSender: false };
   const protectedSender = isProtectedSender(message, ctx);
+  const mayMove = actMode === "move" && moveConsent && !verdict.degraded;
   return {
     label: verdict.verdict === "scam" ? "scam" : "careful",
-    removeInbox: verdict.verdict === "scam" && actMode === "move" && !protectedSender,
+    removeInbox: verdict.verdict === "scam" && mayMove && !protectedSender,
     protectedSender,
   };
 }

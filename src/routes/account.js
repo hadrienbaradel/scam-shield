@@ -51,7 +51,11 @@ export default async function accountRoutes(app) {
       if (typeof b.name === "string" && b.name.trim()) set("name", b.name.trim().slice(0, 80));
       if (["en-US", "fr-FR"].includes(b.locale)) set("locale", b.locale);
       if (typeof b.textScale === "number" && b.textScale >= 1 && b.textScale <= 1.6) set("text_scale", b.textScale);
-      if (["label", "move"].includes(b.actMode)) set("act_mode", b.actMode);
+      if (["label", "move"].includes(b.actMode)) {
+        set("act_mode", b.actMode);
+        // Moving mail needs an explicit choice; the moment is recorded.
+        sets.push(b.actMode === "move" ? "move_consent_at = now()" : "move_consent_at = NULL");
+      }
       if (typeof b.autoAlert === "boolean") set("auto_alert", b.autoAlert);
       if (typeof b.onboarded === "boolean") set("onboarded", b.onboarded);
       if (sets.length) await q(`UPDATE users SET ${sets.join(", ")} WHERE id = $1`, vals);

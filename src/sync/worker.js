@@ -68,6 +68,7 @@ async function syncOnce(userId, { client: injected } = {}) {
       labels = await ensureLabels(client);
       await q("UPDATE gmail_state SET label_scam = $2, label_careful = $3 WHERE user_id = $1", [userId, labels.scam, labels.careful]);
     }
+    await reconcilePending({ user, client, labels });
     const stats = state.backfill_done
       ? await incremental({ user, state, client, labels })
       : await backfill({ user, state, client, labels });
@@ -153,7 +154,7 @@ async function threadHistoryFor(client, msg) {
   } catch { return []; }
 }
 
-export async function checkAndAct({ user, client, labels, id, known }) {
+export async function checkAndAct({ user, client, labels, id, known, resolveLinks = false }) {
   if (await one("SELECT 1 FROM checks WHERE user_id = $1 AND gmail_message_id = $2", [user.id, id])) return false;
   let raw;
   try { raw = await client.getMessage(id); } catch (e) { if (e.status === 404) return false; throw e; }
@@ -162,17 +163,43 @@ export async function checkAndAct({ user, client, labels, id, known }) {
   const self = (await one("SELECT email FROM gmail_state WHERE user_id = $1", [user.id]))?.email || user.email;
   if (message.from === String(self).toLowerCase()) return false;
 
-  const { verdict, ctx } = await runCheck({ user, message, threadHistory: await threadHistoryFor(client, raw) });
-  const decision = decideAction({ verdict, message, ctx, actMode: user.act_mode });
-  const action = await applyDecision(client, labels, id, decision);
-  const check = await recordCheck({ userId: user.id, message, verdict, channel: "email", action });
+  const { verdict, ctx } = await runCheck({ user, message, threadHistory: await threadHistoryFor(client, raw), resolveLinks });
+  const decision = decideAction({ verdict, message, ctx, actMode: user.act_mode, moveConsent: Boolean(user.move_consent_at) });
+  // Claim the message and write down what we are about to do BEFORE
+  // touching Gmail: if we crash in between, the next sync finishes it.
+  const check = await recordCheck({ userId: user.id, message, verdict, channel: "email",
+    action: decision.label ? "pending" : "none", planned: decision.label ? decision : null });
   if (!check) return false;
-  if (action !== "none") await audit(user.id, action === "moved" ? "moved_out_of_inbox" : "labeled", { checkId: check.id, messageId: id, verdict: verdict.verdict, protectedSender: decision.protectedSender });
+  const action = decision.label ? await finishAction({ client, labels, check, decision, userId: user.id }) : "none";
   publish(user.id, "check", { checkId: check.id, messageId: id, verdict: verdict.verdict, action });
   if (user.auto_alert && verdict.escalate_to_guardian && verdict.verdict !== "safe") {
     await alertGuardians({ senior: user, checkId: check.id, shared: sharedFrom(message, verdict, false), auto: true });
   }
   return true;
+}
+
+// Applying a decision is idempotent (adding a label twice is harmless), so
+// a pending action can be retried until it is recorded as done.
+export async function finishAction({ client, labels, check, decision, userId }) {
+  const action = await applyDecision(client, labels, check.gmail_message_id, decision);
+  await q("UPDATE checks SET action = $2, planned = NULL WHERE id = $1", [check.id, action]);
+  if (action !== "none") {
+    await audit(userId, action === "moved" ? "moved_out_of_inbox" : "labeled",
+      { checkId: check.id, messageId: check.gmail_message_id, verdict: check.verdict_value, protectedSender: decision.protectedSender });
+  }
+  return action;
+}
+
+async function reconcilePending({ user, client, labels }) {
+  const pending = await many(`SELECT * FROM checks WHERE user_id = $1 AND action = 'pending' AND created_at > now() - interval '7 days'`, [user.id]);
+  for (const check of pending) {
+    try {
+      await finishAction({ client, labels, check, decision: check.planned, userId: user.id });
+    } catch (e) {
+      if (e.status !== 404) throw e;
+      await q("UPDATE checks SET action = 'none', planned = NULL WHERE id = $1", [check.id]);
+    }
+  }
 }
 
 // Exactly what a guardian gets to see. The email text itself is included

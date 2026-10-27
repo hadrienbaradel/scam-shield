@@ -201,3 +201,31 @@ test("HTTP: an uploaded .eml is checked and not stored", opts, async () => {
   assert.equal(row.channel, "email_file");
   assert.ok(!JSON.stringify(row).includes("Operation inhabituelle"));
 });
+
+test("mail safety: without recorded consent a scam is labeled, never moved; a crash mid-action is finished next sync", opts, async () => {
+  const fresh = await one(`INSERT INTO users (google_sub, email, name) VALUES ('sub-fresh-${Date.now()}', 'fresh@example.test', 'Fresh') RETURNING *`);
+  assert.equal(fresh.act_mode, "label", "new accounts start label-only");
+  await pool.query("INSERT INTO gmail_state (user_id, email) VALUES ($1, $2)", [fresh.id, fresh.email]);
+  await pool.query("INSERT INTO google_tokens (user_id, scopes, status) VALUES ($1, 'https://www.googleapis.com/auth/gmail.modify', 'ok')", [fresh.id]);
+  const gmail = fakeGmail({ email: fresh.email, messages: [scamUsps("u-fresh")] });
+  await syncUser(fresh.id, { client: gmail });
+  const state = await one("SELECT * FROM gmail_state WHERE user_id = $1", [fresh.id]);
+  assert.deepEqual(gmail.modifications, [{ id: "u-fresh", add: [state.label_scam], remove: [] }], "labeled only");
+
+  // Consent to move via the settings API.
+  const h = { cookie: await sessionFor(fresh), origin: ORIGIN };
+  await app.inject({ method: "PATCH", url: "/api/me", headers: h, payload: { actMode: "move" } });
+  assert.ok((await one("SELECT move_consent_at FROM users WHERE id = $1", [fresh.id])).move_consent_at);
+
+  // Gmail fails right after the check is recorded: the intent stays pending...
+  const failing = { ...gmail, modifyLabels: async () => { throw Object.assign(new Error("Gmail 503"), { status: 503 }); } };
+  gmail.deliver(scamUsps("u-crash"));
+  await syncUser(fresh.id, { client: failing });
+  const pending = await one("SELECT action, planned FROM checks WHERE user_id = $1 AND gmail_message_id = 'u-crash'", [fresh.id]);
+  assert.equal(pending.action, "pending");
+  assert.equal(pending.planned.removeInbox, true);
+  // ...and the next sync finishes it, even though the message's history entry is gone.
+  await syncUser(fresh.id, { client: gmail });
+  assert.equal((await one("SELECT action FROM checks WHERE user_id = $1 AND gmail_message_id = 'u-crash'", [fresh.id])).action, "moved");
+  assert.ok(!gmail.store.get("u-crash").labelIds.includes("INBOX"));
+});

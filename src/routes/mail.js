@@ -8,9 +8,9 @@ import { many, one } from "../db/pool.js";
 import { normalizeMessage, header, parseAddress, linksFromText } from "../google/gmail.js";
 import { parseEml } from "../google/eml.js";
 import { extractFromImage, museConfigured } from "../../lib/muse.js";
-import { clientFor, mapLimit, sharedFrom } from "../sync/worker.js";
+import { clientFor, mapLimit, sharedFrom, finishAction } from "../sync/worker.js";
 import { runCheck, recordCheck } from "../sync/checker.js";
-import { putBack, fileAsScam, decideAction, applyDecision } from "../sync/actions.js";
+import { putBack, fileAsScam, decideAction } from "../sync/actions.js";
 import { alertGuardians, answersForSenior } from "../guardians.js";
 import { ReauthNeeded } from "../google/oauth.js";
 
@@ -87,11 +87,14 @@ export default async function mailRoutes(app) {
       const { verdict, ctx, linkInspection } = await runCheck({ user: request.user, message, resolveLinks: Boolean(request.body?.links) });
       let check = await one("SELECT * FROM checks WHERE user_id = $1 AND gmail_message_id = $2", [request.user.id, message.id]);
       if (check) {
+        // A re-check updates the explanation; it never moves mail on its own.
         check = await one("UPDATE checks SET verdict = $2, verdict_value = $3, source = $4 WHERE id = $1 RETURNING *", [check.id, verdict, verdict.verdict, verdict.source]);
       } else {
         const labels = await labelsFor(request.user.id);
-        const action = labels.scam ? await applyDecision(client, labels, message.id, decideAction({ verdict, message, ctx, actMode: request.user.act_mode })) : "none";
-        check = await recordCheck({ userId: request.user.id, message, verdict, action });
+        const decision = labels.scam ? decideAction({ verdict, message, ctx, actMode: request.user.act_mode, moveConsent: Boolean(request.user.move_consent_at) }) : { label: null };
+        check = await recordCheck({ userId: request.user.id, message, verdict, action: decision.label ? "pending" : "none", planned: decision.label ? decision : null });
+        if (check && decision.label) check.action = await finishAction({ client, labels, check, decision, userId: request.user.id });
+        if (!check) check = await one("SELECT * FROM checks WHERE user_id = $1 AND gmail_message_id = $2", [request.user.id, message.id]);
       }
       cache.clear();
       return { check: { id: check.id, verdict, action: check.action }, linkInspection };

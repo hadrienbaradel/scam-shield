@@ -18,7 +18,8 @@ export async function resetDb() {
 let n = 0;
 export async function makeUser({ email, name = "Linda", locale = "en-US", gmail = false, actMode = "move" } = {}) {
   n++;
-  const user = await one(`INSERT INTO users (google_sub, email, name, locale, act_mode, onboarded) VALUES ($1, $2, $3, $4, $5, true) RETURNING *`,
+  const user = await one(`INSERT INTO users (google_sub, email, name, locale, act_mode, onboarded, move_consent_at)
+                          VALUES ($1, $2, $3, $4, $5, true, CASE WHEN $5 = 'move' THEN now() END) RETURNING *`,
     [`sub-${n}-${Date.now()}`, email || `user${n}-${Date.now()}@example.test`, name, locale, actMode]);
   if (gmail) {
     await pool.query("INSERT INTO gmail_state (user_id, email) VALUES ($1, $2)", [user.id, user.email]);

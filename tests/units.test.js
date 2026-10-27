@@ -121,10 +121,13 @@ test("actions: what happens to a message for each verdict", () => {
   const scam = { verdict: "scam" };
   assert.deepEqual(decideAction({ verdict: { verdict: "safe" }, message: {}, ctx, actMode: "move" }), { label: null, removeInbox: false, protectedSender: false });
   assert.equal(decideAction({ verdict: { verdict: "be_careful" }, message: { from: "x@y.test" }, ctx, actMode: "move" }).removeInbox, false);
-  assert.equal(decideAction({ verdict: scam, message: { from: "x@y.test", auth: "spf=fail" }, ctx, actMode: "move" }).removeInbox, true);
+  assert.equal(decideAction({ verdict: scam, message: { from: "x@y.test", auth: "spf=fail" }, ctx, actMode: "move", moveConsent: true }).removeInbox, true);
+  // No recorded consent, or a failed AI check: label only.
+  assert.equal(decideAction({ verdict: scam, message: { from: "x@y.test", auth: "spf=fail" }, ctx, actMode: "move" }).removeInbox, false);
+  assert.equal(decideAction({ verdict: { verdict: "scam", degraded: true }, message: { from: "x@y.test", auth: "spf=fail" }, ctx, actMode: "move", moveConsent: true }).removeInbox, false);
   assert.equal(decideAction({ verdict: scam, message: { from: "x@y.test", auth: "spf=fail" }, ctx, actMode: "label" }).removeInbox, false);
   // Never move authenticated mail from someone the user knows, even if judged scam.
-  const known = decideAction({ verdict: scam, message: { from: "alerts@secure.chase.com", auth: PASS }, ctx, actMode: "move" });
+  const known = decideAction({ verdict: scam, message: { from: "alerts@secure.chase.com", auth: PASS }, ctx, actMode: "move", moveConsent: true });
   assert.deepEqual(known, { label: "scam", removeInbox: false, protectedSender: true });
   // A spoofed known address that fails authentication is not protected.
   assert.equal(isProtectedSender({ from: "statements@chase.com", auth: "spf=fail dkim=none dmarc=fail" }, ctx), false);

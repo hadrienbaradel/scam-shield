@@ -49,6 +49,13 @@ const LEGIT = [
   { name: "a genuine Google Calendar invitation", m: { fromName: "Margaret Lee", from: "calendar-notification@google.com", auth: PASS,
     subject: "Invitation: Lunch @ Thu Nov 5, 12pm", body: "Margaret Lee has invited you to Lunch. Join with Google Meet.",
     links: [{ text: "Join with Google Meet", href: "https://meet.google.com/abc-defg-hij" }, { text: "Yes", href: "https://calendar.google.com/calendar/event?action=RESPOND" }] } },
+  // Codex red-team false positives (2026-10-26): mentions are not asks.
+  { name: "gift card receipt", m: { fromName: "Oak Street Books", from: "receipts@bookshop.test", auth: PASS, subject: "Gift card receipt", body: "Thank you for purchasing a $50 gift card for your granddaughter.", links: [] } },
+  { name: "invoice paid by ordinary bank transfer", m: { fromName: "Atelier Martin", from: "billing@plombier.test", auth: PASS, subject: "Facture réparation", body: "Merci pour votre confiance. Règlement par virement sur le compte figurant sur votre facture.", links: [] } },
+  { name: "a sign-in code being sent to you", m: { fromName: "Community centre", from: "login@community.test", auth: PASS, subject: "Sign-in code", body: "Your verification code is 483921. It expires in ten minutes.", links: [] } },
+  { name: "a talk about bitcoin risks", m: { fromName: "Town Library", from: "news@library.test", auth: PASS, subject: "Free lecture", body: "Join our talk about bitcoin and cryptocurrency risks on Thursday.", links: [] } },
+  { name: "a gift card ready in store", m: { fromName: "Librairie du marché", from: "shop@marche.test", auth: PASS, subject: "Votre commande", body: "Votre carte cadeau de 30 euros est prête à retirer en boutique.", links: [] } },
+  { name: "a promo offering a gift card", m: { fromName: "Shop", from: "promo@shop.test", auth: PASS, subject: "Holiday deal", body: "Get a $10 gift card when you spend $50! Enter promo codes at checkout.", links: [] } },
   { name: "French newsletter", m: { fromName: "Fnac", from: "newsletter@fnac.com", auth: PASS,
     subject: "Les nouveautés de la semaine", body: "Découvrez nos nouveautés livres et musique. Livraison gratuite en magasin.",
     links: [{ text: "Découvrir", href: "https://click.fnac.com/abc" }] } },
@@ -92,6 +99,9 @@ const SCAMS = [
     links: [{ text: "Update now", href: "https://amaz0n-billing.top/update" }] } },
   { name: "gift-card request from an unknown sender", m: { fromName: "Pastor John", from: "pastor.john.office@freemail.test", auth: PASS,
     subject: "Quick favor", body: "I need you to buy 4 Apple gift cards of $100 for the church today. Keep it between us, send me the codes.", links: [] } },
+  { name: "gift cards asked for and their codes", m: { fromName: "Pastor John", from: "pastor.john.office@freemail.test", auth: PASS, subject: "Quick favor", body: "Please pick up three Google Play gift cards today and text me pictures of the numbers on the back.", links: [] } },
+  { name: "a code you received asked back", m: { channel: "sms", fromName: "", from: "+33 6 12 34 56 78", body: "Mamie, je t'ai envoyé un code par erreur, peux-tu me le renvoyer ? C'est le code que tu viens de recevoir.", links: [] } },
+  { name: "a transfer to a new safe account", m: { fromName: "Service fraude", from: "conseiller@banque-securite.test", auth: "spf=none dkim=none dmarc=none", subject: "Urgent", body: "Votre compte est piraté. Faites un virement immédiat vers votre nouveau compte sécurisé.", links: [] } },
   // Found by the Codex red-team review (2026-10-26).
   { name: "callback invoice: surprise Geek Squad renewal with a number to call", m: { fromName: "Renewal Team", from: "billing@support-ledger.test", auth: PASS,
     subject: "Your Geek Squad renewal", body: "Your annual plan renewed for $389.99. For cancellation call 202-555-0148.", links: [] } },
