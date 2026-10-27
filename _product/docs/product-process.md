@@ -21,18 +21,19 @@ Demo first: the hackathon is judged from a 3-minute video. Every feature spec ca
 ## Spec writing rules
 
 - A spec line is user-facing behavior, one sentence, checkable: "The user has a Report button in the mail; tapping it gives an immediate answer." Say what the user sees, taps and gets back, and what never happens when it matters. Not implementation prose ("a Fastify route posts to...").
-- Status is Built, Partial or Planned. Built means the behavior is in the code and tested.
+- Status is Idea, Planned, Partial, Built or Dropped. Idea: raised, not decided, kept so nothing is lost. Planned: decided, not started. Partial: some behavior lines work. Built: in the code and tested. Dropped: decided against, reason kept.
+- Every idea anyone raises (chat, PRD, status notes, code TODOs) is recorded the same day in the Ideas table of `spec.md`, then moves through the statuses. An idea is never silently deleted; it is Built or Dropped with a reason.
 
 `spec.md` feature row:
 
 ```
-| Feature | Built/Partial/Planned | one-line spec | [details](specs/<file>.md) |
+| Feature | Idea/Planned/Partial/Built | one-line spec | [details](specs/<file>.md) |
 ```
 
 `specs/<feature>.md`:
 
 ```
-Status: Built | Partial | Planned (date)
+Status: Idea | Planned | Partial | Built | Dropped (date)
 ## Why                      one or two lines: the user problem, the demo value
 ## Behavior                 numbered spec lines; this is the contract tests check
 ## Demo path                the steps shown on video, in order, with what appears on screen
@@ -62,6 +63,7 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 | Change | Update |
 |---|---|
 | Code behavior (what the user sees or gets) | `specs/<feature>.md` + the status in `spec.md` |
+| A new idea, from anyone, in any channel | a row in the Ideas table of `spec.md`; a `specs/` file once it has more than one line of detail |
 | New env var or key | `_product/docs/secrets.md` + `.env.example` |
 | New make target or script | Makefile help comment (no Makefile yet: the README script table) + `_product/docs/dx.md` |
 | New LLM provider or model | `_product/docs/llm.md` |
@@ -76,5 +78,6 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 - [ ] `spec.md` row and `specs/<feature>.md` describe the behavior as shipped; status correct; Demo path current.
 - [ ] Code matches the spec; `npm test` passes; each spec line that can be tested has a test.
 - [ ] Every doc in the table above that the change touches is updated.
+- [ ] Ideas raised during the work sit in the Ideas table of `spec.md` with status Idea, not lost in chat.
 - [ ] No secret, token or `.env` content in the diff.
 - [ ] Committed in small, coherent steps with messages in the repo style.
