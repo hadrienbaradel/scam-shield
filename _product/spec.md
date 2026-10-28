@@ -6,7 +6,7 @@
 **Secondary user:** the trusted person (son, granddaughter, caregiver) who gets a one-tap "Scam / Real / I'll call you" request and only ever sees what the senior chose to share.
 **Hackathon context:** Meta Global AI Developer Hackathon 2026 (Cerebral Valley), Indie track, "Build for Your World"; due Wednesday Nov 4, 2026, 9:00 PM ET with a 3-minute demo video, a public GitHub repo and every teammate registered. Team: Hadrien Baradel (product, built everything so far), Vlad Zloteanu (joining as CTO).
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
 ## Principles
 - Demo-first: every feature must be showable in the 3-minute video. If it cannot be shown, it is cut or deferred.
@@ -27,7 +27,7 @@ Statuses: **Idea** (raised, not decided) · **Planned** (decided, not started) �
 | Senior web app and verdict screen | Built | Inbox with verdict pills, one verdict card per message, read aloud, EN/FR, three text sizes, keyboard and screen-reader access, 4-step onboarding. | [specs/senior-verdict-screen.md](specs/senior-verdict-screen.md) |
 | Reversible mail actions | Built (unverified live) | Be careful → "Check first" label; Scam → "Scam" label and, only with consent, moved out of the inbox; Put it back / Take it away with one tap; never deleted. | [specs/reversible-mail-actions.md](specs/reversible-mail-actions.md) |
 | Trusted person loop | Built | Invite a guardian by email; "Ask my trusted person" shows a preview of exactly what is shared; the guardian answers Scam / Real / I'll call you by one-tap link or dashboard; the answer appears live on the senior's screen. | [specs/trusted-person-loop.md](specs/trusted-person-loop.md) |
-| Check something else (text, picture, .eml) | Built | Paste a text or WhatsApp, upload a screenshot (read by Muse Spark, never stored) or an email file; same verdict card, same Ask button. | [specs/check-something-else.md](specs/check-something-else.md) |
+| Check something else (text, picture, voice note, .eml) | Built | Paste a text or WhatsApp, upload a screenshot (read by Muse Spark, never stored), a voice note or voicemail (transcribed by Muse Voice Transcribe, never stored) or an email file; same verdict card, same Ask button. | [specs/check-something-else.md](specs/check-something-else.md) |
 | Android SMS companion | Built (emulator only) | A paired Android app pre-screens incoming texts on the phone, sends only risky ones for a verdict, and shows one big red/amber/green screen with read-aloud and Ask. | [specs/android-sms-companion.md](specs/android-sms-companion.md) |
 | Link checks (age, redirects, blocklists) | Partial | Links are judged without being opened: website age from the registry, address tricks, redirects followed only for shorteners or on request; URLhaus lookups exist but the key is refused. | [specs/link-checks.md](specs/link-checks.md) |
 | Threat feed and pattern cards | Built (unverified live feeds) | Daily IC3 and cybermalveillance.gouv.fr alerts become candidate scam cards; only a human on the admin page can activate one; a candidate can never push a verdict to Scam. | [specs/threat-feed.md](specs/threat-feed.md) |
@@ -50,7 +50,7 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 | Report upstream: "Make the world a better place" | Vlad, 2026-10-27; code: schema action `report` is never produced | no | One tap "Report this" after a confirmed scam reports the links, sender, number, ad network and authorities (FTC, Signal Spam / Pharos, 33700 / 7726) on the senior's behalf, batched, with none of the senior's data; the card shows "Reported to 4 places". | [specs/report-upstream.md](specs/report-upstream.md) |
 | Sandboxed link screenshot service | PRD not-yet-built; `lib/linkInspector.js` placeholder; PRD open decision (sandbox hosting) | no | A headless browser in an isolated container renders the landing page so the card can show the fake bank page. | [specs/link-sandbox.md](specs/link-sandbox.md) |
 | On-device pre-screen with Muse Glimmer | PRD; `PreScreener.kt` stub ("runtime TBD"); PRD open decision (mid-range Android) | no | Replace the regex gate in the Android app with an on-device model so fewer texts leave the phone. | [specs/on-device-prescreen.md](specs/on-device-prescreen.md) |
-| Voice-note check (Muse Voice Transcribe) | PRD | no | Transcribe a WhatsApp voice note or voicemail and judge it like a text; B1 is a typed transcript today. | — |
+| Voice-note check (Muse Voice Transcribe) | PRD | yes | Built 2026-10-27 (`35ff6e0`) as part of "Check something else"; remaining for the demo: a seeded 15 s "it's Ethan" voice note in demo mode. | [specs/check-something-else.md](specs/check-something-else.md) |
 | QR code and logo spotting in screenshots (SAM 3.1 or a decoder) | PRD; STATUS "suggested next" | no | A scanned QR becomes a link for the link checks; today a "scan this code" sentence is only a Be careful signal. | — |
 | iOS share-sheet check | PRD | no | Share a text or screenshot from an iPhone into Scam Shield. | — |
 | "Scam of the week" image (Muse Image) | PRD | no | A weekly picture of the current scam for guardians and seniors. | — |
@@ -106,8 +106,10 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 4. Which persona leads the video: Linda (US, English, bigger market) or Françoise (FR, the real Bouygues breach story)? Both profiles and both languages exist.
 5. Is the Android companion worth 30 seconds of a 3-minute video (sideload, emulator) versus the paste-a-text check that shows the same verdict screen?
 6. Chrome extension before Nov 4: build it, or spend the days on the live-inbox gate, the video and the 3-senior comprehension test?
-7. Hackathon rule "only what the team built during the event": the first commit imports a "hackathon backbone" at 20:12 ET on Oct 26 (the event's first day). Confirm the provenance story against the organisers' rules before the video.
+7. Answered 2026-10-27: the organizers (Discord #questions, confirmed by an organizer) count building from 12:24 PM ET on Oct 26; the first files are from 12:54 PM, so nothing predates the start ([../docs/PROVENANCE.md](../docs/PROVENANCE.md)). Remaining: the video opens with the one-line "pre-existing vs built this week" statement they require.
 8. Which Idea, if any, earns a Planned slot before Nov 4: second opinion as a standalone entry point, the link sandbox, micro-learning from flagged messages, or none? Vlad's five ideas are undiscussed with Hadrien.
+9. Name: T-Mobile owns the registered mark SCAMSHIELD, so the working title cannot go public. Research recommends **Prudence** (same word in English and French; heyprudence.com and .app free) with the tagline "Ask twice", or **Ask Twice** (English only) ([research/naming.md](research/naming.md)). Decide before the repo is made public. Owners: Hadrien and Vlad.
+10. Senior app layout: mockups "V2" (Claude Design, Hadrien's canvas) make the senior app mobile-first, one message at a time like a card stack, with two big buttons ("Throw it away" / "Ask Thomas"), an optional slide, and an Undo on the next screen; desktop becomes the testing, guardian and demo view. Adopt it for the build? Owner: Hadrien.
 
 ## How to change this spec
 Change the spec first (`_product/spec.md` and the feature file under `_product/specs/`), then the code, then the tests. An Idea becomes Planned by a decision noted here, Partial when a behavior line works, Built when its Acceptance lines hold, Dropped with its reason kept; an Idea gets its own specs/ file only when it has more than one line of detail.

@@ -12,6 +12,7 @@ What we looked up in order to decide: one file per topic in `_product/research/`
 
 | [research/how-to-win.md](research/how-to-win.md) | hackathon, judging, winning, video, submission, strategy | What judges reward, winner patterns, our position, the day-by-day plan to Nov 4, video blueprint, provenance note |
 | [research/score-demo-and-technical.md](research/score-demo-and-technical.md) | rubric, demo, technical depth, execution, video, score, polish | How Demo (25%) and Technical Depth (20%) are judged, where the video and repo stand, ordered recommendations with lift and effort, a revised 180-second storyboard, repo checklist, proposed edits to how-to-win.md |
+| [research/naming.md](research/naming.md) | naming, name, trademark, app store, aso, domains, scamshield | Whether "Scam Shield" can be used (T-Mobile holds SCAMSHIELD), Vlad's and Hadrien's candidates checked on both stores, US trademarks and domains, what "scam" in a name means for store and ad policy, and the recommendation (Prudence, or Ask Twice) |
 | [research/score-meta-tooling.md](research/score-meta-tooling.md) | rubric, meta tooling, muse, score, bonus prizes, creative | How "Use of Meta AI Tooling" (25%) is judged (rubric wording, bonus prizes), what the video shows today, 13 candidate uses with lift, effort, demo line and risk, the top 5 in order, what not to do, spec idea rows, proposed edits to how-to-win.md |
 ## How to add research
 
