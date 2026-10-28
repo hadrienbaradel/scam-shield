@@ -5,8 +5,14 @@ import { t, setLang, getLang } from "./i18n.js";
 import { $, esc, focusHeading } from "./ui.js";
 import { renderMail, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
 import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
+import { renderToday, onTodayEvent } from "./views/today.js";
 
 let status = null;
+const TAB_ICONS = {
+  home: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+  search: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  people: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.5c2.3.2 4 1.8 4.5 4.5"/></svg>',
+};
 let stream = null;
 const view = () => $("#view");
 
@@ -25,14 +31,27 @@ function renderChrome() {
   $("#privacyLink").textContent = t("privacy");
   $("#termsLink").textContent = t("terms");
   const links = !u ? [] : [
-    ...(status.gmail ? [["#/inbox", "nav_inbox"], ["#/check", "nav_check"], ["#/people", "nav_people"]] : []),
+    ...(status.gmail ? [["#/today", "v2_tab_today"], ["#/inbox", "nav_inbox"], ["#/check", "nav_check"], ["#/people", "nav_people"]] : []),
     ...(status.isGuardian || !status.gmail ? [["#/guardian", "nav_guardian"]] : []),
     ["#/settings", "nav_settings"],
     ...(u.isAdmin ? [["#/admin", "nav_admin"]] : []),
   ];
-  $("#nav").innerHTML = links.map(([href, key]) => `<a class="nav-link${location.hash.startsWith(href) ? " active" : ""}" href="${href}">${t(key)}</a>`).join("")
+  const here = location.hash && location.hash !== "#/" ? location.hash : "#/today";
+  // On a phone the bottom tab bar replaces the top links it duplicates.
+  const tabbed = ["#/today", "#/inbox", "#/check", "#/people"];
+  $("#nav").innerHTML = links.map(([href, key]) => `<a class="nav-link${here.startsWith(href) ? " active" : ""}${tabbed.includes(href) ? " nav-tabbed" : ""}" href="${href}">${t(key)}</a>`).join("")
     + (u ? `<button id="signOut" class="btn btn-light">${t("sign_out")}</button>` : `<button id="langBtn" class="btn btn-light">${t("lang_switch")}</button>`);
   $("#who").textContent = u ? (u.name || u.email) : "";
+  // The senior's own screens are a phone-width column with a bottom tab bar;
+  // the inbox, guardian and admin pages stay wide (testing, family, us).
+  const senior = Boolean(u && status.gmail && u.onboarded);
+  const narrow = /^#\/(today|check|people|settings)?$|^#\/(today|check|people|settings)\b|^#\/demo$|^$/.test(location.hash || "");
+  document.body.classList.toggle("v2-app", narrow && (senior || location.hash.startsWith("#/demo") || !u));
+  const bar = $("#tabbar");
+  bar.hidden = !senior || !narrow;
+  document.body.classList.toggle("has-tabbar", !bar.hidden);
+  bar.innerHTML = senior ? [["#/today", "v2_tab_today", "home"], ["#/check", "v2_tab_check", "search"], ["#/people", "v2_tab_people", "people"]]
+    .map(([href, key, ic]) => `<a href="${href}"${here.startsWith(href) ? ' aria-current="page"' : ""}>${TAB_ICONS[ic]}<span>${t(key)}</span></a>`).join("") : "";
   $("#signOut")?.addEventListener("click", async () => { await api("/auth/logout", { method: "POST", body: {} }); location.href = "/"; });
   $("#langBtn")?.addEventListener("click", () => {
     try { localStorage.setItem("ss_lang", getLang() === "fr" ? "en" : "fr"); } catch { /* private mode */ }
@@ -50,7 +69,8 @@ async function draw() {
   const root = view();
   const u = status.user;
   try {
-    if (hash.startsWith("#/demo")) return await renderDemo(root, status);
+    if (hash.startsWith("#/demo/all")) return await renderDemo(root, status);
+    if (hash.startsWith("#/demo")) return await renderToday(root, status, { demo: true });
     if (!u) return renderLanding(root, status);
     if (status.gmail && !u.onboarded) return await renderOnboarding(root, status, refresh);
     if (hash.startsWith("#/folder/scam")) return await renderMail(root, status, "scam");
@@ -60,7 +80,8 @@ async function draw() {
     if (hash.startsWith("#/settings")) return await renderSettings(root, status, refresh);
     if (hash.startsWith("#/admin") && u.isAdmin) return await renderAdmin(root);
     if (hash.startsWith("#/guardian") || !status.gmail) return await renderGuardian(root);
-    return await renderMail(root, status, "inbox");
+    if (hash.startsWith("#/inbox")) return await renderMail(root, status, "inbox");
+    return await renderToday(root, status);
   } catch (e) {
     root.innerHTML = `<p class="banner danger">${esc(e.status === 401 ? "" : t("error_generic"))}</p>`;
     if (e.status === 401) location.href = "/";
@@ -73,7 +94,7 @@ async function refresh(reroute = true) {
   renderChrome();
   if (status.user && !stream) {
     stream = events({
-      check: onCheck,
+      check: (d) => { onCheck(d); onTodayEvent(); },
       answer: onAnswer,
       sync: async () => { status = await api("/api/status"); onSync(status); },
       context: () => {},

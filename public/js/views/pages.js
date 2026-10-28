@@ -71,6 +71,7 @@ function inviteForm() {
     <label>${t("invite_name")}<input name="name" required autocomplete="off"></label>
     <label>${t("invite_email")}<input name="email" type="email" required autocomplete="off"></label>
     <label>${t("invite_relation")}<input name="relation" autocomplete="off"></label>
+    <label>${t("invite_phone")}<input name="phone" type="tel" inputmode="tel" autocomplete="off"></label>
     <button class="btn btn-gold btn-big" type="submit">${t("invite_btn")}</button></form>`;
 }
 
@@ -170,9 +171,11 @@ export async function renderPeople(root) {
   const [{ guardians }, { devices }] = await Promise.all([api("/api/guardians"), api("/api/devices")]);
   root.innerHTML = `
     <section class="card"><h1>${t("people_title")}</h1><p class="lead">${t("people_lead")}</p>
-      <ul class="people">${guardians.map((g) => `<li><strong>${esc(g.name)}</strong> ${g.relation ? `(${esc(g.relation)})` : ""} · ${esc(g.email)}
+      <ul class="people">${guardians.map((g) => `<li><strong>${esc(g.name)}</strong> ${g.relation ? `(${esc(g.relation)})` : ""} · ${esc(g.email)}${g.phone ? ` · ${esc(g.phone)}` : ""}
         <span class="pill ${g.status === "active" ? "ok" : ""}">${t(`status_${g.status}`)}</span>
-        <button class="btn btn-light-dark small-btn" data-remove="${esc(g.id)}">${t("remove")}</button></li>`).join("")}</ul>
+        <button class="btn btn-light-dark small-btn" data-remove="${esc(g.id)}">${t("remove")}</button>
+        <form class="phone-form stack" data-id="${esc(g.id)}"><label>${g.phone ? t("people_phone_change") : t("people_phone_add")}<input name="phone" type="tel" inputmode="tel" autocomplete="off" value="${esc(g.phone || "")}"></label>
+          <button class="btn btn-light-dark small-btn" type="submit">${t("save")}</button></form></li>`).join("")}</ul>
       ${inviteForm()}
     </section>
     <section class="card"><h2>${t("phone_title")}</h2><p>${t("phone_lead")}</p>
@@ -183,6 +186,14 @@ export async function renderPeople(root) {
     </section>`;
   bindInviteForm(root, () => renderPeople(root));
   $$("[data-remove]", root).forEach((b) => b.addEventListener("click", async () => { await api(`/api/guardians/${b.dataset.remove}`, { method: "DELETE" }); renderPeople(root); }));
+  $$(".phone-form", root).forEach((f) => f.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    try {
+      await api(`/api/guardians/${f.dataset.id}`, { method: "PATCH", body: { phone: new FormData(f).get("phone") } });
+      toast(t("people_phone_saved"), "ok");
+      renderPeople(root);
+    } catch (e) { toast(e.message, "danger"); }
+  }));
   $$("[data-device]", root).forEach((b) => b.addEventListener("click", async () => { await api(`/api/devices/${b.dataset.device}`, { method: "DELETE" }); renderPeople(root); }));
   $("#pairBtn").addEventListener("click", async () => {
     const out = await api("/api/devices/pair-code", { method: "POST", body: { serverUrl: $("#serverUrl").value.trim() } });

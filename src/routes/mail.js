@@ -9,8 +9,9 @@ import { normalizeMessage, header, parseAddress, linksFromText } from "../google
 import { parseEml } from "../google/eml.js";
 import { extractFromImage, museConfigured, transcribeVoice, voiceConfigured } from "../../lib/muse.js";
 import { clientFor, mapLimit, sharedFrom, finishAction } from "../sync/worker.js";
-import { runCheck, recordCheck } from "../sync/checker.js";
-import { putBack, fileAsScam, decideAction } from "../sync/actions.js";
+import { runCheck, recordCheck, loadContext } from "../sync/checker.js";
+import { callBackFor } from "../../lib/context.js";
+import { putBack, fileAsScam, undoThrow, decideAction } from "../sync/actions.js";
 import { alertGuardians, answersForSenior } from "../guardians.js";
 import { ReauthNeeded } from "../google/oauth.js";
 
@@ -71,7 +72,8 @@ export default async function mailRoutes(app) {
       const check = await one("SELECT * FROM checks WHERE user_id = $1 AND gmail_message_id = $2", [request.user.id, message.id]);
       const answers = check ? await many(`SELECT a.answer, a.answered_at, a.created_at, g.guardian_name FROM alerts a
                                          JOIN guardianships g ON g.id = a.guardianship_id WHERE a.check_id = $1 ORDER BY a.created_at`, [check.id]) : [];
-      return { message, check: check && { id: check.id, verdict: check.verdict, action: check.action, restored: Boolean(check.restored_at), feedback: check.user_feedback }, answers };
+      return { message, check: check && { id: check.id, verdict: check.verdict, action: check.action, restored: Boolean(check.restored_at), feedback: check.user_feedback }, answers,
+        callBack: callBackFor(await loadContext(request.user), message) };
     } catch (e) {
       if (e.status === 404) return reply.code(404).send({ error: "This message is no longer in your mailbox." });
       return gmailError(reply, e);
@@ -123,6 +125,16 @@ export default async function mailRoutes(app) {
     } catch (e) { return gmailError(reply, e); }
   });
 
+  app.post("/api/messages/:id/undo-throw", async (request, reply) => {
+    const check = await one("SELECT * FROM checks WHERE user_id = $1 AND gmail_message_id = $2", [request.user.id, request.params.id]);
+    if (!check) return reply.code(404).send({ error: "Nothing to undo for this message." });
+    try {
+      await undoThrow({ client: clientFor(request.user.id), userId: request.user.id, check, labels: await labelsFor(request.user.id) });
+      cache.clear();
+      return { ok: true };
+    } catch (e) { return gmailError(reply, e); }
+  });
+
   // "Check something else": pasted text from any channel.
   app.post("/api/check/text", checkLimit, async (request, reply) => {
     const { from = "", fromName = "", subject = "", body = "", channel = "email" } = request.body || {};
@@ -132,9 +144,9 @@ export default async function mailRoutes(app) {
       from: String(from).slice(0, 200), fromName: String(fromName).slice(0, 200), subject: String(subject).slice(0, 300),
       body: String(body).slice(0, 6000), links: linksFromText(body), auth: "",
     };
-    const { verdict } = await runCheck({ user: request.user, message });
+    const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "pasted" });
-    return { checkId: check.id, verdict, message };
+    return { checkId: check.id, verdict, message, callBack: callBackFor(ctx, message) };
   });
 
   // Screenshot or photo of a message: read by Muse Spark, never stored.
@@ -145,9 +157,9 @@ export default async function mailRoutes(app) {
     const buf = await file.toBuffer();
     const { isMessage, message } = await extractFromImage({ imageBase64: buf.toString("base64"), mime: file.mimetype });
     if (!isMessage || !message.body) return reply.code(422).send({ error: "no_message", message: "We could not find a message in this picture." });
-    const { verdict } = await runCheck({ user: request.user, message });
+    const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
-    return { checkId: check.id, verdict, message };
+    return { checkId: check.id, verdict, message, callBack: callBackFor(ctx, message) };
   });
 
   // A voice note or voicemail: Muse Voice Transcribe turns it into words,
@@ -168,9 +180,9 @@ export default async function mailRoutes(app) {
     if (!transcript) return reply.code(422).send({ error: "no_speech", message: "We could not hear any words in this recording." });
     const caller = String(file.fields?.from?.value || "").slice(0, 200);
     const message = { channel: "voice_transcript", from: caller, fromName: caller || "Voice message", subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
-    const { verdict } = await runCheck({ user: request.user, message });
+    const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "voice" });
-    return { checkId: check.id, verdict, message, transcript };
+    return { checkId: check.id, verdict, message, transcript, callBack: callBackFor(ctx, message) };
   });
 
   // An email file (.eml): downloaded from a webmail or forwarded as an
@@ -180,7 +192,7 @@ export default async function mailRoutes(app) {
     if (!file || !/\.eml$/i.test(file.filename || "") && !/message\/rfc822/i.test(file.mimetype)) return reply.code(400).send({ error: "Please choose an email file (.eml)." });
     const message = await parseEml(await file.toBuffer());
     if (!message.from && !message.body) return reply.code(422).send({ error: "no_message", message: "We could not read an email in this file." });
-    const { verdict } = await runCheck({ user: request.user, message });
+    const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "email_file" });
     return { checkId: check.id, verdict, message: { ...message, body: message.body.slice(0, 2000) } };
   });
@@ -188,7 +200,7 @@ export default async function mailRoutes(app) {
   // "Ask my trusted person". For Gmail messages the server fetches what to
   // share; for pasted text or screenshots (never stored) the page sends it.
   app.post("/api/ask", async (request, reply) => {
-    const { checkId, guardianshipIds = null, includeText = false, message: provided = null } = request.body || {};
+    const { checkId, guardianshipIds = null, includeText = false, message: provided = null, via = "email" } = request.body || {};
     const check = checkId && await one("SELECT * FROM checks WHERE id = $1 AND user_id = $2", [checkId, request.user.id]);
     if (!check) return reply.code(404).send({ error: "Check this message first." });
     let message = provided;
@@ -198,8 +210,10 @@ export default async function mailRoutes(app) {
     if (!message) return reply.code(400).send({ error: "message required" });
     const active = await many("SELECT id, guardian_name FROM guardianships WHERE senior_id = $1 AND status = 'active'", [request.user.id]);
     if (!active.length) return reply.code(409).send({ error: "no_guardian", message: "Add a trusted person first." });
-    const sentTo = await alertGuardians({ senior: request.user, checkId: check.id, shared: sharedFrom(message, check.verdict, Boolean(includeText)), guardianshipIds });
-    return { sentTo, alreadyAsked: sentTo.length === 0 };
+    const texts = [];
+    const sentTo = await alertGuardians({ senior: request.user, checkId: check.id, shared: sharedFrom(message, check.verdict, Boolean(includeText)), guardianshipIds,
+      via: via === "text" ? "text" : "email", texts });
+    return { sentTo, alreadyAsked: sentTo.length === 0, texts };
   });
 
   app.get("/api/answers", async (request) => ({ answers: await answersForSenior(request.user.id, request.query.since || null) }));

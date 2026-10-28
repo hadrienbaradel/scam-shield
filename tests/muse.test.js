@@ -195,3 +195,10 @@ test("voice: Muse Voice Transcribe gets a multipart WAV request and its lines be
   const failing = async () => new Response(JSON.stringify({ error: { message: "audio over 10 minutes" } }), { status: 400 });
   await assert.rejects(transcribeVoice({ wav: Buffer.from("RIFF"), fetchImpl: failing }), /Muse Voice Transcribe 400: audio over 10 minutes/);
 });
+
+test("call back: a message using a trusted person's name offers their saved number, never the message's", async () => {
+  const { callBackFor } = await import("../lib/context.js");
+  assert.deepEqual(callBackFor(ctx, { channel: "sms", from: "+1 555-0999", fromName: "Ethan", body: "new number, send money" }), { name: "Ethan", phone: "+1 555-0142" });
+  assert.equal(callBackFor(ctx, { channel: "email", from: "ethan@example.test", fromName: "Ethan", body: "photos" }), null, "the real Ethan needs no call-back offer");
+  assert.equal(callBackFor(ctx, { channel: "sms", from: "+1 555-0111", fromName: "USPS", body: "fee" }), null);
+});

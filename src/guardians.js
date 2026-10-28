@@ -55,7 +55,11 @@ export async function acceptInvite({ token, user }) {
 
 const DAILY_ALERT_CAP = 20;
 
-export async function alertGuardians({ senior, checkId, shared, guardianshipIds = null, auto = false }) {
+// via "email": Scam Shield emails each trusted person. via "text": nothing
+// is sent from here; each request comes back in `texts` ({ name, phone,
+// body }) for the senior's own phone to send, so it arrives from a number
+// the trusted person knows. The one-tap answer link is the same.
+export async function alertGuardians({ senior, checkId, shared, guardianshipIds = null, auto = false, via = "email", texts = null }) {
   // Budgets: one alert per message per guardian, at most 20 a day.
   const sentToday = Number((await one("SELECT count(*) AS n FROM alerts WHERE senior_id = $1 AND created_at > now() - interval '1 day'", [senior.id])).n);
   if (sentToday >= DAILY_ALERT_CAP) throw Object.assign(new Error("Daily limit of alerts reached. Please call your trusted person instead."), { statusCode: 429 });
@@ -69,8 +73,21 @@ export async function alertGuardians({ senior, checkId, shared, guardianshipIds 
     const token = randomToken();
     const alert = await one(`INSERT INTO alerts (senior_id, guardianship_id, check_id, shared, answer_hash, answer_expires_at)
                              VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [senior.id, g.id, checkId || null, { ...shared, auto }, sha256(token), new Date(Date.now() + 3 * DAY)]);
+    [senior.id, g.id, checkId || null, { ...shared, auto, via }, sha256(token), new Date(Date.now() + 3 * DAY)]);
     const link = (a) => `${config.baseUrl}/answer/${token}?a=${a}`;
+    if (via === "text") {
+      const clip = (s, n) => (String(s || "").length > n ? `${String(s).slice(0, n - 1)}…` : String(s || ""));
+      const sender = clip(shared.fromName || shared.from, 40);
+      const about = clip(shared.subject || shared.text, 60);
+      texts?.push({
+        guardianshipId: g.id, name: g.guardian_name, phone: g.guardian_phone || null,
+        body: F
+          ? `Bonjour ${g.guardian_name}, peux-tu vérifier ceci pour moi ? ${sender} m'a écrit${about ? ` « ${about} »` : ""}. Scam Shield dit : ${clip(shared.headline, 90)} Réponds en un geste : ${config.baseUrl}/answer/${token}`
+          : `Hi ${g.guardian_name}, can you check this for me? ${sender} sent me${about ? ` "${about}"` : " a message"}. Scam Shield says: ${clip(shared.headline, 90)} Tap to answer: ${config.baseUrl}/answer/${token}`,
+      });
+      sentTo.push(g.guardian_name);
+      continue;
+    }
     const lines = [
       F ? `${who} vous demande votre avis sur un message.` : `${who} would like your opinion on a message.`,
       `${F ? "De" : "From"} : ${shared.fromName || ""} <${shared.from || ""}>`,

@@ -10,6 +10,14 @@ import { audit } from "../sync/actions.js";
 import { page, esc } from "../pages.js";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// A mobile number as people type it: +, digits, spaces, dots, dashes,
+// brackets; 7 to 15 digits. Empty means "no number".
+const cleanPhone = (v) => {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const digits = s.replace(/\D/g, "");
+  return /^\+?[0-9 ().-]+$/.test(s) && digits.length >= 7 && digits.length <= 15 ? s : null;
+};
 const ANSWERS = {
   en: { scam: "It's a scam", real: "It's real", call_me: "I'll call you" },
   fr: { scam: "C'est une arnaque", real: "C'est un vrai message", call_me: "Je vous appelle" },
@@ -21,16 +29,29 @@ export default async function guardianRoutes(app) {
     priv.addHook("preHandler", requireUser);
 
     priv.get("/api/guardians", async (request) => ({
-      guardians: await many(`SELECT id, guardian_name AS name, guardian_email AS email, relation, status, created_at, accepted_at
+      guardians: await many(`SELECT id, guardian_name AS name, guardian_email AS email, guardian_phone AS phone, relation, status, created_at, accepted_at
                              FROM guardianships WHERE senior_id = $1 AND status <> 'revoked' ORDER BY created_at`, [request.user.id]),
     }));
 
     priv.post("/api/guardians", { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } }, async (request, reply) => {
-      const { name = "", email = "", relation = "" } = request.body || {};
+      const { name = "", email = "", relation = "", phone = "" } = request.body || {};
       if (!name.trim() || !EMAIL.test(email.trim())) return reply.code(400).send({ error: "Please give a name and an email address." });
+      const mobile = cleanPhone(phone);
+      if (mobile === null) return reply.code(400).send({ error: "Please check the mobile number." });
       if (email.trim().toLowerCase() === request.user.email.toLowerCase()) return reply.code(400).send({ error: "Choose someone other than yourself." });
       const { guardianship, inviteUrl } = await inviteGuardian({ senior: request.user, name, email, relation });
+      if (mobile) await q("UPDATE guardianships SET guardian_phone = $1 WHERE id = $2", [mobile, guardianship.id]);
       return { id: guardianship.id, status: guardianship.status, inviteUrl };
+    });
+
+    // Add or change a trusted person's mobile number (for "Text Thomas").
+    priv.patch("/api/guardians/:id", async (request, reply) => {
+      const mobile = cleanPhone(request.body?.phone);
+      if (mobile === null) return reply.code(400).send({ error: "Please check the mobile number." });
+      const row = await one("UPDATE guardianships SET guardian_phone = $1 WHERE id = $2 AND senior_id = $3 AND status <> 'revoked' RETURNING id",
+        [mobile || null, request.params.id, request.user.id]);
+      if (!row) return reply.code(404).send({ error: "No such trusted person." });
+      return { ok: true };
     });
 
     priv.delete("/api/guardians/:id", async (request) => {

@@ -424,6 +424,190 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .code { margin: 0.3rem 0; font-family: "Courier New", monospace; font-size: 2.4rem; font-weight: 700; letter-spacing: 0.2em; }
 .danger-zone { border-color: var(--scam); }
 
+/* ------------------------------------- V2: mobile first, one at a time -- */
+/* The senior's screens are one phone-width column, also on a computer. */
+
+.v2-app .main { max-width: 560px; }
+.v2-app .footer { max-width: 560px; }
+.v2-app .two-col { grid-template-columns: minmax(0, 1fr); }
+
+.v2 { display: flex; flex-direction: column; gap: 1.1rem; }
+.v2 p { margin: 0; }
+.v2-wait { color: var(--muted); }
+.v2-hello { margin: 0.3rem 0 0; font-size: 1.6rem; }
+.v2-demo { padding: 0.6rem 0.9rem; border-radius: var(--round-small); background: var(--navy-wash); color: var(--navy); font-size: 0.9rem; font-weight: 700; }
+
+.v2-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 1.3rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+}
+.v2-status.ok { background: var(--safe-wash); border: 3px solid var(--safe); color: var(--safe-ink); }
+.v2-status-big { font-size: 1.6rem; font-weight: 700; line-height: 1.15; }
+
+.v2-big { width: 100%; min-height: 72px; border-radius: 18px; font-size: 1.15rem; }
+.v2-line { display: flex; align-items: center; gap: 0.7rem; color: var(--muted); font-size: 0.95rem; }
+.v2-avatar { flex: 0 0 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--navy); color: var(--gold); font-weight: 700; }
+
+.v2-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.v2-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 48px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--navy);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.v2-count { color: var(--muted); font-weight: 700; }
+.v2-round {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  border-radius: 50%;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+/* A small stack of cards behind the current one says "one of several". */
+.v2-stack { position: relative; padding-bottom: 12px; }
+.v2-stack::before,
+.v2-stack::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 26px;
+}
+.v2-stack::before { inset: 16px 14px 0; }
+.v2-stack::after { inset: 8px 7px 6px; }
+
+.v2-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.4rem 1.3rem;
+  background: var(--surface);
+  border: 4px solid var(--line);
+  border-radius: 26px;
+  box-shadow: 0 10px 28px rgba(15, 29, 47, 0.16);
+  touch-action: pan-y;
+  transition: transform 0.15s ease-out;
+}
+.v2-card.danger { border-color: var(--scam); }
+.v2-card.caution { border-color: var(--careful); }
+.v2-card.ok { border-color: var(--safe); }
+
+.v2-badge { display: flex; align-items: center; gap: 0.7rem; font-size: 2rem; font-weight: 700; line-height: 1; }
+.v2-card.danger .v2-badge { color: var(--scam); }
+.v2-card.caution .v2-badge { color: var(--careful); }
+.v2-card.ok .v2-badge { color: var(--safe); }
+.v2-badge-dot { flex: none; width: 60px; height: 60px; display: grid; place-items: center; border-radius: 50%; }
+.v2-card.danger .v2-badge-dot { background: var(--scam); color: var(--surface); }
+.v2-card.caution .v2-badge-dot { background: var(--careful-wash); border: 3px solid var(--careful); color: var(--careful); }
+.v2-card.ok .v2-badge-dot { background: var(--safe-wash); border: 3px solid var(--safe); color: var(--safe); }
+
+.v2-headline { margin: 0; font-size: 1.3rem; line-height: 1.25; }
+.v2-fact { font-size: 1.1rem; }
+.v2-fact-box { padding: 0.7rem 0.8rem; border-radius: 14px; background: var(--ground); }
+.v2-card.danger .v2-fact-box { background: var(--scam-wash); }
+.v2-card.caution .v2-fact-box { background: var(--careful-wash); }
+.v2-next { font-size: 1.1rem; font-weight: 700; }
+.v2-more { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.v2-more .btn { min-height: 48px; font-size: 0.95rem; }
+
+/* The two answers stay in reach at the bottom of the screen while the card scrolls. */
+.v2-actions {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  background: linear-gradient(to bottom, rgba(238, 241, 245, 0), var(--ground) 30%);
+}
+.has-tabbar .v2-actions { bottom: calc(72px + 0.5rem + env(safe-area-inset-bottom)); }
+.v2-action { flex-direction: column; gap: 0.3rem; min-height: 88px; border-radius: 20px; font-size: 1.05rem; }
+.v2-hint { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
+.v2-quiet { width: 100%; }
+.v2-link {
+  align-self: center;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  color: var(--navy);
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.v2-done-note { display: flex; flex-direction: column; gap: 0.6rem; padding: 1.1rem; border-radius: 20px; background: var(--navy); color: var(--surface); }
+.v2-done-title { display: flex; align-items: center; gap: 0.5rem; font-size: 1.15rem; font-weight: 700; }
+.v2-done-title svg { color: var(--gold); }
+.v2-undo { align-self: flex-start; min-height: 56px; background: transparent; border-color: var(--surface); color: var(--surface); }
+.v2-all-done { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; padding: 1.5rem 0; text-align: center; }
+.v2-all-done h1 { margin: 0; font-size: 1.8rem; }
+.v2-big-check { width: 120px; height: 120px; display: grid; place-items: center; border-radius: 50%; background: var(--safe-wash); border: 4px solid var(--safe); color: var(--safe); }
+.v2-text-ready { display: flex; flex-direction: column; gap: 0.7rem; }
+
+/* Bottom tab bar on phones; on a computer the top links do the same job. */
+.tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.tabbar a {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.tabbar a[aria-current="page"] { color: var(--navy); box-shadow: inset 0 4px 0 var(--gold); }
+
+@media (min-width: 701px) {
+  .tabbar { display: none !important; }
+  .has-tabbar .v2-actions { bottom: 0.75rem; }
+}
+@media (max-width: 700px) {
+  .v2-app .nav-tabbed,
+  .v2-app .brand-sub { display: none; }
+  .v2-app .topbar { flex-wrap: nowrap; padding: 0.6rem 1rem; }
+  .v2-app .shield { width: 40px; height: 40px; font-size: 1.2rem; }
+  .v2-app .brand-name { font-size: 1.15rem; }
+  .v2-app .main { padding-bottom: 6.5rem; }
+  .v2-app .footer { padding-bottom: 6rem; }
+}
+
 /* ------------------------------------------------- narrow + a11y bits -- */
 
 @media (max-width: 900px) {

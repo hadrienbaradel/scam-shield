@@ -62,6 +62,19 @@ export async function putBack({ client, userId, check, labels, message }) {
   await audit(userId, "put_back", { checkId: check.id, messageId: check.gmail_message_id });
 }
 
+// "Undo" right after "Throw it away": the message goes back where it was
+// (in the inbox, with its Scam Shield label) and nothing is learned about
+// the sender, unlike "Put it back", which says the sender is fine.
+export async function undoThrow({ client, userId, check, labels }) {
+  const careful = check.verdict_value === "be_careful";
+  await client.modifyLabels(check.gmail_message_id, {
+    add: ["INBOX", careful ? labels.careful : labels.scam].filter(Boolean),
+    remove: careful ? [labels.scam].filter(Boolean) : [],
+  });
+  await q("UPDATE checks SET action = 'labeled', user_feedback = NULL WHERE id = $1", [check.id]);
+  await audit(userId, "throw_undone", { checkId: check.id, messageId: check.gmail_message_id });
+}
+
 // "Yes, it's a scam — take it away": the user overrules a Be careful.
 export async function fileAsScam({ client, userId, check, labels }) {
   await client.modifyLabels(check.gmail_message_id, { add: [labels.scam], remove: ["INBOX", labels.careful].filter(Boolean) });

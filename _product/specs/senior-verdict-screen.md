@@ -1,10 +1,11 @@
 # Senior web app and verdict screen
-Status: Built · Last updated: 2026-10-27
+Status: Built · Last updated: 2026-10-28
 
 ## Why
 The explanation only helps if a frightened 74-year-old can read it at 9 pm: one screen, one verdict, big type, big buttons, and a voice.
 
 ## Behavior
+0. **V2 layout (decided 2026-10-28, from the Claude Design "V2" mockups): mobile first, one message at a time.** The senior's home is "Today": a greeting, then either a green "You are safe. We checked N messages." or "N messages need you" with one big "Look at them now" button, the count of scams already in the Scam folder, and the trusted person's name. The messages that need the person (Scam or Be careful, not put back) open one at a time as a card in a small stack: the word Scam / Be careful with its icon, the headline, two facts, the next step, "Why we think so" and "Show me the message" (the message itself is behind a button). Two big buttons sit pinned at the bottom: Scam → "Throw it away" + "Ask Thomas"; Be careful → "Call Ethan" (the saved number, only when the message uses a trusted person's name from elsewhere) or "Throw it away", + "Ask Thomas"; a quiet "This one is fine, keep it" link. Sliding a Scam card to the left is a shortcut for "Throw it away", never the only way. The next screen confirms ("Thrown away. It is in your Scam folder, not deleted.") with a big Undo, which restores it without teaching anything about the sender, then "Next message" or "All done for today". A bottom tab bar (Today, Check, My people) replaces the top links on a phone; on a computer the same screens are one centred column, and the two-pane inbox below stays at `#/inbox` for testing, the family and judges. The public demo (`#/demo`) runs the same screens on Linda's (or Françoise's) example morning; the former examples list is at `#/demo/all`.
 1. The inbox lists the latest 30 messages read live from Gmail, each with a pill: Scam (red), Be careful (orange), Safe (green), Not checked yet, or "Put back by you". Two folders show "Scams we moved" and "Check first".
 2. Opening a message shows, in this order: who sent it, the subject, any trusted-person answer, the verdict card (headline, one next step, certainty in words), "Why we say this" (1–3 reasons), what the real company never does, and then the message text itself. Message content is always shown as text, never rendered as HTML.
 3. One tap reads the verdict aloud (headline, reasons, next step) in the user's language at a calm pace.
@@ -27,6 +28,7 @@ A native iOS/Android mail client; dark mode; languages beyond EN/FR; HTML render
 - Still to do (PRD): a filmed comprehension test with three seniors ("what would you do now?" answered correctly in under 10 s).
 
 ## Implementation pointers
+V2: public/js/views/today.js (Today, cards, Done/Undo, ask by text or email; a live source and a demo source), the tab bar in public/js/main.js, `.v2-*` and `.tabbar` in public/styles.css, POST /api/messages/:id/undo-throw (src/sync/actions.js undoThrow), GET /api/demo/today. Before V2:
 public/js/views/mail.js (inbox, reader, openAsk), public/js/ui.js (verdictCard, readAloud, pill), public/js/views/pages.js (landing, onboarding, check, people, settings), public/js/i18n.js (all strings), public/styles.css.
 
 ## Open questions

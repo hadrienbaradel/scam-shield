@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { one, many } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { syncUser } from "../src/sync/worker.js";
-import { putBack } from "../src/sync/actions.js";
+import { putBack, fileAsScam, undoThrow } from "../src/sync/actions.js";
 import { acceptInvite } from "../src/guardians.js";
 import { fakeGmail, gmailMessage } from "./helpers/fake-gmail.js";
 
@@ -72,6 +72,16 @@ test("Gmail sync: learns the context, moves the scam, leaves real mail alone, ne
   assert.equal((await one("SELECT user_feedback FROM checks WHERE id = $1", [check.id])).user_feedback, "not_scam");
   const events = (await many("SELECT event FROM audit_log WHERE user_id = $1", [user.id])).map((e) => e.event);
   assert.ok(events.includes("moved_out_of_inbox") && events.includes("put_back"));
+
+  // "Throw it away" then "Undo": back in the inbox with its Scam label, and the sender is not learned as safe.
+  const labels = { scam: state.label_scam, careful: state.label_careful };
+  await fileAsScam({ client: gmail, userId: user.id, check, labels });
+  assert.ok(!gmail.store.get("usps2").labelIds.includes("INBOX"));
+  await undoThrow({ client: gmail, userId: user.id, check: { ...check, verdict_value: "scam" }, labels });
+  assert.ok(gmail.store.get("usps2").labelIds.includes("INBOX"));
+  assert.ok(gmail.store.get("usps2").labelIds.includes(state.label_scam), "the Scam label stays on");
+  const undone = await one("SELECT action, user_feedback FROM checks WHERE id = $1", [check.id]);
+  assert.deepEqual(undone, { action: "labeled", user_feedback: null });
   assert.ok(gmail.modifications.every((m) => ![...m.add, ...m.remove].some((l) => ["TRASH", "SPAM"].includes(l))));
 });
 
@@ -136,6 +146,36 @@ test("HTTP: sign-in required, Origin enforced, pasted text checked without stori
   assert.equal(status.user.name, "Françoise");
 });
 
+test("HTTP: asking by text message returns a ready-to-send text from the senior's phone, and its link answers", opts, async () => {
+  const senior = await makeUser({ email: "linda.text@example.test", name: "Linda", locale: "en-US" });
+  const h = { cookie: await sessionFor(senior), origin: ORIGIN };
+  assert.equal((await app.inject({ method: "POST", url: "/api/guardians", headers: h, payload: { name: "Thomas", email: "thomas.text@example.test", phone: "call me" } })).statusCode, 400);
+  const inv = await app.inject({ method: "POST", url: "/api/guardians", headers: h, payload: { name: "Thomas", email: "thomas.text@example.test", relation: "grandson", phone: "+1 (555) 013-0000" } });
+  assert.equal(inv.statusCode, 200);
+  const inviteToken = (await one("SELECT text_body FROM outbox WHERE to_email = 'thomas.text@example.test' ORDER BY created_at DESC LIMIT 1")).text_body.match(/\/invite\/([\w-]+)/)[1];
+  await acceptInvite({ token: inviteToken, user: await makeUser({ email: "thomas.text@example.test", name: "Thomas" }) });
+  const listed = (await app.inject({ url: "/api/guardians", headers: h })).json().guardians;
+  assert.equal(listed[0].phone, "+1 (555) 013-0000");
+  assert.equal((await app.inject({ method: "PATCH", url: `/api/guardians/${listed[0].id}`, headers: h, payload: { phone: "12" } })).statusCode, 400);
+
+  const message = { channel: "sms", from: "+1 555-0199", body: "USPS: your package is on hold, pay $1.99 now https://usps-redeliver.test/pay" };
+  const checked = (await app.inject({ method: "POST", url: "/api/check/text", headers: h, payload: message })).json();
+  const mailsBefore = Number((await one("SELECT count(*) AS n FROM outbox WHERE to_email = 'thomas.text@example.test'")).n);
+  const ask = (await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: checked.checkId, message: checked.message, via: "text" } })).json();
+  assert.deepEqual(ask.sentTo, ["Thomas"]);
+  assert.equal(ask.texts.length, 1);
+  assert.equal(ask.texts[0].phone, "+1 (555) 013-0000");
+  assert.match(ask.texts[0].body, /^Hi Thomas, can you check this for me\? .* Tap to answer: http:\/\/localhost:3999\/answer\/[\w-]+$/);
+  assert.ok(ask.texts[0].body.length <= 320, `short enough for a text: ${ask.texts[0].body.length}`);
+  assert.ok(!ask.texts[0].body.includes("pay $1.99 now") || false, "the message text itself is not copied unless shared");
+  assert.equal(Number((await one("SELECT count(*) AS n FROM outbox WHERE to_email = 'thomas.text@example.test'")).n), mailsBefore, "no email is sent for a text ask");
+
+  const token = ask.texts[0].body.match(/\/answer\/([\w-]+)/)[1];
+  const answered = await app.inject({ method: "POST", url: `/answer/${token}`, headers: { origin: ORIGIN, "content-type": "application/x-www-form-urlencoded" }, payload: "answer=scam" });
+  assert.match(answered.body, /Thank you/);
+  assert.equal((await one("SELECT answer FROM alerts WHERE check_id = $1", [checked.checkId])).answer, "scam");
+});
+
 test("HTTP: guardian invitation, one-tap answer (GET never answers, single use), answer reaches the senior", opts, async () => {
   const senior = await makeUser({ email: "linda2@example.test", name: "Linda" });
   const seniorCookie = await sessionFor(senior);
@@ -153,9 +193,9 @@ test("HTTP: guardian invitation, one-tap answer (GET never answers, single use),
   const message = { channel: "sms", from: "+1 555-0199", body: "USPS: your package is on hold, pay $1.99 now https://usps-redeliver.test/pay" };
   const checked = (await app.inject({ method: "POST", url: "/api/check/text", headers: h, payload: message })).json();
   const ask = await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: checked.checkId, message: checked.message, includeText: false } });
-  assert.deepEqual(ask.json(), { sentTo: ["Thomas"], alreadyAsked: false });
+  assert.deepEqual(ask.json(), { sentTo: ["Thomas"], alreadyAsked: false, texts: [] });
   const again = await app.inject({ method: "POST", url: "/api/ask", headers: h, payload: { checkId: checked.checkId, message: checked.message } });
-  assert.deepEqual(again.json(), { sentTo: [], alreadyAsked: true }, "the same guardian is never asked twice about one message");
+  assert.deepEqual(again.json(), { sentTo: [], alreadyAsked: true, texts: [] }, "the same guardian is never asked twice about one message");
   const alertMail = await one("SELECT * FROM outbox WHERE to_email = 'thomas2@example.test' AND subject LIKE '%scam%'");
   assert.ok(!alertMail.text_body.includes("pay $1.99 now"), "message text not shared unless the senior ticks the box");
   const answerToken = alertMail.text_body.match(/\/answer\/([\w-]+)/)[1];
