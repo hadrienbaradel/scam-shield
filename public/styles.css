@@ -4,6 +4,25 @@
    no small print. The root font size is set by js/main.js from the
    person's text-size choice (19px × 1, 1.2 or 1.4). */
 
+/* Atkinson Hyperlegible Next, drawn by the Braille Institute for low-vision
+   readers (letters that cannot be mistaken: I l 1, O 0, rn m). Self-hosted,
+   SIL Open Font License 1.1 (public/fonts/OFL.txt), Latin subset from
+   @fontsource/atkinson-hyperlegible-next 5.3.0. */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-700.woff2") format("woff2");
+}
+
 :root {
   --navy: #16283f;
   --navy-deep: #0f1d2f;
@@ -28,7 +47,7 @@
   --focus-ring: #ffbf47;
   --round: 16px;
   --round-small: 12px;
-  --type: "Atkinson Hyperlegible", Verdana, "Segoe UI", system-ui, sans-serif;
+  --type: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, "Segoe UI", system-ui, sans-serif;
 }
 
 *,
