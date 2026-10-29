@@ -111,6 +111,8 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 | Lessons sent by the trusted person | specs/micro-learning.md, 2026-10-27 | no | "Dad, read this one before you answer anything about your bank": the guardian picks a lesson on the dashboard and it shows first on Learn. | — |
 | Progress shared with the family | specs/micro-learning.md, 2026-10-27 | no | "Mom spotted the toll scam": stars and badges on the guardian dashboard, only if the senior turns it on. | — |
 | Muse practice message inside a lesson | Vlad, 2026-10-29 | no | "Try one more": Muse Spark writes a fresh message in the lesson's scam family and the real engine judges the senior's answer; generated scam text needs a review step. | — |
+| Rule reminders (spaced repetition) | research/micro-learning.md, 2026-10-29 | no | A learned rule comes back as a one-question check after 3 days, a week and a month (a FINRA study saw a lesson's effect vanish by six months without a reminder); on Learn or by the guardian's channel. | [specs/micro-learning.md](specs/micro-learning.md) |
+| "Rules I know" wall instead of badges | research/micro-learning.md, 2026-10-29 | no | The Learn home lists the rules the person has learned in plain sentences, read aloud on tap; replaces badges if the senior reading check finds them meaningless (Altmeyer et al., 2018). | [specs/micro-learning.md](specs/micro-learning.md) |
 
 ## Dropped
 - Legacy `/api/analyze` rules engine, explain layer and demo path (`lib/rules.js`, `lib/explain.js`, `lib/demo.js`): superseded by the detector + Muse Spark pipeline behind `/api/check` (commit 877a27d; restorable from d43ced6).

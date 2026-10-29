@@ -35,6 +35,8 @@ Researched 2026-10-27 for the Meta Global AI Developer Hackathon entry (deadline
 | Small LLM checkers (TrustScan, Mail P.I., RealCheck, Scam Doctor) | AI startup | email, paste, screenshots | consumers | LLM | free to low | [ai-startups](competitors/ai-startups.md) |
 | Generic chatbots (ChatGPT, Gemini, Meta AI) | general AI | paste anything | everyone | LLM without context | free | [ai-startups](competitors/ai-startups.md) |
 | Open-source (MailCheck, Llama-3 LoRA, Gemma screenshot checker) | OSS | email, URL, SMS | developers | LLM/ML | free | [open-source](competitors/open-source.md) |
+| Awareness-training vendors (Riot, Elba, Phished, Hoxhunt, KnowBe4...) | awareness training | Slack, Teams, Google Chat, email, web; simulated phishing | employees, bought by employers | story-first micro-lessons, simulations, risk scores, leaderboards | Riot $6.89/employee/mo; others on quote | [awareness-training](competitors/security-awareness-training.md) |
+| Senior scam education (AARP Fraud Watch quizzes, Scam Spotter, Take Five, Cyber-Seniors) | nonprofit, public education | web quizzes, print, webinars, talks | 50+ and families | short rule sets, quizzes with an explanation after each answer, volunteers | free | [awareness-training](competitors/security-awareness-training.md) |
 
 ## Takeaways
 
