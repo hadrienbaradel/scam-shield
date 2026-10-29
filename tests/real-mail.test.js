@@ -287,3 +287,19 @@ test("a sender the person kept is not called a scam on soft signs, but hard evid
   const unauth = run({ ...odd, auth: "spf=fail dkim=none dmarc=fail" }, kept);
   assert.equal(unauth.verdict, "scam", "the keep counts only when Gmail proves the address");
 });
+
+// Oct 29: Murfy's Halloween newsletter. Its own tracker sends "See your
+// result" to a Typeform quiz with the reader's address after the #, as
+// Typeform's hidden fields do. Mailed that way by the authenticated sender,
+// that is a mild sign; a stranger's form with the address is still a trap.
+test("legit: a quiz link the authenticated sender's own mail system addressed to the reader is not a targeted trap", () => {
+  const tracked = "https://email.murfy-astuces.test/c/abc123";
+  const m = { channel: "email", fromName: "Murfy", from: "astuces@murfy-astuces.test", auth: PASS, subject: "Halloween : votre maison est-elle prête ?",
+    body: "Faites le quiz et découvrez votre score.", links: [{ text: "Voir le résultat", href: tracked }] };
+  const quiz = { [tracked]: { final_url: "https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test", redirects: ["https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test"], page_shows: 'Page titled "Murfy - Score"' } };
+  const v = detect({ locale: "fr-FR", message: m, personalContext: ctx, mockLinkInspection: quiz });
+  assert.notEqual(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+  const stranger = detect({ locale: "fr-FR", personalContext: ctx, message: { ...m, from: "promo@offres-maison.test", fromName: "Offres", auth: "spf=none dkim=none dmarc=none",
+    links: [{ text: "Voir le résultat", href: "https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test" }] } });
+  assert.ok(stranger.reasons.some((r) => /made for one person|fabriqué pour une personne/.test(r.text)), "a stranger's form carrying the address is still called out");
+});

@@ -314,3 +314,10 @@ test("a second look at the landing pages only for Be careful with web links, nev
   assert.equal(needsLandingLook({ verdict: "be_careful" }, { links: [] }), false);
   assert.equal(needsLandingLook({ verdict: "be_careful" }, withLink, true), false, "already opened when the person asked");
 });
+
+test("links: a page 'asks for card details' only when it has card fields, not when its code says cvc or expires", () => {
+  assert.equal(describePage('<html><title>Quiz</title><p>Session expirée</p><script>var x={cvc:1,expiry:2}</script></html>'), 'Page titled "Quiz"');
+  assert.match(describePage('<form><input autocomplete="cc-number" name="n"></form>'), /asks for card details/);
+  assert.match(describePage('<form><input type="text" name="cardNumber"><input name="cvv"></form>'), /asks for card details/);
+  assert.match(describePage('<form><input type="password" name="p"></form>'), /asks for a password/);
+});

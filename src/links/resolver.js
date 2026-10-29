@@ -176,7 +176,10 @@ export function describePage(html = "") {
   if (!html) return null;
   const title = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").replace(/\s+/g, " ").trim().slice(0, 120);
   const password = /<input[^>]+type=["']?password/i.test(html);
-  const card = /(card.?number|cardnumber|cc-number|cvv|cvc|expir|numéro de carte|cryptogramme)/i.test(html);
+  // Card fields, not card words: a quiz's script mentioning "cvc" or a
+  // "session expired" notice is not a page asking for a card (Oct 29, a
+  // Typeform quiz was described that way).
+  const card = /<input[^>]+(autocomplete=["']?cc-(number|csc|exp)|(name|id)=["'][^"']*(card.?num|cc.?num|cvv|cvc|csc|cryptogramme|numero.?carte)[^"']*["'])/i.test(html);
   const parts = [];
   if (title) parts.push(`Page titled "${title}"`);
   if (password) parts.push("asks for a password on a login form");
