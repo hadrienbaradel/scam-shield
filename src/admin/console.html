@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prudence admin</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#16283f">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/admin/console.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="#/">Prudence · admin</a>
+  <div class="topbar-right">
+    <span class="who" id="who"></span>
+    <a class="top-link" href="/">Senior app</a>
+  </div>
+</header>
+<div class="frame">
+  <nav class="nav" id="nav" aria-label="Console"></nav>
+  <main id="main" class="main" tabindex="-1">
+    <div class="page-head">
+      <h1 id="pageTitle" tabindex="-1">Overview</h1>
+      <div class="page-tools">
+        <p class="updated" id="updated" aria-live="polite"></p>
+        <button type="button" class="btn btn-ghost" id="refresh">Refresh</button>
+      </div>
+    </div>
+    <div id="view" class="view"><p class="loading">Loading…</p></div>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/admin/console.js"></script>
+</body>
+</html>
