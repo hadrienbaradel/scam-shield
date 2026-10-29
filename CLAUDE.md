@@ -23,6 +23,7 @@ Open the rule file whose keywords match what you are about to touch; each starts
 | Keys, env vars, credentials | secrets, master.key, api key, token | `_product/docs/secrets.md` |
 | The model layer, providers, prompts | llm, provider, model, muse, openai, anthropic, ollama | `_product/docs/llm.md` |
 | A user-facing screen | ui, design, ux, screen, css, accessibility, claude design | `_product/docs/design.md` |
+| Code structure, a new module in lib/ or src/, a pipeline change, a design decision | architecture, module, decision, diagram | `docs/ARCHITECTURE.md` |
 
 Product map: `_product/spec.md` (features, statuses, ideas; read it first), `_product/log.md` (who works on what now, what each of us owes the other, what got done), `_product/competitors.md`, `_product/research.md`, `_product/marketing.md`; the folder is explained in `_product/README.md`.
 

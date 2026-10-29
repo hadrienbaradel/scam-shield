@@ -1,5 +1,7 @@
 # Prudence
 
+Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 *Ask twice.* (Working title until Oct 28, 2026: Scam Shield. Code, database and repository names still say `scam-shield` until after the hackathon.)
 [![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml)
 

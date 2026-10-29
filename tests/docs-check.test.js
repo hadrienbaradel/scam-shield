@@ -1,7 +1,8 @@
 // scripts/docs-check.mjs: the product docs in _product/ stay consistent with
 // each other and with the repo (spec links, statuses, Keywords lines, index
-// files, CLAUDE.md links, Last updated, stale advice). Fixtures live in temp
-// directories; no network; git is used only by the one test that needs it.
+// files, CLAUDE.md links, Last updated, stale advice, the architecture doc).
+// Fixtures live in temp directories; no network; git is used only by the two
+// tests that need it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
@@ -9,7 +10,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  backtickedPathsIn, formatReport, isLocalLink, linksIn, parseTables, runDocsCheck, STATUSES,
+  backtickedPathsIn, codeFiles, formatReport, ignoredNames, isLocalLink, lastUpdated, linksIn, mentionsName, parseTables,
+  runDocsCheck, STATUSES,
 } from "../scripts/docs-check.mjs";
 
 const script = new URL("../scripts/docs-check.mjs", import.meta.url).pathname;
@@ -41,6 +43,16 @@ Last updated: 2026-10-27
 - Legacy rules engine: superseded.
 `;
 
+// The architecture doc of the passing layout: it names every file of its lib/
+// and src/ below (lib/llm/meta.js through its module folder lib/llm/).
+const ARCH = `# Architecture
+
+Last updated: 2026-10-27
+
+The server is \`src/server.js\`; one file per area in \`src/routes/\` (\`mail.js\`); \`src/db/pool.js\` holds the pool.
+The engine is \`lib/detector.js\`; every model call goes through \`lib/llm/\`.
+`;
+
 // A layout that passes every check. Tests copy it and break one thing.
 const GOOD = {
   "_product/spec.md": SPEC,
@@ -58,9 +70,18 @@ const GOOD = {
   "_product/README.md": "# _product/\n\n`spec.md` first; rules in `docs/git.md`; the index is `_product/spec.md`; per feature `specs/<feature>.md`.\n"
     + "The checker is `scripts/docs-check.mjs`; see [the process](docs/git.md) and [the spec](spec.md#features).\n",
   "CLAUDE.md": "# Fixture\n\nSee [README](README.md) and [the spec](_product/spec.md); rules in `_product/docs/git.md`; [hackathon](https://dev.meta.ai) stays.\n",
-  "README.md": "# Fixture\n\nSet keys with `make secrets-set KEY=value`; config/credentials.example lists them.\n",
+  "README.md": "# Fixture\n\nSet keys with `make secrets-set KEY=value`; config/credentials.example lists them.\n"
+    + "Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).\n",
   "docs/PRD.md": "# PRD map\n\nMaps the PRD to the code.\n",
+  "docs/ARCHITECTURE.md": ARCH,
   "scripts/docs-check.mjs": "// stub so the backticked path exists\n",
+  "lib/detector.js": "// stub\n",
+  "lib/llm/meta.js": "// stub, named through its module folder lib/llm/\n",
+  "src/server.js": "// stub\n",
+  "src/routes/mail.js": "// stub\n",
+  "src/db/pool.js": "// stub\n",
+  "src/db/migrations/001_init.sql": "-- skipped: a migration\n",
+  "src/db/testDatabase.js": "// skipped: a test helper\n",
 };
 
 const roots = [];
@@ -223,6 +244,7 @@ test("7: stale advice is a warning with file and line; lines that explain the ch
       "`node scripts/set-env.mjs KEY=value` still works as a deprecated shim.",
       "`.env.example` was renamed to `config/credentials.example`.",
       "The PRD is mapped to the code in docs/PRD.md.",
+      "Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).",
       "",
     ].join("\n"),
   });
@@ -253,6 +275,94 @@ test("a missing spec.md is reported, not a crash; findings come back sorted by f
   assert.ok(messages(result).some((m) => m.startsWith("_product/research.md: error: missing")));
   // Orphan errors need an index to compare against, so specs/ files are not all reported as unlinked.
   assert.ok(!messages(result).some((m) => m.includes("not linked from")));
+});
+
+// ---------------------------------------------------------------- 8 architecture
+
+// Runs git in a fixture with a fixed author and date, never in the caller's repository.
+const gitAt = (root, date) => (...args) => {
+  const env = { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date };
+  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) delete env[key];
+  execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", ...args],
+    { cwd: root, env, stdio: "ignore" });
+};
+
+test("8: README.md must link docs/ARCHITECTURE.md; a bare mention or a link in a code block is not enough", () => {
+  const linkError = 'README.md: error: no link to docs/ARCHITECTURE.md (add "Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)")';
+  assert.deepEqual(messages(check({ "README.md": "# Fixture\n\nThe architecture is in docs/ARCHITECTURE.md.\n" })), [linkError]);
+  assert.deepEqual(messages(check({ "README.md": "# Fixture\n\n```\n[architecture](docs/ARCHITECTURE.md)\n```\n" })), [linkError]);
+  assert.ok(messages(check({ "README.md": null })).includes(linkError));
+  // Any spelling that resolves to the file is a link.
+  assert.deepEqual(messages(check({ "README.md": "# Fixture\n\nSee [how it is built](./docs/ARCHITECTURE.md#the-verdict-pipeline).\n" })), []);
+});
+
+test("8: docs/ARCHITECTURE.md must exist and carry a Last updated date", () => {
+  assert.deepEqual(messages(check({ "docs/ARCHITECTURE.md": null })), [
+    "docs/ARCHITECTURE.md: error: missing: the technical architecture doc (pipeline, components, data model, decisions and why)",
+  ]);
+  assert.deepEqual(messages(check({ "docs/ARCHITECTURE.md": ARCH.replace("Last updated: 2026-10-27\n", "") })), [
+    'docs/ARCHITECTURE.md: error: no "Last updated: YYYY-MM-DD" line',
+  ]);
+  assert.deepEqual(messages(check({ "docs/ARCHITECTURE.md": ARCH.replace("Last updated: 2026-10-27", "Last updated: soon") })), [
+    'docs/ARCHITECTURE.md:3: error: "Last updated:" needs a YYYY-MM-DD date',
+  ]);
+  assert.deepEqual(lastUpdated("# Doc\n\n**Last updated:** 2026-10-29 by Vlad\n"), { line: 3, date: "2026-10-29" });
+  // Not a git repository (or no git at all): no warning, no crash.
+  assert.deepEqual(messages(check({ "docs/ARCHITECTURE.md": ARCH.replace("2026-10-27", "2020-01-01") }, { git: true })), []);
+});
+
+test("8: every file under lib/ and src/ is named in the doc, by its own name or by its module folder's", () => {
+  const result = check({
+    "lib/lessons.js": "// a new top-level module the doc does not name\n",
+    "lib/llm/gemini.js": "// a new provider: the doc names its module folder lib/llm/\n",
+    "lib/promptGuard/index.js": "// a new module folder nobody named\n",
+    "src/routes/whatsapp.js": "// a route: naming src/routes/ does not cover it\n",
+    "src/channels/telegram.js": "// a channel needs its own name too\n",
+    "src/jobs/digest.js": "// so does a job\n",
+    "src/db/migrations/006_job_runs.sql": "-- skipped: a migration\n",
+  });
+  assert.deepEqual(messages(result), [
+    "lib/lessons.js: error: not named in docs/ARCHITECTURE.md: say what lessons.js does under Components, or opt out with <!-- docs-check: ignore lessons.js -->",
+    "lib/promptGuard/index.js: error: not named in docs/ARCHITECTURE.md, nor is its folder lib/promptGuard/: say what it does under Components, or opt out with <!-- docs-check: ignore promptGuard -->",
+    "src/channels/telegram.js: error: not named in docs/ARCHITECTURE.md: say what telegram.js does under Components, or opt out with <!-- docs-check: ignore telegram.js -->",
+    "src/jobs/digest.js: error: not named in docs/ARCHITECTURE.md: say what digest.js does under Components, or opt out with <!-- docs-check: ignore digest.js -->",
+    "src/routes/whatsapp.js: error: not named in docs/ARCHITECTURE.md: say what whatsapp.js does under Components, or opt out with <!-- docs-check: ignore whatsapp.js -->",
+  ]);
+  assert.ok(result.findings.every((f) => f.check === "architecture" && f.severity === "error"));
+});
+
+test("8: <!-- docs-check: ignore <name> --> opts a file or a folder out; a name inside any other comment does not count", () => {
+  const files = { "lib/lessons.js": "//\n", "lib/promptGuard/index.js": "//\n", "lib/promptGuard/chunks.js": "//\n", "src/routes/whatsapp.js": "//\n" };
+  const doc = `${ARCH}\n<!-- docs-check: ignore lessons.js lib/promptGuard/ -->\n<!-- whatsapp.js is being built -->\n`;
+  assert.deepEqual(messages(check({ ...files, "docs/ARCHITECTURE.md": doc })), [
+    "src/routes/whatsapp.js: error: not named in docs/ARCHITECTURE.md: say what whatsapp.js does under Components, or opt out with <!-- docs-check: ignore whatsapp.js -->",
+  ]);
+  assert.deepEqual([...ignoredNames("<!-- docs-check: ignore a.js, lib/b/ -->\n<!--docs-check:ignore c-->\n`<!-- docs-check: ignore <name> -->`")], ["a.js", "lib/b", "c"]);
+});
+
+test("8: a name counts only whole; migrations, test helpers and dot files are not code to name", () => {
+  assert.ok(mentionsName("see `lib/lessons.js`", "lessons") && mentionsName("lessons.js", "lessons.js") && mentionsName("(llm/)", "llm"));
+  assert.ok(!mentionsName("lessonsLearned and micro_lessons", "lessons") && !mentionsName("OAuth", "auth"));
+  const root = layout({ ...GOOD, "lib/.DS_Store": "", "lib/x.test.js": "//\n", "lib/testUtils.js": "//\n", "src/fixtures/mail.json": "{}\n" });
+  assert.deepEqual(codeFiles(root), ["lib/detector.js", "lib/llm/meta.js", "src/db/pool.js", "src/routes/mail.js", "src/server.js"]);
+});
+
+test("8: a Last updated older than the newest commit touching lib/ or src/ is a warning", { skip: !hasGit && "git not installed" }, () => {
+  const root = layout({ ...GOOD, "docs/ARCHITECTURE.md": ARCH.replace("2026-10-27", "2026-10-20") });
+  const git = gitAt(root, "2026-10-27T12:00:00Z");
+  git("init", "-q");
+  git("add", "-A");
+  git("commit", "-q", "-m", "code and docs");
+  const result = runDocsCheck(root, { git: true });
+  assert.equal(result.errors, 0);
+  assert.deepEqual(messages(result), [
+    "docs/ARCHITECTURE.md:3: warning: Last updated 2026-10-20 is older than the newest commit touching lib/ or src/ (2026-10-27); check the doc against the code, then move the date",
+  ]);
+  assert.deepEqual(messages(runDocsCheck(root, { git: false })), []);
+  // A later commit that touches neither lib/ nor src/ asks for nothing.
+  writeFileSync(join(root, "docs/ARCHITECTURE.md"), ARCH);
+  gitAt(root, "2026-10-29T12:00:00Z")("commit", "-q", "-am", "docs only");
+  assert.deepEqual(messages(runDocsCheck(root, { git: true })), []);
 });
 
 // ---------------------------------------------------------------- cli

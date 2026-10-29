@@ -6,7 +6,7 @@
 //   node scripts/docs-check.mjs --warn-only     everything becomes a warning, exit 0
 //   node scripts/docs-check.mjs --json          findings as JSON
 //   node scripts/docs-check.mjs --root <dir>    another checkout (the tests use this)
-//   node scripts/docs-check.mjs --no-git        skip the single git call (check 6)
+//   node scripts/docs-check.mjs --no-git        skip the git calls (checks 6 and 8)
 //
 // Output: "docs-check: N errors, M warnings", then one line per finding,
 // "<file>[:<line>]: <severity>: <problem>", sorted by file.
@@ -24,9 +24,17 @@
 //                   commit touching _product/specs/ (git optional: no git, no warning)
 //   7 stale         old advice (warnings): scripts/set-env.mjs as the way to set keys,
 //                   .env.example, docs/PRD.md as the source of truth
+//   8 architecture  README.md links docs/ARCHITECTURE.md, which has "Last updated: YYYY-MM-DD" and
+//                   names every file under lib/ and src/: by its own name (lessons.js or lessons) or,
+//                   inside a module folder such as lib/llm/, by the folder's name; files directly in
+//                   one of ARCH_UNIT_DIRS need their own. Migrations and test helpers are skipped;
+//                   <!-- docs-check: ignore <name> --> in the doc opts a file or a folder out.
+//                   Warning when Last updated is older than the newest commit touching lib/ or src/
+//                   (git optional, as in 6)
 //
-// Plain Node (fs, path, one optional git call), under a second. It reads only
-// markdown files: never .env, never config/master.key.
+// Plain Node (fs, path, two optional git calls), under a second. It reads only
+// markdown files, plus the names (never the contents) of the files under lib/
+// and src/: never .env, never config/master.key.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -57,6 +65,15 @@ export const STALE_RULES = [
     message: "stale: docs/PRD.md named as the source of truth; _product/spec.md is",
   },
 ];
+
+// Check 8: the architecture doc, the code it must name, and the folders whose
+// files are separate units that each need their own name. Any other folder
+// below lib/ or src/ is a module the doc may name as a whole ("lib/llm/").
+export const ARCH = "docs/ARCHITECTURE.md";
+export const CODE_DIRS = ["lib", "src"];
+export const ARCH_UNIT_DIRS = ["lib", "src", "src/routes", "src/jobs", "src/db", "src/channels"];
+const SKIPPED_DIRS = ["node_modules", "migrations", "fixtures", "__tests__", "__mocks__"];
+const TEST_HELPER = /^test[A-Z0-9_.-]|\.(test|spec)\.[cm]?[jt]sx?$/;
 
 // ---------------------------------------------------------------- markdown
 
@@ -125,6 +142,34 @@ export function resolves(root, file, target) {
 
 const firstWord = (text) => (String(text ?? "").match(/^[A-Za-z]+/) || [""])[0];
 
+// The "Last updated:" line of a doc: its 1-based number (null when absent) and
+// its YYYY-MM-DD date (null when the line has none).
+export function lastUpdated(text) {
+  const lines = String(text ?? "").split(/\r?\n/);
+  const at = lines.findIndex((l) => /last updated:/i.test(l));
+  if (at < 0) return { line: null, date: null };
+  const m = lines[at].match(/last updated:\**\s*(\d{4}-\d{2}-\d{2})/i);
+  return { line: at + 1, date: m ? m[1] : null };
+}
+
+// Is `name` written in `text` as a whole name ("lessons" in "lib/lessons.js",
+// not in "lessonsLearned")? Letters, digits and "_" continue a name.
+export function mentionsName(text, name) {
+  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![A-Za-z0-9_])${escaped}(?![A-Za-z0-9_])`).test(String(text ?? ""));
+}
+
+// Names opted out of check 8 by <!-- docs-check: ignore <name> [<name> ...] -->:
+// a file (lessons.js, lessons, lib/lessons.js) or a folder (promptGuard, lib/promptGuard/).
+export function ignoredNames(text) {
+  const names = new Set();
+  for (const m of String(text ?? "").matchAll(/<!--\s*docs-check:\s*ignore\b([\s\S]*?)-->/gi)) {
+    // A placeholder such as <name> (the doc explaining the opt-out) names nothing.
+    for (const name of m[1].split(/[\s,]+/)) if (name && !/[<>]/.test(name)) names.add(name.replace(/\/+$/, ""));
+  }
+  return names;
+}
+
 // ---------------------------------------------------------------- files
 
 const read = (path) => {
@@ -152,18 +197,38 @@ export function walkMd(root, dir) {
   return out;
 }
 
-// Date (YYYY-MM-DD) of the newest commit touching _product/specs/, or null when
-// git is missing, the folder is not a repository, or nothing is committed.
-export function newestSpecsCommit(root) {
+// Date (YYYY-MM-DD) of the newest commit touching any of `paths`, or null when
+// git is missing, the folder is not a repository, or nothing is committed there.
+export function newestCommit(root, paths) {
   const env = { ...process.env };
   for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) delete env[key];
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%cs", "--", SPECS_DIR],
+    const out = execFileSync("git", ["log", "-1", "--format=%cs", "--", ...paths],
       { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000 }).trim();
     return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
   } catch {
     return null;
   }
+}
+
+export const newestSpecsCommit = (root) => newestCommit(root, [SPECS_DIR]);
+
+// Check 8: the files under lib/ and src/ that the architecture doc must name,
+// as sorted paths relative to root. Dot files, node_modules, migrations,
+// fixtures and test helpers (testDatabase.js, *.test.js) are left out.
+export function codeFiles(root, dirs = CODE_DIRS) {
+  const out = [];
+  const walk = (dir) => {
+    const abs = join(root, dir);
+    if (!isDir(abs)) return;
+    for (const entry of readdirSync(abs, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name.startsWith(".")) continue;
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) { if (!SKIPPED_DIRS.includes(entry.name)) walk(rel); } else if (entry.isFile() && !TEST_HELPER.test(entry.name)) out.push(rel);
+    }
+  };
+  for (const dir of dirs) walk(dir);
+  return out;
 }
 
 // ---------------------------------------------------------------- checks
@@ -210,15 +275,13 @@ function checkSpecIndex(root, text, r, linked, git) {
   }
   if (!features) r.error("spec-links", SPEC, null, 'no Features table (header "| Feature | Status | One-line spec | Details |")');
 
-  const lines = text.split(/\r?\n/);
-  const at = lines.findIndex((l) => /last updated:/i.test(l));
-  if (at < 0) { r.error("last-updated", SPEC, null, 'no "Last updated: YYYY-MM-DD" line'); return; }
-  const m = lines[at].match(/last updated:\**\s*(\d{4}-\d{2}-\d{2})/i);
-  if (!m) { r.error("last-updated", SPEC, at + 1, '"Last updated:" needs a YYYY-MM-DD date'); return; }
+  const stamp = lastUpdated(text);
+  if (stamp.line === null) { r.error("last-updated", SPEC, null, 'no "Last updated: YYYY-MM-DD" line'); return; }
+  if (!stamp.date) { r.error("last-updated", SPEC, stamp.line, '"Last updated:" needs a YYYY-MM-DD date'); return; }
   if (!git) return;
   const newest = newestSpecsCommit(root);
-  if (newest && newest > m[1]) {
-    r.warn("last-updated", SPEC, at + 1, `Last updated ${m[1]} is older than the newest commit touching ${SPECS_DIR}/ (${newest}); refresh the index`);
+  if (newest && newest > stamp.date) {
+    r.warn("last-updated", SPEC, stamp.line, `Last updated ${stamp.date} is older than the newest commit touching ${SPECS_DIR}/ (${newest}); refresh the index`);
   }
 }
 
@@ -307,6 +370,61 @@ function checkStale(root, r) {
   }
 }
 
+// What may stand for a file in check 8: its own names (path, basename, stem)
+// and, while it sits in a module folder (not one of ARCH_UNIT_DIRS), that
+// folder's path and name. An opt-out may also name any folder above it.
+function archNames(file) {
+  const parts = file.split("/");
+  const base = parts.at(-1);
+  const own = [file, base, base.replace(/\.[^.]+$/, "")];
+  const modules = [];
+  const above = [];
+  for (let i = parts.length - 1, inModule = true; i >= 1; i--) {
+    const dir = parts.slice(0, i).join("/");
+    if (ARCH_UNIT_DIRS.includes(dir)) inModule = false;
+    (inModule ? modules : above).push(dir, parts[i - 1]);
+  }
+  return { own, modules, folders: [...modules, ...above] };
+}
+
+// Check 8.
+function checkArchitecture(root, r, git) {
+  let fenced = false;
+  const linked = (read(join(root, "README.md")) ?? "").split(/\r?\n/).some((line) => {
+    if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; return false; }
+    return !fenced && linksIn(line).filter(isLocalLink).some((target) => {
+      let path = target.replace(/[#?].*$/, "");
+      try { path = decodeURIComponent(path); } catch { /* keep as written */ }
+      return Boolean(path) && relative(root, resolve(root, path)).split("\\").join("/") === ARCH;
+    });
+  });
+  if (!linked) r.error("architecture", "README.md", null, `no link to ${ARCH} (add "Architecture and the reasons behind it: [${ARCH}](${ARCH})")`);
+
+  const text = read(join(root, ARCH));
+  if (text === null) { r.error("architecture", ARCH, null, "missing: the technical architecture doc (pipeline, components, data model, decisions and why)"); return; }
+  const stamp = lastUpdated(text);
+  if (stamp.line === null) r.error("architecture", ARCH, null, 'no "Last updated: YYYY-MM-DD" line');
+  else if (!stamp.date) r.error("architecture", ARCH, stamp.line, '"Last updated:" needs a YYYY-MM-DD date');
+
+  // A name inside an HTML comment does not document anything; opt-outs are explicit.
+  const visible = text.replace(/<!--[\s\S]*?-->/g, " ");
+  const ignored = ignoredNames(text);
+  for (const file of codeFiles(root)) {
+    const { own, modules, folders } = archNames(file);
+    if ([...own, ...folders].some((name) => ignored.has(name))) continue;
+    if ([...own, ...modules].some((name) => mentionsName(visible, name))) continue;
+    r.error("architecture", file, null, modules.length
+      ? `not named in ${ARCH}, nor is its folder ${modules.at(-2)}/: say what it does under Components, or opt out with <!-- docs-check: ignore ${modules.at(-1)} -->`
+      : `not named in ${ARCH}: say what ${own[1]} does under Components, or opt out with <!-- docs-check: ignore ${own[1]} -->`);
+  }
+
+  if (!git || !stamp.date) return;
+  const newest = newestCommit(root, CODE_DIRS);
+  if (newest && newest > stamp.date) {
+    r.warn("architecture", ARCH, stamp.line, `Last updated ${stamp.date} is older than the newest commit touching lib/ or src/ (${newest}); check the doc against the code, then move the date`);
+  }
+}
+
 const byFile = (a, b) => a.file.localeCompare(b.file) || (a.line ?? 0) - (b.line ?? 0)
   || a.severity.localeCompare(b.severity) || a.message.localeCompare(b.message);
 
@@ -323,6 +441,7 @@ export function runDocsCheck(root, { git = true } = {}) {
   checkIndexes(root, r);
   checkLinks(root, r);
   checkStale(root, r);
+  checkArchitecture(root, r, git);
   const findings = r.findings.sort(byFile);
   return {
     root,

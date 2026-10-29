@@ -73,6 +73,7 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 | Change | Update |
 |---|---|
 | Code behavior (what the user sees or gets) | `specs/<feature>.md` + the status in `spec.md` |
+| A new module in lib/ or src/, a changed pipeline step, a design decision | `docs/ARCHITECTURE.md`: the section, the Decisions list, and its Last updated line |
 | A new idea, from anyone, in any channel | a row in the Ideas table of `spec.md`; a `specs/` file once it has more than one line of detail |
 | New env var or key | `_product/docs/secrets.md` + `config/credentials.example` (+ `REQUIRED_KEYS` in `lib/credentialStore.js` when the product cannot run without it) |
 | New make target or script | Makefile help comment (no Makefile yet: the README script table) + `_product/docs/dx.md` |

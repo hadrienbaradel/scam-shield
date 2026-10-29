@@ -1,0 +1,10 @@
+%% How Prudence judges one message: the five-box version for the video (scene 2:05).
+%% The full flow, with file paths, is in docs/ARCHITECTURE.md (The verdict pipeline).
+%% Edit this source, then re-render pipeline.svg, pipeline.png and pipeline.excalidraw (gstack diagram skill).
+flowchart LR
+  msg["Message<br/>email, text,<br/>screenshot, voicemail"]
+  rules["Rules<br/>gather the evidence:<br/>sender, links, your life"]
+  muse["Muse Spark<br/>decides, as one<br/>strict JSON verdict"]
+  guard["Guardrail<br/>proven scam: never Safe<br/>known sender: never Scam"]
+  card["Card<br/>Scam, Be careful or Safe<br/>and one next step"]
+  msg --> rules --> muse --> guard --> card
