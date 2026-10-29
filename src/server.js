@@ -24,6 +24,8 @@ import guardianRoutes from "./routes/guardians.js";
 import deviceRoutes from "./routes/devices.js";
 import adminRoutes from "./routes/admin.js";
 import demoRoutes from "./routes/demo.js";
+import whatsappRoutes from "./routes/whatsapp.js";
+import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 
 const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
 
@@ -54,7 +56,7 @@ export async function buildApp({ logger = true } = {}) {
   const origin = new URL(config.baseUrl).origin;
   app.addHook("onRequest", async (request, reply) => {
     if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
-    if (/^Bearer\s/i.test(request.headers.authorization || "") || request.url === "/api/devices/pair") return;
+    if (/^Bearer\s/i.test(request.headers.authorization || "") || request.url === "/api/devices/pair" || request.url === "/api/whatsapp/webhook") return; // Meta signs the webhook (src/routes/whatsapp.js)
     const from = request.headers.origin || (request.headers.referer ? new URL(request.headers.referer).origin : null);
     if (from !== origin) return reply.code(403).send({ error: `Requests must come from ${origin}` });
   });
@@ -70,6 +72,7 @@ export async function buildApp({ logger = true } = {}) {
   await app.register(deviceRoutes);
   await app.register(adminRoutes);
   await app.register(demoRoutes);
+  await app.register(whatsappRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
 
   app.setErrorHandler((err, request, reply) => {
@@ -88,6 +91,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`  Google sign-in: ${googleConfigured() ? "configured" : "NOT configured (demo only) — see docs/GOOGLE_SETUP.md"}`);
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
   console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);
+  console.log(`  WhatsApp channel: ${webhookActive() ? "on (/api/whatsapp/webhook)" : whatsappConfigured() ? "webhook inactive until WHATSAPP_APP_SECRET is set" : "off (no WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID)"}`);
   startJobs();
   const shutdown = async () => { stopJobs(); await app.close(); await pool.end(); process.exit(0); };
   process.on("SIGINT", shutdown);

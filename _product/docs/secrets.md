@@ -48,7 +48,8 @@ the process with one line naming the fix. `CREDENTIALS_FILE` and `MASTER_KEY_FIL
 
 Anyone with the key and the public repo history can read every version of `config/credentials.enc`, and history cannot be unleaked.
 `make secrets-rotate` at once, send the new key, and rotate every provider key the file held: Meta Model API key, Google client
-secret (Cloud Console → Clients), Resend, HIBP, abuse.ch, plus `TOKEN_ENC_KEY` (users reconnect Gmail). Same if a value was committed.
+secret (Cloud Console → Clients), Resend, HIBP, abuse.ch, the WhatsApp system-user token and App Secret (Meta app dashboard),
+plus `TOKEN_ENC_KEY` (users reconnect Gmail). Same if a value was committed.
 
 ## Keys (names; `config/credentials.example` documents each)
 
@@ -56,3 +57,7 @@ Required for the real product: `TOKEN_ENC_KEY` (`make setup` generates it), `GOO
 Optional: `ADMIN_EMAILS`, `DATABASE_URL`, `TEST_DATABASE_URL`, `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION`, `META_MODEL_NAME`,
 `META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL`, `LLM_THINKING`, `OPENAI_API_KEY`,
 `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `RESEND_API_KEY`, `MAIL_FROM`, `HIBP_API_KEY`, `ABUSECH_AUTH_KEY`, `PORT`, `HOST`, `BASE_URL`.
+WhatsApp channel (`_product/specs/whatsapp-channel.md`; the webhook answers 501 until the first two are set): `WHATSAPP_ACCESS_TOKEN`
+(a system-user token, not the 24-hour temporary one), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`
+(any string, pasted again in Meta's webhook configuration), `WHATSAPP_APP_SECRET` (required: every delivery is signature-checked and
+refused with 403 until it is set; the startup line says so), optional `WHATSAPP_GRAPH_VERSION` (default `v22.0`) and `FFMPEG_PATH`.
