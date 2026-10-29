@@ -45,6 +45,7 @@ function liveSource(status) {
     throwAway: (item) => api(`/api/messages/${enc(item.id)}/file-as-scam`, { method: "POST", body: {} }),
     undoThrow: (item) => api(`/api/messages/${enc(item.id)}/undo-throw`, { method: "POST", body: {} }),
     keep: (item) => api(`/api/messages/${enc(item.id)}/put-back`, { method: "POST", body: {} }),
+    undoKeep: (item) => api(`/api/messages/${enc(item.id)}/undo-keep`, { method: "POST", body: {} }),
     ask: (item, detail, opts) => api("/api/ask", { method: "POST", body: { checkId: detail.checkId, via: opts.via, includeText: opts.includeText } }),
   };
 }
@@ -66,6 +67,7 @@ function demoSource() {
     throwAway: async (item) => { demoDone.add(item.id); },
     undoThrow: async (item) => { demoDone.delete(item.id); },
     keep: async (item) => { demoDone.add(item.id); },
+    undoKeep: async (item) => { demoDone.delete(item.id); },
     async ask(item, detail, opts) {
       const g = data.guardian;
       if (opts.via === "email") return { sentTo: [g.name], texts: [] };
@@ -236,8 +238,7 @@ function drawCard({ keep = null } = {}) {
       <div class="v2-actions">${primary}${second}</div>
       ${d.callBack ? `<p class="v2-hint">${esc(t("v2_call_note", { name: firstName(d.callBack.name) }))}</p>` : ""}
       ${d.callBack ? `<button id="v2Throw" class="btn btn-light-dark v2-quiet" type="button">${t("v2_throw")}</button>` : ""}
-      ${scam ? `<p class="v2-hint">${icon("left", 20)} ${t("v2_swipe_hint")}</p>` : ""}
-      <button id="v2Keep" class="v2-link" type="button">${t("v2_keep")}</button>
+      <button id="v2Keep" class="btn btn-light-dark v2-quiet" type="button">${t("v2_keep")}</button>
     </div>`, { focus: !keep });
   if (keep) $(keep)?.focus();
   bindHeader();
@@ -299,7 +300,7 @@ function drawDone(last) {
       <section class="v2-done-note" role="status">
         <h1 class="v2-done-title">${icon("check", 26)} ${last.kind === "thrown" ? t("v2_thrown") : t("v2_kept")}</h1>
         <p>${last.kind === "thrown" ? t("v2_thrown_note") : t("v2_kept_note")}</p>
-        ${last.kind === "thrown" ? `<button id="v2Undo" class="btn v2-undo" type="button">${icon("undo", 22)} ${t("v2_undo")}</button>` : ""}
+        <button id="v2Undo" class="btn v2-undo" type="button">${icon("undo", 22)} ${t("v2_undo")}</button>
       </section>
       ${more ? `
         <button id="v2Next" class="btn btn-gold v2-big" type="button">${t("v2_next")} ${icon("next", 26)}</button>` : `
@@ -312,7 +313,7 @@ function drawDone(last) {
     </div>`);
   const n = painted;
   $("#v2Undo")?.addEventListener("click", (e) => busy(e.currentTarget, async () => {
-    await S.source.undoThrow(last.item);
+    await (last.kind === "thrown" ? S.source.undoThrow(last.item) : S.source.undoKeep(last.item));
     if (!S.queue.some((q) => q.id === last.item.id)) S.queue.splice(last.at, 0, last.item);
     if (!stale(n)) openCard(last.at);
   }));

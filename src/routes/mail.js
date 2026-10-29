@@ -11,7 +11,7 @@ import { extractFromImage, museConfigured, transcribeVoice, voiceConfigured } fr
 import { clientFor, mapLimit, sharedFrom, finishAction } from "../sync/worker.js";
 import { runCheck, recordCheck, loadContext } from "../sync/checker.js";
 import { callBackFor } from "../../lib/context.js";
-import { putBack, fileAsScam, undoThrow, decideAction } from "../sync/actions.js";
+import { putBack, fileAsScam, undoThrow, undoKeep, decideAction } from "../sync/actions.js";
 import { alertGuardians, answersForSenior } from "../guardians.js";
 import { ReauthNeeded } from "../google/oauth.js";
 
@@ -136,6 +136,16 @@ export default async function mailRoutes(app) {
     if (!check) return reply.code(404).send({ error: "Nothing to undo for this message." });
     try {
       await undoThrow({ client: clientFor(request.user.id), userId: request.user.id, check, labels: await labelsFor(request.user.id) });
+      cache.clear();
+      return { ok: true };
+    } catch (e) { return gmailError(reply, e); }
+  });
+
+  app.post("/api/messages/:id/undo-keep", async (request, reply) => {
+    const check = await one("SELECT * FROM checks WHERE user_id = $1 AND gmail_message_id = $2 AND user_feedback = 'not_scam'", [request.user.id, request.params.id]);
+    if (!check) return reply.code(404).send({ error: "Nothing to undo for this message." });
+    try {
+      await undoKeep({ client: clientFor(request.user.id), userId: request.user.id, check, labels: await labelsFor(request.user.id) });
       cache.clear();
       return { ok: true };
     } catch (e) { return gmailError(reply, e); }

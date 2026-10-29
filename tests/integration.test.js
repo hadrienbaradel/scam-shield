@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { one, many } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { syncUser } from "../src/sync/worker.js";
-import { putBack, fileAsScam, undoThrow } from "../src/sync/actions.js";
+import { putBack, fileAsScam, undoThrow, undoKeep } from "../src/sync/actions.js";
 import { acceptInvite } from "../src/guardians.js";
 import { fakeGmail, gmailMessage } from "./helpers/fake-gmail.js";
 
@@ -72,6 +72,17 @@ test("Gmail sync: learns the context, moves the scam, leaves real mail alone, ne
   assert.equal((await one("SELECT user_feedback FROM checks WHERE id = $1", [check.id])).user_feedback, "not_scam");
   const events = (await many("SELECT event FROM audit_log WHERE user_id = $1", [user.id])).map((e) => e.event);
   assert.ok(events.includes("moved_out_of_inbox") && events.includes("put_back"));
+
+  // "Keep it" then "Undo": back in the Scam folder with its label, the answer withdrawn, the sender forgotten.
+  const known = async () => (await one("SELECT data FROM contexts WHERE user_id = $1", [user.id])).data.knownSenders.map((s) => s.email);
+  assert.ok((await known()).includes("alerts@usps-delivery.test"));
+  await undoKeep({ client: gmail, userId: user.id, check: { ...check, user_feedback: "not_scam" }, labels: { scam: state.label_scam, careful: state.label_careful } });
+  assert.ok(!gmail.store.get("usps2").labelIds.includes("INBOX"), "it had been moved: it goes back to the Scam folder");
+  assert.ok(gmail.store.get("usps2").labelIds.includes(state.label_scam));
+  assert.deepEqual(await one("SELECT restored_at, user_feedback FROM checks WHERE id = $1", [check.id]), { restored_at: null, user_feedback: null });
+  assert.ok(!(await known()).includes("alerts@usps-delivery.test"), "the sender this keep taught is forgotten");
+  await putBack({ client: gmail, userId: user.id, check, labels: { scam: state.label_scam, careful: state.label_careful },
+    message: { from: "alerts@usps-delivery.test", fromName: "USPS" } });
 
   // "Throw it away" then "Undo": back in the inbox with its Scam label, and the sender is not learned as safe.
   const labels = { scam: state.label_scam, careful: state.label_careful };
