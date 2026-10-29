@@ -110,22 +110,25 @@ async function draw() {
   const hash = location.hash || "#/";
   const root = view();
   const u = status.user;
+  // The screen being drawn, kept on the root: a late answer meant for another
+  // screen sees it and is dropped (today.js, learn.js).
+  const as = (name) => { root.dataset.view = name; return root; };
   try {
-    if (hash.startsWith("#/demo/all")) return await renderDemo(root, status);
-    if (hash.startsWith("#/demo/learn")) return await renderLearn(root, status, { demo: true });
-    if (hash.startsWith("#/demo")) return await renderToday(root, status, { demo: true });
-    if (!u) return renderLanding(root, status);
-    if (status.gmail && !u.onboarded) return await renderOnboarding(root, status, refresh);
-    if (hash.startsWith("#/learn")) return await renderLearn(root, status);
-    if (hash.startsWith("#/folder/scam")) return await renderMail(root, status, "scam");
-    if (hash.startsWith("#/folder/careful")) return await renderMail(root, status, "careful");
-    if (hash.startsWith("#/check")) return renderCheck(root, status);
-    if (hash.startsWith("#/people")) return await renderPeople(root);
-    if (hash.startsWith("#/settings")) return await renderSettings(root, status, refresh);
-    if (hash.startsWith("#/admin") && u.isAdmin) return await renderAdmin(root);
-    if (hash.startsWith("#/guardian") || !status.gmail) return await renderGuardian(root);
-    if (hash.startsWith("#/inbox")) return await renderMail(root, status, "inbox");
-    return await renderToday(root, status);
+    if (hash.startsWith("#/demo/all")) return await renderDemo(as("demo-all"), status);
+    if (hash.startsWith("#/demo/learn")) return await renderLearn(as("learn"), status, { demo: true });
+    if (hash.startsWith("#/demo")) return await renderToday(as("today"), status, { demo: true });
+    if (!u) return renderLanding(as("landing"), status);
+    if (status.gmail && !u.onboarded) return await renderOnboarding(as("onboarding"), status, refresh);
+    if (hash.startsWith("#/learn")) return await renderLearn(as("learn"), status);
+    if (hash.startsWith("#/folder/scam")) return await renderMail(as("mail"), status, "scam");
+    if (hash.startsWith("#/folder/careful")) return await renderMail(as("mail"), status, "careful");
+    if (hash.startsWith("#/check")) return renderCheck(as("check"), status);
+    if (hash.startsWith("#/people")) return await renderPeople(as("people"));
+    if (hash.startsWith("#/settings")) return await renderSettings(as("settings"), status, refresh);
+    if (hash.startsWith("#/admin") && u.isAdmin) return await renderAdmin(as("admin"));
+    if (hash.startsWith("#/guardian") || !status.gmail) return await renderGuardian(as("guardian"));
+    if (hash.startsWith("#/inbox")) return await renderMail(as("mail"), status, "inbox");
+    return await renderToday(as("today"), status);
   } catch (e) {
     root.innerHTML = `<p class="banner danger">${esc(e.status === 401 ? "" : t("error_generic"))}</p>`;
     if (e.status === 401) location.href = "/";

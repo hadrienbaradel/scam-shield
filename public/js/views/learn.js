@@ -135,8 +135,7 @@ function paint(html, { focus = true } = {}) {
   paintedAt = performance.now();
   return ++painted;
 }
-const onLearn = () => /^#\/(demo\/)?learn\b/.test(location.hash);
-const stale = (n) => n !== painted || !L.root.isConnected || !onLearn();
+const stale = (n) => n !== painted || !L.root.isConnected || L.root.dataset.view !== "learn";
 
 export async function renderLearn(root, status, { demo = false } = {}) {
   L = { root, status, demo, local: demo || !status.user, lang: getLang(), lessons: [], progress: emptyProgress(), summary: null, run: null };

@@ -98,7 +98,8 @@ function paint(html, { focus = true } = {}) {
   if (focus) focusHeading(S.root);
   return ++painted;
 }
-const stale = (n) => n !== painted || !S.root.isConnected;
+// Another screen on the root (main.js sets root.dataset.view) makes it stale too.
+const stale = (n) => n !== painted || !S.root.isConnected || S.root.dataset.view !== "today";
 
 export async function renderToday(root, status, { demo = false, quiet = false } = {}) {
   S = { root, status, source: demo ? demoSource() : liveSource(status), index: 0, details: new Map(), open: { why: false, body: false } };
@@ -296,7 +297,7 @@ async function act(kind) {
     await (kind === "thrown" ? s.source.throwAway(item) : s.source.keep(item));
     const at = s.queue.findIndex((q) => q.id === item.id);
     if (at >= 0) s.queue.splice(at, 1);
-    if (s === S && S.root.isConnected) drawDone({ kind, item, at: Math.max(0, at) });
+    if (s === S && S.root.isConnected && S.root.dataset.view === "today") drawDone({ kind, item, at: Math.max(0, at) });
   } finally {
     s.acting = false;
   }
@@ -398,7 +399,7 @@ function drawAsk() {
 
 // Live updates: a new check or an answer refreshes "Today" when it is on screen.
 export function onTodayEvent() {
-  if (S && !S.source.demo && S.root.isConnected && $("#v2Look, .v2-status", S.root)) renderToday(S.root, S.status, { quiet: true });
+  if (S && !S.source.demo && S.root.isConnected && S.root.dataset.view === "today" && $("#v2Look, .v2-status", S.root)) renderToday(S.root, S.status, { quiet: true });
 }
 
 // Inline stroke icons (no emoji, no icon font); decorative, hidden from screen readers.
