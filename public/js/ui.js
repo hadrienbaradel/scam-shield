@@ -49,13 +49,21 @@ export async function busy(button, fn, label) {
   }
 }
 
-export function readAloud(v) {
-  if (!v || !("speechSynthesis" in window)) return;
+// Reads text aloud in French ("fr", "fr-FR") or English (anything else), a
+// little slower than the default; a new reading stops the one before. Does
+// nothing where the browser cannot speak.
+export function speak(text, lang) {
+  if (!text || !("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(`${v.headline}. ${(v.reasons || []).map((r) => r.text).join(". ")}. ${v.action_text}`);
+  const u = new SpeechSynthesisUtterance(String(text));
   u.rate = 0.92;
-  u.lang = v.language === "fr" ? "fr-FR" : "en-US";
+  u.lang = String(lang || "").startsWith("fr") ? "fr-FR" : "en-US";
   speechSynthesis.speak(u);
+}
+
+export function readAloud(v) {
+  if (!v) return;
+  speak(`${v.headline}. ${(v.reasons || []).map((r) => r.text).join(". ")}. ${v.action_text}`, v.language);
 }
 
 let toastTimer;
