@@ -533,18 +533,25 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2-more { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .v2-more .btn { min-height: 48px; font-size: 0.95rem; }
 
-/* The two answers stay in reach at the bottom of the screen while the card scrolls. */
+/* The two answers sit in a bar fixed to the bottom of the screen, outside
+   the card, so they stay in reach without covering what the card says. */
 .v2-actions {
-  position: sticky;
-  bottom: 0.75rem;
-  z-index: 5;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 14;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-  padding: 0.5rem 0;
-  background: linear-gradient(to bottom, rgba(238, 241, 245, 0), var(--ground) 30%);
+  max-width: calc(560px + 2rem);
+  margin: 0 auto;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(15, 29, 47, 0.12);
 }
-.has-tabbar .v2-actions { bottom: calc(72px + 0.5rem + env(safe-area-inset-bottom)); }
+.has-tabbar .v2-actions { bottom: calc(72px + env(safe-area-inset-bottom)); padding-bottom: 0.75rem; }
 .v2-action { flex-direction: column; gap: 0.3rem; min-height: 88px; border-radius: 20px; font-size: 1.05rem; }
 .v2-hint { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
 .v2-quiet { width: 100%; }
@@ -598,7 +605,8 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 
 @media (min-width: 701px) {
   .tabbar { display: none !important; }
-  .has-tabbar .v2-actions { bottom: 0.75rem; }
+  .has-tabbar .v2-actions { bottom: 0; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+  .v2-actions { border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; }
 }
 @media (max-width: 700px) {
   .v2-app .nav-tabbed,
@@ -609,6 +617,11 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   .v2-app .main { padding-bottom: 6.5rem; }
   .v2-app .footer { padding-bottom: 6rem; }
 }
+/* While the answer bar is up, the page ends above it (and above the tabs). */
+/* --dock-h is the bar's measured height (labels may wrap to two lines). */
+.v2-docked .footer { padding-bottom: calc(var(--dock-h, 150px) + 1.5rem); }
+.v2-docked.has-tabbar .footer { padding-bottom: calc(var(--dock-h, 150px) + 72px + 1.5rem + env(safe-area-inset-bottom)); }
+@media (min-width: 701px) { .v2-docked.has-tabbar .footer { padding-bottom: calc(var(--dock-h, 150px) + 1.5rem); } }
 
 /* ------------------------------------------------- narrow + a11y bits -- */
 

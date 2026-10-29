@@ -81,6 +81,7 @@ async function route() {
 }
 
 async function draw() {
+  document.body.classList.remove("v2-docked"); // the answer bar belongs to a card only
   const hash = location.hash || "#/";
   const root = view();
   const u = status.user;

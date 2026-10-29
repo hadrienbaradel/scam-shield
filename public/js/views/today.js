@@ -87,6 +87,9 @@ function demoSource() {
 let painted = 0;
 function paint(html, { focus = true } = {}) {
   S.root.innerHTML = html;
+  const dock = S.root.querySelector(".v2-actions");
+  document.body.classList.toggle("v2-docked", Boolean(dock));
+  if (dock) document.body.style.setProperty("--dock-h", `${dock.offsetHeight}px`);
   if (focus) focusHeading(S.root);
   return ++painted;
 }
@@ -211,9 +214,9 @@ function drawCard({ keep = null } = {}) {
         <article id="v2Card" class="v2-card ${verdictClass(v.verdict)}" aria-labelledby="v2Headline">
           <p class="v2-badge"><span class="v2-badge-dot" aria-hidden="true">${icon(scam ? "alert" : v.verdict === "be_careful" ? "careful" : "check", 34)}</span>${esc(word)}</p>
           <h1 id="v2Headline" class="v2-headline">${esc(headlineOf(v.headline))}</h1>
+          ${v.action_text ? `<p class="v2-next">${esc(v.action_text)}</p>` : ""}
           ${reasons[0] ? `<p class="v2-fact">${esc(reasons[0].text)}</p>` : ""}
           ${reasons[1] ? `<p class="v2-fact v2-fact-box">${esc(reasons[1].text)}</p>` : ""}
-          ${v.action_text ? `<p class="v2-next">${esc(v.action_text)}</p>` : ""}
           <div class="v2-more">
             <button id="v2Why" class="btn btn-light-dark" type="button" aria-expanded="${S.open.why}">${t("v2_why")}</button>
             <button id="v2Body" class="btn btn-light-dark" type="button" aria-expanded="${S.open.body}">${S.open.body ? t("v2_hide") : t("v2_show")}</button>
