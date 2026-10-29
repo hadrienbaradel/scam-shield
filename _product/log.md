@@ -11,6 +11,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
+| Vlad · whatsapp-channel | 2026-10-29 14:46 | WhatsApp Cloud API channel: webhook verify, text/image/audio/document in, verdict reply out; spec, keys by name, tests | `src/channels/whatsapp.js`, `src/routes/whatsapp.js`, `tests/whatsapp.test.js`, `_product/specs/whatsapp-channel.md`, `_product/spec.md` (one row, non-goal line), `_product/docs/secrets.md`, `config/credentials.example`, one line in `src/server.js` |
 | Vlad · chips | 2026-10-29 14:39 | "Checked:" chips under each reason on the V2 card, EN/FR | `public/js/views/today.js`, `public/js/i18n.js`, `public/styles.css`, `_product/specs/senior-verdict-screen.md`, a test file |
 
 ## To do
