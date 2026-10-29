@@ -687,6 +687,6 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 
 [tabindex="-1"]:focus:not(:focus-visible),
 h1[tabindex="-1"]:focus,
-h2[tabindex="-1"]:focus { outline: none; }
+h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 
 [hidden] { display: none !important; }
