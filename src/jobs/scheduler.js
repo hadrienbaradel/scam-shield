@@ -7,13 +7,14 @@
 // Every run goes through runJob, which writes a job_runs row (start, end,
 // result counts or the error line) so the admin console's jobs page and its
 // health survive a restart. The bookkeeping itself never stops a job: a
-// database error there is only logged.
+// database error there is only logged. A run cut by a restart or a crash is
+// closed as failed ("interrupted") at the next start.
 
 import { config, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
 import { syncUser, usersToSync, clientFor, mapLimit } from "../sync/worker.js";
 import { pullGmailEvents } from "../google/pubsub.js";
-import { runThreatFeed } from "./threatfeed.js";
+import { runThreatFeed, SOURCES } from "./threatfeed.js";
 import { runRetention } from "./retention.js";
 
 const MINUTE = 60000;
@@ -53,6 +54,18 @@ export async function renewWatches() {
   return renewed;
 }
 
+// The feed reader carries on past a dead source and only lists it in
+// report.errors, so the job says it: each line joins the recent errors, and
+// when every source failed the run fails (Failing in the console) instead of
+// passing with nothing fetched. A partial outage stays OK. fetchImpl: tests.
+export async function threatFeedRun({ fetchImpl } = {}) {
+  const report = await runThreatFeed({ fetchImpl });
+  jobStatus.lastFeed = { at: new Date().toISOString(), ...report };
+  for (const line of report.errors) note(line, "threatfeed");
+  if (report.errors.length >= SOURCES.length) throw Object.assign(new Error(report.errors.join("; ")), { noted: true });
+  return report;
+}
+
 async function pubsubLoop() {
   jobStatus.pubsub = "listening";
   while (!stopping) {
@@ -81,11 +94,7 @@ export const JOBS = [
   job({ id: "watch", name: "Gmail push renewal", what: "Renews the Gmail push subscriptions that expire within 2 days",
     kind: "interval", everyMs: 12 * HOUR, run: async () => ({ renewed: await renewWatches() }) }),
   job({ id: "threatfeed", name: "Threat feed", what: "Turns new IC3 and cybermalveillance.gouv.fr alerts into candidate scam cards",
-    kind: "interval", everyMs: 24 * HOUR, run: async () => {
-      const report = await runThreatFeed();
-      jobStatus.lastFeed = { at: new Date().toISOString(), ...report };
-      return report;
-    } }),
+    kind: "interval", everyMs: 24 * HOUR, run: () => threatFeedRun() }),
   job({ id: "retention", name: "Retention", what: "Deletes old verdicts, sessions, outbox mail, cached answers and job runs; retires stale cards",
     kind: "interval", everyMs: 6 * HOUR, run: async () => {
       const counts = await runRetention();
@@ -149,7 +158,9 @@ export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStor
     } catch (e) {
       run.ok = false;
       run.error = String(e?.message || e).slice(0, 500);
-      note(e, id);
+      // A job that already noted its own lines (the threat feed, one per
+      // source) is not noted a second time.
+      if (!e?.noted) note(e, id);
     } finally {
       const finished = new Date();
       run.finishedAt = finished.toISOString();
@@ -172,6 +183,17 @@ export async function hydrateJobs({ jobs = JOBS } = {}) {
     const j = jobs.find((x) => x.id === row.job);
     if (j && !j.lastRun) j.lastRun = runFromRow(row);
   }
+}
+
+// A run cut by a restart or a crash never got its end written: at the next
+// start it is closed as failed, so the history never shows it Running for
+// the 30 days it is kept. `before` is this process's start (a run begun
+// since is this process's own). Returns how many were closed; 0 when the
+// database cannot be reached, which is only logged.
+export async function closeInterruptedRuns({ before = startedAt } = {}) {
+  const res = await guarded("could not close interrupted runs", () => q(`UPDATE job_runs SET finished_at = now(), ok = false,
+    error = 'interrupted: the server stopped during this run' WHERE finished_at IS NULL AND started_at < $1`, [before]));
+  return res?.rowCount ?? 0;
 }
 
 export async function recentRuns({ limit = 100 } = {}) {
@@ -206,10 +228,11 @@ export function jobsReport({ jobs = JOBS, now = Date.now(), started = startedAt.
 
 // ------------------------------------------------------------ schedule ---
 // A tick that finds the job still running (a slow poll) is skipped silently;
-// the next one is in everyMs anyway.
+// the next one is in everyMs anyway. The startup run comes 2 s after the
+// interval is set, so from it the next tick is 2 s less than everyMs away.
 function every(j, runNow = false) {
   const tick = (trigger) => () => {
-    j.nextDueAt = new Date(Date.now() + j.everyMs).toISOString();
+    j.nextDueAt = new Date(Date.now() + j.everyMs - (trigger === "startup" ? 2000 : 0)).toISOString();
     if (j.running) return;
     try { runJob(j.id, { trigger }).catch((e) => note(e, j.id)); } catch (e) { note(e, j.id); }
   };
@@ -224,6 +247,7 @@ function every(j, runNow = false) {
 
 export function startJobs() {
   if (!config.worker) return;
+  closeInterruptedRuns().catch((e) => note(e, "job_runs"));
   for (const j of JOBS) if (canRun(j)) every(j, true);
   if (pubsubConfigured()) pubsubLoop();
 }

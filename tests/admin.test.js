@@ -1,7 +1,9 @@
-// The admin console over HTTP and Postgres: who gets in, the health list,
-// the server and the counts, the jobs list and Run now, the persisted run
-// history, the people pages, the privacy line, Sync now, the outbox, and
-// that nothing deletes. One test per behavior line of
+// The admin console over HTTP and Postgres: who gets in, the health list
+// (and its Failing path), the server and the counts, the jobs list and Run
+// now, Fetch now as a run of the threat feed, a partial feed outage, the
+// persisted run history and the runs a restart cut, the people pages, the
+// privacy line, Sync now, the outbox and the local outbox's door, and that
+// nothing deletes. One test per behavior line of
 // _product/specs/admin-console.md the API can show. Needs Postgres; skipped
 // without it.
 
@@ -12,8 +14,10 @@ import { readFile } from "node:fs/promises";
 import { one } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { config } from "../src/config.js";
-import { JOBS, jobsReport } from "../src/jobs/scheduler.js";
+import { JOBS, jobsReport, jobStatus, threatFeedRun, closeInterruptedRuns, startJobs, stopJobs } from "../src/jobs/scheduler.js";
+import { SOURCES } from "../src/jobs/threatfeed.js";
 import { runRetention } from "../src/jobs/retention.js";
+import { breaker } from "../lib/muse.js";
 
 const ORIGIN = "http://localhost:3999";
 const hasDb = await dbAvailable();
@@ -129,6 +133,52 @@ test("Overview lists every dependency with a status word, a plain detail and the
   for (const c of checks) assert.ok(!/[A-Za-z0-9+/]{40,}/.test(c.detail), `${c.id}: no secret-looking value in the detail`);
 });
 
+test("Overview reads Failing while Muse Spark is paused after errors, and Warning after one failure", opts, async () => {
+  const saved = { ...breaker };
+  // With a key the model check looks at the breaker (museConfigured() reads the environment at call time); nothing calls the model here.
+  process.env.META_MODEL_API_KEY = "test-model-key-not-real";
+  try {
+    Object.assign(breaker, { failures: 3, openUntil: Date.now() + 60000 });
+    const tripped = await get("/api/admin/health");
+    const model = tripped.json().checks.find((c) => c.id === "model");
+    assert.equal(model.status, "fail");
+    assert.match(model.detail, /^Paused after errors until \S+Z; Muse Spark \(.+\), effort \w+; 3 failures in a row;/);
+    assert.equal(tripped.json().overall, "fail", "one failing dependency makes the whole Failing");
+    assert.ok(!tripped.body.includes(process.env.META_MODEL_API_KEY), "the key's value never shows");
+    Object.assign(breaker, { failures: 1, openUntil: 0 });
+    const shaky = (await get("/api/admin/health")).json();
+    assert.equal(shaky.checks.find((c) => c.id === "model").status, "warn");
+    assert.equal(shaky.overall, "warn");
+  } finally {
+    delete process.env.META_MODEL_API_KEY;
+    Object.assign(breaker, saved);
+  }
+});
+
+test("when today's counts cannot be read, Overview still answers and the error line goes to the log", opts, async () => {
+  const query = pool.query;
+  const own = Object.hasOwn(pool, "query");
+  const original = console.error;
+  const logged = [];
+  pool.query = function (text, ...rest) {
+    if (String(text).includes("AS cached_answers")) return Promise.reject(new Error("counts query refused (test)"));
+    return query.call(this, text, ...rest);
+  };
+  console.error = (...args) => logged.push(args.join(" "));
+  try {
+    const res = await get("/api/admin/health");
+    assert.equal(res.statusCode, 200);
+    const { counts, checks } = res.json();
+    assert.equal(counts, null);
+    assert.match(checks.find((c) => c.id === "email").detail, /; \? emails waiting$/);
+    assert.ok(logged.some((l) => l.includes("counts unavailable: counts query refused (test)")), logged.join("\n"));
+  } finally {
+    if (own) pool.query = query;
+    else delete pool.query;
+    console.error = original;
+  }
+});
+
 test("Overview shows the server and today's counts", opts, async () => {
   await seniorWithEverything();
   const { server, counts, jobs } = (await get("/api/admin/health")).json();
@@ -201,14 +251,128 @@ test("Jobs lists every piece of background work with its schedule and health, an
   assert.deepEqual((await post("/api/admin/jobs/pubsub/run")).json(), { error: "this job runs on its own" });
 });
 
+test("Fetch now is a manual run of the Threat feed job: it shows in the run history and is refused while one runs", opts, async () => {
+  const feed = JOBS.find((j) => j.id === "threatfeed");
+  const original = feed.run;
+  const log = console.error;
+  const report = { fetched: 1, newItems: 0, cards: 0, errors: [] };
+  let release = () => {};
+  let pending = null;
+  try {
+    feed.run = async () => report;
+    const res = await post("/api/admin/feed/run");
+    assert.equal(res.statusCode, 200);
+    const body = res.json();
+    assert.deepEqual(body.report, report, "the page reads the same report as before");
+    assert.deepEqual([body.run.job, body.run.trigger, body.run.ok], ["threatfeed", "manual", true]);
+    const row = await one("SELECT job, trigger, ok, result FROM job_runs WHERE id = $1", [body.run.id]);
+    assert.deepEqual(row, { job: "threatfeed", trigger: "manual", ok: true, result: report });
+    assert.equal((await get("/api/admin/jobs")).json().runs[0].id, body.run.id, "first in the run history");
+
+    // While a run is in flight, Fetch now and the Jobs page's Run now are both refused.
+    let started;
+    const inFlight = new Promise((r) => { started = r; });
+    const gate = new Promise((r) => { release = r; });
+    feed.run = async () => { started(); await gate; return report; };
+    pending = post("/api/admin/feed/run");
+    await inFlight;
+    const refused = await post("/api/admin/feed/run");
+    assert.equal(refused.statusCode, 409);
+    assert.deepEqual(refused.json(), { error: "already running" });
+    assert.equal((await post("/api/admin/jobs/threatfeed/run")).statusCode, 409, "Run now is the same run");
+    release();
+    assert.equal((await pending).statusCode, 200);
+
+    // Every source down: the run is failed and the report carries its error line.
+    console.error = () => {};
+    feed.run = async () => { throw new Error("ic3-psa: HTTP 503; cybermalveillance-alertes: HTTP 503"); };
+    const failed = (await post("/api/admin/feed/run")).json();
+    assert.deepEqual(failed.report, { fetched: 0, newItems: 0, cards: 0, errors: ["ic3-psa: HTTP 503; cybermalveillance-alertes: HTTP 503"] });
+    assert.equal(failed.run.ok, false);
+    assert.equal((await one("SELECT ok FROM job_runs WHERE id = $1", [failed.run.id])).ok, false);
+  } finally {
+    release();
+    await pending;
+    feed.run = original;
+    console.error = log;
+  }
+});
+
+test("a partial threat-feed outage keeps what the live source brought and lists the dead ones under recent errors", opts, async () => {
+  const rss = "<rss><channel><item><title>Test alert</title><link>https://example.test/a</link><description>x</description></item></channel></rss>";
+  const fetchImpl = async (url) => {
+    if (url === SOURCES[0].url) return new Response(rss);
+    throw new Error("connection refused");
+  };
+  const savedErrors = jobStatus.errors;
+  const log = console.error;
+  console.error = () => {};
+  jobStatus.errors = [];
+  try {
+    const report = await threatFeedRun({ fetchImpl });
+    assert.equal(report.fetched, 1);
+    assert.equal(report.newItems, 1);
+    assert.equal(report.errors.length, 2);
+    assert.ok(await one("SELECT 1 FROM feed_items WHERE url = 'https://example.test/a'"), "the alert is kept for review");
+    const dead = SOURCES.slice(1).map((s) => `threatfeed: ${s.id}: connection refused`);
+    assert.deepEqual(jobStatus.errors.map((l) => l.replace(/^\S+ /, "")).sort(), [...dead].sort(), "one line per dead source");
+    const { errors } = (await get("/api/admin/jobs")).json();
+    for (const line of dead) assert.ok(errors.some((l) => l.endsWith(line)), `${line} under recent errors`);
+  } finally {
+    console.error = log;
+    jobStatus.errors = savedErrors;
+  }
+});
+
+test("a run cut by a restart is closed as failed (interrupted) at the next start, never left Running", opts, async () => {
+  const start = new Date(); // stands for this process's start
+  const cut = await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ('watch', 'schedule', now() - interval '10 minutes') RETURNING id::int AS id");
+  const ours = await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ('watch', 'manual', $1) RETURNING id::int AS id", [new Date(start.getTime() + 1000)]);
+  const INTERRUPTED = "interrupted: the server stopped during this run";
+  try {
+    assert.equal(await closeInterruptedRuns({ before: start }), 1, "it says how many it closed");
+    const closed = await one("SELECT finished_at, ok, error FROM job_runs WHERE id = $1", [cut.id]);
+    assert.ok(closed.finished_at instanceof Date);
+    assert.deepEqual([closed.ok, closed.error], [false, INTERRUPTED]);
+    assert.deepEqual(await one("SELECT finished_at, ok, error FROM job_runs WHERE id = $1", [ours.id]), { finished_at: null, ok: null, error: null },
+      "a run this process started is left alone");
+    const listed = (await get("/api/admin/jobs")).json().runs.find((r) => r.id === cut.id);
+    assert.deepEqual([listed.ok, listed.error], [false, INTERRUPTED]);
+    assert.ok(isIso(listed.finishedAt), "finished, so the page never shows it Running");
+    assert.equal(await closeInterruptedRuns({ before: start }), 0, "a second start closes nothing more");
+
+    // The server does it when its worker starts: a run left open before this process began is closed
+    // (the scheduled timers are stopped at once, so nothing else runs here).
+    const left = await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ('watch', 'schedule', now() - interval '1 hour') RETURNING id::int AS id");
+    config.worker = true;
+    try {
+      startJobs();
+    } finally {
+      stopJobs();
+      config.worker = false;
+      for (const j of JOBS) j.nextDueAt = null;
+    }
+    let row = null;
+    for (let i = 0; i < 100 && !row?.finished_at; i++) {
+      await sleep(20);
+      row = await one("SELECT finished_at, ok, error FROM job_runs WHERE id = $1", [left.id]);
+    }
+    assert.deepEqual([row.ok, row.error], [false, INTERRUPTED], "closed at the start");
+    assert.equal((await one("SELECT finished_at FROM job_runs WHERE id = $1", [ours.id])).finished_at, null, "the run of this process stays open");
+  } finally {
+    await pool.query("DELETE FROM job_runs WHERE id = $1", [ours.id]);
+  }
+});
+
 test("job runs are written to the database: the history and the health survive a restart, newest first", opts, async () => {
+  // A known table: the runs this test needs, nothing left by the other tests.
+  await pool.query("DELETE FROM job_runs");
   await pool.query(`INSERT INTO job_runs (job, trigger, started_at, finished_at, ok, result, error) VALUES
     ('poll', 'schedule', now() - interval '3 hours', now() - interval '3 hours' + interval '840 milliseconds', true, '{"users": 2}', NULL),
-    ('threatfeed', 'startup', now() - interval '2 hours', now() - interval '2 hours' + interval '5 seconds', false, NULL, 'ic3-psa: HTTP 503')`);
+    ('threatfeed', 'startup', now() - interval '2 hours', now() - interval '2 hours' + interval '5 seconds', false, NULL, 'ic3-psa: HTTP 503'),
+    ('retention', 'manual', now() - interval '1 hour', now() - interval '1 hour' + interval '30 milliseconds', true, '{"checks": 0, "jobRuns": 0}', NULL)`);
   const { runs } = (await get("/api/admin/jobs")).json();
-  assert.ok(runs.length >= 3);
-  const times = runs.map((r) => Date.parse(r.startedAt));
-  assert.deepEqual(times, [...times].sort((a, b) => b - a), "newest first");
+  assert.deepEqual(runs.map((r) => r.job), ["retention", "threatfeed", "poll"], "newest first");
   const poll = runs.find((r) => r.job === "poll");
   assert.ok(Number.isInteger(poll.id) && isIso(poll.startedAt) && isIso(poll.finishedAt));
   assert.deepEqual({ ...poll, id: 0, startedAt: 0, finishedAt: 0 },
@@ -307,10 +471,18 @@ test("a user's page adds what the context covers, the last checks, the audit, th
 
 test("the console never shows a message's text, subject or sender, a verdict's headline or reasons, or what a senior shared", opts, async () => {
   const { linda } = await seniorWithEverything();
-  for (const url of ["/api/admin/users", `/api/admin/users/${linda.id}`, "/api/admin/health", "/api/admin/jobs"]) {
-    const res = await get(url);
-    assert.equal(res.statusCode, 200, url);
-    for (const word of [HEADLINE, REASON, SENDER, "msg-zebra", "ZEBRA", "hash-7731"]) assert.ok(!res.body.includes(word), `${url} shows ${word}`);
+  // The alert email to Thomas carries what Linda shared and a live one-tap link; only its to, subject, channel and time may show.
+  const mail = await one(`INSERT INTO outbox (to_email, subject, text_body, sent_via, created_at)
+                          VALUES ('thomas-admin@example.test', 'Linda: is this a scam?', $1, 'local-outbox', now() - interval '2 hours') RETURNING id`,
+  [`Linda shared: ${HEADLINE}\n• ${REASON}\nFrom alerts@${SENDER}: shared text ZEBRA\n\nAnswer: ${ORIGIN}/answer/LIVE-TOKEN-7731`]);
+  try {
+    for (const url of ["/api/admin/users", `/api/admin/users/${linda.id}`, "/api/admin/health", "/api/admin/jobs", "/api/admin/outbox"]) {
+      const res = await get(url);
+      assert.equal(res.statusCode, 200, url);
+      for (const word of [HEADLINE, REASON, SENDER, "msg-zebra", "ZEBRA", "hash-7731", "LIVE-TOKEN-7731"]) assert.ok(!res.body.includes(word), `${url} shows ${word}`);
+    }
+  } finally {
+    await pool.query("DELETE FROM outbox WHERE id = $1", [mail.id]);
   }
 });
 
@@ -337,27 +509,47 @@ test("Sync now starts a Gmail sync for a connected senior and refuses when Gmail
   assert.deepEqual((await post("/api/admin/users/nope/sync")).json(), { error: "unknown user" });
 });
 
-test("Outbox lists the emails Prudence sent or would have sent; the text only outside production", opts, async () => {
+test("Outbox lists the emails Prudence sent or would have sent, never their text; outside production it links to the local outbox", opts, async () => {
   await pool.query(`INSERT INTO outbox (to_email, subject, text_body, sent_via, created_at)
                     VALUES ('thomas-admin@example.test', 'Earlier mail', 'OUTBOX-TEXT-OLDER', 'local-outbox', now() - interval '1 hour'),
                            ('thomas-admin@example.test', 'Linda needs your advice', 'OUTBOX-TEXT-ZEBRA https://localhost:3999/answer/x', 'local-outbox', now())`);
   const res = await get("/api/admin/outbox");
   assert.equal(res.statusCode, 200);
-  const { mails } = res.json();
+  const { mails, localOutbox } = res.json();
   assert.equal(mails[0].subject, "Linda needs your advice", "newest first");
   assert.equal(mails[1].subject, "Earlier mail");
   const mail = mails[0];
+  assert.deepEqual(Object.keys(mail).sort(), ["createdAt", "id", "subject", "to", "via"], "to, subject, channel and time; no text");
   assert.equal(mail.to, "thomas-admin@example.test");
   assert.equal(mail.via, "local-outbox");
   assert.ok(isIso(mail.createdAt));
-  assert.match(mail.text, /OUTBOX-TEXT-ZEBRA/);
+  assert.ok(mails.every((m) => !("text" in m)), "never the text");
+  assert.ok(!res.body.includes("OUTBOX-TEXT") && !res.body.includes("/answer/"), "nor its one-tap link");
+  assert.equal(localOutbox, "/dev/outbox", "outside production the page links to the local outbox");
   assert.equal((await get("/api/admin/health")).json().counts.outboxWaiting, 2);
   config.production = true;
   try {
     const prod = (await get("/api/admin/outbox")).json();
-    assert.equal(prod.mails.find((m) => m.id === mail.id).text, null);
-    assert.ok(!JSON.stringify(prod).includes("OUTBOX-TEXT"), "no text in production");
+    assert.equal(prod.localOutbox, null, "no local outbox in production");
     assert.equal(prod.mails[0].subject, "Linda needs your advice", "to, subject, channel and time stay");
+  } finally {
+    config.production = false;
+  }
+});
+
+test("the local outbox opens only on this machine, never through a tunnel or a proxy", opts, async () => {
+  const here = await app.inject({ url: "/dev/outbox" });
+  assert.equal(here.statusCode, 200, "inject connects from 127.0.0.1, like a browser on this machine");
+  assert.match(here.headers["content-type"], /text\/html/);
+  assert.match(here.body, /<h1>Local outbox<\/h1>/);
+  assert.equal((await app.inject({ url: "/dev/outbox", remoteAddress: "::1" })).statusCode, 200, "IPv6 loopback too");
+  for (const [header, value] of [["cf-connecting-ip", "203.0.113.9"], ["x-forwarded-for", "203.0.113.9"], ["x-real-ip", "203.0.113.9"], ["forwarded", "for=203.0.113.9"]]) {
+    assert.equal((await app.inject({ url: "/dev/outbox", headers: { [header]: value } })).statusCode, 404, `${header}: through a tunnel or a proxy`);
+  }
+  assert.equal((await app.inject({ url: "/dev/outbox", remoteAddress: "203.0.113.9" })).statusCode, 404, "from another machine");
+  config.production = true;
+  try {
+    assert.equal((await app.inject({ url: "/dev/outbox" })).statusCode, 404, "never in production");
   } finally {
     config.production = false;
   }

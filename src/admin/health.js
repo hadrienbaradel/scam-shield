@@ -79,7 +79,7 @@ async function databaseCheck() {
 
 function modelCheck(cachedAnswers) {
   if (!museConfigured()) return off(`Off (no API key for ${museLabel()}); detector only`);
-  const base = `${museLabel()} (${museModel()}), effort ${museEffort() || "none"}; ${breaker.failures} failures in a row; ${cachedAnswers ?? "?"} cached answers`;
+  const base = `${museLabel()} (${museModel()}), effort ${museEffort() || "none"}; ${breaker.failures} failure${breaker.failures === 1 ? "" : "s"} in a row; ${cachedAnswers ?? "?"} cached answers`;
   if (breaker.openUntil > Date.now()) return fail(`Paused after errors until ${new Date(breaker.openUntil).toISOString()}; ${base}`);
   return breaker.failures > 0 ? warn(base) : ok(base);
 }
@@ -94,7 +94,12 @@ function instantChecksCheck() {
 
 export async function healthReport() {
   const now = new Date().toISOString();
-  const counts = await countsReport().catch(() => null);
+  // Without the counts the report still answers ("?" in the details); the
+  // error line goes to the log (a database message, never a key's value).
+  const counts = await countsReport().catch((e) => {
+    console.error(`[admin] counts unavailable: ${e?.message || e}`);
+    return null;
+  });
   const database = await databaseCheck();
   const live = streamStats();
   const list = [

@@ -24,6 +24,9 @@ delete process.env.HIBP_API_KEY;
 delete process.env.ABUSECH_AUTH_KEY;
 delete process.env.GMAIL_PUBSUB_TOPIC;
 delete process.env.GMAIL_PUBSUB_SUBSCRIPTION;
+// The admin suites assert the default poll schedule and the non-production outbox link; "test" also stops lib/credentials.js loading keys outside node --test.
+delete process.env.SYNC_POLL_SECONDS;
+process.env.NODE_ENV = "test";
 // The model layer: each test picks its provider; nothing comes from the shell.
 for (const k of ["LLM_PROVIDER", "LLM_MODEL", "LLM_BASE_URL", "LLM_THINKING", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL",
   "META_MODEL_NAME", "META_MODEL_BASE_URL", "META_MODEL_REASONING_EFFORT"]) delete process.env[k];

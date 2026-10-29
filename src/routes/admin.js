@@ -9,7 +9,7 @@ import { requireUser, requireAdmin } from "../auth.js";
 import { config } from "../config.js";
 import { many, one, q } from "../db/pool.js";
 import { validatePatternCard, promoteCard } from "../../lib/threatfeed.js";
-import { runThreatFeed, reviewQueue, SOURCES } from "../jobs/threatfeed.js";
+import { reviewQueue, SOURCES } from "../jobs/threatfeed.js";
 import { jobStatus, jobsReport, hydrateJobs, recentRuns, runJob } from "../jobs/scheduler.js";
 import { healthReport } from "../admin/health.js";
 import { listUsers, userDetail, outboxList } from "../admin/users.js";
@@ -96,7 +96,9 @@ export default async function adminRoutes(app) {
       return reply.code(202).send({ started: true });
     });
 
-    adm.get("/api/admin/outbox", async () => ({ mails: await outboxList() }));
+    // Never the text (outboxList): outside production the page links to the
+    // local outbox instead, which only this machine can open.
+    adm.get("/api/admin/outbox", async () => ({ mails: await outboxList(), localOutbox: config.production ? null : "/dev/outbox" }));
 
     adm.get("/api/admin/cards", async () => ({ cards: await reviewQueue(), sources: SOURCES, jobs: jobStatus }));
 
@@ -117,12 +119,34 @@ export default async function adminRoutes(app) {
       return { ok: true };
     });
 
-    adm.post("/api/admin/feed/run", async () => ({ report: await runThreatFeed() }));
+    // Fetch now is a manual run of the Threat feed job, so it shows in the
+    // run history and is refused (409) while a run is in flight. It waits
+    // for the fetch (up to ~45 s) so the page can show the report; a failed
+    // run (every source down) reports its error line.
+    adm.post("/api/admin/feed/run", async (request, reply) => {
+      let run;
+      try {
+        run = await runJob("threatfeed", { trigger: "manual" });
+      } catch (e) {
+        if (e.statusCode) return reply.code(e.statusCode).send({ error: e.message });
+        throw e;
+      }
+      return { report: run.result ?? { fetched: 0, newItems: 0, cards: 0, errors: [run.error] }, run };
+    });
   });
 
-  // Local outbox: only outside production, only from this machine.
+  // Local outbox: only outside production, only from this machine (its
+  // copies hold live one-tap links). With trustProxy off, request.ip is the
+  // socket's address, and a tunnel or a local reverse proxy connects from
+  // 127.0.0.1 too, so a request carrying a forwarding header is refused as
+  // well. This only catches the proxies that add one (cloudflared, ngrok and
+  // Caddy do by default; nginx only when configured to): a raw forward such
+  // as ssh -R adds none, so never put the dev server behind one.
+  const FORWARDING_HEADERS = ["x-forwarded-for", "cf-connecting-ip", "x-real-ip", "forwarded"];
   app.get("/dev/outbox", async (request, reply) => {
-    if (config.production || !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip)) return reply.code(404).send();
+    const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip);
+    const forwarded = FORWARDING_HEADERS.some((h) => request.headers[h] !== undefined);
+    if (config.production || !loopback || forwarded) return reply.code(404).send();
     const mails = await many("SELECT * FROM outbox ORDER BY created_at DESC LIMIT 50");
     reply.type("text/html");
     return page({

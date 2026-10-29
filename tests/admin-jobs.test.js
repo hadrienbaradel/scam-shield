@@ -1,11 +1,13 @@
 // The admin console's background jobs without a database: the health rules
 // of the spec (line 6) on a fake registry with a fake clock, the schedule
-// wording, and what Run now refuses. The job_runs writes are injected, so
+// wording, what Run now refuses, and the threat feed failing when every
+// source failed. The job_runs writes and the feeds' fetch are injected, so
 // nothing here opens a connection.
 import "./helpers/env.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jobsReport, runJob, scheduleLabel, jobStatus } from "../src/jobs/scheduler.js";
+import { JOBS, jobsReport, runJob, scheduleLabel, jobStatus, threatFeedRun } from "../src/jobs/scheduler.js";
+import { SOURCES } from "../src/jobs/threatfeed.js";
 
 const MIN = 60000;
 const NOW = Date.parse("2026-10-29T15:00:00Z");
@@ -113,5 +115,50 @@ test("a failing job is a record with the error line, and a failing job_runs writ
     assert.ok(jobsReport({ jobs }).errors.includes(jobStatus.errors[0]));
   } finally {
     console.error = original;
+  }
+});
+
+test("the threat feed fails when every source failed and notes each source error otherwise", async () => {
+  const feed = JOBS.find((j) => j.id === "threatfeed");
+  const realFetch = globalThis.fetch;
+  const savedErrors = jobStatus.errors;
+  const original = console.error;
+  const offline = async () => { throw new Error("offline"); };
+  // One source answers with an empty feed (nothing to store, so no database); the others are down.
+  const partly = async (url) => (url === SOURCES[0].url ? new Response("<rss><channel></channel></rss>") : offline());
+  const noted = () => jobStatus.errors.map((l) => l.replace(/^\S+ /, "")).sort();
+  const linesFor = (sources) => sources.map((s) => `threatfeed: ${s.id}: offline`).sort();
+  console.error = () => {};
+  jobStatus.errors = [];
+  try {
+    await assert.rejects(threatFeedRun({ fetchImpl: offline }), (e) => SOURCES.every((s) => e.message.includes(`${s.id}: offline`)),
+      "the error line names every source");
+    assert.deepEqual(noted(), linesFor(SOURCES), "one line per source under the recent errors");
+    assert.equal(jobStatus.lastFeed.errors.length, SOURCES.length);
+
+    // The registry's job is that run (the global fetch is its default): a failed run, Failing, no line noted twice.
+    globalThis.fetch = offline;
+    jobStatus.errors = [];
+    const store = memoryStore();
+    const failed = await runJob("threatfeed", { store });
+    assert.equal(failed.ok, false);
+    assert.ok(SOURCES.every((s) => failed.error.includes(`${s.id}: offline`)), failed.error);
+    assert.equal(store.rows[0].ok, false, "the job_runs row says failed");
+    assert.equal(jobsReport({ worker: true }).jobs.find((j) => j.id === "threatfeed").health, "failing");
+    assert.deepEqual(noted(), linesFor(SOURCES), "the run's own error is not noted a second time");
+
+    // A partial outage stays OK, each dead source under the recent errors.
+    globalThis.fetch = partly;
+    jobStatus.errors = [];
+    const partial = await runJob("threatfeed", { store });
+    assert.equal(partial.ok, true);
+    assert.deepEqual(partial.result, { fetched: 0, newItems: 0, cards: 0, errors: SOURCES.slice(1).map((s) => `${s.id}: offline`) });
+    assert.equal(jobsReport({ worker: true }).jobs.find((j) => j.id === "threatfeed").health, "ok");
+    assert.deepEqual(noted(), linesFor(SOURCES.slice(1)));
+  } finally {
+    globalThis.fetch = realFetch;
+    console.error = original;
+    jobStatus.errors = savedErrors;
+    feed.lastRun = null;
   }
 });

@@ -4,7 +4,7 @@
 // and ids only: never a message's text, subject or sender, a verdict's
 // headline or reasons, or anything a senior shared with a guardian.
 
-import { config, isAdmin } from "../config.js";
+import { isAdmin } from "../config.js";
 import { many, one } from "../db/pool.js";
 
 const iso = (d) => (d ? new Date(d).toISOString() : null);
@@ -103,10 +103,10 @@ export async function userDetail(id) {
   };
 }
 
-// The emails Prudence sent or would have sent; the text only outside
-// production (read at request time, so a test can flip it).
+// The emails Prudence sent or would have sent: to, subject, channel and
+// time, never the text. An alert's text is what the senior shared with the
+// guardian, and a local-outbox copy holds live one-tap links.
 export async function outboxList() {
-  const rows = await many("SELECT id, to_email, subject, sent_via, created_at, text_body FROM outbox ORDER BY created_at DESC LIMIT 50");
-  return rows.map((m) => ({ id: m.id, to: m.to_email, subject: m.subject, via: m.sent_via, createdAt: iso(m.created_at),
-    text: config.production ? null : m.text_body }));
+  const rows = await many("SELECT id, to_email, subject, sent_via, created_at FROM outbox ORDER BY created_at DESC LIMIT 50");
+  return rows.map((m) => ({ id: m.id, to: m.to_email, subject: m.subject, via: m.sent_via, createdAt: iso(m.created_at) }));
 }
