@@ -202,3 +202,26 @@ test("call back: a message using a trusted person's name offers their saved numb
   assert.equal(callBackFor(ctx, { channel: "email", from: "ethan@example.test", fromName: "Ethan", body: "photos" }), null, "the real Ethan needs no call-back offer");
   assert.equal(callBackFor(ctx, { channel: "sms", from: "+1 555-0111", fromName: "USPS", body: "fee" }), null);
 });
+
+// Oct 28: a real Cloudflare invoice was doubted with "you never received
+// mail from this sender" although one had arrived 4 minutes earlier. The
+// model now gets what the history covers and a dated count of earlier
+// messages; the count never makes a sender known or authentic.
+test("the model is told how much history it has and what came before from the same organisation", () => {
+  const withHistory = { ...ctx, coverage: { emailsRead: 300, since: "2026-09-30" },
+    seenBefore: { organisation: "cloudflare.com", messages: 2, judged_safe: 2, first_seen: "2026-10-29" } };
+  const invoice = { from: "noreply@notify.cloudflare.com", fromName: "Cloudflare", subject: "Your invoice is attached", body: "Invoice for heyprudence.com" };
+  const c = compactContext(withHistory, invoice);
+  assert.deepEqual(c.history_covers, { emails_read: 300, since: "2026-09-30" });
+  assert.deepEqual(c.earlier_messages_from_same_organisation, { count: 2, judged_safe: 2, first_seen: "2026-10-29" });
+  assert.equal(c.sender_is_known, false, "earlier checks never make a sender known");
+  const bare = compactContext(ctx, invoice);
+  assert.equal(bare.history_covers, "unknown");
+  assert.equal(bare.earlier_messages_from_same_organisation, "unknown");
+  // A lookalike with a long "seen before" record is still judged on its facts.
+  const look = detect({ locale: "en-US", patternCards: [], threadHistory: [], personalContext: { ...withHistory, seenBefore: { organisation: "paypa1-billing.test", messages: 40, judged_safe: 0, first_seen: "2026-09-01" } },
+    message: { channel: "email", from: "service@paypa1-billing.test", fromName: "PayPal", subject: "Account limited", auth: "spf=pass dkim=pass dmarc=pass",
+      body: "Your PayPal account is limited. Confirm your card details at https://paypa1-billing.test/login", links: [{ text: "Confirm", href: "https://paypa1-billing.test/login" }] } });
+  assert.equal(look.verdict, "scam");
+  assert.equal(look._authentic, false);
+});

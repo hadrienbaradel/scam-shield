@@ -110,6 +110,10 @@ export async function rebuildContext({ user, client }) {
   })).filter(Boolean);
   const previous = (await one("SELECT data FROM contexts WHERE user_id = $1", [user.id]))?.data || null;
   const ctx = buildContext({ userName: user.name, selfEmail: profileEmail.toLowerCase(), messages: recent, sent, previous });
+  // What the facts are drawn from: "no Cloudflare in your history" only
+  // means none in these emails (Oct 28: a real invoice was doubted that way).
+  const dates = recent.map((m) => Date.parse(m.date)).filter(Number.isFinite);
+  ctx.coverage = { emailsRead: recent.length, since: dates.length ? new Date(Math.min(...dates)).toISOString().slice(0, 10) : null };
   try {
     const found = await hibpBreaches(profileEmail, config.hibpKey);
     const have = new Set((ctx.breaches || []).map((b) => b.id || b.source));

@@ -9,6 +9,7 @@ import { one, many } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { syncUser } from "../src/sync/worker.js";
 import { putBack, fileAsScam, undoThrow, undoKeep } from "../src/sync/actions.js";
+import { seenBeforeFor } from "../src/sync/checker.js";
 import { acceptInvite } from "../src/guardians.js";
 import { fakeGmail, gmailMessage } from "./helpers/fake-gmail.js";
 
@@ -56,6 +57,11 @@ test("Gmail sync: learns the context, moves the scam, leaves real mail alone, ne
     [["amz", "safe", "none"], ["chase", "safe", "none"], ["usps1", "scam", "moved"]]);
   assert.ok(!JSON.stringify(checks).includes("redelivery fee today"), "mail bodies are never stored");
   assert.deepEqual(gmail.modifications, [{ id: "usps1", add: [state.label_scam], remove: ["INBOX"] }]);
+  assert.equal(ctx.coverage.emailsRead, 3, "the context says how many emails it was drawn from");
+  // Earlier messages from the same organisation, dated and split by verdict; never the message itself.
+  assert.deepEqual(await seenBeforeFor(user.id, "orders@sub.amazon.com"), { organisation: "amazon.com", messages: 1, judged_safe: 1, first_seen: new Date().toISOString().slice(0, 10) });
+  assert.equal((await seenBeforeFor(user.id, "orders@amazon.com", "amz")).messages, 0, "the message being checked is not its own history");
+  assert.equal((await seenBeforeFor(user.id, "x@amazon.com.evil.test")).messages, 0, "a lookalike is another organisation");
 
   // New mail arrives: the incremental sync checks only that message.
   gmail.deliver(scamUsps("usps2"));

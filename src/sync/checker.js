@@ -3,7 +3,7 @@
 // Muse Spark (detector fallback), record the verdict — never the body.
 
 import { checkMessage } from "../../lib/muse.js";
-import { domainOf } from "../../lib/brands.js";
+import { domainOf, orgOf } from "../../lib/brands.js";
 import { emptyContext } from "../../lib/context.js";
 import { many, one, q } from "../db/pool.js";
 import { withGuardians } from "../context/builder.js";
@@ -19,9 +19,23 @@ export async function liveCards() {
   return (await many("SELECT card, status FROM pattern_cards WHERE status IN ('active', 'candidate')")).map((r) => ({ ...r.card, status: r.status }));
 }
 
+// Messages from the same organisation that Prudence already checked for this
+// person: a dated count, split by verdict. It only says "we have seen mail
+// from them before"; it never proves a request is legitimate (a scam that
+// was never thrown away counts too) and never makes a sender "known".
+export async function seenBeforeFor(userId, from, messageId = null) {
+  const org = orgOf(domainOf(from || ""));
+  if (!org || !org.includes(".")) return null;
+  const like = `%.${org.replace(/[\\%_]/g, (c) => `\\${c}`)}`;
+  const row = await one(`SELECT count(*)::int AS n, (count(*) FILTER (WHERE verdict_value = 'safe'))::int AS safe, min(created_at) AS first
+    FROM checks WHERE user_id = $1 AND (sender_domain = $2 OR sender_domain LIKE $3) AND gmail_message_id IS DISTINCT FROM $4`,
+  [userId, org, like, messageId]);
+  return { organisation: org, messages: row.n, judged_safe: row.safe, first_seen: row.n ? new Date(row.first).toISOString().slice(0, 10) : null };
+}
+
 export async function runCheck({ user, message, threadHistory = [], resolveLinks = false }) {
   // (resolveLinks: follow redirects too, only when the person asks)
-  const ctx = await loadContext(user);
+  const ctx = { ...(await loadContext(user)), seenBefore: await seenBeforeFor(user.id, message.from, message.id || null) };
   const linkInspection = await inspectMessageLinks(message, ctx, { resolve: resolveLinks });
   const verdict = await checkMessage({
     locale: user.locale || "en-US", message, personalContext: ctx, patternCards: await liveCards(),
