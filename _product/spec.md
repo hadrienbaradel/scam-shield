@@ -35,7 +35,7 @@ Statuses: **Idea** (raised, not decided) Â· **Planned** (decided, not started) Â
 | Privacy controls and account deletion | Built | No bodies stored, verdicts kept 90 days, encrypted Google tokens, an audit list of every action, "Delete my account" revokes Google access and erases every row. | [specs/privacy-and-account.md](specs/privacy-and-account.md) |
 | Chrome extension ("Check this" in Gmail web) | Planned | Docs call it "next"; no code yet. | [specs/chrome-extension.md](specs/chrome-extension.md) |
 | Public deployment and Google verification | Planned | Railway EU, OAuth verification, CASA, Resend for real guardian email; not before the hackathon. | [specs/public-deployment.md](specs/public-deployment.md) |
-| CI workflow (tests + score on Postgres, Android tests + build) | Planned | Exists on a local branch `ci-workflow`; pushing needs a token with workflow scope (owner Vlad). | [specs/public-deployment.md](specs/public-deployment.md) |
+| CI workflow (tests + score on Postgres, Android tests + build) | Built | Every push runs `make check` and `make score` on Postgres and builds the Android debug APK (downloadable from the run) with its unit tests; green on main (Oct 29). | [specs/public-deployment.md](specs/public-deployment.md) |
 
 ## Ideas (not yet planned)
 Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom); being written in the PRD or STATUS does not count. A session can grep `| no |` to surface undiscussed ideas.

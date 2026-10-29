@@ -24,7 +24,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | "Checked:" chips under the reasons on the V2 card (`public/js/views/today.js`); the reasoning summary on Thomas's view only if the Responses API returns one | Video script, Oct 29 | 2026-10-29 |
 | Vlad | Diagram for the 2:05 scene: message → rules → Muse Spark → guardrail → card | Video script, Oct 31 | 2026-10-29 |
 | Vlad | Point heyprudence.com at the live demo and settle the public repo name (org publication check first) | Video script, Oct 30 | 2026-10-29 |
-| Vlad | Push the CI workflow from the local `ci-workflow` branch (needs a token with workflow scope); the numbers card says "CI green" | spec.md | 2026-10-27 |
 | Vlad | Prompt Guard 2 without Groq (local inference), only if the Nov 1 rehearsal keeps that swap | Hadrien's note | 2026-10-29 |
 | Hadrien | Add the public origin (the tunnel or heyprudence.com) to the OAuth client's redirect URIs in scam-shield-hb26 once Vlad posts it here | Vlad | 2026-10-29 |
 | Hadrien | Say which beat the WhatsApp scene replaces (the script allows four Meta surfaces on screen) | Vlad | 2026-10-29 |
@@ -38,6 +37,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-10-29 · Vlad · CI was already on main (99c1cbf): every push runs make check, make score and the Android debug APK build; the spec row is now Built and the stale to-do is gone
 - 2026-10-28 · Hadrien · "Call <name>" leads whenever a message uses a saved contact; rough cut v1 (2:41, local only) and its notes (95e68cc)
 - 2026-10-28 · Hadrien · Product renamed to Prudence in the UI and Gmail labels (9561016); video script v1 with Linda (US) leading (ac35d19); heyprudence.com registered
 - 2026-10-28 · Hadrien · Live Gmail on a real inbox: OAuth client in scam-shield-hb26, Vlad a test user; 50 mails → 47 safe, 3 be careful, 0 scam, all by Muse; newsletter false alarms and a Gmail quota problem fixed; `npm run gate` runs the report (6c97b56)

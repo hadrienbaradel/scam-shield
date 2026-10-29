@@ -15,7 +15,7 @@ Before the hackathon deadline; multi-region; paid plans; app stores.
 
 ## Acceptance
 - Not started. Blockers listed in docs/GOOGLE_SETUP.md: public domain + policy + terms, OAuth verification, CASA (weeks and budget), the organisation's publication warning and data scan before any public deploy.
-- The CI workflow (server tests + score on Postgres, Android tests + debug build) exists on a local branch `ci-workflow` and is not pushed (needs a token with workflow scope).
+- The CI workflow runs on every push (`.github/workflows/ci.yml`, since 99c1cbf): `make check` and `make score` on Postgres, the Android debug APK with its unit tests; the APK is a downloadable artifact of each run.
 
 ## Implementation pointers
 src/config.js (HOST, BASE_URL, secure cookies when https), src/notify/email.js (RESEND_API_KEY, MAIL_FROM), src/google/pubsub.js (ADC on a server), public/privacy.html, public/terms.html, docs/GOOGLE_SETUP.md.
