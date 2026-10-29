@@ -138,15 +138,27 @@ export default async function adminRoutes(app) {
   // Local outbox: only outside production, only from this machine (its
   // copies hold live one-tap links). With trustProxy off, request.ip is the
   // socket's address, and a tunnel or a local reverse proxy connects from
-  // 127.0.0.1 too, so a request carrying a forwarding header is refused as
-  // well. This only catches the proxies that add one (cloudflared, ngrok and
-  // Caddy do by default; nginx only when configured to): a raw forward such
-  // as ssh -R adds none, so never put the dev server behind one.
+  // 127.0.0.1 too, so the page also refuses a request carrying a forwarding
+  // header (cloudflared, ngrok and Caddy add one by default, nginx when
+  // configured to) and one whose Host is not this machine's name, or that
+  // has no Host: through a tunnel or a raw forward such as ssh -R the Host
+  // is the public name, and a DNS-rebinding page sends its own. What still
+  // gets through is a request reaching the loopback with Host localhost and
+  // no forwarding header: a proxy that rewrites Host to localhost, an SSH
+  // local forward from another machine. The page is for testing on one
+  // machine, never behind a tunnel or a proxy.
   const FORWARDING_HEADERS = ["x-forwarded-for", "cf-connecting-ip", "x-real-ip", "forwarded"];
+  const LOCAL_NAMES = ["localhost", "127.0.0.1", "[::1]"];
+  // The Host header's name without its port ("[::1]:3000" is "[::1]"); "" without one.
+  const hostName = (host = "") => {
+    const h = String(host).toLowerCase();
+    return h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.split(":")[0];
+  };
   app.get("/dev/outbox", async (request, reply) => {
     const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip);
     const forwarded = FORWARDING_HEADERS.some((h) => request.headers[h] !== undefined);
-    if (config.production || !loopback || forwarded) return reply.code(404).send();
+    const local = LOCAL_NAMES.includes(hostName(request.headers.host));
+    if (config.production || !loopback || forwarded || !local) return reply.code(404).send();
     const mails = await many("SELECT * FROM outbox ORDER BY created_at DESC LIMIT 50");
     reply.type("text/html");
     return page({

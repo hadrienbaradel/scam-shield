@@ -1,22 +1,29 @@
 // The admin console over HTTP and Postgres: who gets in, the health list
 // (and its Failing path), the server and the counts, the jobs list and Run
 // now, Fetch now as a run of the threat feed, a partial feed outage, the
-// persisted run history and the runs a restart cut, the people pages, the
-// privacy line, Sync now, the outbox and the local outbox's door, and that
-// nothing deletes. One test per behavior line of
+// Gmail poll and its failing mailboxes, the persisted run history and the
+// runs a restart cut, the people pages and a token that can no longer be
+// refreshed, the privacy line, Sync now, the outbox and the local outbox's
+// door, and that nothing deletes. One test per behavior line of
 // _product/specs/admin-console.md the API can show. Needs Postgres; skipped
 // without it.
 
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
+import { fakeGmail } from "./helpers/fake-gmail.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { connect } from "node:net";
 import { one } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { config } from "../src/config.js";
-import { JOBS, jobsReport, jobStatus, threatFeedRun, closeInterruptedRuns, startJobs, stopJobs } from "../src/jobs/scheduler.js";
+import { encrypt } from "../src/crypto.js";
+import { JOBS, jobsReport, jobStatus, threatFeedRun, closeInterruptedRuns, startJobs, stopJobs, runJob, pollAll } from "../src/jobs/scheduler.js";
 import { SOURCES } from "../src/jobs/threatfeed.js";
 import { runRetention } from "../src/jobs/retention.js";
+import { syncUser } from "../src/sync/worker.js";
+import { accessTokenFor } from "../src/google/tokens.js";
+import { ReauthNeeded } from "../src/google/oauth.js";
 import { breaker } from "../lib/muse.js";
 
 const ORIGIN = "http://localhost:3999";
@@ -324,21 +331,111 @@ test("a partial threat-feed outage keeps what the live source brought and lists 
   }
 });
 
-test("a run cut by a restart is closed as failed (interrupted) at the next start, never left Running", opts, async () => {
+// The poll syncs every connected mailbox in the database. For exact counts a
+// test keeps only its own seniors connected, and reconnects the others after.
+async function withOnlyMailboxes(ids, fn) {
+  const { rows } = await pool.query(`UPDATE google_tokens SET status = 'revoked' WHERE status = 'ok' AND NOT (user_id = ANY($1::uuid[]))
+                                     RETURNING user_id`, [ids]);
+  try { return await fn(); } finally {
+    await pool.query("UPDATE google_tokens SET status = 'ok' WHERE user_id = ANY($1::uuid[])", [rows.map((r) => r.user_id)]);
+  }
+}
+const withoutTime = (lines) => lines.map((l) => l.replace(/^\S+ /, ""));
+
+test("the Gmail poll fails when every mailbox failed to sync, with one line per mailbox naming its id and status, never its address", opts, async () => {
+  // What makeUser gives: a token row that says ok, with no refresh token and no access token.
+  const senior = await makeUser({ email: "poll-no-refresh-admin@example.test", gmail: true });
+  const poll = JOBS.find((j) => j.id === "poll");
+  const line = `poll mailbox ${senior.id}: reauth_needed (no refresh token)`;
+  const savedErrors = jobStatus.errors;
+  const log = console.error;
+  console.error = () => {};
+  jobStatus.errors = [];
+  try {
+    const run = await withOnlyMailboxes([senior.id], () => runJob("poll", { trigger: "manual" }));
+    assert.equal(run.ok, false);
+    assert.equal(run.error, "every mailbox failed to sync (1 of 1)");
+    assert.deepEqual(run.result, { users: 1, synced: 0, failed: 1, skipped: 0 }, "the failed run keeps its counts");
+    assert.deepEqual(withoutTime(jobStatus.errors), [line], "one line for the mailbox; the run's own error is not noted again");
+    assert.ok(!jobStatus.errors[0].includes(senior.email), "the user id, never the address");
+    assert.deepEqual(await one("SELECT ok, result, error FROM job_runs WHERE id = $1", [run.id]),
+      { ok: false, result: { users: 1, synced: 0, failed: 1, skipped: 0 }, error: "every mailbox failed to sync (1 of 1)" });
+    // What the Jobs page reads: the failed run, its line under recent errors, and Failing on a server whose worker is on.
+    const { jobs, errors } = (await get("/api/admin/jobs")).json();
+    const listed = jobs.find((j) => j.id === "poll").lastRun;
+    assert.deepEqual([listed.id, listed.ok, listed.error], [run.id, false, "every mailbox failed to sync (1 of 1)"]);
+    assert.ok(errors[0].endsWith(line), errors[0]);
+    assert.equal(jobsReport({ worker: true }).jobs.find((j) => j.id === "poll").health, "failing");
+  } finally {
+    console.error = log;
+    jobStatus.errors = savedErrors;
+    poll.lastRun = null;
+  }
+});
+
+test("a partial Gmail outage keeps the poll OK, counts the mailboxes synced, failed and skipped, and lists each failing one under recent errors", opts, async () => {
+  const good = await makeUser({ email: "poll-good-admin@example.test", gmail: true });
+  const bad = await makeUser({ email: "poll-bad-admin@example.test", gmail: true });
+  const busy = await makeUser({ email: "poll-busy-admin@example.test", gmail: true });
+  const crashed = await makeUser({ email: "poll-crashed-admin@example.test", gmail: true });
+  // Real syncs: an empty mailbox that answers, one Gmail refuses with an error naming the address, one another process
+  // is syncing; and one whose sync throws before it can write anything (the database dropped the connection).
+  const refusing = { ...fakeGmail({ email: bad.email }),
+    listLabels: async () => { throw Object.assign(new Error(`Gmail GET /labels 403: Delegation denied for ${bad.email}`), { status: 403 }); } };
+  const clients = new Map([[good.id, fakeGmail({ email: good.email })], [bad.id, refusing]]);
+  const sync = (id) => (id === crashed.id ? Promise.reject(new Error("Connection terminated unexpectedly")) : syncUser(id, { client: clients.get(id) }));
+  const poll = JOBS.find((j) => j.id === "poll");
+  const jobs = [{ ...poll, running: false, lastRun: null, run: () => pollAll({ sync }) }];
+  const other = await pool.connect();
+  await other.query("SELECT pg_advisory_lock(hashtext($1))", [`sync:${busy.id}`]);
+  const savedErrors = jobStatus.errors;
+  const log = console.error;
+  console.error = () => {};
+  jobStatus.errors = [];
+  try {
+    const run = await withOnlyMailboxes([good.id, bad.id, busy.id, crashed.id], () => runJob("poll", { trigger: "manual", jobs }));
+    assert.equal(run.ok, true, run.error);
+    assert.equal(run.error, null);
+    assert.deepEqual(run.result, { users: 4, synced: 1, failed: 2, skipped: 1 });
+    assert.deepEqual(withoutTime(jobStatus.errors).sort(), [`poll mailbox ${bad.id}: error (Gmail GET /labels 403: Delegation denied for [address])`,
+      `poll mailbox ${crashed.id}: error (Connection terminated unexpectedly)`].sort(), "one line per failing mailbox, none for the others");
+    assert.ok(!jobStatus.errors.some((l) => l.includes(bad.email)), "no address, even when Gmail's error names it");
+    assert.equal(jobsReport({ jobs, worker: true }).jobs[0].health, "ok", "a partial outage stays OK");
+    const states = await pool.query("SELECT user_id, sync_status FROM gmail_state WHERE user_id = ANY($1::uuid[])", [[good.id, bad.id, busy.id]]);
+    assert.deepEqual(Object.fromEntries(states.rows.map((s) => [s.user_id, s.sync_status])), { [good.id]: "ok", [bad.id]: "error", [busy.id]: "pending" });
+  } finally {
+    await other.query("SELECT pg_advisory_unlock(hashtext($1))", [`sync:${busy.id}`]);
+    other.release();
+    console.error = log;
+    jobStatus.errors = savedErrors;
+  }
+});
+
+test("with no mailbox to sync, the Gmail poll is OK and counts nothing", opts, async () => {
+  const run = await withOnlyMailboxes([], () => runJob("poll", { trigger: "manual" }));
+  JOBS.find((j) => j.id === "poll").lastRun = null;
+  assert.equal(run.ok, true, run.error);
+  assert.equal(run.error, null);
+  assert.deepEqual(run.result, { users: 0, synced: 0, failed: 0, skipped: 0 });
+});
+
+test("a run cut by a restart is closed as failed (interrupted) at the next start, never left Running, and the downtime is not its duration", opts, async () => {
   const start = new Date(); // stands for this process's start
   const cut = await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ('watch', 'schedule', now() - interval '10 minutes') RETURNING id::int AS id");
   const ours = await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ('watch', 'manual', $1) RETURNING id::int AS id", [new Date(start.getTime() + 1000)]);
   const INTERRUPTED = "interrupted: the server stopped during this run";
   try {
     assert.equal(await closeInterruptedRuns({ before: start }), 1, "it says how many it closed");
-    const closed = await one("SELECT finished_at, ok, error FROM job_runs WHERE id = $1", [cut.id]);
+    const closed = await one("SELECT started_at, finished_at, ok, error FROM job_runs WHERE id = $1", [cut.id]);
     assert.ok(closed.finished_at instanceof Date);
+    assert.equal(closed.finished_at.getTime(), closed.started_at.getTime(), "it ends where it started: when it really stopped is unknown");
     assert.deepEqual([closed.ok, closed.error], [false, INTERRUPTED]);
     assert.deepEqual(await one("SELECT finished_at, ok, error FROM job_runs WHERE id = $1", [ours.id]), { finished_at: null, ok: null, error: null },
       "a run this process started is left alone");
     const listed = (await get("/api/admin/jobs")).json().runs.find((r) => r.id === cut.id);
     assert.deepEqual([listed.ok, listed.error], [false, INTERRUPTED]);
     assert.ok(isIso(listed.finishedAt), "finished, so the page never shows it Running");
+    assert.equal(listed.durationMs, 0, "not the 10 minutes the server was down");
     assert.equal(await closeInterruptedRuns({ before: start }), 0, "a second start closes nothing more");
 
     // The server does it when its worker starts: a run left open before this process began is closed
@@ -433,6 +530,27 @@ test("Users lists every account with roles, Gmail state and counts", opts, async
   assert.deepEqual(users.find((u) => u.id === admin.id).roles, ["admin"]);
   const created = users.map((u) => Date.parse(u.createdAt));
   assert.deepEqual(created, [...created].sort((a, b) => b - a), "newest first");
+});
+
+test("a Gmail token Google can no longer refresh reads reconnect needed, never connected", opts, async () => {
+  // What makeUser gives: a token row that says ok, with no refresh token and no access token.
+  const senior = await makeUser({ email: "no-refresh-admin@example.test", gmail: true });
+  const tokenStatus = async (id) => (await get("/api/admin/users")).json().users.find((u) => u.id === id).gmail.tokenStatus;
+  const reconnectNeeded = async () => (await get("/api/admin/health")).json().counts.reconnectNeeded;
+  const before = await reconnectNeeded();
+  assert.equal(await tokenStatus(senior.id), "ok", "nothing has used the token yet");
+  await assert.rejects(accessTokenFor(senior.id), (e) => e instanceof ReauthNeeded && e.message === "no refresh token");
+  assert.equal((await one("SELECT status FROM google_tokens WHERE user_id = $1", [senior.id])).status, "reauth_needed");
+  assert.equal(await tokenStatus(senior.id), "reauth_needed");
+  assert.equal(await reconnectNeeded(), before + 1, "counted under reconnect needed on Overview");
+  // An access token still valid works until it expires: only a token nothing can renew is flagged. (No Gmail state
+  // for this one, so no later poll ever sends its made-up token to Google.)
+  const fresh = await makeUser({ email: "fresh-token-admin@example.test" });
+  await pool.query(`INSERT INTO google_tokens (user_id, access_token_enc, expires_at, scopes, status)
+                    VALUES ($1, $2, now() + interval '1 hour', 'https://www.googleapis.com/auth/gmail.modify', 'ok')`,
+  [fresh.id, encrypt("test-access-token-not-real", config.tokenKey)]);
+  assert.equal(await accessTokenFor(fresh.id), "test-access-token-not-real");
+  assert.equal((await one("SELECT status FROM google_tokens WHERE user_id = $1", [fresh.id])).status, "ok");
 });
 
 test("a user's page adds what the context covers, the last checks, the audit, the trusted people and the phones", opts, async () => {
@@ -537,7 +655,7 @@ test("Outbox lists the emails Prudence sent or would have sent, never their text
   }
 });
 
-test("the local outbox opens only on this machine, never through a tunnel or a proxy", opts, async () => {
+test("the local outbox opens only on this machine, never through a tunnel or a proxy, even one that adds no forwarding header", opts, async () => {
   const here = await app.inject({ url: "/dev/outbox" });
   assert.equal(here.statusCode, 200, "inject connects from 127.0.0.1, like a browser on this machine");
   assert.match(here.headers["content-type"], /text\/html/);
@@ -546,6 +664,22 @@ test("the local outbox opens only on this machine, never through a tunnel or a p
   for (const [header, value] of [["cf-connecting-ip", "203.0.113.9"], ["x-forwarded-for", "203.0.113.9"], ["x-real-ip", "203.0.113.9"], ["forwarded", "for=203.0.113.9"]]) {
     assert.equal((await app.inject({ url: "/dev/outbox", headers: { [header]: value } })).statusCode, 404, `${header}: through a tunnel or a proxy`);
   }
+  // The Host must name this machine: a proxy that adds no forwarding header still passes on the public name.
+  for (const host of ["localhost:3999", "127.0.0.1:3000", "[::1]:3000", "LOCALHOST"]) {
+    assert.equal((await app.inject({ url: "/dev/outbox", headers: { host } })).statusCode, 200, `Host ${host}: this machine`);
+  }
+  for (const host of ["demo.example.test", "demo.example.test:443", "localhost.example.test"]) {
+    assert.equal((await app.inject({ url: "/dev/outbox", headers: { host } })).statusCode, 404, `Host ${host}: a public name`);
+  }
+  // No Host at all (HTTP/1.0 allows it; inject always sends one): refused too, on a real socket.
+  await app.listen({ port: 0, host: "127.0.0.1" });
+  const raw = (head) => new Promise((resolve, reject) => {
+    const socket = connect(app.server.address().port, "127.0.0.1", () => socket.write(`${head}\r\n\r\n`));
+    let answer = "";
+    socket.setEncoding("utf8").on("data", (chunk) => { answer += chunk; }).on("end", () => resolve(Number(answer.split(" ")[1]))).on("error", reject);
+  });
+  assert.equal(await raw("GET /dev/outbox HTTP/1.0\r\nHost: localhost"), 200, "the same request naming this machine");
+  assert.equal(await raw("GET /dev/outbox HTTP/1.0"), 404, "no Host header");
   assert.equal((await app.inject({ url: "/dev/outbox", remoteAddress: "203.0.113.9" })).statusCode, 404, "from another machine");
   config.production = true;
   try {

@@ -31,11 +31,36 @@ function note(err, where) {
 }
 
 // Several mailboxes at a time, so one slow mailbox never delays the rest.
-async function pollAll() {
+// syncUser resolves nothing, so a mailbox's outcome is what its sync wrote
+// to gmail_state, read back right after it: ok is synced; reauth_needed or
+// error is failed, as is a sync that throws; anything else (another process
+// is syncing it, or it was disconnected meanwhile) is skipped. Each failing
+// mailbox is one recent-errors line with its user id, status and error,
+// never an address (one in the error text is masked). As with the threat
+// feed, the run fails only when every mailbox failed (a partial outage
+// stays OK), and the failed run keeps its counts. sync: tests.
+const FAILED_SYNC = ["reauth_needed", "error"];
+const ADDRESS = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+export async function pollAll({ sync = syncUser } = {}) {
   const users = await usersToSync();
-  await mapLimit(users, 4, ({ id }) => syncUser(id).catch((e) => note(e, "sync")));
+  const outcomes = await mapLimit(users, 4, async ({ id }) => {
+    try {
+      await sync(id);
+      const state = await one("SELECT sync_status, sync_error FROM gmail_state WHERE user_id = $1", [id]);
+      return { id, status: state?.sync_status ?? null, error: state?.sync_error ?? null };
+    } catch (e) {
+      return { id, status: "error", error: String(e?.message || e) };
+    }
+  });
   jobStatus.lastPoll = new Date().toISOString();
-  return { users: users.length };
+  const failed = outcomes.filter((o) => FAILED_SYNC.includes(o.status));
+  for (const o of failed) note(`${o.status}${o.error ? ` (${o.error.replace(ADDRESS, "[address]")})` : ""}`, `poll mailbox ${o.id}`);
+  const synced = outcomes.filter((o) => o.status === "ok").length;
+  const result = { users: users.length, synced, failed: failed.length, skipped: users.length - synced - failed.length };
+  if (result.users > 0 && result.failed === result.users) {
+    throw Object.assign(new Error(`every mailbox failed to sync (${result.failed} of ${result.users})`), { noted: true, result });
+  }
+  return result;
 }
 
 export async function renewWatches() {
@@ -90,7 +115,7 @@ async function pubsubLoop() {
 const job = (fields) => ({ running: false, lastRun: null, nextDueAt: null, ...fields });
 export const JOBS = [
   job({ id: "poll", name: "Gmail poll", what: "Checks every connected mailbox for new mail (backup for push, or the only trigger)",
-    kind: "interval", everyMs: config.pollSeconds * 1000, run: pollAll }),
+    kind: "interval", everyMs: config.pollSeconds * 1000, run: () => pollAll() }),
   job({ id: "watch", name: "Gmail push renewal", what: "Renews the Gmail push subscriptions that expire within 2 days",
     kind: "interval", everyMs: 12 * HOUR, run: async () => ({ renewed: await renewWatches() }) }),
   job({ id: "threatfeed", name: "Threat feed", what: "Turns new IC3 and cybermalveillance.gouv.fr alerts into candidate scam cards",
@@ -158,8 +183,11 @@ export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStor
     } catch (e) {
       run.ok = false;
       run.error = String(e?.message || e).slice(0, 500);
+      // A job that failed after counting keeps its counts (the poll: how
+      // many mailboxes failed, of how many).
+      run.result = e?.result && typeof e.result === "object" ? e.result : null;
       // A job that already noted its own lines (the threat feed, one per
-      // source) is not noted a second time.
+      // source; the poll, one per mailbox) is not noted a second time.
       if (!e?.noted) note(e, id);
     } finally {
       const finished = new Date();
@@ -187,11 +215,13 @@ export async function hydrateJobs({ jobs = JOBS } = {}) {
 
 // A run cut by a restart or a crash never got its end written: at the next
 // start it is closed as failed, so the history never shows it Running for
-// the 30 days it is kept. `before` is this process's start (a run begun
-// since is this process's own). Returns how many were closed; 0 when the
-// database cannot be reached, which is only logged.
+// the 30 days it is kept. It ends where it started (0 ms, the error line
+// says why): when it really stopped is unknown, and the downtime is not its
+// duration. `before` is this process's start (a run begun since is this
+// process's own). Returns how many were closed; 0 when the database cannot
+// be reached, which is only logged.
 export async function closeInterruptedRuns({ before = startedAt } = {}) {
-  const res = await guarded("could not close interrupted runs", () => q(`UPDATE job_runs SET finished_at = now(), ok = false,
+  const res = await guarded("could not close interrupted runs", () => q(`UPDATE job_runs SET finished_at = started_at, ok = false,
     error = 'interrupted: the server stopped during this run' WHERE finished_at IS NULL AND started_at < $1`, [before]));
   return res?.rowCount ?? 0;
 }

@@ -1,8 +1,8 @@
 // The admin console's background jobs without a database: the health rules
 // of the spec (line 6) on a fake registry with a fake clock, the schedule
-// wording, what Run now refuses, and the threat feed failing when every
-// source failed. The job_runs writes and the feeds' fetch are injected, so
-// nothing here opens a connection.
+// wording, what Run now refuses, a failed run keeping its counts, and the
+// threat feed failing when every source failed. The job_runs writes and the
+// feeds' fetch are injected, so nothing here opens a connection.
 import "./helpers/env.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -115,6 +115,25 @@ test("a failing job is a record with the error line, and a failing job_runs writ
     assert.ok(jobsReport({ jobs }).errors.includes(jobStatus.errors[0]));
   } finally {
     console.error = original;
+  }
+});
+
+test("a run that fails after counting keeps its counts (the poll: how many mailboxes failed, of how many), and lines the job noted itself are not noted again", async () => {
+  const savedErrors = jobStatus.errors;
+  jobStatus.errors = [];
+  try {
+    const counts = { users: 2, synced: 0, failed: 2, skipped: 0 };
+    const store = memoryStore();
+    const jobs = [fake({ run: async () => { throw Object.assign(new Error("every mailbox failed to sync (2 of 2)"), { noted: true, result: counts }); } })];
+    const run = await runJob("poll", { jobs, store });
+    assert.equal(run.ok, false);
+    assert.equal(run.error, "every mailbox failed to sync (2 of 2)");
+    assert.deepEqual(run.result, counts, "the run says how many failed, of how many");
+    assert.deepEqual(store.rows[0].result, counts, "and so does its job_runs row");
+    assert.deepEqual(jobStatus.errors, [], "the job noted its own lines; the runner adds none");
+    assert.equal(jobsReport({ jobs, now: Date.now(), worker: true, started: NOW }).jobs[0].health, "failing");
+  } finally {
+    jobStatus.errors = savedErrors;
   }
 });
 

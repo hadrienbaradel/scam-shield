@@ -1,6 +1,6 @@
 // Per-user Google tokens, encrypted at rest. accessTokenFor() refreshes a
 // token about to expire and flags the account for reconnection when
-// Google refuses the refresh token.
+// Google refuses the refresh token, or when there is none to refresh with.
 
 import { config } from "../config.js";
 import { encrypt, decrypt } from "../crypto.js";
@@ -27,7 +27,13 @@ export async function accessTokenFor(userId) {
   const row = await one("SELECT * FROM google_tokens WHERE user_id = $1", [userId]);
   if (!row || row.status !== "ok") throw new ReauthNeeded("Gmail is not connected");
   if (row.expires_at && row.expires_at.getTime() - Date.now() > 120000) return decrypt(row.access_token_enc, config.tokenKey);
-  if (!row.refresh_token_enc) throw new ReauthNeeded("no refresh token");
+  // Nothing to refresh with: flagged like a refused refresh, so the account
+  // reads Reconnect (console, senior app) instead of Connected while every
+  // sync fails, and the poll stops picking it.
+  if (!row.refresh_token_enc) {
+    await q("UPDATE google_tokens SET status = 'reauth_needed', updated_at = now() WHERE user_id = $1", [userId]);
+    throw new ReauthNeeded("no refresh token");
+  }
   // One refresh at a time per user, however many syncs ask concurrently.
   if (!inflight.has(userId)) {
     inflight.set(userId, (async () => {
