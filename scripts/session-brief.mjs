@@ -1,5 +1,6 @@
 // Session brief for Claude Code: what happened since this developer's last
-// commit and where the product stands, printed at the start of every session.
+// commit, where the product stands and the team log (who is working on what
+// right now, what you owe the other person), printed at the start of every session.
 // .claude/settings.json runs it on the SessionStart hook (startup, resume);
 // its stdout becomes context for Claude, which greets the developer and offers
 // what to do next (the footer below).
@@ -7,25 +8,27 @@
 //   node scripts/session-brief.mjs            this checkout
 //   node scripts/session-brief.mjs <dir>      another checkout (the tests use this)
 //
-// Plain Node, no dependencies, under a second, at most 45 lines, always exits 0:
+// Plain Node, no dependencies, under a second, at most 60 lines, always exits 0:
 // every failure becomes a one-line note instead of a crash. It prints git
-// metadata and names from _product/spec.md and _product/research/feasibility.md
-// only; it never reads .env and never prints a secret.
+// metadata and names from _product/spec.md, _product/research/feasibility.md
+// and _product/log.md only; it never reads .env and never prints a secret.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const MAX_LINES = 45;
+export const MAX_LINES = 60;
 export const MAX_CHARS = 9000;
 export const MAX_COMMITS = 15;
 export const MAX_ITEMS = 5;
+export const MAX_LOG_LINE = 110; // characters of a team-log item (what, to-do text) before it is shortened
 export const SPEC_PATH = "_product/spec.md";
 export const FEASIBILITY_PATH = "_product/research/feasibility.md";
+export const LOG_PATH = "_product/log.md";
 export const STATUSES = ["Built", "Partial", "Planned", "Idea", "Dropped"];
 export const DEADLINE = { label: "Nov 4, 2026, 9 PM ET", at: Date.parse("2026-11-04T21:00:00-04:00") };
-export const FOOTER = "Greet the developer by name in English, summarize the above in three lines, then offer: 1) what happened since last time, 2) discuss new or undiscussed ideas, 3) brainstorm, 4) implement a Planned or Partial feature, 5) marketing, pitch and the demo video, 6) research (competitors, hackathon, Meta stack), 7) technical feasibility: research or prototype an open question from _product/research/feasibility.md (Gmail, SMS, voice, real-time intervention, app vs web). Follow _product/docs/product-process.md for whatever they pick.";
+export const FOOTER = "Greet the developer by name in English, summarize the above in three lines (what is in progress and what you owe the other person first), then offer: 1) what happened since last time, 2) discuss new or undiscussed ideas, 3) brainstorm, 4) implement a Planned or Partial feature, 5) marketing, pitch and the demo video, 6) research (competitors, hackathon, Meta stack), 7) technical feasibility: research or prototype an open question from _product/research/feasibility.md (Gmail, SMS, voice, real-time intervention, app vs web). Follow _product/docs/product-process.md for whatever they pick.";
 
 // ---------------------------------------------------------------- markdown
 
@@ -61,7 +64,7 @@ const column = (table, test) => table.header.findIndex(test);
 const isStatus = (h) => h === "status" || h.startsWith("status");
 const isIdea = (h) => h === "idea" || h === "ideas" || h.startsWith("idea ");
 const isNumber = (h) => ["#", "no", "no.", "n°", "id", "number"].includes(h);
-const firstWord = (cell) => (cleanCell(cell).match(/[A-Za-z]+/) || [""])[0].toLowerCase();
+const firstWord = (cell) => (cleanCell(cell).match(/\p{L}+/u) || [""])[0].toLowerCase();
 
 // "Built (unverified live)" → "Built"; "**Partial**" → "Partial"; anything else → null.
 export function statusOf(cell) {
@@ -144,6 +147,42 @@ export function parseFeasibility(text) {
     out.openTotal++;
     if (out.open.length < MAX_ITEMS) out.open.push({ n: (numberIdx >= 0 && row[numberIdx]) || String(i + 1), question });
   });
+  return out;
+}
+
+// _product/log.md → the In progress rows (who, since, what, touches) and the
+// To do rows (for, item, askedBy, since). The In progress table is the one with
+// a Who column, the To do table the one with a For column; the Done bullets
+// are not read (git shows them). Never throws; found is false without a table.
+export function parseLog(text) {
+  const out = { found: false, inProgress: [], todo: [] };
+  const tables = parseTables(text);
+  const cell = (row, i) => (i >= 0 && row[i]) || "";
+  const is = (name) => (h) => h === name || h.startsWith(`${name} `);
+  const progress = tables.find((t) => column(t, is("who")) >= 0);
+  if (progress) {
+    out.found = true;
+    const who = column(progress, is("who"));
+    const since = column(progress, is("since"));
+    const what = column(progress, (h) => h.startsWith("working on") || is("what")(h));
+    const touches = column(progress, (h) => is("touches")(h) || is("files")(h));
+    for (const row of progress.rows) {
+      if (!cell(row, who) && !cell(row, what)) continue;
+      out.inProgress.push({ who: cell(row, who), since: cell(row, since), what: cell(row, what), touches: cell(row, touches) });
+    }
+  }
+  const todo = tables.find((t) => t !== progress && column(t, is("for")) >= 0);
+  if (todo) {
+    out.found = true;
+    const who = column(todo, is("for"));
+    const item = column(todo, (h) => is("item")(h) || is("what")(h));
+    const askedBy = column(todo, (h) => h.startsWith("asked"));
+    const since = column(todo, is("since"));
+    for (const row of todo.rows) {
+      if (!cell(row, who) && !cell(row, item)) continue;
+      out.todo.push({ for: cell(row, who), item: cell(row, item), askedBy: cell(row, askedBy), since: cell(row, since) });
+    }
+  }
   return out;
 }
 
@@ -270,7 +309,32 @@ function productLines(root) {
   return lines;
 }
 
-// The whole brief as lines: header, commits since the last one, product state, footer.
+// The team log: the totals, every In progress row (who, since, what; the first
+// MAX_ITEMS when there are more), then this developer's To do rows: For is
+// their first name (first word of git config user.name, case-insensitive) or Both.
+function teamLogLines(root, me) {
+  const text = readText(join(root, LOG_PATH));
+  if (text === null) return [`Team log: ${LOG_PATH} not found (claim your task there first)`];
+  const log = parseLog(text);
+  if (!log.found) return [`Team log: no In progress or To do table found in ${LOG_PATH}`];
+  const name = firstWord(me);
+  const mine = name ? log.todo.filter((r) => [name, "both"].includes(firstWord(r.for))) : [];
+  const lines = [`Team log (${LOG_PATH}): ${log.inProgress.length} in progress, ${log.todo.length} to do${name ? ` (${mine.length} yours)` : ""}`];
+  lines.push(log.inProgress.length ? "In progress:" : "In progress: none");
+  const progress = log.inProgress.slice(0, MAX_ITEMS);
+  for (const r of progress) lines.push(`  ${r.who || "(nobody)"}  since ${r.since || "?"}  ${shorten(r.what, MAX_LOG_LINE)}`);
+  if (log.inProgress.length > progress.length) lines.push(`  … and ${log.inProgress.length - progress.length} more`);
+  if (!name) { lines.push("Your to do: unknown (git config user.name is empty)"); return lines; }
+  const shown = mine.slice(0, MAX_ITEMS);
+  lines.push(!mine.length ? "Your to do: none" : mine.length > shown.length ? `Your to do (first ${shown.length} of ${mine.length}):` : `Your to do (${mine.length}):`);
+  for (const r of shown) {
+    const by = [r.askedBy, r.since].filter(Boolean).join(", ");
+    lines.push(`  - ${shorten(r.item, MAX_LOG_LINE)}${by ? ` (${by})` : ""}`);
+  }
+  return lines;
+}
+
+// The whole brief as lines: header, commits since the last one, product state, team log, footer.
 export function buildBrief(root) {
   const g = attempt(() => gitState(root), (why) => ({ git: false, repo: basename(root), me: "", note: why }));
   const lines = [
@@ -279,6 +343,8 @@ export function buildBrief(root) {
     ...attempt(() => sinceLines(g), (why) => [`Since you last committed: unavailable (${why})`]),
     "",
     ...attempt(() => productLines(root), (why) => [`Product state: unavailable (${why})`]),
+    "",
+    ...attempt(() => teamLogLines(root, g.me), (why) => [`Team log: unavailable (${why})`]),
     "",
     `Session start: ${FOOTER}`,
   ];
