@@ -1,5 +1,5 @@
 # Senior web app and verdict screen
-Status: Built · Last updated: 2026-10-28
+Status: Built · Last updated: 2026-10-29
 
 ## Why
 The explanation only helps if a frightened 74-year-old can read it at 9 pm: one screen, one verdict, big type, big buttons, and a voice.
@@ -15,9 +15,10 @@ The explanation only helps if a frightened 74-year-old can read it at 9 pm: one 
 7. Nothing on screen is ever stale: a late answer for a message the user has left is dropped; an action that fails shows an error instead of pretending it was saved; when the app cannot load it says so and offers Try again.
 8. The footer on every page says: "Scam Shield is a helper, not a guarantee. If money is involved, always call the number on your card or statement — never a number from a message."
 9. The welcome flow (4 steps) is shown once; the "Not checked yet" state offers "Check it now".
+10. **Checked chips (2026-10-29).** Under each reason on the V2 card (the two facts, and every reason in "Why we think so"), a small chip says in plain words what that reason was checked against: "Checked: who sent it", "Checked: the sender's proof", "Checked: the link", "Checked: where the link goes", "Checked: your orders and people", "Checked: your people", "Checked: this conversation", "Checked: known data leaks", "Checked: known scams", "Checked: the pressure on you", "Checked: what it asks you for" (French: "Vérifié : …", the same list). The reason's own words never change; a reason whose check is unknown gets no chip rather than a wrong one. The chip is at least 16 px, high contrast, wraps at the largest text size instead of overflowing, and never moves the two big buttons off a 390 × 844 phone screen. It shows on the demo (`#/demo`) and on the person's own mail alike; "Read it to me" reads the reasons, not the chips.
 
 ## Demo path
-The whole video lives on this screen: the inbox with pills, one red card read aloud, one orange card with "Ask my trusted person", the answer arriving live. Set text size to Largest before filming.
+The whole video lives on this screen: the inbox with pills, one red card read aloud, one orange card with "Ask my trusted person", the answer arriving live. Set text size to Largest before filming. At 0:27–0:57 the USPS card shows its facts with their "Checked:" chips (who sent it, the link, her orders and people), so the judge sees that each reason rests on a concrete check; the Ethan card's reasons carry "Checked: your people".
 
 ## Out of scope
 A native iOS/Android mail client; dark mode; languages beyond EN/FR; HTML rendering of emails; a Gmail-side add-on.
@@ -25,10 +26,11 @@ A native iOS/Android mail client; dark mode; languages beyond EN/FR; HTML render
 ## Acceptance
 - Front-end review fixes landed (no wrong-message race, keyboard and screen-reader pass, recovery screen) in commit e60f1af; strict CSP with no inline scripts (src/server.js).
 - Verdict card uses only schema fields; unknown model fields never reach the UI (lib/schema.js pickVerdictFields).
+- Checked chips: `tests/evidence-words.test.js` (every evidence kind in the verdict schema has English and French words, an unknown kind gives no chip, the words hold no technical term).
 - Still to do (PRD): a filmed comprehension test with three seniors ("what would you do now?" answered correctly in under 10 s).
 
 ## Implementation pointers
-V2: public/js/views/today.js (Today, cards, Done/Undo, ask by text or email; a live source and a demo source), the tab bar in public/js/main.js, `.v2-*` and `.tabbar` in public/styles.css, POST /api/messages/:id/undo-throw (src/sync/actions.js undoThrow), GET /api/demo/today. Before V2:
+V2: public/js/views/today.js (Today, cards, Done/Undo, ask by text or email; a live source and a demo source), the "Checked:" chip words in public/js/i18n.js (`evidenceWords`, one entry per kind of lib/schema.js EVIDENCE_KINDS) and `.v2-chip` in public/styles.css, the tab bar in public/js/main.js, `.v2-*` and `.tabbar` in public/styles.css, POST /api/messages/:id/undo-throw (src/sync/actions.js undoThrow), GET /api/demo/today. Before V2:
 public/js/views/mail.js (inbox, reader, openAsk), public/js/ui.js (verdictCard, readAloud, pill), public/js/views/pages.js (landing, onboarding, check, people, settings), public/js/i18n.js (all strings), public/styles.css.
 
 ## Open questions

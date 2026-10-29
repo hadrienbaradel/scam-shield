@@ -69,6 +69,10 @@ const STRINGS = {
     v2_today: "Today", v2_of: "{i} of {n}", v2_of_label: "Message {i} of {n}", v2_read: "Read it to me", v2_read_short: "Listen",
     v2_throw: "Throw it away", v2_ask: "Ask {name}", v2_call: "Call {name}", v2_keep: "This one is fine, keep it",
     v2_why: "Why we think so", v2_show: "Show me the message", v2_hide: "Hide the message",
+    // The chip under a reason: what it was checked against (one per evidence kind in lib/schema.js).
+    ev_sender: "Checked: who sent it", ev_auth: "Checked: the sender's proof", ev_link: "Checked: the link", ev_link_inspection: "Checked: where the link goes",
+    ev_personal_context: "Checked: your orders and people", ev_contact_history: "Checked: your people", ev_thread: "Checked: this conversation",
+    ev_breach: "Checked: known data leaks", ev_pattern: "Checked: known scams", ev_pressure: "Checked: the pressure on you", ev_payment: "Checked: what it asks you for",
     v2_call_note: "\u201cCall {name}\u201d uses the number you already have, never the one in the message.",
     v2_unknown_title: "We could not check this message yet.", v2_unknown_note: "Do not use its links or reply to it for now. Try again in a minute.",
     v2_text_failed: "Prudence could not prepare the text to {name}. Try again, or send an email instead.",
@@ -188,6 +192,9 @@ const STRINGS = {
     v2_today: "Aujourd'hui", v2_of: "{i} sur {n}", v2_of_label: "Message {i} sur {n}", v2_read: "Me le lire", v2_read_short: "Écouter",
     v2_throw: "Le jeter", v2_ask: "Demander à {name}", v2_call: "Appeler {name}", v2_keep: "Ce message est correct, le garder",
     v2_why: "Pourquoi nous le pensons", v2_show: "Montrez-moi le message", v2_hide: "Cacher le message",
+    ev_sender: "Vérifié : qui l'a envoyé", ev_auth: "Vérifié : la preuve de l'expéditeur", ev_link: "Vérifié : le lien", ev_link_inspection: "Vérifié : où mène le lien",
+    ev_personal_context: "Vérifié : vos commandes et vos proches", ev_contact_history: "Vérifié : vos proches", ev_thread: "Vérifié : cette conversation",
+    ev_breach: "Vérifié : les piratages connus", ev_pattern: "Vérifié : les arnaques connues", ev_pressure: "Vérifié : la pression sur vous", ev_payment: "Vérifié : ce qu'il vous demande",
     v2_call_note: "« Appeler {name} » utilise le numéro que vous avez déjà, jamais celui du message.",
     v2_unknown_title: "Nous n'avons pas encore pu vérifier ce message.", v2_unknown_note: "N'utilisez pas ses liens et n'y répondez pas pour l'instant. Réessayez dans une minute.",
     v2_text_failed: "Prudence n'a pas pu préparer le texto pour {name}. Réessayez, ou envoyez plutôt un e-mail.",
@@ -248,6 +255,13 @@ export const getLang = () => lang;
 export function t(key, vars = {}) {
   const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
+}
+// The small chip under a reason on a verdict card: what that reason was
+// checked against, from the reason's evidence kind (lib/schema.js
+// EVIDENCE_KINDS). An unknown or missing kind gives null: no chip rather
+// than a wrong one. The language can be given, for tests and previews.
+export function evidenceWords(kind, l = lang) {
+  return STRINGS[l === "fr" ? "fr" : "en"][`ev_${kind}`] ?? null;
 }
 export const dateTime = (iso) => new Date(iso).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { dateStyle: "medium", timeStyle: "short" });
 

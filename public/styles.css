@@ -577,6 +577,24 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2-fact-box { padding: 0.7rem 0.8rem; border-radius: 14px; background: var(--ground); }
 .v2-card.danger .v2-fact-box { background: var(--scam-wash); }
 .v2-card.caution .v2-fact-box { background: var(--careful-wash); }
+/* Under a reason: what it was checked against, in plain words. Its own
+   line below the text, so it never hides at the end of a sentence; 16 px
+   at the normal size, and it wraps at the largest size instead of
+   overflowing. Navy on the navy wash reads at better than AAA contrast. */
+.v2-chip {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.7rem;
+  background: var(--navy-wash);
+  border: 1.5px solid var(--navy);
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
 .v2-next { font-size: 1.1rem; font-weight: 700; }
 .v2-more { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .v2-more .btn { min-height: 48px; font-size: 0.95rem; }

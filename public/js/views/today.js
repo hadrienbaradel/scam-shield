@@ -5,7 +5,7 @@
 // person's own Gmail and on the public demo (Linda or Françoise).
 
 import { api } from "../api.js";
-import { t, getLang } from "../i18n.js";
+import { t, getLang, evidenceWords } from "../i18n.js";
 import { $, esc, verdictClass, readAloud, toast, busy, focusHeading } from "../ui.js";
 import { syncLine } from "./mail.js";
 
@@ -16,6 +16,9 @@ const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
 // The badge already says "Scam": the headline need not start with it again.
 const headlineOf = (h) => String(h || "").replace(/^(scam|be careful|safe|arnaque|prudence|attention|sans danger|vigilance)\s*:\s*/i, "").replace(/^./, (c) => c.toUpperCase());
 const enc = encodeURIComponent;
+// Under a reason, what it was checked against ("Checked: who sent it"), from
+// the reason's evidence kind; nothing when the kind is unknown or missing.
+const chip = (r) => { const w = evidenceWords(r?.evidence); return w ? `<span class="v2-chip">${esc(w)}</span>` : ""; };
 
 // Where the messages come from: the person's Gmail through the API.
 function liveSource(status) {
@@ -225,14 +228,14 @@ function drawCard({ keep = null } = {}) {
           <p class="v2-badge"><span class="v2-badge-dot" aria-hidden="true">${icon(scam ? "alert" : v.verdict === "be_careful" ? "careful" : "check", 34)}</span>${esc(word)}</p>
           <h1 id="v2Headline" class="v2-headline">${esc(headlineOf(v.headline))}</h1>
           ${v.action_text ? `<p class="v2-next">${esc(v.action_text)}</p>` : ""}
-          ${reasons[0] ? `<p class="v2-fact">${esc(reasons[0].text)}</p>` : ""}
-          ${reasons[1] ? `<p class="v2-fact v2-fact-box">${esc(reasons[1].text)}</p>` : ""}
+          ${reasons[0] ? `<p class="v2-fact">${esc(reasons[0].text)}${chip(reasons[0])}</p>` : ""}
+          ${reasons[1] ? `<p class="v2-fact v2-fact-box">${esc(reasons[1].text)}${chip(reasons[1])}</p>` : ""}
           <div class="v2-more">
             <button id="v2Why" class="btn btn-light-dark" type="button" aria-expanded="${S.open.why}">${t("v2_why")}</button>
             <button id="v2Body" class="btn btn-light-dark" type="button" aria-expanded="${S.open.body}">${S.open.body ? t("v2_hide") : t("v2_show")}</button>
           </div>
           <div id="v2WhyBox" ${S.open.why ? "" : "hidden"}>
-            <ul class="why-list">${reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>
+            <ul class="why-list">${reasons.map((r) => `<li>${esc(r.text)}${chip(r)}</li>`).join("")}</ul>
             ${v.real_company_says ? `<p class="note">${esc(v.real_company_says)}</p>` : ""}
             <p class="small">${esc(t("checked_by", { source: v.source || "Prudence" }))}</p>
           </div>
