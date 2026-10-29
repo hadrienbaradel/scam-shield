@@ -10,7 +10,6 @@ Who = the person, plus the session label or agent name when several sessions run
 
 | Who | Since | Working on | Touches |
 |---|---|---|---|
-| Hadrien · Claude | 2026-10-29 | Self-hosted Atkinson Hyperlegible Next font (design audit U3); re-capture the video screens on the new card layout and rebuild the rough cut | `public/fonts/`, `public/styles.css`, `public/index.html`, `.runtime/video/` (local) |
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · whatsapp-channel | 2026-10-29 14:46 | WhatsApp Cloud API channel: webhook verify, text/image/audio/document in, verdict reply out; spec, keys by name, tests | `src/channels/whatsapp.js`, `src/routes/whatsapp.js`, `tests/whatsapp.test.js`, `_product/specs/whatsapp-channel.md`, `_product/spec.md` (one row, non-goal line), `_product/docs/secrets.md`, `config/credentials.example`, one line in `src/server.js` |
 | Vlad · chips | 2026-10-29 14:39 | "Checked:" chips under each reason on the V2 card, EN/FR | `public/js/views/today.js`, `public/js/i18n.js`, `public/styles.css`, `_product/specs/senior-verdict-screen.md`, a test file |
@@ -43,13 +42,12 @@ Who = the person, plus the session label or agent name when several sessions run
 | Hadrien | Seeded 15 s "it's Ethan" voicemail in demo mode | Video script, Oct 29 | 2026-10-29 |
 | Hadrien | Decide B2/B12: accept Scam from Muse or keep Be careful | spec.md open question 1 | 2026-10-27 |
 | Hadrien | A working abuse.ch key (link checks stay Partial without it) | spec.md | 2026-10-27 |
-| Hadrien | OK to download Atkinson Hyperlegible Next (SIL OFL, ~60 KB woff2) so the senior screens stop rendering in Verdana (design audit U3) | Design review | 2026-10-29 |
 | Hadrien | Run `node --env-file-if-exists=.env --import ./lib/credentials.js scripts/recheck-flagged.mjs` to take the Prudence label off the Cloudflare invoice and monbento.com (dry run says Safe) | Design review | 2026-10-29 |
-| Hadrien | Re-capture the video shots: the card layout changed (answer bar, Listen, advice first) | Design review | 2026-10-29 |
 | Both | Nov 1 rehearsal: decide the conditional swaps (Prompt Guard, reasoning summary, open weights) | Video script | 2026-10-29 |
 
 ## Done
 
+- 2026-10-29 · Hadrien · Atkinson Hyperlegible Next self-hosted (SIL OFL, 25 KB, every app character covered; the screens were rendering in Verdana) (5b2a427); no gold halo on script-focused headings (a70d29a); rough cut v2 with the new card layout, `.runtime/video/prudence-rough-cut-v2.mp4` (local only, screens in `.runtime/video/shots-v2/`)
 - 2026-10-29 · Hadrien · Design review + /codex plan challenge of the V2 app (report: ~/.gstack/projects/hadrienbaradel-scam-shield/designs/design-audit-20261028/): answer bar fixed outside the card, advice first (37cc3fd); each screen announced, late answers dropped, one action at a time, retry, no Safe without a verdict (7203b8e); visible focus ring (b728a07); Keep can be undone, POST /api/messages/:id/undo-keep (90841b4); Listen label, stable "2 of 3", no small print, honest Ask demo, compact FR/EN (583a5a2). `today.js` now draws every screen through `paint()`: Vlad, build the "Checked:" chips on top of it
 - 2026-10-29 · Hadrien · Real Cloudflare invoice doubted with "you never received mail from this sender": Muse now gets what the history covers and a dated count of earlier mail from the same organisation (never trust), prompt v4; Muse sample 25 phishing / 50 legit: 84% Scam, 0 false Scam; dry-run re-check turns that invoice Safe (4934822). PayPal-user callback invoice locked as never "authentic" (372e229)
 - 2026-10-29 · Vlad · Team log and the claim-first rule: `_product/log.md`, CLAUDE.md non-negotiables, product-process.md (The team log), git.md (both on main, pull --rebase); the session brief prints who is in progress and your to-do rows (4ac3206, 39c27e5, 167ea75 and the brief commit)

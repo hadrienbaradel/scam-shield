@@ -32,8 +32,8 @@ Conditional swaps (decided at the Nov 1 rehearsal, never more than four Meta sur
 - Verify the one external figure on the day: FBI IC3 2025, 60+ losses $7.748B ([../research/scam-market-stats.md](../research/scam-market-stats.md)).
 - Words to avoid: "AI detects scams" (five other entries say it), "blocks all scams", "zero retention", "trained on".
 
-## Rough cut v1 (Oct 28)
-`.runtime/video/prudence-rough-cut-v1.mp4` (git-ignored, local only): 2:41, 1080p, synthetic voice, captions burned in, "ROUGH CUT" watermark on every frame. Rebuild with `python3 .runtime/video/build.py <shots dir> <out.mp4>`; screenshots come from demo mode at 390 × 844 (`#/demo`).
+## Rough cut v2 (Oct 29)
+`.runtime/video/prudence-rough-cut-v2.mp4` (git-ignored, local only): 2:41, 1080p, synthetic voice, captions burned in, "ROUGH CUT" watermark on every frame; v2 has the Oct 29 card (answer bar under the card, Listen, advice first, Atkinson Hyperlegible Next). Rebuild with `python3 .runtime/video/build.py .runtime/video/shots-v2 <out.mp4>`; screens are viewport shots of demo mode at 390 × 844 (`#/demo`).
 - Real app screens: USPS card and its reasons, Today, Thrown away / Undo, the Ethan card, the text to Thomas.
 - Red "TO FILM" cards hold the place of: kitchen-table phone, "What Prudence knows" (signed-in screen, film on Linda's test account), the Gmail folder (test Gmail only), Ethan on a real Android phone, Thomas's phone and his answer, the voicemail check, the senior on camera.
 - Still to capture: the "AI check is busy" card, "Read it to me".
