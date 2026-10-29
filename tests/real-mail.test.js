@@ -299,6 +299,12 @@ test("legit: a quiz link the authenticated sender's own mail system addressed to
   const quiz = { [tracked]: { final_url: "https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test", redirects: ["https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test"], page_shows: 'Page titled "Murfy - Score"' } };
   const v = detect({ locale: "fr-FR", message: m, personalContext: ctx, mockLinkInspection: quiz });
   assert.notEqual(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+  // The plain-text copy of the newsletter carries the same quiz address directly.
+  const direct = "https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test";
+  const both = detect({ locale: "fr-FR", message: { ...m, links: [...m.links, { text: direct, href: direct }] }, personalContext: ctx, mockLinkInspection: quiz });
+  assert.notEqual(both.verdict, "scam", both.reasons.map((r) => r.text).join(" | "));
+  assert.ok(!both.reasons.some((r) => /made for one person|fabriqué pour une personne/.test(r.text)), both.reasons.map((r) => r.text).join(" | "));
+  assert.equal(new Set(both.reasons.map((r) => r.text)).size, both.reasons.length, "the same reason is never shown twice");
   const stranger = detect({ locale: "fr-FR", personalContext: ctx, message: { ...m, from: "promo@offres-maison.test", fromName: "Offres", auth: "spf=none dkim=none dmarc=none",
     links: [{ text: "Voir le résultat", href: "https://murfy-questionnaire.typeform.com/to/xyz#email=linda@example.test" }] } });
   assert.ok(stranger.reasons.some((r) => /made for one person|fabriqué pour une personne/.test(r.text)), "a stranger's form carrying the address is still called out");
