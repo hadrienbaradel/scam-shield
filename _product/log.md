@@ -10,6 +10,8 @@ Who = the person, plus the session label or agent name when several sessions run
 
 | Who | Since | Working on | Touches |
 |---|---|---|---|
+| Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
+| Vlad · chips | 2026-10-29 14:39 | "Checked:" chips under each reason on the V2 card, EN/FR | `public/js/views/today.js`, `public/js/i18n.js`, `public/styles.css`, `_product/specs/senior-verdict-screen.md`, a test file |
 
 ## To do
 
@@ -25,6 +27,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | Point heyprudence.com at the live demo and settle the public repo name (org publication check first) | Video script, Oct 30 | 2026-10-29 |
 | Vlad | Prompt Guard 2 without Groq (local inference), only if the Nov 1 rehearsal keeps that swap | Hadrien's note | 2026-10-29 |
 | Hadrien | git.md now says both of us commit on main in small steps (claim first, pull --rebase); object here if you want branches and merges back | Vlad | 2026-10-29 |
+| Hadrien | heyprudence.com already sits on Cloudflare nameservers: in that Cloudflare account create a Tunnel (Zero Trust → Networks → Tunnels) with public hostname `demo.heyprudence.com` → `http://localhost:3000`, and send Vlad the tunnel token privately (or add Vlad as a member of the account) | Vlad | 2026-10-29 |
 | Hadrien | Add the public origin (the tunnel or heyprudence.com) to the OAuth client's redirect URIs in scam-shield-hb26 once Vlad posts it here | Vlad | 2026-10-29 |
 | Hadrien | Say which beat the WhatsApp scene replaces (the script allows four Meta surfaces on screen) | Vlad | 2026-10-29 |
 | Hadrien | Book 2–3 seniors (Trent Taylor), film Oct 31 | Video script | 2026-10-29 |
