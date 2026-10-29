@@ -46,6 +46,8 @@ export const yesNo = (b) => (b ? "yes" : "no");
 export const onOff = (b) => (b ? "on" : "off");
 export const words = (k) => String(k).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
 export const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+// "1 guardian", "2 guardians".
+export const plural = (n, one, many = `${one}s`) => `${num(n)} ${Number(n) === 1 ? one : many}`;
 
 export function duration(ms) {
   if (ms == null || Number.isNaN(Number(ms))) return "–";
@@ -159,6 +161,15 @@ export function toast(text, kind = "info") {
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// A busy button stays focusable (aria-disabled, not disabled): a keyboard
+// user keeps their place while the request runs. Click handlers check isBusy.
+export const isBusy = (b) => b?.getAttribute("aria-disabled") === "true";
+export function busy(b, on = true) {
+  if (!b) return;
+  if (on) b.setAttribute("aria-disabled", "true");
+  else b.removeAttribute("aria-disabled");
+}
+
 // ---- Router, nav, refresh --------------------------------------------------
 
 const VIEWS = [
@@ -200,6 +211,17 @@ function markNav() {
   }
 }
 
+// Under 820 px the nav is a row that scrolls sideways: keep the current page
+// and the focused link inside it, never half hidden past the edge.
+function revealInNav(a) {
+  const nav = $("#nav");
+  if (!a || nav.scrollWidth <= nav.clientWidth) return;
+  const left = a.offsetLeft - 16;
+  const right = a.offsetLeft + a.offsetWidth + 16;
+  if (left < nav.scrollLeft) nav.scrollLeft = left;
+  else if (right > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = right - nav.clientWidth;
+}
+
 const focusKey = () => {
   const a = document.activeElement;
   return a && $("#view").contains(a) ? a.dataset.focus || null : null;
@@ -219,6 +241,7 @@ export async function render({ focus = false } = {}) {
   const root = $("#view");
   markNav();
   if (changed) {
+    revealInNav($("#nav a[aria-current]"));
     setTitle(esc(route.view.title ? route.view.title(params) : route.label));
     $("#updated").textContent = "";
     root.innerHTML = `<p class="loading">Loading…</p>`;
@@ -251,6 +274,7 @@ function tick() {
 
 function start() {
   $("#nav").innerHTML = VIEWS.map((v) => `<a href="#/${v.path}" data-path="${v.path}">${v.label}</a>`).join("");
+  $("#nav").addEventListener("focusin", (e) => revealInNav(e.target.closest("a")));
   $("#refresh").addEventListener("click", () => render());
   // The skip link moves focus without touching the hash (the hash is the route).
   $(".skip-link").addEventListener("click", (e) => { e.preventDefault(); $("#main").focus(); });

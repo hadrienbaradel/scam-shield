@@ -1,7 +1,7 @@
 // Jobs: every piece of background work with its health and a Run now
 // button, the last 100 runs (filter by job) and the recent error lines.
 
-import { api, $, $$, esc, chip, chipRaw, timeEl, duration, summary, toast, sleep, setUpdated } from "../console.js";
+import { api, $, $$, esc, chip, chipRaw, timeEl, duration, summary, toast, sleep, setUpdated, busy, isBusy } from "../console.js";
 
 export const label = "Jobs";
 
@@ -34,7 +34,7 @@ function draw(root, data, ctx) {
         <div class="field"><label for="runFilter">Show</label>
           <select id="runFilter" data-focus="run-filter">
             <option value="">All jobs</option>
-            ${jobs.map((j) => `<option value="${esc(j.id)}"${filter === j.id ? " selected" : ""}>${esc(j.name)}</option>`).join("")}
+            ${jobs.filter((j) => j.canRun).map((j) => `<option value="${esc(j.id)}"${filter === j.id ? " selected" : ""}>${esc(j.name)}</option>`).join("")}
           </select></div>
       </div>
       <div class="table-wrap"><table class="table">
@@ -55,7 +55,9 @@ function draw(root, data, ctx) {
     $("#runRows", root).innerHTML = runRows(runs, jobs);
   });
   for (const b of $$("[data-run]", root)) {
-    b.addEventListener("click", () => runNow(root, b.dataset.run, jobs.find((j) => j.id === b.dataset.run)?.name || b.dataset.run, ctx));
+    b.addEventListener("click", () => {
+      if (!isBusy(b)) runNow(root, b.dataset.run, jobs.find((j) => j.id === b.dataset.run)?.name || b.dataset.run, ctx);
+    });
   }
 }
 
@@ -73,7 +75,7 @@ function jobRow(j) {
     <td>${last}</td>
     <td class="nowrap">${j.kind === "loop" ? `<span class="muted">continuous</span>` : timeEl(j.nextDueAt)}</td>
     <td class="actions">${j.canRun
-      ? `<button type="button" class="btn btn-ghost btn-small" data-run="${esc(j.id)}" data-focus="run-${esc(j.id)}"${j.running ? " disabled" : ""}>Run now</button>`
+      ? `<button type="button" class="btn btn-ghost btn-small" data-run="${esc(j.id)}" data-focus="run-${esc(j.id)}" aria-label="Run now: ${esc(j.name)}"${j.running ? ' aria-disabled="true"' : ""}>Run now</button>`
       : ""}</td>
   </tr>`;
 }
@@ -99,17 +101,18 @@ function outcome(r) {
 }
 
 // Run now: start, say what the server answered, then follow the run until
-// it is over (every 2 s, one minute at most) and redraw.
+// it is over (every 2 s, one minute at most) and redraw. "Already running"
+// (a scheduled tick, another tab) follows that run the same way. The button
+// stays focusable while busy, so the focus survives the redraws.
 async function runNow(root, id, name, ctx) {
   const button = $(`[data-run="${CSS.escape(id)}"]`, root);
-  if (button) button.disabled = true;
+  busy(button);
   try {
     await api(`/api/admin/jobs/${encodeURIComponent(id)}/run`, { method: "POST", body: {} });
     toast(`${name}: started`);
   } catch (e) {
     toast(`${name}: ${e.message}`, "fail");
-    if (button) button.disabled = false;
-    return;
+    if (e.status !== 409) { busy(button, false); return; }
   }
   const until = Date.now() + 60000;
   let job = null;

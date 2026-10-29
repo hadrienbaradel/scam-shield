@@ -1,7 +1,7 @@
 // Overview: one panel per dependency, today's counts, the jobs in one
 // table and the server block. Refreshed every 30 s by the console.
 
-import { api, esc, chip, toneOf, timeEl, fullTime, num, mb, uptime, duration, kv, setTitle, summary, yesNo, onOff } from "../console.js";
+import { api, esc, chip, toneOf, timeEl, fullTime, num, mb, uptime, duration, kv, setTitle, summary, yesNo, onOff, plural } from "../console.js";
 
 export const label = "Overview";
 
@@ -20,7 +20,7 @@ export async function render(root, params, ctx) {
     <section aria-labelledby="h-counts">
       <h2 id="h-counts">Today</h2>
       <div class="tiles">
-        ${tile(c.users, "People", `${num(c.seniors)} seniors, ${num(c.guardians)} guardians, ${num(c.admins)} admins`)}
+        ${tile(c.users, "People", `${plural(c.seniors, "senior")}, ${plural(c.guardians, "guardian")}, ${plural(c.admins, "admin")}`)}
         ${tile(c.gmailConnected, "Gmail connected")}
         ${tile(c.reconnectNeeded, "Reconnect needed")}
         ${tile(day.total, "Checks, last 24 h", `${num(day.safe)} safe, ${num(day.be_careful)} be careful, ${num(day.scam)} scam (${num(c.checksTotal)} in all)`)}
@@ -31,7 +31,7 @@ export async function render(root, params, ctx) {
       </div>
     </section>
     <section aria-labelledby="h-jobs">
-      <div class="section-head"><h2 id="h-jobs">Jobs</h2><a href="#/jobs">All jobs and runs</a></div>
+      <div class="section-head"><h2 id="h-jobs">Jobs</h2><a href="#/jobs" data-focus="all-jobs">All jobs and runs</a></div>
       <div class="table-wrap"><table class="table">
         <thead><tr><th scope="col">Job</th><th scope="col">Health</th><th scope="col">Last run</th><th scope="col">Next due</th></tr></thead>
         <tbody>${(h.jobs || []).map(jobRow).join("") || `<tr><td colspan="4" class="empty">No background work registered.</td></tr>`}</tbody>
@@ -74,7 +74,7 @@ function jobRow(j) {
       : `<span class="sub">${esc(summary(lr.result))}</span>`}`
     : `<span class="muted">not yet</span>`;
   return `<tr>
-    <th scope="row"><a href="#/jobs">${esc(j.name)}</a></th>
+    <th scope="row"><a href="#/jobs" data-focus="job-${esc(j.id)}">${esc(j.name)}</a></th>
     <td>${chip(j.health)}</td>
     <td>${last}</td>
     <td>${j.kind === "loop" ? `<span class="muted">continuous</span>` : timeEl(j.nextDueAt)}</td>

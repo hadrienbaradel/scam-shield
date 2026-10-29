@@ -3,7 +3,7 @@
 // and the audit trail. Counts, statuses, ids and times only: never a
 // message, a verdict's words or anything a senior shared.
 
-import { api, $, esc, chipRaw, tag, timeEl, fullTime, num, duration, kv, setTitle, toast, banner, words, cap, yesNo } from "../console.js";
+import { api, $, esc, chipRaw, tag, timeEl, fullTime, num, duration, kv, setTitle, toast, banner, words, cap, yesNo, plural, busy, isBusy } from "../console.js";
 
 export const label = "Users";
 export const title = (params) => (params[0] ? "Person" : "Users");
@@ -24,11 +24,13 @@ function gmailChip(g) {
   const [tone, glyph, word] = GMAIL[g.tokenStatus] || ["off", "–", cap(words(g.tokenStatus || "unknown"))];
   return chipRaw(tone, glyph, word);
 }
+// gmail_state.sync_status in plain words; the error line stays as the server wrote it.
+const SYNC = { ok: "sync ok", syncing: "syncing now", pending: "first sync not done yet", error: "sync failed", reauth_needed: "reconnect needed" };
+const syncWords = (s) => SYNC[s] || words(s || "unknown");
 function syncLine(g) {
-  if (!g) return "";
-  if (g.syncStatus === "syncing") return `<span class="sub">syncing now</span>`;
-  if (g.syncStatus && g.syncStatus !== "ok") return `<span class="sub mono err">${esc(g.syncStatus)}${g.syncError ? `: ${esc(g.syncError)}` : ""}</span>`;
-  return g.syncStatus ? `<span class="sub">sync ${esc(g.syncStatus)}</span>` : "";
+  if (!g?.syncStatus) return "";
+  if (["ok", "syncing", "pending"].includes(g.syncStatus)) return `<span class="sub">${esc(syncWords(g.syncStatus))}</span>`;
+  return `<span class="sub err">${esc(syncWords(g.syncStatus))}${g.syncError ? `: <span class="mono">${esc(g.syncError)}</span>` : ""}</span>`;
 }
 const pushChip = (g) => (g?.pushActive ? chipRaw("ok", "●", "On") : chipRaw("off", "–", "Off"));
 
@@ -46,7 +48,7 @@ async function list(root, ctx) {
   const { users = [] } = await api("/api/admin/users");
   if (ctx.stale()) return;
   root.innerHTML = `
-    <p class="lead">${num(users.length)} accounts, newest first. Open a person for the context coverage, the last checks and the audit trail.</p>
+    <p class="lead">${plural(users.length, "account")}, newest first. Open a person for the context coverage, the last checks and the audit trail.</p>
     <div class="table-wrap"><table class="table table-wide">
       <thead><tr>
         <th scope="col">Person</th><th scope="col">Roles</th><th scope="col">Gmail</th><th scope="col">Last sync</th><th scope="col">Push</th>
@@ -102,7 +104,7 @@ async function detail(root, id, ctx) {
         ["Auto alert", esc(yesNo(u.autoAlert))],
         ["Sessions", esc(num(u.sessions))],
         ["Gmail", `${gmailChip(g)} ${g?.email ? `<span class="muted">${esc(g.email)}</span>` : ""}`],
-        ["Sync", g ? `${esc(g.syncStatus || "–")}${g.syncError ? ` <span class="mono err">${esc(g.syncError)}</span>` : ""}` : "–"],
+        ["Sync", g ? `${esc(g.syncStatus ? syncWords(g.syncStatus) : "–")}${g.syncError ? ` <span class="mono err">${esc(g.syncError)}</span>` : ""}` : "–"],
         ["Last sync", g ? timeEl(g.lastSyncAt) : "–"],
         ["Backfill done", g ? esc(yesNo(g.backfillDone)) : "–"],
         ["Push", g ? `${pushChip(g)} ${g.watchExpiration ? `<span class="muted">expires ${esc(fullTime(g.watchExpiration))}</span>` : ""}` : "–"],
@@ -115,7 +117,7 @@ async function detail(root, id, ctx) {
       <div class="card">${context(d.context)}</div>
     </section>
     <section aria-labelledby="h-checks">
-      <h2 id="h-checks">Last ${num((d.recentChecks || []).length)} checks</h2>
+      <h2 id="h-checks">${d.recentChecks?.length ? `Last ${plural(d.recentChecks.length, "check")}` : "Checks"}</h2>
       <div class="table-wrap"><table class="table">
         <thead><tr><th scope="col">Time</th><th scope="col">Channel</th><th scope="col">Verdict</th><th scope="col">Judged by</th>
           <th scope="col" class="num">Latency</th><th scope="col">Action</th><th scope="col">Feedback</th></tr></thead>
@@ -137,7 +139,7 @@ async function detail(root, id, ctx) {
       </table></div>
     </section>
     <section aria-labelledby="h-audit">
-      <h2 id="h-audit">Last ${num((d.audit || []).length)} audit events</h2>
+      <h2 id="h-audit">${d.audit?.length ? `Last ${plural(d.audit.length, "audit event")}` : "Audit events"}</h2>
       <div class="table-wrap"><table class="table">
         <thead><tr><th scope="col">Event</th><th scope="col">Time</th><th scope="col">Detail</th></tr></thead>
         <tbody>${(d.audit || []).map(auditRow).join("") || `<tr><td colspan="3" class="empty">Nothing recorded yet.</td></tr>`}</tbody>
@@ -147,7 +149,8 @@ async function detail(root, id, ctx) {
   $("#syncNow", root).addEventListener("click", async () => {
     const b = $("#syncNow", root);
     const out = $("#syncOut", root);
-    b.disabled = true;
+    if (isBusy(b)) return;
+    busy(b);
     out.innerHTML = "";
     try {
       await api(`/api/admin/users/${encodeURIComponent(id)}/sync`, { method: "POST", body: {} });
@@ -156,7 +159,7 @@ async function detail(root, id, ctx) {
     } catch (e) {
       if (e.status === 401 || e.status === 403) out.innerHTML = banner(e);
       else toast(e.message, "fail");
-    } finally { b.disabled = false; }
+    } finally { busy(b, false); }
   });
 }
 

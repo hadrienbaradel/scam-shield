@@ -104,10 +104,11 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .who { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .top-link { color: inherit; font-size: 14px; white-space: nowrap; }
 
-/* Frame: left nav + content */
+/* Frame: left nav + content (the content column grows to 1200 px, so the
+   ten-column Users table fits from a 1280 px screen up) */
 .frame {
   display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 24px;
-  max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px;
+  max-width: calc(1200px + 196px + 24px + 32px); margin: 0 auto; padding: 20px 16px 48px;
 }
 .nav { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 2px; }
 .nav a {
@@ -187,13 +188,17 @@ section { display: grid; gap: 10px; }
 .table th { font-weight: 600; }
 .table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); white-space: nowrap; border-bottom-color: var(--line); }
 .table tbody tr:nth-child(even) { background: var(--surface-2); }
-.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:last-child > * { border-bottom: 0; }
 .table .num { text-align: right; }
 .table .nowrap { white-space: nowrap; }
-.table .sub { display: block; color: var(--muted); font-size: 13px; }
+.table .sub { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
 .table .actions { white-space: nowrap; }
-.table-wide { min-width: 1040px; }
-.table .gmail-cell { min-width: 22ch; max-width: 34ch; }
+.table-wide { min-width: 900px; }
+.table-wide th, .table-wide td { padding-left: 8px; padding-right: 8px; }
+.table .gmail-cell { min-width: 17ch; max-width: 26ch; }
+/* In a table an email or a title keeps its words whole (the table scrolls
+   sideways in its box instead of shrinking a column to one letter). */
+.table .wrap { overflow-wrap: break-word; }
 .table pre { max-width: 60ch; }
 .table-wrap .empty { padding: 12px; }
 
@@ -208,7 +213,7 @@ section { display: grid; gap: 10px; }
   border: 1px solid var(--btn); background: var(--btn); color: #ffffff; cursor: pointer;
 }
 .btn:hover { filter: brightness(1.15); }
-.btn:disabled { opacity: 0.55; cursor: default; filter: none; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: default; filter: none; }
 .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .btn-ghost:hover { background: var(--surface-2); filter: none; }
 .btn-small { font-size: 13px; padding: 2px 9px; line-height: 18px; }
@@ -234,8 +239,10 @@ label { font-size: 14px; }
   padding: 9px 14px; border-radius: var(--radius); background: var(--navy); color: #ffffff;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); font-size: 14px;
 }
-.toast-fail { background: var(--fail); }
-.toast-ok { background: var(--ok); }
+/* Fixed dark tones in both themes: white text keeps 5.5:1 (the dark theme's
+   status colours are pale and would drop under 2.5:1). */
+.toast-fail { background: #b42318; }
+.toast-ok { background: #067647; }
 
 /* Error lines, JSON */
 .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -246,7 +253,7 @@ label { font-size: 14px; }
 .review { display: grid; gap: 10px; }
 .review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 details summary { cursor: pointer; color: var(--link); }
-details pre { margin-top: 6px; padding: 8px; background: var(--surface-2); border-radius: var(--radius); }
+details pre { margin-top: 6px; padding: 8px; background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: var(--radius); }
 
 /* Narrow screens: the nav becomes a sticky horizontal row */
 @media (max-width: 820px) {
@@ -261,6 +268,8 @@ details pre { margin-top: 6px; padding: 8px; background: var(--surface-2); borde
   .nav a:hover { background: transparent; }
   .who { display: none; }
   .checks { grid-template-columns: 1fr; }
+  /* One page scroll on a phone, no box scrolling inside it. */
+  .table-wrap { max-height: none; }
   .kv { grid-template-columns: 1fr; gap: 2px 0; }
   .kv dt { margin-top: 6px; }
   .page-head { align-items: flex-start; }
