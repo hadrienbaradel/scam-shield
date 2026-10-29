@@ -6,7 +6,7 @@
 
 import { api } from "../api.js";
 import { t, getLang } from "../i18n.js";
-import { $, esc, verdictClass, readAloud, toast, busy } from "../ui.js";
+import { $, esc, verdictClass, readAloud, toast, busy, focusHeading } from "../ui.js";
 import { syncLine } from "./mail.js";
 
 let S = null; // the screen state: source, info, queue, index, details, last action
@@ -80,17 +80,33 @@ function demoSource() {
   };
 }
 
-export async function renderToday(root, status, { demo = false } = {}) {
+// Every screen goes through paint(): it counts screens, so an answer that
+// arrives after the person has moved on is dropped instead of drawn over
+// the new screen, and it moves focus to the new heading so a screen reader
+// says where they are (a verdict, "Thrown away", "Ask Thomas").
+let painted = 0;
+function paint(html, { focus = true } = {}) {
+  S.root.innerHTML = html;
+  if (focus) focusHeading(S.root);
+  return ++painted;
+}
+const stale = (n) => n !== painted || !S.root.isConnected;
+
+export async function renderToday(root, status, { demo = false, quiet = false } = {}) {
   S = { root, status, source: demo ? demoSource() : liveSource(status), index: 0, details: new Map(), open: { why: false, body: false } };
-  root.innerHTML = `<div class="v2"><p class="v2-wait">${t("please_wait")}</p></div>`;
+  const n = paint(`<div class="v2"><p class="v2-wait">${t("please_wait")}</p></div>`, { focus: false });
   try {
     S.info = await S.source.load();
   } catch (e) {
-    root.innerHTML = `<div class="v2">${status.gmail ? syncLine(status) : ""}<p class="banner danger">${esc(e.status === 409 ? t("reconnect") : t("sync_error"))}</p></div>`;
+    if (stale(n)) return;
+    paint(`<div class="v2">${status.gmail ? syncLine(status) : ""}<p class="banner danger">${esc(e.status === 409 ? t("reconnect") : t("sync_error"))}</p>
+      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`, { focus: false });
+    $("#v2Retry", root)?.addEventListener("click", () => renderToday(root, status, { demo }));
     return;
   }
+  if (stale(n)) return;
   S.queue = S.info.queue;
-  drawToday();
+  drawToday({ focus: !quiet });
 }
 
 const greeting = () => {
@@ -98,10 +114,11 @@ const greeting = () => {
   return t(h < 12 ? "v2_morning" : h < 18 ? "v2_afternoon" : "v2_evening", { name: S.info.name });
 };
 
-function drawToday() {
+// focus: false for a live refresh, so new mail never pulls focus away.
+function drawToday({ focus = true } = {}) {
   const n = S.queue.length;
   const g = S.info.guardian;
-  S.root.innerHTML = `
+  paint(`
     <div class="v2">
       ${S.source.demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : syncLine(S.status)}
       <h1 class="v2-hello">${esc(greeting())}</h1>
@@ -119,7 +136,7 @@ function drawToday() {
       ${S.info.moved ? `<p class="v2-line">${icon("folder", 26)} ${esc(t("v2_moved", { n: S.info.moved }))}</p>` : ""}
       ${g ? `<p class="v2-line"><span class="v2-avatar" aria-hidden="true">${esc(firstName(g.name).charAt(0))}</span> ${esc(t("v2_trusted", { name: firstName(g.name) }))}</p>`
     : S.source.demo ? "" : `<p class="v2-line"><a href="#/people">${t("v2_no_trusted")}</a></p>`}
-    </div>`;
+    </div>`, { focus });
   $("#v2Look")?.addEventListener("click", () => openCard(0));
 }
 
@@ -128,14 +145,19 @@ async function openCard(i) {
   S.open = { why: false, body: false };
   const item = S.queue[S.index];
   if (!item) return drawToday();
-  S.root.innerHTML = `<div class="v2">${cardHeader()}<div class="v2-card caution"><p class="v2-badge">${t("checking")}</p><p>${t("please_wait")}</p></div></div>`;
+  const n = paint(`<div class="v2">${cardHeader()}<div class="v2-card caution"><p class="v2-badge">${t("checking")}</p><p>${t("please_wait")}</p></div></div>`, { focus: false });
+  bindHeader();
   try {
     if (!S.details.has(item.id)) S.details.set(item.id, await S.source.open(item));
   } catch (e) {
-    S.root.innerHTML = `<div class="v2">${cardHeader()}<p class="banner danger">${esc(e.message)}</p></div>`;
+    if (stale(n)) return;
+    paint(`<div class="v2">${cardHeader()}<p class="banner danger">${esc(e.message)}</p>
+      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`, { focus: false });
     bindHeader();
+    $("#v2Retry").addEventListener("click", () => openCard(S.index));
     return;
   }
+  if (stale(n)) return;
   drawCard();
 }
 
@@ -151,10 +173,24 @@ function bindHeader() {
   $("#v2Back")?.addEventListener("click", (e) => { e.preventDefault(); drawToday(); });
 }
 
-function drawCard() {
+// keep: a selector to give focus back to after an in-place redraw (the
+// "Why we think so" toggle), instead of jumping to the heading.
+function drawCard({ keep = null } = {}) {
   const item = S.queue[S.index];
   const d = S.details.get(item.id);
   const v = d.verdict || {};
+  // No verdict (a check still running or a broken answer) is never shown
+  // as Safe: say so, keep the links out of reach, offer to try again.
+  if (!["safe", "be_careful", "scam"].includes(v.verdict)) {
+    paint(`<div class="v2">${cardHeader()}
+      <article class="v2-card caution"><p class="v2-badge">${t("checking")}</p>
+        <h1 class="v2-headline">${t("v2_unknown_title")}</h1><p class="v2-fact">${t("v2_unknown_note")}</p></article>
+      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`);
+    bindHeader();
+    $("#v2Read")?.remove();
+    $("#v2Retry").addEventListener("click", () => { S.details.delete(item.id); openCard(S.index); });
+    return;
+  }
   const scam = v.verdict === "scam";
   const g = S.info.guardian;
   const reasons = v.reasons || [];
@@ -168,7 +204,7 @@ function drawCard() {
   const second = g
     ? `<button id="v2Ask" class="btn btn-gold v2-action" type="button">${icon("ask", 28)} ${esc(t("v2_ask", { name: firstName(g.name) }))}</button>`
     : `<a class="btn btn-gold v2-action" href="#/people">${icon("ask", 28)} ${t("v2_add_trusted")}</a>`;
-  S.root.innerHTML = `
+  paint(`
     <div class="v2">
       ${cardHeader()}
       <div class="v2-stack">
@@ -199,11 +235,12 @@ function drawCard() {
       ${d.callBack ? `<button id="v2Throw" class="btn btn-light-dark v2-quiet" type="button">${t("v2_throw")}</button>` : ""}
       ${scam ? `<p class="v2-hint">${icon("left", 20)} ${t("v2_swipe_hint")}</p>` : ""}
       <button id="v2Keep" class="v2-link" type="button">${t("v2_keep")}</button>
-    </div>`;
+    </div>`, { focus: !keep });
+  if (keep) $(keep)?.focus();
   bindHeader();
   $("#v2Read").addEventListener("click", () => readAloud(v));
-  $("#v2Why").addEventListener("click", () => { S.open.why = !S.open.why; drawCard(); });
-  $("#v2Body").addEventListener("click", () => { S.open.body = !S.open.body; drawCard(); });
+  $("#v2Why").addEventListener("click", () => { S.open.why = !S.open.why; drawCard({ keep: "#v2Why" }); });
+  $("#v2Body").addEventListener("click", () => { S.open.body = !S.open.body; drawCard({ keep: "#v2Body" }); });
   $("#v2Throw")?.addEventListener("click", (e) => busy(e.currentTarget, doThrow));
   $("#v2Ask")?.addEventListener("click", () => drawAsk());
   $("#v2Keep").addEventListener("click", (e) => busy(e.currentTarget, doKeep));
@@ -221,36 +258,43 @@ function enableSlide(card) {
     dx = Math.min(0, e.clientX - x0);
     if (!reduce) card.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
   });
-  const end = () => {
+  const reset = () => { x0 = null; card.style.transform = ""; };
+  card.addEventListener("pointerup", () => {
     if (x0 === null) return;
-    x0 = null;
-    if (dx < -card.offsetWidth * 0.4) return doThrow();
-    card.style.transform = "";
-  };
-  card.addEventListener("pointerup", end);
-  card.addEventListener("pointercancel", end);
+    const far = dx < -card.offsetWidth * 0.4;
+    reset();
+    if (far) busy(null, doThrow);
+  });
+  // The browser took the gesture over (a scroll, a call): never a throw.
+  card.addEventListener("pointercancel", reset);
 }
 
-async function doThrow() {
-  const item = S.queue[S.index];
-  await S.source.throwAway(item);
-  S.queue.splice(S.index, 1);
-  drawDone({ kind: "thrown", item, at: S.index });
+// One action at a time, however it was started (a button or a slide). The
+// card is taken out of the queue by its id when the answer comes back, so
+// a slow answer can never remove the next message instead.
+async function act(kind) {
+  const s = S;
+  const item = s.queue[s.index];
+  if (s.acting || !item) return;
+  s.acting = true;
+  try {
+    await (kind === "thrown" ? s.source.throwAway(item) : s.source.keep(item));
+    const at = s.queue.findIndex((q) => q.id === item.id);
+    if (at >= 0) s.queue.splice(at, 1);
+    if (s === S && S.root.isConnected) drawDone({ kind, item, at: Math.max(0, at) });
+  } finally {
+    s.acting = false;
+  }
 }
-
-async function doKeep() {
-  const item = S.queue[S.index];
-  await S.source.keep(item);
-  S.queue.splice(S.index, 1);
-  drawDone({ kind: "kept", item, at: S.index });
-}
+const doThrow = () => act("thrown");
+const doKeep = () => act("kept");
 
 function drawDone(last) {
   const more = S.queue.length > 0;
-  S.root.innerHTML = `
+  paint(`
     <div class="v2">
       <section class="v2-done-note" role="status">
-        <p class="v2-done-title">${icon("check", 26)} ${last.kind === "thrown" ? t("v2_thrown") : t("v2_kept")}</p>
+        <h1 class="v2-done-title">${icon("check", 26)} ${last.kind === "thrown" ? t("v2_thrown") : t("v2_kept")}</h1>
         <p>${last.kind === "thrown" ? t("v2_thrown_note") : t("v2_kept_note")}</p>
         ${last.kind === "thrown" ? `<button id="v2Undo" class="btn v2-undo" type="button">${icon("undo", 22)} ${t("v2_undo")}</button>` : ""}
       </section>
@@ -258,15 +302,16 @@ function drawDone(last) {
         <button id="v2Next" class="btn btn-gold v2-big" type="button">${t("v2_next")} ${icon("next", 26)}</button>` : `
         <section class="v2-all-done" aria-label="${t("v2_all_done")}">
           <span class="v2-big-check" aria-hidden="true">${icon("check", 64)}</span>
-          <h1>${t("v2_all_done")}</h1>
+          <h2>${t("v2_all_done")}</h2>
           <p>${t("v2_all_done_note")}</p>
         </section>`}
       <button id="v2Today" class="btn btn-navy v2-big" type="button">${t("v2_back_to_today")}</button>
-    </div>`;
+    </div>`);
+  const n = painted;
   $("#v2Undo")?.addEventListener("click", (e) => busy(e.currentTarget, async () => {
     await S.source.undoThrow(last.item);
-    S.queue.splice(last.at, 0, last.item);
-    openCard(last.at);
+    if (!S.queue.some((q) => q.id === last.item.id)) S.queue.splice(last.at, 0, last.item);
+    if (!stale(n)) openCard(last.at);
   }));
   $("#v2Next")?.addEventListener("click", () => openCard(last.at));
   $("#v2Today").addEventListener("click", () => drawToday());
@@ -279,7 +324,7 @@ function drawAsk() {
   const d = S.details.get(item.id);
   const g = S.info.guardian;
   const name = firstName(g.name);
-  S.root.innerHTML = `
+  paint(`
     <div class="v2">
       <header class="v2-head"><button id="v2AskBack" class="v2-back" type="button">${icon("back", 24)} ${t("v2_back_message")}</button></header>
       <h1 class="v2-hello">${esc(t("v2_ask", { name }))}</h1>
@@ -293,14 +338,19 @@ function drawAsk() {
       <div id="v2AskOut" aria-live="polite"></div>
       <button id="v2Text" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${esc(t("v2_ask_text", { name }))}</button>
       <button id="v2Email" class="btn btn-light-dark v2-big" type="button">${esc(t("v2_ask_email"))}</button>
-    </div>`;
+    </div>`);
   $("#v2AskBack").addEventListener("click", () => drawCard());
+  const n = painted;
+  let sending = false; // text and email never run together
   const send = (via) => async () => {
-    const out = await S.source.ask(item, d, { via, includeText: $("#v2IncludeText").checked });
+    const includeText = $("#v2IncludeText").checked;
+    const out = await S.source.ask(item, d, { via, includeText });
+    if (stale(n)) return;
     const box = $("#v2AskOut");
-    if (out.alreadyAsked) { box.innerHTML = `<p class="answer info">${esc(t("ask_already"))}</p>`; return; }
+    if (out?.alreadyAsked) { box.innerHTML = `<p class="answer info">${esc(t("ask_already"))}</p>`; return; }
     if (via === "email") { box.innerHTML = `<p class="answer info">${esc(t(S.source.demo ? "v2_demo_email" : "v2_emailed", { name }))}</p>`; return; }
-    const msg = out.texts[0];
+    const msg = out?.texts?.[0];
+    if (!msg?.body) { box.innerHTML = `<p class="answer info">${esc(t("v2_text_failed", { name }))}</p>`; return; }
     const digits = String(msg.phone || "").replace(/[^\d+]/g, "");
     const sms = `sms:${digits}?&body=${enc(msg.body)}`;
     const wa = digits ? `https://wa.me/${digits.replace(/^\+/, "")}?text=${enc(msg.body)}` : null;
@@ -319,13 +369,18 @@ function drawAsk() {
       try { await navigator.clipboard.writeText(msg.body); toast(t("v2_copied"), "ok"); } catch { toast(t("v2_copy_failed"), "danger"); }
     });
   };
-  $("#v2Text").addEventListener("click", (e) => busy(e.currentTarget, send("text")));
-  $("#v2Email").addEventListener("click", (e) => busy(e.currentTarget, send("email")));
+  const once = (via) => async (e) => {
+    if (sending) return;
+    sending = true;
+    try { await busy(e.currentTarget, send(via)); } finally { sending = false; }
+  };
+  $("#v2Text").addEventListener("click", once("text"));
+  $("#v2Email").addEventListener("click", once("email"));
 }
 
 // Live updates: a new check or an answer refreshes "Today" when it is on screen.
 export function onTodayEvent() {
-  if (S && !S.source.demo && S.root.isConnected && $("#v2Look, .v2-status", S.root)) renderToday(S.root, S.status);
+  if (S && !S.source.demo && S.root.isConnected && $("#v2Look, .v2-status", S.root)) renderToday(S.root, S.status, { quiet: true });
 }
 
 // Inline stroke icons (no emoji, no icon font); decorative, hidden from screen readers.
