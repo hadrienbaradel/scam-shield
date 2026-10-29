@@ -56,7 +56,7 @@ function renderChrome() {
   // On a phone the bottom tab bar replaces the top links it duplicates.
   const tabbed = ["#/today", "#/inbox", "#/check", "#/people"];
   $("#nav").innerHTML = links.map(([href, key]) => `<a class="nav-link${here.startsWith(href) ? " active" : ""}${tabbed.includes(href) ? " nav-tabbed" : ""}" href="${href}">${t(key)}</a>`).join("")
-    + (u ? `<button id="signOut" class="btn btn-light">${t("sign_out")}</button>` : `<button id="langBtn" class="btn btn-light">${t("lang_switch")}</button>`);
+    + (u ? `<button id="signOut" class="btn btn-light">${t("sign_out")}</button>` : `<button id="langBtn" class="btn btn-light lang-btn" lang="${getLang() === "fr" ? "en" : "fr"}" aria-label="${t("lang_switch")}"><span class="lang-long">${t("lang_switch")}</span><span class="lang-short" aria-hidden="true">${getLang() === "fr" ? "EN" : "FR"}</span></button>`);
   $("#who").textContent = u ? (u.name || u.email) : "";
   // The senior's own screens are a phone-width column with a bottom tab bar;
   // the inbox, guardian and admin pages stay wide (testing, family, us).

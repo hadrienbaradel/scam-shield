@@ -111,6 +111,7 @@ export async function renderToday(root, status, { demo = false, quiet = false } 
   }
   if (stale(n)) return;
   S.queue = S.info.queue;
+  S.total = S.queue.length;
   drawToday({ focus: !quiet });
 }
 
@@ -166,11 +167,18 @@ async function openCard(i) {
   drawCard();
 }
 
+// "2 of 3" stays "2 of 3" after the first one is handled: the total is
+// fixed when the person starts (new mail arriving can only raise it).
+function position() {
+  S.total = Math.max(S.total || 0, S.queue.length);
+  return { i: S.total - S.queue.length + S.index + 1, n: S.total };
+}
+
 function cardHeader() {
   return `<header class="v2-head">
       <a class="v2-back" href="${S.source.demo ? "#/demo" : "#/"}" id="v2Back">${icon("back", 24)} ${t("v2_today")}</a>
-      <span class="v2-count">${esc(t("v2_of", { i: S.index + 1, n: S.queue.length }))}</span>
-      <button id="v2Read" class="v2-round" type="button" aria-label="${t("v2_read")}">${icon("speaker", 26)}</button>
+      <span class="v2-count" aria-label="${esc(t("v2_of_label", position()))}">${esc(t("v2_of", position()))}</span>
+      <button id="v2Read" class="v2-read" type="button" aria-label="${t("v2_read")}">${icon("speaker", 24)} <span aria-hidden="true">${t("v2_read_short")}</span></button>
     </header>`;
 }
 
@@ -341,7 +349,7 @@ function drawAsk() {
       <label class="check"><input type="checkbox" id="v2IncludeText"> ${t("ask_include_text")}</label>
       <div id="v2AskOut" aria-live="polite"></div>
       <button id="v2Text" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${esc(t("v2_ask_text", { name }))}</button>
-      <button id="v2Email" class="btn btn-light-dark v2-big" type="button">${esc(t("v2_ask_email"))}</button>
+      <button id="v2Email" class="btn btn-light-dark v2-quiet" type="button">${esc(t("v2_ask_email"))}</button>
     </div>`);
   $("#v2AskBack").addEventListener("click", () => drawCard());
   const n = painted;
@@ -362,13 +370,16 @@ function drawAsk() {
       <div class="v2-text-ready">
         <p><strong>${esc(t("v2_text_ready", { name }))}</strong></p>
         <pre class="mail-body">${esc(msg.body)}</pre>
-        ${S.source.demo ? `<p class="small">${t("v2_demo_text")}</p>` : `
+        ${S.source.demo ? `
+          <button id="v2DemoOpen" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${t("v2_open_messages")}</button>
+          <p id="v2DemoNote" class="small" hidden>${t("v2_demo_text")}</p>` : `
           <a class="btn btn-gold v2-big" href="${esc(sms)}">${icon("message", 26)} ${t("v2_open_messages")}</a>
           ${wa ? `<a class="btn btn-light-dark v2-big" href="${esc(wa)}" target="_blank" rel="noopener">${t("v2_open_whatsapp")}</a>` : ""}
           ${digits ? "" : `<p class="small">${esc(t("v2_no_phone", { name }))}</p>`}`}
         <button id="v2Copy" class="btn btn-light-dark" type="button">${t("v2_copy")}</button>
       </div>`;
     $("#v2Text").hidden = true;
+    $("#v2DemoOpen")?.addEventListener("click", () => { $("#v2DemoNote").hidden = false; $("#v2DemoNote").focus?.(); });
     $("#v2Copy").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(msg.body); toast(t("v2_copied"), "ok"); } catch { toast(t("v2_copy_failed"), "danger"); }
     });

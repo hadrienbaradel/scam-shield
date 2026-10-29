@@ -437,7 +437,7 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2 p { margin: 0; }
 .v2-wait { color: var(--muted); }
 .v2-hello { margin: 0.3rem 0 0; font-size: 1.6rem; }
-.v2-demo { padding: 0.6rem 0.9rem; border-radius: var(--round-small); background: var(--navy-wash); color: var(--navy); font-size: 0.9rem; font-weight: 700; }
+.v2-demo { padding: 0.6rem 0.9rem; border-radius: var(--round-small); background: var(--navy-wash); color: var(--navy); font-size: 1rem; font-weight: 700; }
 
 .v2-status {
   display: flex;
@@ -470,7 +470,36 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   text-decoration: none;
   cursor: pointer;
 }
-.v2-count { color: var(--muted); font-weight: 700; }
+.v2-count { flex: none; color: var(--muted); font-weight: 700; white-space: nowrap; }
+/* Read aloud: the word next to the icon, so it is never a guess. */
+.v2-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 48px;
+  padding: 0 0.7rem;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  border-radius: 999px;
+  color: var(--navy);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+.v2 .small { font-size: 1rem; }
+@media (max-width: 340px) { .v2-head { flex-wrap: wrap; } }
+/* The language switch is for the demo and for testing: on a phone it is a
+   small "FR"/"EN" next to the brand, not a second headline. */
+.lang-short { display: none; }
+@media (max-width: 700px) {
+  .v2-app .lang-btn { min-width: 48px; padding: 0 0.8rem; }
+  .v2-app .lang-long { display: none; }
+  .v2-app .lang-short { display: inline; }
+}
+.v2 .shared-card { border-style: solid; }
 .v2-round {
   width: 56px;
   height: 56px;
@@ -553,7 +582,7 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 }
 .has-tabbar .v2-actions { bottom: calc(72px + env(safe-area-inset-bottom)); padding-bottom: 0.75rem; }
 .v2-action { flex-direction: column; gap: 0.3rem; min-height: 88px; border-radius: 20px; font-size: 1.05rem; }
-.v2-hint { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: var(--muted); font-size: 0.85rem; text-align: center; }
+.v2-hint { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: var(--muted); font-size: 1rem; text-align: center; }
 .v2-quiet { width: 100%; }
 .v2-link {
   align-self: center;
@@ -597,7 +626,7 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   justify-content: center;
   gap: 0.15rem;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;
 }
