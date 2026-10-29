@@ -20,7 +20,7 @@ make test      # every suite; add TEST_DB_SUFFIX=<your-name> when others may be 
 |---|---|
 | `src/` | The server: Fastify app, routes, Google OAuth and Gmail client, sync worker, context builder, link resolver, guardians, jobs, `db/` migrations and the test-database helper |
 | `lib/` | The engine, no server: detector, brands, context shape, pattern cards, verdict schema, `llm/` providers, Muse prompts and guardrails, link inspector |
-| `public/` | The senior web app: vanilla JS modules, no build step, strict CSP, privacy and terms pages |
+| `public/` | The senior web app: vanilla JS modules, no build step, strict CSP, privacy and terms pages; `public/admin/` is the operator console (`/admin/`, admins only, its own CSS and modules, nothing shared with the senior app) |
 | `android/` | The Kotlin SMS companion |
 | `scripts/` | Every developer command, plain Node, one file each; the `make` targets call them |
 | `tests/` | `node:test` suites and `helpers/` (`_product/docs/testing.md`) |

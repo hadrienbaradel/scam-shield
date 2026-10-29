@@ -18,7 +18,7 @@ Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). 
 - **Ask my trusted person.** One tap shows a guardian exactly what the senior chose to share. The guardian answers *Scam / Real / I'll call you* by email link or on their dashboard, and the answer appears live on the senior's screen.
 - **Checks anything else**: pasted text messages and WhatsApps, and screenshots or photos (read by Muse Spark, never stored).
 - **Android companion** ([android/](android/)) screens incoming texts on the phone and sends only risky ones for a verdict.
-- **Threat feed**: daily IC3 and cybermalveillance.gouv.fr alerts become *candidate* pattern cards. They can only reach "active" after human review on the admin page.
+- **Threat feed**: daily IC3 and cybermalveillance.gouv.fr alerts become *candidate* pattern cards. They can only reach "active" after human review in the admin console (`/admin/`, Google accounts listed in `ADMIN_EMAILS`), which also shows the health of every dependency, every background job with its runs, and every user's sync state.
 - **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, known malware and phishing sites from abuse.ch URLhaus (host name only, set `ABUSECH_AUTH_KEY`), and redirects followed only on request or for URL shorteners, with an SSRF guard.
 - Built for 60+: 19px+ type with a three-step size setting, 64px buttons, read aloud, EN/FR, one decision per screen.
 
@@ -64,7 +64,7 @@ The product side lives in [_product/](_product/README.md). [_product/spec.md](_p
 ```
 lib/        engine: detector, brands, context, pattern cards, verdict schema, the LLM layer (lib/llm), Muse prompts and guardrails, link inspector, threat-feed safeguards
 src/        server: Fastify app, routes, Google OAuth + Gmail client, sync worker, context builder, link resolver, guardians, jobs, migrations
-public/     web app (vanilla JS modules, no build), privacy and terms pages
+public/     web app (vanilla JS modules, no build), privacy and terms pages; public/admin/ the operator console
 android/    Kotlin companion app
 prompts/    Muse Spark system prompt (from the PRD)
 scripts/    the developer commands behind the make targets (doctor, credentials, score, gate, evals, docs-check, session brief)
@@ -99,6 +99,7 @@ The rules count only what was built during the event. The organizers answered on
 - Threat feed and pattern cards (live feeds not yet verified)
 - Demo mode: the public examples for Linda (US) and Françoise (FR)
 - Privacy controls and account deletion
+- Admin console: health of every dependency, background jobs with their runs, every user's sync state (operators only, never a message's words)
 
 Nothing in the repository predates the event. The full timeline, from file creation times and git history, is in [docs/PROVENANCE.md](docs/PROVENANCE.md). The video will open with the one-line statement the organizers ask for: what was pre-existing (open-source libraries, public datasets used for testing) and what was built this week (everything else).
 

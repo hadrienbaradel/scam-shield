@@ -9,7 +9,7 @@ Scam campaigns change weekly (the €69.90 Bouygues debit, the E-ZPass toll text
 2. Once a day, new alerts from the FBI IC3 and cybermalveillance.gouv.fr feeds are turned into candidate cards (by Muse Spark when switched on, otherwise a skeleton card from the brands named).
 3. A candidate card can at most push a verdict to "Be careful" ("A similar scam has been reported, but it is not confirmed yet"); only a human on the admin page can make it active.
 4. A card that lists a brand's real website address as a red flag is rejected automatically; cards with no sighting for 90 days retire.
-5. The admin page ("Scam reports to review", admins only) shows candidates with their source link, lets the reviewer edit the card JSON, approve or reject, and run the feed now.
+5. The admin console's Scam reports page (`/admin/#/cards`, admins only; [admin-console.md](admin-console.md)) shows candidates with their source link, lets the reviewer edit the card JSON, approve or reject, and run the feed now.
 6. Seven seed cards ship with the app (six active, one candidate) covering the PRD scenarios for France and the US.
 
 ## Demo path
@@ -23,7 +23,7 @@ Reddit or forum scraping, FTC feed (no working RSS found), automatic activation,
 - Live fetch of the three feeds and Muse extraction of a real alert: unverified.
 
 ## Implementation pointers
-src/jobs/threatfeed.js (SOURCES, parseFeed, runThreatFeed), lib/threatfeed.js, lib/patterns.js (matchCards, cardCap), lib/muse.js extractPatternCard, src/routes/admin.js, data/patterns/cards.json, public/js/views/pages.js renderAdmin.
+src/jobs/threatfeed.js (SOURCES, parseFeed, runThreatFeed), lib/threatfeed.js, lib/patterns.js (matchCards, cardCap), lib/muse.js extractPatternCard, src/routes/admin.js, data/patterns/cards.json, public/admin/views/cards.js (the console page; public/js/views/pages.js renderAdmin is the senior app's older copy, to retire).
 
 ## Open questions
 - Who reviews cards after the hackathon? A daily human step is a cost.
