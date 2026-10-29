@@ -1,0 +1,41 @@
+id: urgency
+title: The "act in 10 minutes" trick
+character: The Urgency Monster
+emoji: "⏰"
+minutes: 1
+badge: Calm under pressure
+rule: When a message says hurry, slow down. A real bank always gives you time to check.
+demo_case: D3
+steps:
+  - say:
+      - Meet the **Urgency Monster**. He has only one trick. He makes you hurry.
+      - '"Act in the next **10 minutes** or your account is closed!" He says it to everyone.'
+  - ask: A message says your account closes in 10 minutes unless you call now. What do you do?
+    choices:
+      - text: Call right away. Ten minutes is not long!
+        reply: That is the rush he wanted. A real bank does not close your account in 10 minutes. You have time.
+      - text: Stop, breathe, and call the number on the back of my card.
+        right: true
+        reply: Yes! The monster shrinks the moment you slow down. Your real bank will tell you the truth.
+      - text: Answer the message and ask for more time.
+        reply: He might grant you five more minutes. How generous! Better to ignore him and call your bank yourself.
+  - say:
+      - Why the hurry? A person in a rush does not stop to **check**.
+      - And checking is the one thing the Urgency Monster cannot survive.
+  - ask: Who gives you only minutes to act, by text or email?
+    choices:
+      - text: My bank, when something is serious.
+        reply: Your bank may warn you, but it never gives you minutes to act. Only the monster is in such a hurry.
+      - text: Mostly scammers. Real banks and offices give you time.
+        right: true
+        reply: Right! Real deadlines come with time to think. Ten minutes is a monster's deadline.
+  - say:
+      - 'His favorite words: **now**, **today**, **immediately**, **last chance**.'
+      - When you see them, it is your turn to go slow.
+  - ask: 'The message says: "Do not tell anyone, there is no time." What is the best move?'
+    choices:
+      - text: Keep it to myself and act fast.
+        reply: That secret only protects him. One word with someone you trust breaks the spell.
+      - text: Tell someone I trust before doing anything.
+        right: true
+        reply: Perfect. A second opinion is the monster's worst nightmare. Back under the bed he goes.

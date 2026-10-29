@@ -24,6 +24,7 @@ import guardianRoutes from "./routes/guardians.js";
 import deviceRoutes from "./routes/devices.js";
 import adminRoutes from "./routes/admin.js";
 import demoRoutes from "./routes/demo.js";
+import lessonRoutes from "./routes/lessons.js";
 import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 
@@ -72,6 +73,7 @@ export async function buildApp({ logger = true } = {}) {
   await app.register(deviceRoutes);
   await app.register(adminRoutes);
   await app.register(demoRoutes);
+  await app.register(lessonRoutes);
   await app.register(whatsappRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
 

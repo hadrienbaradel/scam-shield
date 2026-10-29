@@ -1,0 +1,41 @@
+id: parcel-fee
+title: The $1.99 parcel trap
+character: Mr. Tiny Fee
+emoji: "📦"
+minutes: 1
+badge: Parcel-fee spotter
+rule: A real carrier never asks you to pay a fee by text.
+demo_case: D1
+steps:
+  - say:
+      - Meet **Mr. Tiny Fee**. He never asks for much. Just $1.99 to release a parcel.
+      - He counts on one thought. "It is only two dollars."
+  - ask: A text says your package is on hold until you pay $1.99. What do you do?
+    choices:
+      - text: Pay it. It is only $1.99.
+        reply: That is exactly what Mr. Tiny Fee hopes. The fee is bait; the page keeps your card.
+      - text: Check on the carrier's own website or app.
+        right: true
+        reply: Yes! Your parcel is where it always was. Mr. Tiny Fee goes home empty-handed.
+  - say:
+      - His real prize is not the $1.99. It is **your card number**.
+      - Once he has it, the tiny fee grows into big charges. Not so tiny after all.
+  - ask: The text says it comes from USPS. How can you be sure?
+    choices:
+      - text: It says USPS, so it is USPS.
+        reply: Anyone can type USPS. Mr. Tiny Fee types it all day long. A name in a text proves nothing.
+      - text: I cannot tell from the text. I check with USPS myself.
+        right: true
+        reply: Exactly. A name in a text proves nothing; going to USPS yourself proves everything.
+  - say:
+      - He loves a rush, too. "Pay **today** or your parcel goes back."
+      - A real carrier leaves a notice and tries again. Asking for a new delivery is free.
+  - ask: You are waiting for a real parcel. What is the safest way to check on it?
+    choices:
+      - text: Tap the link in the text, just to look.
+        reply: Even a quick look opens his page, and he is a smooth talker. Go to the carrier's own app or website.
+      - text: Use the tracking number from the shop, on the carrier's own website.
+        right: true
+        reply: Perfect. You go to them, so Mr. Tiny Fee gets nothing. Not even $1.99.
+      - text: Reply to the text and ask if it is real.
+        reply: He will say yes, of course! A reply also tells him your number works. Ask the carrier, not him.

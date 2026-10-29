@@ -1,0 +1,41 @@
+id: urgency
+title: Le piège des « 10 minutes »
+character: Le Monstre de l'Urgence
+emoji: "⏰"
+minutes: 1
+badge: Calme sous pression
+rule: Quand un message dit « vite », ralentissez. Une vraie banque vous laisse toujours le temps de vérifier.
+demo_case: A2
+steps:
+  - say:
+      - Voici le **Monstre de l'Urgence**. Il n'a qu'un seul tour. Il vous fait courir.
+      - « Agissez dans les **10 minutes** ou votre compte sera fermé ! » Il le dit à tout le monde.
+  - ask: Un message dit que votre compte sera fermé dans 10 minutes si vous n'appelez pas. Que faites-vous ?
+    choices:
+      - text: J'appelle tout de suite. Dix minutes, c'est court !
+        reply: C'est la course qu'il voulait. Une vraie banque ne ferme pas un compte en 10 minutes. Vous avez le temps.
+      - text: Je respire, et j'appelle le numéro au dos de ma carte.
+        right: true
+        reply: Oui ! Le monstre rétrécit dès que vous ralentissez. Votre vraie banque vous dira la vérité.
+      - text: Je réponds au message pour demander plus de temps.
+        reply: Il vous accordera peut-être cinq minutes de plus. Quelle générosité ! Mieux vaut l'ignorer et appeler votre banque.
+  - say:
+      - Pourquoi tant de hâte ? Une personne pressée ne prend pas le temps de **vérifier**.
+      - Et vérifier, c'est la seule chose à laquelle le Monstre de l'Urgence ne survit pas.
+  - ask: Qui vous laisse quelques minutes pour agir, par SMS ou par e-mail ?
+    choices:
+      - text: Ma banque, quand c'est grave.
+        reply: Votre banque peut vous prévenir, mais elle ne vous donne jamais quelques minutes. Seul le monstre est aussi pressé.
+      - text: Surtout les escrocs. Les vraies banques et administrations laissent du temps.
+        right: true
+        reply: Exactement ! Les vrais délais laissent le temps de réfléchir. Dix minutes, c'est un délai de monstre.
+  - say:
+      - 'Ses mots préférés : **maintenant**, **aujourd''hui**, **immédiatement**, **dernière chance**.'
+      - Quand vous les voyez, c'est à votre tour d'aller doucement.
+  - ask: 'Le message dit : « N''en parlez à personne, il n''y a pas le temps. » Que faites-vous ?'
+    choices:
+      - text: Je garde ça pour moi et je fais vite.
+        reply: Ce secret ne protège que lui. Un mot à une personne de confiance rompt le charme.
+      - text: J'en parle à une personne de confiance avant de faire quoi que ce soit.
+        right: true
+        reply: Parfait. Un deuxième avis, c'est le pire cauchemar du monstre. Il retourne sous le lit.

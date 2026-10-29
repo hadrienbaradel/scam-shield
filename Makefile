@@ -89,7 +89,10 @@ coverage: deps ## Tests with coverage: table on screen, coverage/lcov.info for t
 docs-check: ## Product docs in sync: spec links, statuses, keywords, indexes, CLAUDE.md links, stale references
 	@node scripts/docs-check.mjs
 
-check: deps docs-check ## What CI runs: docs in sync, master.key not in git, all tests, line coverage above the threshold (needs Postgres)
+lessons-check: ## Lesson files in data/lessons: the YAML format, EN/FR twins, demo cases (_product/specs/micro-learning.md)
+	@node scripts/lessons-check.mjs
+
+check: deps docs-check lessons-check ## What CI runs: docs in sync, lessons valid, master.key not in git, all tests, line coverage above the threshold (needs Postgres)
 	@if git ls-files --error-unmatch config/master.key >/dev/null 2>&1; then echo "config/master.key is tracked by git: git rm --cached config/master.key, then make secrets-rotate (a committed key is leaked)"; exit 1; fi
 	@$(NPM) run check
 
