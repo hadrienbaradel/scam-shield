@@ -39,8 +39,13 @@ const { text, usage, model, provider, raw } = await complete({
 | thinking | `reasoning_effort`, default `low`; dropped on a 400 | `reasoning_effort` only when `LLM_THINKING` is set; dropped on a 400 | `output_config.effort`, default `low`; dropped on a 400; adaptive thinking stays on | recorded |
 | temperature | 0.1 | 0.1; dropped on a 400 (reasoning models); `max_tokens` becomes `max_completion_tokens` on request | never sent (the API rejects sampling parameters) | recorded |
 | images | yes | depends on the model | yes | yes |
+| transcribe | Muse Voice Transcribe: multipart `POST /asr/transcribe`, `muse-voice-transcribe-1.0`, `audioEncoding: "WAV"`, `PUSH_TO_TALK`, plain-text answer | multipart `POST /audio/transcriptions`: `file`, `model` (`LLM_TRANSCRIBE_MODEL`, default `whisper-1`), `language`; JSON `text` answer; the endpoint must serve it | no: throws "not supported" | scripted (`mock.scriptTranscript`), recorded |
 
 Without native JSON the prompts still say "return only JSON", the engine parses the first `{...}` in the text and validates it against the full verdict schema (`lib/schema.js`); anything invalid falls back to the detector.
+
+## Transcription
+
+`transcribe({ wav, language, signal, fetchImpl })` turns a recording into `{ text, model, provider, raw }` and throws on failure, like `complete`; the active provider answers unless `provider` names another, and `transcribeConfigured(name)` says whether it can (`capabilities.transcribe` and its key). The input is a 16 kHz mono 16-bit PCM WAV, checked on the server before anything leaves it (`inspectWav` in `lib/llm/audio.js`); `language` is an optional hint (`fr`, `en-US`), sent as Meta's `languageBias` (`French`) or OpenAI's `language` (`fr`). Voice checks (`transcribeVoice`, `voiceConfigured` in `lib/muse.js`) use Muse Voice Transcribe whenever `META_MODEL_API_KEY` is set, whatever `LLM_PROVIDER` says, and the active provider otherwise. `LLM_TRANSCRIBE_MODEL` names the OpenAI-style model (default `whisper-1`, OpenAI's; Groq and Together need their own id); Meta's stays `muse-voice-transcribe-1.0`. A provider adds `transcribe(request)` and `transcribeConfigured()`; the mock transcribes only what `mock.scriptTranscript(...)` queued and records `mock.transcribeCalls`.
 
 ## Adding a provider (3 steps)
 

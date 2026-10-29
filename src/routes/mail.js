@@ -8,6 +8,7 @@ import { many, one } from "../db/pool.js";
 import { normalizeMessage, header, parseAddress, linksFromText } from "../google/gmail.js";
 import { parseEml } from "../google/eml.js";
 import { extractFromImage, museConfigured, transcribeVoice, voiceConfigured } from "../../lib/muse.js";
+import { inspectWav } from "../../lib/llm/audio.js";
 import { clientFor, mapLimit, sharedFrom, finishAction } from "../sync/worker.js";
 import { runCheck, recordCheck, loadContext } from "../sync/checker.js";
 import { callBackFor } from "../../lib/context.js";
@@ -178,16 +179,25 @@ export default async function mailRoutes(app) {
     return { checkId: check.id, verdict, message, callBack: callBackFor(ctx, message) };
   });
 
-  // A voice note or voicemail: Muse Voice Transcribe turns it into words,
-  // then it is judged like any message. The page sends 16 kHz mono WAV; the
-  // recording is never stored, only the check (verdict, no audio).
+  // A voice note or voicemail: the recording becomes words (Muse Voice
+  // Transcribe by default, see transcribeVoice), then it is judged like any
+  // message. The page sends 16 kHz mono 16-bit WAV of at most 4 minutes;
+  // anything else is refused here, before it leaves the server. The
+  // recording is never stored, only the check (verdict, no audio, no words).
   app.post("/api/check/voice", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     if (!voiceConfigured()) return reply.code(503).send({ error: "voice_needs_muse", message: "Checking voice messages needs Meta's Muse Voice Transcribe, which is not switched on here yet." });
-    const file = await request.file();
-    const wav = file ? await file.toBuffer() : null;
-    if (!wav || wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
-      return reply.code(400).send({ error: "Please choose a voice recording." });
+    let file;
+    let wav = null;
+    try {
+      file = await request.file();
+      wav = file ? await file.toBuffer() : null;
+    } catch (e) {
+      if (e.code === "FST_REQ_FILE_TOO_LARGE") return reply.code(413).send({ error: "voice_too_large", message: "This recording is over 8 MB: please choose one of 4 minutes or less." });
+      throw e;
     }
+    if (!wav) return reply.code(400).send({ error: "no_recording", message: "Please choose a voice recording." });
+    const format = inspectWav(wav);
+    if (!format.ok) return reply.code(400).send({ error: format.error, message: format.message });
     let transcript;
     try { ({ text: transcript } = await transcribeVoice({ wav })); } catch (e) {
       request.log.warn({ err: e.message }, "voice transcription failed");

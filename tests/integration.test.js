@@ -114,7 +114,7 @@ function oneFile(field, filename, type, content) {
 test("HTTP: a voice message is transcribed by Muse Voice Transcribe, judged, and neither audio nor words are kept", opts, async () => {
   const user = await makeUser({ email: "linda.voice@example.test", name: "Linda", locale: "en-US" });
   const h = { cookie: await sessionFor(user), origin: ORIGIN };
-  const wav = Buffer.concat([Buffer.from("RIFF\x24\x00\x00\x00WAVEfmt ", "latin1"), Buffer.alloc(64)]);
+  const wav = Buffer.concat([Buffer.from("RIFF\x24\x7d\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x80\x3e\x00\x00\x00\x7d\x00\x00\x02\x00\x10\x00data\x00\x7d\x00\x00", "latin1"), Buffer.alloc(32000)]); // 1 s of 16 kHz mono 16-bit silence, as the page makes
   const upload = oneFile("audio", "voice.wav", "audio/wav", wav);
   const noKey = await app.inject({ method: "POST", url: "/api/check/voice", headers: { ...h, ...upload.headers }, payload: upload.payload });
   assert.equal(noKey.statusCode, 503);
