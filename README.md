@@ -54,6 +54,7 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 | `make db-migrate` | Apply database migrations (`make server` does it at start too) |
 | `make secrets-set KEY=value` | Store a key encrypted; `make secrets-keys` lists names and whether each is set, never a value |
 | `node scripts/docs-check.mjs` | Product docs in step with the code: spec links, statuses, keywords, indexes, stale advice |
+| `make lessons-check` | Every lesson under `data/lessons/` (the Learn tab) against its YAML format: fields, three questions with one right answer, EN/FR twins, demo cases that exist; part of `make check` |
 
 ## Product docs
 
