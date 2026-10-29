@@ -13,6 +13,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · whatsapp-channel | 2026-10-29 14:46 | WhatsApp Cloud API channel: webhook verify, text/image/audio/document in, verdict reply out; spec, keys by name, tests | `src/channels/whatsapp.js`, `src/routes/whatsapp.js`, `tests/whatsapp.test.js`, `_product/specs/whatsapp-channel.md`, `_product/spec.md` (one row, non-goal line), `_product/docs/secrets.md`, `config/credentials.example`, one line in `src/server.js` |
 | Vlad · chips | 2026-10-29 14:39 | "Checked:" chips under each reason on the V2 card, EN/FR | `public/js/views/today.js`, `public/js/i18n.js`, `public/styles.css`, `_product/specs/senior-verdict-screen.md`, a test file |
+| Vlad · learn | 2026-10-29 14:48 | Micro-learning: YAML lessons under data/lessons, a Learn tab (web + demo) with a gamified one-minute quiz, research on Elba, Riot, Phished and the awareness-training field | `_product/specs/micro-learning.md`, `_product/spec.md`, `_product/research/micro-learning.md`, `_product/competitors/*`, `data/lessons/`, `lib/lessons.js`, `src/routes/lessons.js`, `public/js/views/learn.js`, `public/learn.css`, `public/js/main.js`, `public/index.html`, `tests/lessons.test.js`, `package.json` (yaml) |
 
 ## To do
 
