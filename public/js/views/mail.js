@@ -1,4 +1,4 @@
-// My email: the inbox and the two Scam Shield folders, read live from
+// My email: the inbox and the two Prudence folders, read live from
 // Gmail, with the verdict, undo, link check and "Ask my trusted person".
 
 import { api } from "../api.js";

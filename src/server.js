@@ -1,4 +1,4 @@
-// Scam Shield server: Fastify app + background jobs.
+// Prudence server: Fastify app + background jobs.
 // Security defaults: strict CSP (no inline scripts), httpOnly session
 // cookie, Origin check on every state-changing request from a browser,
 // per-route rate limits, loopback-only unless HOST says otherwise.
@@ -84,7 +84,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   await migrate();
   const app = await buildApp({ logger: { level: process.env.LOG_LEVEL || "info" } });
   await app.listen({ port: config.port, host: config.host });
-  console.log(`Scam Shield on ${config.baseUrl}`);
+  console.log(`Prudence on ${config.baseUrl}`);
   console.log(`  Google sign-in: ${googleConfigured() ? "configured" : "NOT configured (demo only) — see docs/GOOGLE_SETUP.md"}`);
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
   console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);

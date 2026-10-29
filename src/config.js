@@ -18,7 +18,7 @@ export const config = {
     pubsubTopic: env.GMAIL_PUBSUB_TOPIC || "",
     pubsubSubscription: env.GMAIL_PUBSUB_SUBSCRIPTION || "",
   },
-  resend: { apiKey: env.RESEND_API_KEY || "", from: env.MAIL_FROM || "Scam Shield <alerts@example.test>" },
+  resend: { apiKey: env.RESEND_API_KEY || "", from: env.MAIL_FROM || "Prudence <alerts@example.test>" },
   hibpKey: env.HIBP_API_KEY || "",
   // abuse.ch URLhaus lookups (fair use, not-for-profit): host names only.
   abusechKey: env.ABUSECH_AUTH_KEY || "",

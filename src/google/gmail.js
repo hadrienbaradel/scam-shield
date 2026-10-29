@@ -6,7 +6,9 @@
 
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const FORBIDDEN_LABELS = ["TRASH", "SPAM", "DRAFT", "SENT"];
-export const LABEL_NAMES = { parent: "Scam Shield", scam: "Scam Shield/Scam", careful: "Scam Shield/Check first" };
+export const LABEL_NAMES = { parent: "Prudence", scam: "Prudence/Scam", careful: "Prudence/Check first" };
+// The working title until Oct 28, 2026: labels made then are renamed in place.
+const OLD_LABEL_NAMES = { parent: "Scam Shield", scam: "Scam Shield/Scam", careful: "Scam Shield/Check first" };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -59,8 +61,10 @@ export function gmailClient(getToken, { fetchImpl = fetch } = {}) {
     listLabels: () => call("/labels"),
     createLabel: (name, color) => call("/labels", { method: "POST",
       body: { name, labelListVisibility: "labelShow", messageListVisibility: "show", ...(color ? { color } : {}) } }),
+    // Only our own labels are ever renamed (ensureLabels); never a person's.
+    renameLabel: (id, name) => call(`/labels/${encodeURIComponent(id)}`, { method: "PATCH", body: { name } }),
     modifyLabels(id, { add = [], remove = [] } = {}) {
-      if ([...add, ...remove].some((l) => FORBIDDEN_LABELS.includes(l))) throw new Error("Scam Shield never moves mail to spam or trash");
+      if ([...add, ...remove].some((l) => FORBIDDEN_LABELS.includes(l))) throw new Error("Prudence never moves mail to spam or trash");
       return call(`/messages/${encodeURIComponent(id)}/modify`, { method: "POST", body: { addLabelIds: add, removeLabelIds: remove } });
     },
     watch: (topicName) => call("/watch", { method: "POST", body: { topicName, labelIds: ["INBOX"], labelFilterBehavior: "INCLUDE" } }),
@@ -68,10 +72,19 @@ export function gmailClient(getToken, { fetchImpl = fetch } = {}) {
   });
 }
 
-// Creates "Scam Shield", "Scam Shield/Scam" and "Scam Shield/Check first"
-// if missing; returns their ids.
+// Creates "Prudence", "Prudence/Scam" and "Prudence/Check first" if
+// missing; returns their ids. Labels made under the working title
+// ("Prudence/…") are renamed in place, parent first, so the messages
+// keep them and nothing is duplicated.
 export async function ensureLabels(client) {
-  const existing = (await client.listLabels()).labels || [];
+  let existing = (await client.listLabels()).labels || [];
+  const named = (n) => existing.find((l) => l.name === n);
+  let renamed = false;
+  for (const key of ["parent", "scam", "careful"]) {
+    const old = named(OLD_LABEL_NAMES[key]);
+    if (old && !named(LABEL_NAMES[key])) { await client.renameLabel(old.id, LABEL_NAMES[key]); renamed = true; }
+  }
+  if (renamed) existing = (await client.listLabels()).labels || [];
   const byName = new Map(existing.map((l) => [l.name, l.id]));
   const make = async (name, color) => {
     if (byName.has(name)) return byName.get(name);

@@ -28,7 +28,7 @@ export function verdictCard(v) {
     <h3>${t("why")}</h3>
     <ul class="why-list">${(v.reasons || []).map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>
     ${v.real_company_says ? `<p class="note">${esc(v.real_company_says)}</p>` : ""}
-    <p class="small">${esc(t("checked_by", { source: v.source || "Scam Shield" }))}</p>`;
+    <p class="small">${esc(t("checked_by", { source: v.source || "Prudence" }))}</p>`;
 }
 
 // Moves keyboard and screen-reader focus to a freshly drawn heading.

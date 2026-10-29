@@ -1,4 +1,4 @@
-// The senior's mail: inbox and Scam Shield folders read live from Gmail
+// The senior's mail: inbox and Prudence folders read live from Gmail
 // (bodies are never stored), verdicts from our checks table, undo, the
 // "check something else" paths (pasted text, screenshot) and "Ask my
 // trusted person".

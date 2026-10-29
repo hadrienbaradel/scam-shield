@@ -1,7 +1,7 @@
 // Outgoing email (guardian invitations and alerts). Uses Resend when
 // RESEND_API_KEY is set; otherwise the message is kept in the local outbox
 // at /dev/outbox so the whole loop can be tested on one machine.
-// Scam Shield never sends from the user's own Gmail.
+// Prudence never sends from the user's own Gmail.
 
 import { config } from "../config.js";
 import { q } from "../db/pool.js";

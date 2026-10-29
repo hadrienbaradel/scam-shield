@@ -36,7 +36,7 @@ function applyPrefs() {
   const saved = (() => { try { return localStorage.getItem("ss_lang"); } catch { return null; } })();
   setLang(status?.user ? (status.user.locale.startsWith("fr") ? "fr" : "en") : saved || (navigator.language.startsWith("fr") ? "fr" : "en"));
   document.documentElement.style.fontSize = `${Math.round(19 * (status?.user?.textScale || 1))}px`;
-  document.title = `Scam Shield — ${t("landing_title")}`;
+  document.title = `Prudence — ${t("landing_title")}`;
 }
 
 function renderChrome() {

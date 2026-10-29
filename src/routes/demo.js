@@ -1,6 +1,6 @@
 // Public demo (no sign-in): the PRD regression inbox and the two seed
 // profiles, judged by the same engine. Used for the hackathon video and
-// for anyone trying Scam Shield before connecting their own Gmail.
+// for anyone trying Prudence before connecting their own Gmail.
 
 import { readFile } from "node:fs/promises";
 import { checkMessage } from "../../lib/muse.js";

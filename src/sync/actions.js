@@ -1,8 +1,8 @@
-// What Scam Shield does to a message after judging it. Pure decision first
+// What Prudence does to a message after judging it. Pure decision first
 // (tested on its own), then the Gmail calls.
 // - safe: nothing.
-// - be_careful: label "Scam Shield/Check first", stays in the inbox.
-// - scam: label "Scam Shield/Scam"; moved out of the inbox only when the
+// - be_careful: label "Prudence/Check first", stays in the inbox.
+// - scam: label "Prudence/Scam"; moved out of the inbox only when the
 //   person explicitly chose "move" (consent recorded), the AI check did not
 //   fail half-way, and the sender is not an authenticated sender this user
 //   already knows (a known sender, a provider's real address, a trusted
@@ -63,7 +63,7 @@ export async function putBack({ client, userId, check, labels, message }) {
 }
 
 // "Undo" right after "Throw it away": the message goes back where it was
-// (in the inbox, with its Scam Shield label) and nothing is learned about
+// (in the inbox, with its Prudence label) and nothing is learned about
 // the sender, unlike "Put it back", which says the sender is fine.
 export async function undoThrow({ client, userId, check, labels }) {
   const careful = check.verdict_value === "be_careful";

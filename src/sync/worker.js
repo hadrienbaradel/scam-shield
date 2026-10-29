@@ -1,5 +1,5 @@
 // Gmail sync for one user.
-// First run: create the Scam Shield labels, learn the personal context
+// First run: create the Prudence labels, learn the personal context
 // from ~180 days of mail and the Sent folder, then check the latest inbox
 // messages. After that: only new inbox messages, via Gmail's history
 // (triggered by push notifications, or by the poller as a backup).

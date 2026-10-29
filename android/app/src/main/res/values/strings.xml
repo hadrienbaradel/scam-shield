@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Scam Shield</string>
+    <string name="app_name">Prudence</string>
 
     <!-- Notifications -->
     <string name="channel_alerts_name">Scam alerts</string>
@@ -15,7 +15,7 @@
 
     <!-- Pairing -->
     <string name="pair_title">Connect this phone</string>
-    <string name="pair_intro">On the Scam Shield website, open “Add my phone”. Type the code you see there, or scan the QR code.</string>
+    <string name="pair_intro">On the Prudence website, open “Add my phone”. Type the code you see there, or scan the QR code.</string>
     <string name="pair_server_label">Server address</string>
     <string name="pair_code_label">Pairing code</string>
     <string name="pair_button">Connect</string>
@@ -23,15 +23,15 @@
     <string name="pair_scan">Scan the QR code</string>
     <string name="pair_scan_prompt">Point the camera at the QR code on the screen</string>
     <string name="pair_error_code">That code did not work. Check it and try again.</string>
-    <string name="pair_error_network">Cannot reach Scam Shield. Check the internet and the server address.</string>
-    <string name="pair_error_qr">This QR code is not a Scam Shield code.</string>
+    <string name="pair_error_network">Cannot reach Prudence. Check the internet and the server address.</string>
+    <string name="pair_error_qr">This QR code is not a Prudence code.</string>
     <string name="pair_error_empty">Please type the pairing code.</string>
 
     <!-- Home -->
     <string name="home_protected">You are protected, %1$s.</string>
     <string name="home_protected_noname">You are protected.</string>
-    <string name="home_explain">Scam Shield checks texts that contain a link or ask for money or a code. Your other texts never leave this phone.</string>
-    <string name="home_perm_needed">Scam Shield needs your permission to see new texts and to warn you.</string>
+    <string name="home_explain">Prudence checks texts that contain a link or ask for money or a code. Your other texts never leave this phone.</string>
+    <string name="home_perm_needed">Prudence needs your permission to see new texts and to warn you.</string>
     <string name="home_perm_button">Allow</string>
     <string name="home_perm_settings_hint">If nothing happens, open Settings and allow SMS and notifications.</string>
     <string name="home_open_settings">Open Settings</string>

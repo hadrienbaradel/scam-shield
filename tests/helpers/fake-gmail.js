@@ -61,6 +61,7 @@ export function fakeGmail({ email = "linda@example.test", messages = [] } = {}) 
     },
     listLabels: async () => ({ labels }),
     createLabel: async (name) => { const l = { id: `Label_${labels.length}`, name }; labels.push(l); return l; },
+    renameLabel: async (id, name) => { const l = labels.find((x) => x.id === id); l.name = name; return l; },
     modifyLabels: async (id, { add = [], remove = [] }) => {
       if ([...add, ...remove].some((l) => ["TRASH", "SPAM"].includes(l))) throw new Error("forbidden");
       modifications.push({ id, add, remove });

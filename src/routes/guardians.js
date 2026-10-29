@@ -83,8 +83,8 @@ export default async function guardianRoutes(app) {
     return page({
       title: "Invitation",
       body: `<h1>${who} would like you as their trusted person</h1>
-<p>When a message worries ${who}, Scam Shield can show it to you so you can answer with one tap: <strong>scam</strong>, <strong>real</strong>, or <strong>I'll call you</strong>.</p>
-<p>You will only see the messages ${who} chooses to share. Signing in does not give Scam Shield any access to your own email.</p>
+<p>When a message worries ${who}, Prudence can show it to you so you can answer with one tap: <strong>scam</strong>, <strong>real</strong>, or <strong>I'll call you</strong>.</p>
+<p>You will only see the messages ${who} chooses to share. Signing in does not give Prudence any access to your own email.</p>
 <a class="btn btn-navy btn-big" href="/auth/google?mode=basic&amp;invite=${encodeURIComponent(request.params.token)}">Sign in with Google to accept</a>`,
     });
   });
@@ -92,7 +92,7 @@ export default async function guardianRoutes(app) {
   app.get("/answer/:token", async (request, reply) => {
     const alert = await alertByToken(request.params.token);
     reply.type("text/html");
-    if (!alert) return page({ title: "Answer", body: "<h1>This link was already used or has expired.</h1><p>If you are signed in, your alerts are on your Scam Shield page.</p>" });
+    if (!alert) return page({ title: "Answer", body: "<h1>This link was already used or has expired.</h1><p>If you are signed in, your alerts are on your Prudence page.</p>" });
     const lang = langOf(alert.senior_locale);
     const s = alert.shared;
     const who = esc(alert.senior_name || alert.senior_email);
@@ -105,7 +105,7 @@ export default async function guardianRoutes(app) {
       body: `<h1>${fr ? `${who} vous demande votre avis` : `${who} asks for your opinion`}</h1>
 <div class="shared-card"><p class="mail-meta">${fr ? "De" : "From"} : ${esc(s.fromName)} &lt;${esc(s.from)}&gt;</p>
 ${s.subject ? `<p><strong>${esc(s.subject)}</strong></p>` : ""}
-<p class="verdict-line">Scam Shield : ${esc(s.headline)}</p>
+<p class="verdict-line">Prudence : ${esc(s.headline)}</p>
 <ul>${(s.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
 ${s.text ? `<pre class="mail-body">${esc(s.text)}</pre>` : ""}</div>
 <form method="post" action="/answer/${encodeURIComponent(request.params.token)}" class="answer-form">${buttons}</form>

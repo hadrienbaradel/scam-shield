@@ -25,11 +25,11 @@ export async function inviteGuardian({ senior, name, email, relation }) {
     to: g.guardian_email,
     subject: F ? `${who} vous demande d'être sa personne de confiance` : `${who} asked you to be their trusted person`,
     text: F
-      ? `Bonjour ${g.guardian_name},\n\n${who} utilise Scam Shield pour repérer les arnaques dans ses e-mails. Quand un message l'inquiète, Scam Shield peut vous le montrer pour avoir votre avis, en un geste.\n\nAccepter : ${url}\n\nVous ne verrez que les messages que ${who} choisit de partager.`
-      : `Hi ${g.guardian_name},\n\n${who} uses Scam Shield to spot scams in their email. When a message worries them, Scam Shield can show it to you for a one-tap answer.\n\nAccept: ${url}\n\nYou will only ever see the messages ${who} chooses to share.`,
+      ? `Bonjour ${g.guardian_name},\n\n${who} utilise Prudence pour repérer les arnaques dans ses e-mails. Quand un message l'inquiète, Prudence peut vous le montrer pour avoir votre avis, en un geste.\n\nAccepter : ${url}\n\nVous ne verrez que les messages que ${who} choisit de partager.`
+      : `Hi ${g.guardian_name},\n\n${who} uses Prudence to spot scams in their email. When a message worries them, Prudence can show it to you for a one-tap answer.\n\nAccept: ${url}\n\nYou will only ever see the messages ${who} chooses to share.`,
     html: buttonsHtml(
-      F ? [`Bonjour ${g.guardian_name},`, `${who} utilise Scam Shield pour repérer les arnaques. Quand un message l'inquiète, vous pourrez donner votre avis en un geste.`]
-        : [`Hi ${g.guardian_name},`, `${who} uses Scam Shield to spot scams. When a message worries them, you can answer with one tap.`],
+      F ? [`Bonjour ${g.guardian_name},`, `${who} utilise Prudence pour repérer les arnaques. Quand un message l'inquiète, vous pourrez donner votre avis en un geste.`]
+        : [`Hi ${g.guardian_name},`, `${who} uses Prudence to spot scams. When a message worries them, you can answer with one tap.`],
       [{ href: url, label: F ? "Accepter" : "Accept", color: "#1f3a5f" }],
       F ? `Vous ne verrez que les messages que ${who} choisit de partager.` : `You will only ever see the messages ${who} chooses to share.`),
   });
@@ -55,7 +55,7 @@ export async function acceptInvite({ token, user }) {
 
 const DAILY_ALERT_CAP = 20;
 
-// via "email": Scam Shield emails each trusted person. via "text": nothing
+// via "email": Prudence emails each trusted person. via "text": nothing
 // is sent from here; each request comes back in `texts` ({ name, phone,
 // body }) for the senior's own phone to send, so it arrives from a number
 // the trusted person knows. The one-tap answer link is the same.
@@ -82,8 +82,8 @@ export async function alertGuardians({ senior, checkId, shared, guardianshipIds 
       texts?.push({
         guardianshipId: g.id, name: g.guardian_name, phone: g.guardian_phone || null,
         body: F
-          ? `Bonjour ${g.guardian_name}, peux-tu vérifier ceci pour moi ? ${sender} m'a écrit${about ? ` « ${about} »` : ""}. Scam Shield dit : ${clip(shared.headline, 90)} Réponds en un geste : ${config.baseUrl}/answer/${token}`
-          : `Hi ${g.guardian_name}, can you check this for me? ${sender} sent me${about ? ` "${about}"` : " a message"}. Scam Shield says: ${clip(shared.headline, 90)} Tap to answer: ${config.baseUrl}/answer/${token}`,
+          ? `Bonjour ${g.guardian_name}, peux-tu vérifier ceci pour moi ? ${sender} m'a écrit${about ? ` « ${about} »` : ""}. Prudence dit : ${clip(shared.headline, 90)} Réponds en un geste : ${config.baseUrl}/answer/${token}`
+          : `Hi ${g.guardian_name}, can you check this for me? ${sender} sent me${about ? ` "${about}"` : " a message"}. Prudence says: ${clip(shared.headline, 90)} Tap to answer: ${config.baseUrl}/answer/${token}`,
       });
       sentTo.push(g.guardian_name);
       continue;
@@ -92,7 +92,7 @@ export async function alertGuardians({ senior, checkId, shared, guardianshipIds 
       F ? `${who} vous demande votre avis sur un message.` : `${who} would like your opinion on a message.`,
       `${F ? "De" : "From"} : ${shared.fromName || ""} <${shared.from || ""}>`,
       shared.subject ? `${F ? "Objet" : "Subject"} : ${shared.subject}` : "",
-      `Scam Shield : ${shared.headline}`,
+      `Prudence : ${shared.headline}`,
       ...(shared.reasons || []).map((r) => `• ${r}`),
       shared.text ? `\n${shared.text}` : "",
     ].filter(Boolean);

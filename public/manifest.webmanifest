@@ -1,6 +1,6 @@
 {
-  "name": "Scam Shield",
-  "short_name": "Scam Shield",
+  "name": "Prudence",
+  "short_name": "Prudence",
   "description": "Senior-first scam protection that checks each message against your own life.",
   "start_url": "/",
   "display": "standalone",

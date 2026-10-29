@@ -44,7 +44,7 @@ export default async function adminRoutes(app) {
     reply.type("text/html");
     return page({
       title: "Local outbox",
-      body: `<h1>Local outbox</h1><p class="small">Emails Scam Shield would have sent (no email provider configured). Kept 7 days.</p>
+      body: `<h1>Local outbox</h1><p class="small">Emails Prudence would have sent (no email provider configured). Kept 7 days.</p>
 ${mails.map((m) => `<article class="shared-card"><p class="mail-meta">To ${esc(m.to_email)} · ${esc(m.created_at.toISOString())} · via ${esc(m.sent_via)}</p>
 <h2>${esc(m.subject)}</h2><pre class="mail-body">${esc(m.text_body).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</pre></article>`).join("") || "<p>No emails yet.</p>"}`,
     });

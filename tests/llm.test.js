@@ -315,7 +315,7 @@ test("the engine runs on any provider: LLM_PROVIDER=mock judges a message end to
   assert.ok(v.usage.total_tokens > 0);
   assert.equal(typeof v.latency_ms, "number");
   const req = mock.calls[0];
-  assert.match(req.system, /Scam Shield/);
+  assert.match(req.system, /Prudence/);
   assert.equal(req.messages.length, 1);
   assert.match(req.messages[0].content, /<message>/);
   assert.equal(req.json.name, "scam_shield_verdict");

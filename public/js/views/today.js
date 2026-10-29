@@ -73,8 +73,8 @@ function demoSource() {
       const clip = (s, n) => (s.length > n ? `${s.slice(0, s.lastIndexOf(" ", n - 1) > 20 ? s.lastIndexOf(" ", n - 1) : n - 1)}…` : s);
       const about = clip(String(item.subject || item.body || ""), 60);
       const body = getLang() === "fr"
-        ? `Bonjour ${g.name}, peux-tu vérifier ceci pour moi ? ${sender} m'a écrit « ${about} ». Scam Shield dit : ${detail.verdict.headline} Réponds en un geste : ${location.origin}/answer/…`
-        : `Hi ${g.name}, can you check this for me? ${sender} sent me "${about}". Scam Shield says: ${detail.verdict.headline} Tap to answer: ${location.origin}/answer/…`;
+        ? `Bonjour ${g.name}, peux-tu vérifier ceci pour moi ? ${sender} m'a écrit « ${about} ». Prudence dit : ${detail.verdict.headline} Réponds en un geste : ${location.origin}/answer/…`
+        : `Hi ${g.name}, can you check this for me? ${sender} sent me "${about}". Prudence says: ${detail.verdict.headline} Tap to answer: ${location.origin}/answer/…`;
       return { sentTo: [g.name], texts: [{ name: g.name, phone: g.phone, body }] };
     },
   };
@@ -183,7 +183,7 @@ function drawCard() {
           <div id="v2WhyBox" ${S.open.why ? "" : "hidden"}>
             <ul class="why-list">${reasons.map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul>
             ${v.real_company_says ? `<p class="note">${esc(v.real_company_says)}</p>` : ""}
-            <p class="small">${esc(t("checked_by", { source: v.source || "Scam Shield" }))}</p>
+            <p class="small">${esc(t("checked_by", { source: v.source || "Prudence" }))}</p>
           </div>
           <div id="v2BodyBox" ${S.open.body ? "" : "hidden"}>
             <p class="mail-meta">${esc(m.fromName || "")} &lt;${esc(m.from || "")}&gt;</p>

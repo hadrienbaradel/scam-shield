@@ -55,7 +55,7 @@ export default async function deviceRoutes(app) {
     const code = String(request.body?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     const device = code && await one(`SELECT d.*, u.name AS user_name, u.locale FROM devices d JOIN users u ON u.id = d.user_id
                                       WHERE d.pair_code_hash = $1 AND d.pair_expires_at > now() AND d.revoked_at IS NULL`, [sha256(code)]);
-    if (!device) return reply.code(400).send({ error: "This code is wrong or has expired. Make a new one on the Scam Shield page." });
+    if (!device) return reply.code(400).send({ error: "This code is wrong or has expired. Make a new one on the Prudence page." });
     const token = randomToken();
     await q("UPDATE devices SET token_hash = $2, pair_code_hash = NULL, name = $3, last_seen_at = now() WHERE id = $1",
       [device.id, sha256(token), String(request.body?.name || "Phone").slice(0, 60)]);

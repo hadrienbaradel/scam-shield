@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Scam Shield</string>
+    <string name="app_name">Prudence</string>
 
     <!-- Notifications -->
     <string name="channel_alerts_name">Alertes arnaque</string>
@@ -15,7 +15,7 @@
 
     <!-- Association -->
     <string name="pair_title">Connecter ce téléphone</string>
-    <string name="pair_intro">Sur le site Scam Shield, ouvrez « Ajouter mon téléphone ». Tapez le code affiché, ou scannez le QR code.</string>
+    <string name="pair_intro">Sur le site Prudence, ouvrez « Ajouter mon téléphone ». Tapez le code affiché, ou scannez le QR code.</string>
     <string name="pair_server_label">Adresse du serveur</string>
     <string name="pair_code_label">Code d\'association</string>
     <string name="pair_button">Connecter</string>
@@ -23,15 +23,15 @@
     <string name="pair_scan">Scanner le QR code</string>
     <string name="pair_scan_prompt">Pointez l\'appareil photo vers le QR code à l\'écran</string>
     <string name="pair_error_code">Ce code n\'a pas fonctionné. Vérifiez-le et réessayez.</string>
-    <string name="pair_error_network">Impossible de joindre Scam Shield. Vérifiez internet et l\'adresse du serveur.</string>
-    <string name="pair_error_qr">Ce QR code n\'est pas un code Scam Shield.</string>
+    <string name="pair_error_network">Impossible de joindre Prudence. Vérifiez internet et l\'adresse du serveur.</string>
+    <string name="pair_error_qr">Ce QR code n\'est pas un code Prudence.</string>
     <string name="pair_error_empty">Veuillez taper le code d\'association.</string>
 
     <!-- Accueil -->
     <string name="home_protected">Vous êtes protégé(e), %1$s.</string>
     <string name="home_protected_noname">Vous êtes protégé(e).</string>
-    <string name="home_explain">Scam Shield vérifie les SMS qui contiennent un lien ou qui demandent de l\'argent ou un code. Vos autres SMS ne quittent jamais ce téléphone.</string>
-    <string name="home_perm_needed">Scam Shield a besoin de votre accord pour voir les nouveaux SMS et vous prévenir.</string>
+    <string name="home_explain">Prudence vérifie les SMS qui contiennent un lien ou qui demandent de l\'argent ou un code. Vos autres SMS ne quittent jamais ce téléphone.</string>
+    <string name="home_perm_needed">Prudence a besoin de votre accord pour voir les nouveaux SMS et vous prévenir.</string>
     <string name="home_perm_button">Autoriser</string>
     <string name="home_perm_settings_hint">Si rien ne se passe, ouvrez les Réglages et autorisez les SMS et les notifications.</string>
     <string name="home_open_settings">Ouvrir les Réglages</string>
