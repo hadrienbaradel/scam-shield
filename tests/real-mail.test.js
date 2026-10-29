@@ -56,17 +56,41 @@ const LEGIT = [
   { name: "a talk about bitcoin risks", m: { fromName: "Town Library", from: "news@library.test", auth: PASS, subject: "Free lecture", body: "Join our talk about bitcoin and cryptocurrency risks on Thursday.", links: [] } },
   { name: "a gift card ready in store", m: { fromName: "Librairie du marché", from: "shop@marche.test", auth: PASS, subject: "Votre commande", body: "Votre carte cadeau de 30 euros est prête à retirer en boutique.", links: [] } },
   { name: "a promo offering a gift card", m: { fromName: "Shop", from: "promo@shop.test", auth: PASS, subject: "Holiday deal", body: "Get a $10 gift card when you spend $50! Enter promo codes at checkout.", links: [] } },
+  // Live inbox, 2026-10-28: newsletters our link rules misread (anonymised).
+  { name: "Zillow alert whose plain-text link is the company's own tracker", safe: true, m: { fromName: "Zillow", from: "instant-updates@mail.zillow.com", auth: PASS,
+    subject: "A Somerville home for you: 37 Elm St", body: "New listing. View it: https://click.mail.zillow.com/ls/click?upn=abc&url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F1",
+    links: [{ text: "https://click.mail.zillow.com/ls/click?upn=abc&url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F1", href: "https://click.mail.zillow.com/ls/click?upn=abc&url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F1" }] } },
+  { name: "Amex offers whose buttons name shops but go through Amex's tracker", safe: true, m: { fromName: "American Express", from: "AmericanExpress@member.americanexpress.com", auth: PASS,
+    subject: "New Amex Offers for you", body: "Earn a statement credit at these shops.",
+    links: [{ text: "lululemon.com", href: "https://click.member.americanexpress.com/?qs=abc" }, { text: "ouraring.com", href: "https://click.member.americanexpress.com/?qs=def" }] } },
+  { name: "Apple newsletter linking to YouTube", safe: true, m: { fromName: "Apple", from: "News@insideapple.apple.com", auth: PASS,
+    subject: "Watch the keynote", body: "Catch up on everything announced.",
+    links: [{ text: "Watch on YouTube", href: "https://www.youtube.com/watch?v=abc" }, { text: "Bilibili", href: "https://space.bilibili.com/123" }] } },
+  { name: "an event invite whose calendar button goes through the sender's tracker", safe: true, m: { fromName: "Frenchfounders", from: "events@frenchfounders.com", auth: PASS,
+    subject: "Founders dinner in Boston", body: "Book a slot with our team.",
+    links: [{ text: "https://calendar.app.google/tqUW", href: "https://email.frenchfounders.com/c/abc" }] } },
+  { name: "a link carrying a template placeholder instead of a website", m: { fromName: "Snowball", from: "news@media.snowball.xyz", auth: PASS,
+    subject: "Your weekly summary", body: "See your portfolio: https://redirect.media-snowball.com/r?url=https://media.__snowball__/x",
+    links: [{ text: "https://redirect.media-snowball.com/r?url=https://media.__snowball__/x", href: "https://redirect.media-snowball.com/r?url=https://media.__snowball__/x" }] } },
   { name: "French newsletter", m: { fromName: "Fnac", from: "newsletter@fnac.com", auth: PASS,
     subject: "Les nouveautés de la semaine", body: "Découvrez nos nouveautés livres et musique. Livraison gratuite en magasin.",
     links: [{ text: "Découvrir", href: "https://click.fnac.com/abc" }] } },
 ];
 
-for (const { name, m } of LEGIT) {
-  test(`legit: ${name} is never Scam`, () => {
+for (const { name, m, safe } of LEGIT) {
+  test(`legit: ${name} is never Scam${safe ? " (Safe)" : ""}`, () => {
     const v = run(m);
     assert.notEqual(v.verdict, "scam", `${name}: ${v.reasons.map((r) => r.text).join(" | ")}`);
+    if (safe) assert.equal(v.verdict, "safe", `${name}: ${v.reasons.map((r) => r.text).join(" | ")}`);
   });
 }
+
+test("scam: an authenticated look-alike sender showing a protected brand's address on its own link is still caught", () => {
+  const v = run({ fromName: "Account Security", from: "alerts@secure-login-center.test", auth: PASS,
+    subject: "Your account is locked", body: "Your Chase account is locked. Sign in now to restore access.",
+    links: [{ text: "chase.com", href: "https://secure-login-center.test/signin" }] });
+  assert.equal(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+});
 
 test("legit: a genuine Société Générale secure-message notice stays Safe (same wording as the A7 scam)", async () => {
   const { readFile } = await import("node:fs/promises");

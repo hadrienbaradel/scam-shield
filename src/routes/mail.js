@@ -35,7 +35,9 @@ export default async function mailRoutes(app) {
     const box = ["inbox", "scam", "careful"].includes(request.query.box) ? request.query.box : "inbox";
     const key = `${request.user.id}:${box}`;
     const hit = cache.get(key);
-    if (hit && hit.at > Date.now() - 20000 && !request.query.fresh) return hit.data;
+    // Gmail allows a limited cost per user per minute: even a "fresh" list
+    // is reused for 10 s, and a plain one for 20 s.
+    if (hit && hit.at > Date.now() - (request.query.fresh ? 10000 : 20000)) return hit.data;
     const labels = await labelsFor(request.user.id);
     const labelId = box === "inbox" ? "INBOX" : labels[box];
     if (!labelId) return { box, messages: [] };
@@ -62,7 +64,11 @@ export default async function mailRoutes(app) {
       };
       cache.set(key, { at: Date.now(), data });
       return data;
-    } catch (e) { return gmailError(reply, e); }
+    } catch (e) {
+      // Over Gmail's per-minute quota: show the last list we had rather than an error.
+      if (hit && /quota|rate limit|429/i.test(`${e.status || ""} ${e.message || ""}`)) return { ...hit.data, stale: true };
+      return gmailError(reply, e);
+    }
   });
 
   app.get("/api/messages/:id", async (request, reply) => {

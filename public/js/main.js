@@ -8,6 +8,22 @@ import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSetti
 import { renderToday, onTodayEvent } from "./views/today.js";
 
 let status = null;
+// Live events can arrive many times a second (the first pass checks 50
+// emails in a row): refresh the lists at most once every 15 s, and not at
+// all until the first pass is done (the "sync" event refreshes then).
+function throttle(fn, ms) {
+  let last = 0; let timer = null;
+  return () => {
+    const wait = last + ms - Date.now();
+    if (wait <= 0) { last = Date.now(); fn(); return; }
+    if (!timer) timer = setTimeout(() => { timer = null; last = Date.now(); fn(); }, wait);
+  };
+}
+const refreshLists = throttle(() => {
+  if (status?.gmail && !status.gmail.ready) return;
+  onCheck();
+  onTodayEvent();
+}, 15000);
 const TAB_ICONS = {
   home: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
   search: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
@@ -94,9 +110,9 @@ async function refresh(reroute = true) {
   renderChrome();
   if (status.user && !stream) {
     stream = events({
-      check: (d) => { onCheck(d); onTodayEvent(); },
+      check: () => refreshLists(),
       answer: onAnswer,
-      sync: async () => { status = await api("/api/status"); onSync(status); },
+      sync: async () => { status = await api("/api/status"); onSync(status); if (status.gmail?.ready) refreshLists(); },
       context: () => {},
       alert: () => { if (location.hash.startsWith("#/guardian")) route(); },
       guardian: () => { if (location.hash.startsWith("#/people")) route(); },

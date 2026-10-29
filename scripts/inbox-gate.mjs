@@ -23,6 +23,7 @@ for (const u of users) {
   const by = await many(`SELECT verdict_value AS v, action, count(*)::int AS n,
       count(*) FILTER (WHERE (verdict->>'degraded')::boolean)::int AS degraded,
       count(*) FILTER (WHERE source LIKE 'Muse Spark%')::int AS muse,
+      count(*) FILTER (WHERE restored_at IS NOT NULL)::int AS restored,
       percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms) AS median_ms
     FROM checks WHERE user_id = $1 AND channel = 'email' GROUP BY 1, 2`, [u.id]);
   const total = by.reduce((n, r) => n + r.n, 0);
@@ -33,7 +34,8 @@ for (const u of users) {
 
   console.log(`  checked ${total}: scam ${sum((r) => r.v === "scam")} · be careful ${sum((r) => r.v === "be_careful")} · safe ${sum((r) => r.v === "safe")}`);
   console.log(`  judged by Muse Spark ${muse} · detector fallback ${total - muse} (degraded ${degraded})`);
-  console.log(`  in Gmail: labeled ${sum((r) => r.action === "labeled")} · moved ${sum((r) => r.action === "moved")} · pending ${sum((r) => r.action === "pending")} · untouched ${sum((r) => r.action === "none")}`);
+  const restored = by.reduce((n, r) => n + r.restored, 0);
+  console.log(`  in Gmail: labeled ${sum((r) => r.action === "labeled") - restored} · moved ${sum((r) => r.action === "moved")} · put back by the person ${restored} · pending ${sum((r) => r.action === "pending")} · untouched ${sum((r) => r.action === "none")}`);
   console.log(`  sync ${st?.sync_status || "-"}${st?.sync_error ? ` (${st.sync_error.slice(0, 120)})` : ""} · last ${st?.last_sync_at ? st.last_sync_at.toISOString().slice(0, 16) : "never"} · instant checks ${st?.watch_expiration > new Date() ? "on" : "off"}`);
 
   gate(tok?.status === "ok" && /gmail\.modify/.test(tok?.scopes || ""), "Gmail access granted (gmail.modify)");
