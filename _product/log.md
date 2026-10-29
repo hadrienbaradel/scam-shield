@@ -21,6 +21,8 @@ Who = the person, plus the session label or agent name when several sessions run
 
 | For | Item | Asked by | Since |
 |---|---|---|---|
+| Hadrien | Learn tab (four tabs): the French "Aujourd'hui" label does not fit a quarter-width tab at the two larger text sizes; rename to "Accueil" or keep two-line labels? | Vlad · learn (design) | 2026-10-29 |
+| Hadrien | Verdict card header (Back · 2 of 3 · Listen) needs about 354 px at Largest but has 336 px on a 390 px phone: it overflows at the size the video is filmed at (`public/js/views/today.js`) | Vlad · learn (design review finding) | 2026-10-29 |
 | Vlad | Raise the coverage threshold in package.json from 84 to 90 (line coverage is 91.7%; ratchet rule) once the learn session has committed its package.json changes | Voice review | 2026-10-29 |
 | Vlad | `outbox` has no owner column, so "Delete my account" leaves copies of mails already sent to trusted people for up to 7 days; the privacy spec says every row is erased (found while writing docs/ARCHITECTURE.md) | Architecture review | 2026-10-29 |
 | Vlad | Send `config/master.key` to Hadrien over a private channel (never the repo, never a chat with an agent) | Hadrien | 2026-10-29 |

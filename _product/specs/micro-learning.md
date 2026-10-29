@@ -16,6 +16,9 @@ A verdict protects the person today; a one-minute lesson protects them next time
 9. **Tone: warm and witty.** Every trick has a character the person can recognise and laugh at (Mr. Tiny Fee, the Urgency Monster, Cousin Stuck Abroad, the Bank That Forgot Your Name, Mr. Gift Card, the Pop-up That Screams). The joke is always on the scammer, never on the person. Plain words, short lines, no jargon.
 10. **Nothing is ever lost or raced.** No timers, no leaderboards, no points taken away, no countdown; the person can leave in the middle and come back to the Learn home.
 
+## Design (agreed 2026-10-29, Claude Design canvas: https://claude.ai/artifact/Du4GYnasCba6jrZgKHCNAZ, private until shared)
+Nine phone frames at 390 px. Each step replaces the screen, like Today's one card at a time, so every question stands on its own; a stepper row ("Question 1 of 3" and three drawn stars) sits under the Back / Listen header; a wrong answer shows "Your answer" in a plain box and "Right answer" in green with a check, never red on the person's own choice; confetti is CSS only and skipped under reduced motion; stars are drawn, not the ★ character (the font has none and gold on white fails contrast); the Learn tab icon is an open book; in demo mode a two-tab bar (Today, Learn) appears so the video can show "Linda taps Learn". Open for Hadrien: the French "Aujourd'hui" tab label does not fit a quarter-width tab at the two larger text sizes ("Accueil"?).
+
 ## Lesson file format (YAML)
 ```yaml
 id: parcel-fee                  # [a-z0-9-], the file name, the same in en/ and fr/
