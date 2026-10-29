@@ -10,7 +10,6 @@ Who = the person, plus the session label or agent name when several sessions run
 
 | Who | Since | Working on | Touches |
 |---|---|---|---|
-| Vlad · team-log | 2026-10-29 14:10 | The team log and the claim-first rule; session brief prints your rows | `_product/log.md`, `CLAUDE.md`, `_product/docs/product-process.md`, `_product/README.md`, `scripts/session-brief.mjs`, `tests/session-brief.test.js` |
 
 ## To do
 
@@ -25,6 +24,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | Diagram for the 2:05 scene: message → rules → Muse Spark → guardrail → card | Video script, Oct 31 | 2026-10-29 |
 | Vlad | Point heyprudence.com at the live demo and settle the public repo name (org publication check first) | Video script, Oct 30 | 2026-10-29 |
 | Vlad | Prompt Guard 2 without Groq (local inference), only if the Nov 1 rehearsal keeps that swap | Hadrien's note | 2026-10-29 |
+| Hadrien | git.md now says both of us commit on main in small steps (claim first, pull --rebase); object here if you want branches and merges back | Vlad | 2026-10-29 |
 | Hadrien | Add the public origin (the tunnel or heyprudence.com) to the OAuth client's redirect URIs in scam-shield-hb26 once Vlad posts it here | Vlad | 2026-10-29 |
 | Hadrien | Say which beat the WhatsApp scene replaces (the script allows four Meta surfaces on screen) | Vlad | 2026-10-29 |
 | Hadrien | Book 2–3 seniors (Trent Taylor), film Oct 31 | Video script | 2026-10-29 |
@@ -37,6 +37,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-10-29 · Vlad · Team log and the claim-first rule: `_product/log.md`, CLAUDE.md non-negotiables, product-process.md (The team log), git.md (both on main, pull --rebase); the session brief prints who is in progress and your to-do rows (4ac3206, 39c27e5, 167ea75 and the brief commit)
 - 2026-10-29 · Vlad · CI was already on main (99c1cbf): every push runs make check, make score and the Android debug APK build; the spec row is now Built and the stale to-do is gone
 - 2026-10-28 · Hadrien · "Call <name>" leads whenever a message uses a saved contact; rough cut v1 (2:41, local only) and its notes (95e68cc)
 - 2026-10-28 · Hadrien · Product renamed to Prudence in the UI and Gmail labels (9561016); video script v1 with Linda (US) leading (ac35d19); heyprudence.com registered
