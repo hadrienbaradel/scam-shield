@@ -49,7 +49,9 @@ h1, h2, h3 { font-family: var(--type); line-height: 1.2; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 
-:focus-visible { outline: 4px solid var(--focus-ring); outline-offset: 3px; }
+/* Gold next to the control, navy outside it: one of the two always shows,
+   on the light ground, on navy bars and on gold buttons (3:1 or better). */
+:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-ring); }
 
 /* ------------------------------------------------------------ header -- */
 
