@@ -61,9 +61,10 @@ plus `TOKEN_ENC_KEY` (users reconnect Gmail). Same if a value was committed.
 
 Required for the real product: `TOKEN_ENC_KEY` (`make setup` generates it), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `META_MODEL_API_KEY`.
 Optional: `ADMIN_EMAILS`, `DATABASE_URL`, `TEST_DATABASE_URL`, `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION`, `META_MODEL_NAME`,
-`META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL`, `LLM_THINKING`, `OPENAI_API_KEY`,
+`META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL, LLM_TRANSCRIBE_MODEL`, `LLM_THINKING`, `OPENAI_API_KEY`,
 `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `RESEND_API_KEY`, `MAIL_FROM`, `HIBP_API_KEY`, `ABUSECH_AUTH_KEY`, `PORT`, `HOST`, `BASE_URL`.
 WhatsApp channel (`_product/specs/whatsapp-channel.md`; the webhook answers 501 until the first two are set): `WHATSAPP_ACCESS_TOKEN`
 (a system-user token, not the 24-hour temporary one), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`
 (any string, pasted again in Meta's webhook configuration), `WHATSAPP_APP_SECRET` (required: every delivery is signature-checked and
 refused with 403 until it is set; the startup line says so), optional `WHATSAPP_GRAPH_VERSION` (default `v22.0`) and `FFMPEG_PATH`.
+Prompt Guard 2 (`_product/specs/prompt-guard.md`; off without a key): `GROQ_API_KEY` or `HF_TOKEN` (Inference Providers permission, its account having accepted the model's licence), optional `PROMPT_GUARD_PROVIDER` (`auto`, `groq`, `hf`, `mock`, `off`), `PROMPT_GUARD_THRESHOLD` (0.8), `PROMPT_GUARD_TIMEOUT_MS` (3000).

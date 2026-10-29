@@ -11,7 +11,7 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 | `make test` | Every suite. The integration suite skips itself when Postgres is unreachable; everything else runs anywhere. |
 | `make coverage` | The same with a coverage table on screen and `coverage/lcov.info` for tools. |
 | `make check` | What CI runs: `config/master.key` not tracked by git, Postgres required (no silent skip), every suite, line coverage at or above the threshold. |
-| `make score` | The PRD pass criteria on the 36 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`). |
+| `make score` | The PRD pass criteria on the 37 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`). |
 | `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice. Part of the definition of done. |
 | `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, 1 to 3 lines per say, exactly three questions with one right answer, texts under 140 characters, `**bold**` only, EN/FR twins with the same steps, demo cases that exist. Part of `make check`. |
 

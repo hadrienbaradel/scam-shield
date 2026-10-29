@@ -119,6 +119,7 @@ function checkSecrets(s) {
   info(missing.length ? `required keys missing: ${missing.join(", ")} (make secrets-set KEY=value)` : `required keys all present: ${REQUIRED_KEYS.join(", ")}`);
   const optional = ["ABUSECH_AUTH_KEY", "RESEND_API_KEY", "HIBP_API_KEY", "GMAIL_PUBSUB_TOPIC", "GMAIL_PUBSUB_SUBSCRIPTION"];
   info(`optional: ${optional.map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
+  info(`Prompt Guard 2 (optional injection shield, off without a key): ${["GROQ_API_KEY", "HF_TOKEN"].map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
   if (s.strayEnv) warn(".env still exists: run make secrets-import (moves its keys into config/credentials.enc), then delete it (rm .env); it keeps winning over the credentials until then");
 }
 

@@ -23,7 +23,7 @@ Open three examples in a row: a Bouygues invoice with a real but leaked IBAN (Sc
 Spam and marketing; attachments' contents (only names and types); voice and video; languages other than EN/FR; any training or fine-tuning.
 
 ## Acceptance
-- `npm run score`: rules 36/36 on the PRD seed; Muse 34/36 (B2, B12 pending decision). PRD criteria: A set 100%, no false Scam on C.
+- `npm run score`: rules 37/37 on the PRD seed; Muse 34/36 (B2, B12 pending decision). PRD criteria: A set 100%, no false Scam on C.
 - Public corpora (docs/STATUS.md): rules alone 0.3–0.4% genuine called Scam, 29–36% phishing caught; with Muse on 500 held-back emails, phishing called Scam 80.8%, flagged at all 97.6%, 0/250 genuine called Scam, median 4.0 s.
 - `npm test`: schema validation, guardrails both ways, Contributor-mode refusal, redaction, injection-proof tags, breaker and cache (tests/muse.test.js, tests/detector.test.js, tests/real-mail.test.js).
 

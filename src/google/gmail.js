@@ -4,6 +4,8 @@
 // There is no send, trash or delete anywhere in this file, and label
 // changes touching SPAM or TRASH are refused.
 
+import { hiddenTextFromHtml } from "../../lib/promptGuard/hidden.js";
+
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const FORBIDDEN_LABELS = ["TRASH", "SPAM", "DRAFT", "SENT"];
 export const LABEL_NAMES = { parent: "Prudence", scam: "Prudence/Scam", careful: "Prudence/Check first" };
@@ -213,6 +215,9 @@ export function normalizeMessage(msg) {
   const plain = findPart(msg.payload, "text/plain");
   const html = findPart(msg.payload, "text/html");
   const htmlText = html ? partText(html) : "";
+  // What the reader cannot see (white on white, hidden, comments): for the
+  // injection checks only; the body stays the text as shown.
+  const hiddenText = hiddenTextFromHtml(htmlText);
   const body = (plain ? partText(plain) : htmlToText(htmlText)) || decodeEntities(msg.snippet || "");
   const seen = new Set();
   const links = [...linksFromHtml(htmlText), ...linksFromText(plain ? body : "")]
@@ -234,5 +239,6 @@ export function normalizeMessage(msg) {
     attachments: attachmentsOf(msg.payload),
     labelIds: msg.labelIds || [],
     isBulk: Boolean(header(h, "List-Unsubscribe") || /bulk|list/i.test(header(h, "Precedence"))),
+    ...(hiddenText ? { hiddenText } : {}),
   };
 }

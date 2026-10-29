@@ -4,6 +4,7 @@
 
 import { simpleParser } from "mailparser";
 import { htmlToText, linksFromHtml, linksFromText, parseAuthResults } from "./gmail.js";
+import { hiddenTextFromHtml } from "../../lib/promptGuard/hidden.js";
 
 export async function parseEml(source) {
   const mail = await simpleParser(source, { skipImageLinks: true, skipTextToHtml: true });
@@ -18,6 +19,7 @@ export async function parseEml(source) {
   const firstInbound = mail.headerLines.filter((h) => h.key === "received").map(unfold).find((v) => /\bfrom\b/i.test(v)) || "";
   const viaGmail = /\bby mx\.google\.com\b/i.test(firstInbound);
   const html = typeof mail.html === "string" ? mail.html : "";
+  const hiddenText = hiddenTextFromHtml(html); // for the injection checks only
   const body = (mail.text || htmlToText(html) || "").trim();
   const seen = new Set();
   const links = [...linksFromHtml(html), ...linksFromText(mail.text || "")]
@@ -35,5 +37,6 @@ export async function parseEml(source) {
     auth: viaGmail ? parseAuthResults(authHeaders, from.address || "") : "spf=none dkim=none dmarc=none",
     authVerified: viaGmail,
     attachments: (mail.attachments || []).map((a) => ({ filename: a.filename || "", mimeType: a.contentType || "", size: a.size || 0 })),
+    ...(hiddenText ? { hiddenText } : {}),
   };
 }
