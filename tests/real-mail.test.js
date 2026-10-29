@@ -248,3 +248,42 @@ test("a real PayPal user's PayPal invoice with a callback number is not 'authent
   assert.equal(receipt._authentic, true, "a plain receipt from a provider she uses stays authentic");
   assert.equal(receipt.verdict, "safe");
 });
+
+// Oct 29, Hadrien's inbox: real newsletters flagged by the rules while
+// Muse Spark said Safe (the guardrail then forced Be careful).
+const SENDGRID_BUTTON = { fromName: "Joanne Domeniconi", from: "hello@joannedomeniconi.com", auth: PASS, subject: "This week's workshop",
+  body: "New dates for the spring workshop are up. See you there!",
+  links: [{ text: "joannedomeniconi.com", href: "https://u111538503.ct.sendgrid.net/ls/click?upn=abc123" }] };
+
+test("legit: a button showing the sender's own site through its email service's tracker (SendGrid) is not a disguise", () => {
+  const v = run(SENDGRID_BUTTON);
+  assert.notEqual(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+  assert.ok(!v.reasons.some((r) => /really leads to/.test(r.text)), v.reasons.map((r) => r.text).join(" | "));
+});
+
+test("the email-service exemption needs the sender's own site, authenticated", () => {
+  const brandText = run({ ...SENDGRID_BUTTON, body: "Your PayPal account is limited. Log in to restore it.", links: [{ text: "paypal.com", href: "https://u1.ct.sendgrid.net/ls/click?upn=x" }] });
+  assert.equal(brandText.verdict, "scam", "showing someone else's site through the tracker is still a disguise");
+  const unauth = run({ ...SENDGRID_BUTTON, auth: "spf=fail dkim=none dmarc=fail" });
+  assert.ok(unauth.reasons.some((r) => /really leads to/.test(r.text)), "an unproven sender gets no exemption");
+});
+
+test("a pasted address that openly passes through a redirect is said, not called a disguise (Snowball)", () => {
+  const v = run({ fromName: "Snowball", from: "newsletter@media.snowball.xyz", replyTo: "hello@snowball.xyz", auth: PASS, subject: "Weekly market notes",
+    body: "Read the annual report: https://redirect.media-snowball.com/?url=https%3A%2F%2Fs206.q4cdn.com%2Freport.pdf",
+    links: [{ text: "https://redirect.media-snowball.com/?url=https%3A%2F%2Fs206.q4cdn.com%2Freport.pdf", href: "https://redirect.media-snowball.com/?url=https%3A%2F%2Fs206.q4cdn.com%2Freport.pdf" }] });
+  assert.notEqual(v.verdict, "scam", v.reasons.map((r) => r.text).join(" | "));
+});
+
+test("a sender the person kept is not called a scam on soft signs, but hard evidence still counts", () => {
+  const kept = { ...ctx, knownSenders: [{ name: "Joanne", email: "hello@joannedomeniconi.com", brand: null, confirmedByUser: true }] };
+  const odd = { ...SENDGRID_BUTTON, links: [{ text: "joannedomeniconi.com", href: "https://workshops.example-cdn.test/spring" }] };
+  assert.notEqual(run(odd, kept).verdict, "scam", "a kept sender's odd-looking link alone is not a scam");
+  assert.equal(run(odd).verdict, "scam", "without the keep, the same message is still caught");
+  const hacked = { ...odd, body: "Urgent: confirm your bank details to keep your place. Enter your card number here.", links: [{ text: "joannedomeniconi.com", href: "https://joanne-pay.example-new.test/card" }] };
+  assert.equal(run(hacked, kept).verdict, "scam", "a kept sender asking for card details is still a scam (hacked mailbox)");
+  const spoofed = run(odd, { ...kept });
+  assert.ok(spoofed);
+  const unauth = run({ ...odd, auth: "spf=fail dkim=none dmarc=fail" }, kept);
+  assert.equal(unauth.verdict, "scam", "the keep counts only when Gmail proves the address");
+});
