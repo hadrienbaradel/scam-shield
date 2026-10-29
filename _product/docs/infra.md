@@ -2,6 +2,8 @@ Keywords: docker, compose, infra, database, postgres, ci, github actions, deploy
 
 # Infrastructure
 
+One database: Postgres, the one `make server` starts. Every feature stores its data there (a table and a migration under `src/db/migrations`), including caches, queues and documents; no second datastore (MongoDB, Redis, SQLite, a cloud KV) without a decision noted in `_product/spec.md` and `docs/ARCHITECTURE.md`. Vlad, 2026-10-29.
+
 Two commands run the project: `make install` (Node check, `npm ci`, master key and credentials, the Postgres image pulled) then
 `make server` (Postgres via Docker Compose, waits for healthy, creates `scam_shield` and `scam_shield_test`, migrates, starts the
 app with restart on change at http://localhost:3000). `make setup` and `make dev` are aliases of these two. `make` lists everything.
