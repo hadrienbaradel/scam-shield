@@ -61,7 +61,8 @@ function demoSource() {
     demo: true,
     async load() {
       data = data || await api(`/api/demo/today?lang=${getLang()}`);
-      return { name: data.name, guardian: data.guardian, checked: data.checked, moved: 0, queue: data.queue.filter((q) => !demoDone.has(q.id)) };
+      return { name: data.name, guardian: data.guardian, checked: data.checked, moved: 0, queue: data.queue.filter((q) => !demoDone.has(q.id)),
+        voicemail: data.voicemail && !demoDone.has(`voicemail-${getLang()}`) };
     },
     async open(item) {
       const { callBack, ...verdict } = await api("/api/demo/check", { method: "POST", body: { id: item.id } });
@@ -146,8 +147,28 @@ function drawToday({ focus = true } = {}) {
       ${S.info.moved ? `<p class="v2-line">${icon("folder", 26)} ${esc(t("v2_moved", { n: S.info.moved }))}</p>` : ""}
       ${g ? `<p class="v2-line"><span class="v2-avatar" aria-hidden="true">${esc(firstName(g.name).charAt(0))}</span> ${esc(t("v2_trusted", { name: firstName(g.name) }))}</p>`
     : S.source.demo ? "" : `<p class="v2-line"><a href="#/people">${t("v2_no_trusted")}</a></p>`}
+      ${S.info.voicemail ? `
+        <section class="v2-voice" aria-labelledby="v2VoiceTitle">
+          <h2 id="v2VoiceTitle" class="v2-voice-title">${icon("speaker", 26)} ${t("v2_voicemail_title")}</h2>
+          <audio controls preload="none" src="${VOICEMAIL_URL()}"></audio>
+          <button id="v2Voice" class="btn btn-navy v2-big" type="button">${t("v2_voicemail_check")}</button>
+        </section>` : ""}
     </div>`, { focus });
   $("#v2Look")?.addEventListener("click", () => openCard(0));
+  $("#v2Voice")?.addEventListener("click", (e) => busy(e.currentTarget, openVoicemail, t("checking")));
+}
+
+// The demo voicemail: Muse Voice Transcribe writes it down, the same
+// check judges it, and it opens as one more card (recording + words under
+// "Show me the message").
+const VOICEMAIL_URL = () => `/api/demo/voicemail?lang=${getLang()}`;
+async function openVoicemail() {
+  const out = await api("/api/demo/voicemail", { method: "POST", body: { lang: getLang() } });
+  const item = { id: `voicemail-${getLang()}`, fromName: t("v2_voicemail_from"), from: out.message.from, subject: "", channel: "voice" };
+  S.details.set(item.id, { verdict: out.verdict, message: { ...out.message, fromName: item.fromName, audio: VOICEMAIL_URL() }, callBack: out.callBack || null, checkId: null });
+  S.queue = [item, ...S.queue.filter((q) => q.id !== item.id)];
+  S.total = (S.total || 0) + 1;
+  openCard(0);
 }
 
 async function openCard(i) {
@@ -241,6 +262,7 @@ function drawCard({ keep = null } = {}) {
             <p class="small">${esc(t("checked_by", { source: v.source || "Prudence" }))}</p>
           </div>
           <div id="v2BodyBox" ${S.open.body ? "" : "hidden"}>
+            ${m.audio ? `<audio controls preload="none" src="${esc(m.audio)}"></audio>` : ""}
             <p class="mail-meta">${esc(m.fromName || "")} &lt;${esc(m.from || "")}&gt;</p>
             ${m.subject ? `<p><strong>${esc(m.subject)}</strong></p>` : ""}
             <pre class="mail-body">${esc(m.body || "")}</pre>

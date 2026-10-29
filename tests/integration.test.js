@@ -12,6 +12,9 @@ import { putBack, fileAsScam, undoThrow, undoKeep } from "../src/sync/actions.js
 import { seenBeforeFor } from "../src/sync/checker.js";
 import { acceptInvite } from "../src/guardians.js";
 import { fakeGmail, gmailMessage } from "./helpers/fake-gmail.js";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const ORIGIN = "http://localhost:3999";
 const PASS = "spf=pass dkim=pass dmarc=pass";
@@ -142,6 +145,43 @@ test("HTTP: a voice message is transcribed by Muse Voice Transcribe, judged, and
   } finally {
     globalThis.fetch = realFetch;
     delete process.env.META_MODEL_API_KEY;
+  }
+});
+
+test("HTTP: the demo voicemail is heard by Muse Voice Transcribe and judged; without a file there is none", opts, async () => {
+  const dir = await mkdtemp(join(tmpdir(), "demo-voice-"));
+  process.env.DEMO_VOICEMAIL_DIR = dir;
+  assert.equal((await app.inject({ url: "/api/demo/today?lang=en" })).json().voicemail, false, "no recording, no voicemail box");
+  const wav = Buffer.concat([Buffer.from("RIFF\x24\x7d\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x80\x3e\x00\x00\x00\x7d\x00\x00\x02\x00\x10\x00data\x00\x7d\x00\x00", "latin1"), Buffer.alloc(32000)]);
+  await writeFile(join(dir, "voicemail-en.wav"), wav);
+  process.env.DEMO_VOICEMAIL_DIR = dir;
+  process.env.META_MODEL_API_KEY = "test-key";
+  const realFetch = globalThis.fetch;
+  const heard = "Grandma, it's me. I had an accident and I'm at the police station. Please buy two thousand dollars in gift cards today and don't tell Mom.";
+  let heardCalls = 0;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("/asr/transcribe")) { heardCalls++; return new Response(`${heard}\n`, { status: 200 }); }
+    if (String(url).includes("/chat/completions")) return new Response("{}", { status: 500 });
+    return realFetch(url, init);
+  };
+  try {
+    assert.equal((await app.inject({ url: "/api/demo/today?lang=en" })).json().voicemail, true);
+    const audio = await app.inject({ url: "/api/demo/voicemail?lang=en" });
+    assert.equal(audio.statusCode, 200);
+    assert.match(audio.headers["content-type"], /audio\/wav/);
+    assert.equal((await app.inject({ url: "/api/demo/voicemail?lang=fr" })).statusCode, 404, "no French recording, no French voicemail");
+    const res = await app.inject({ method: "POST", url: "/api/demo/voicemail", headers: { origin: ORIGIN }, payload: { lang: "en" } });
+    assert.equal(res.statusCode, 200, res.body);
+    const out = res.json();
+    assert.equal(out.transcript, heard);
+    assert.equal(out.message.channel, "voice_transcript");
+    assert.equal(out.verdict.verdict, "scam", "gift cards, bail, secrecy: a scam even when the AI check fails");
+    assert.equal(heardCalls, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.META_MODEL_API_KEY;
+    delete process.env.DEMO_VOICEMAIL_DIR;
+    await rm(dir, { recursive: true, force: true });
   }
 });
 
