@@ -160,7 +160,9 @@ function drawCard() {
   const reasons = v.reasons || [];
   const m = d.message || {};
   const word = v.verdict === "scam" ? t("pill_scam") : v.verdict === "be_careful" ? t("pill_careful") : t("pill_safe");
-  const primary = !scam && d.callBack
+  // A message using a family member's name: calling them on the number
+  // already saved is the safest step, whatever the verdict.
+  const primary = d.callBack
     ? `<a class="btn btn-navy v2-action" href="tel:${esc(String(d.callBack.phone).replace(/[^\d+]/g, ""))}">${icon("phone", 28)} ${esc(t("v2_call", { name: firstName(d.callBack.name) }))}</a>`
     : `<button id="v2Throw" class="btn btn-danger v2-action" type="button">${icon("trash", 28)} ${t("v2_throw")}</button>`;
   const second = g
@@ -193,8 +195,8 @@ function drawCard() {
         </article>
       </div>
       <div class="v2-actions">${primary}${second}</div>
-      ${!scam && d.callBack ? `<p class="v2-hint">${esc(t("v2_call_note", { name: firstName(d.callBack.name) }))}</p>` : ""}
-      ${!scam && d.callBack ? `<button id="v2Throw" class="btn btn-light-dark v2-quiet" type="button">${t("v2_throw")}</button>` : ""}
+      ${d.callBack ? `<p class="v2-hint">${esc(t("v2_call_note", { name: firstName(d.callBack.name) }))}</p>` : ""}
+      ${d.callBack ? `<button id="v2Throw" class="btn btn-light-dark v2-quiet" type="button">${t("v2_throw")}</button>` : ""}
       ${scam ? `<p class="v2-hint">${icon("left", 20)} ${t("v2_swipe_hint")}</p>` : ""}
       <button id="v2Keep" class="v2-link" type="button">${t("v2_keep")}</button>
     </div>`;
