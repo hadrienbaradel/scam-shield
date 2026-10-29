@@ -1,0 +1,40 @@
+id: tech-support
+title: La fenêtre qui hurle
+character: La Fenêtre qui hurle
+emoji: "🖥️"
+minutes: 1
+badge: Pro du bouton Fermer
+rule: N'appelez jamais un numéro affiché dans une fenêtre d'alerte. Fermez-la, ou éteignez l'ordinateur.
+steps:
+  - say:
+      - "Voici la **Fenêtre qui hurle**. Elle surgit sur votre écran et crie : « VIRUS ! APPELEZ MICROSOFT ! »"
+      - Elle sonne, elle clignote, elle vous supplie de ne pas la fermer. Quel spectacle, pour une simple fenêtre !
+  - ask: Une fenêtre dit que votre ordinateur est infecté et affiche un numéro à appeler. Que faites-vous ?
+    choices:
+      - text: J'appelle le numéro. C'est écrit Microsoft.
+        reply: Ce numéro sonne chez les escrocs, pas chez Microsoft. Beaucoup de gens prudents ont appelé, puis payé pour ne rien réparer.
+      - text: Je ferme la fenêtre, ou j'éteins l'ordinateur.
+        right: true
+        reply: Oui ! Enfin le silence. La Fenêtre qui hurle n'était qu'une page web, et la voilà partie.
+      - text: Je clique sur la fenêtre pour en savoir plus.
+        reply: Cliquer peut l'agrandir à tout l'écran, ou ouvrir d'autres fenêtres. Fermez-la, ou éteignez l'ordinateur.
+  - say:
+      - Ce n'est qu'une **page web**, déguisée en alerte effrayante.
+      - Microsoft ne surveille pas votre écran pour vous appeler chaque fois que votre ordinateur éternue.
+  - ask: Une alerte bruyante sur votre écran donne un numéro de téléphone. Qui se cache derrière ?
+    choices:
+      - text: Microsoft, qui veut m'aider.
+        reply: Microsoft répare en silence, sans numéro de téléphone. Ce numéro, c'est la signature de la Fenêtre qui hurle.
+      - text: Des escrocs. Le numéro de téléphone, c'est le piège.
+        right: true
+        reply: Exactement ! Pas d'appel, pas de piège. La Fenêtre qui hurle ne peut rien si vous n'appelez pas.
+  - say:
+      - "La règle : **n'appelez jamais** un numéro affiché dans une fenêtre. Fermez-la, ou éteignez l'ordinateur."
+      - Microsoft ne met jamais de numéro de téléphone dans une alerte de sécurité.
+  - ask: Deux messages apparaissent sur votre écran. Lequel est une vraie alerte ?
+    choices:
+      - text: « VIRUS DÉTECTÉ ! Appelez le 01 99 00 12 34 tout de suite. N'éteignez pas votre ordinateur. »
+        reply: Encore la Fenêtre qui hurle. Une vraie alerte ne vous donne jamais de numéro à appeler.
+      - text: "« Sécurité Windows : une menace a été trouvée et supprimée. Aucune action n'est nécessaire. »"
+        right: true
+        reply: Oui ! Une vraie alerte reste calme. Pas de numéro, pas de cris, rien à payer.

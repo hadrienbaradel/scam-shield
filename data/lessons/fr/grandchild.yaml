@@ -1,0 +1,41 @@
+id: grandchild
+title: Mamie, c'est moi !
+character: Le Petit-fils en détresse
+emoji: "👵"
+minutes: 1
+badge: Pilier de la famille
+rule: Si un proche demande de l'argent en urgence, rappelez-le au numéro que vous avez déjà.
+demo_case: B1
+steps:
+  - say:
+      - Voici le **Petit-fils en détresse**. Toujours un malheur, toujours loin, toujours pressé.
+      - « Mamie, c'est moi, j'ai changé de numéro. J'ai eu un accident, envoie 2000 € **tout de suite**. »
+  - ask: Votre « petit-fils » écrit d'un nouveau numéro et demande de l'argent tout de suite. Que faites-vous ?
+    choices:
+      - text: J'envoie l'argent. C'est la famille.
+        reply: Votre grand cœur, c'est tout ce qu'il espère. Beaucoup de grands-parents aimants ont été trompés ainsi.
+      - text: J'appelle mon petit-fils au numéro que j'ai déjà.
+        right: true
+        reply: Oui ! Votre vrai petit-fils décroche, sain et sauf, et très surpris. Le Petit-fils en détresse reste en détresse.
+      - text: Je lui écris une question que lui seul connaît.
+        reply: Bonne idée, mais il peut esquiver ou deviner. Le plus sûr reste d'appeler le numéro que vous avez déjà.
+  - say:
+      - "Ses indices ne changent jamais : un **nouveau numéro**, un **malheur**, de l'argent **tout de suite**, et un secret."
+      - Le secret est là pour que personne ne vérifie son histoire. Un appel à la famille suffit à le briser.
+  - ask: "Il ajoute : « N'en parle pas à papa. » Qu'est-ce que cela vous dit ?"
+    choices:
+      - text: Il a honte. Je dois garder son secret.
+        reply: C'est ce qu'il espère vous faire croire. Le secret est là pour que personne ne vérifie son histoire.
+      - text: C'est une ruse pour que personne ne vérifie. J'appelle la famille.
+        right: true
+        reply: Exactement. Un appel à la famille, et son histoire tombe à l'eau.
+  - say:
+      - "La règle : **rappelez la personne** au numéro que vous avez déjà. Jamais au nouveau."
+      - Un vrai avocat ou un vrai policier n'envoie jamais quelqu'un chercher de l'argent chez vous.
+  - ask: Deux messages arrivent. Lequel vient vraiment de votre petit-fils ?
+    choices:
+      - text: "D'un nouveau numéro : « Mamie, j'ai eu un accident. Envoie de l'argent et n'en parle pas à papa. »"
+        reply: Encore le Petit-fils en détresse, déguisé. Nouveau numéro, malheur, secret. Tous ses indices préférés.
+      - text: "De son numéro habituel : « À dimanche, Mamie ! J'apporte le dessert. »"
+        right: true
+        reply: Oui ! Son numéro habituel, et ni argent, ni urgence, ni secret. C'est bien lui. Bon dessert !

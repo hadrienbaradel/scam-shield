@@ -1,0 +1,42 @@
+id: codes
+title: Le piège du « lisez-moi le code »
+character: Monsieur Lisez-moi-le-code
+emoji: "🔑"
+minutes: 1
+badge: Gardien des codes
+rule: Un code reçu est une clé. Ne le donnez jamais à quelqu'un qui vous appelle ou vous écrit.
+demo_case: A2
+steps:
+  - say:
+      - Voici **Monsieur Lisez-moi-le-code**. Très poli. Il ne veut que six petits chiffres.
+      - « Je vous envoie un code par SMS. Lisez-le-moi, c'est pour protéger votre compte. »
+  - ask: Un code arrive par SMS, et quelqu'un au téléphone vous demande de le lui lire. Que faites-vous ?
+    choices:
+      - text: Je le lis. Ce ne sont que six chiffres.
+        reply: Ces six chiffres peuvent lui ouvrir votre compte. Beaucoup de gens prudents en ont lu un. Le piège est bien rodé.
+      - text: Je le garde pour moi et je raccroche.
+        right: true
+        reply: Oui ! La porte reste fermée. Monsieur Lisez-moi-le-code reste avec son téléphone, et rien d'autre.
+      - text: Je lui demande pourquoi il en a besoin.
+        reply: Il a toujours une belle raison toute prête. Aucune ne suffit. Un code, c'est pour vous et personne d'autre.
+  - say:
+      - Un code, c'est une **clé**. Il ouvre votre compte en banque, votre messagerie ou votre WhatsApp.
+      - "Regardez le SMS qui l'apporte. Il dit souvent : **ne le communiquez à personne**. Même votre banque le dit !"
+  - ask: Le SMS de votre code dit « Ne le communiquez à personne ». À qui pouvez-vous le lire ?
+    choices:
+      - text: Seulement à ma banque, si elle m'appelle.
+        reply: Celui qui appelle dit seulement être votre banque. Une vraie banque qui vous appelle ne demande jamais le code envoyé.
+      - text: À personne. Même pas à quelqu'un qui dit être ma banque.
+        right: true
+        reply: Exactement. Votre banque a déjà votre argent. Elle n'a pas besoin de votre code en plus.
+  - say:
+      - "La règle : un code est une clé. **Ne le donnez jamais** à quelqu'un qui vous appelle ou vous écrit."
+      - Le Crédit Agricole ne vous demande jamais vos codes par e-mail ou SMS.
+      - Et une vraie banque ne vous appelle jamais pour en demander un.
+  - ask: Deux SMS arrivent. Auquel pouvez-vous faire confiance ?
+    choices:
+      - text: « Mamie, je t'ai envoyé mon code par erreur. Tu peux me le renvoyer ? »
+        reply: C'est Monsieur Lisez-moi-le-code déguisé en petit-fils. Ce code lui ouvrirait votre WhatsApp.
+      - text: "« Votre code : 482913. Ne le communiquez à personne. Nous ne vous le demanderons jamais. »"
+        right: true
+        reply: Oui ! Un vrai code arrive avec un conseil, le garder. Servez-vous-en seulement si vous l'avez demandé vous-même.

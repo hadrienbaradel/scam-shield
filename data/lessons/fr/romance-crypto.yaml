@@ -1,0 +1,41 @@
+id: romance-crypto
+title: Trop beau pour être vrai
+character: L'Ami qui n'allume jamais sa caméra
+emoji: "💘"
+minutes: 1
+badge: Grand cœur, porte-monnaie fermé
+rule: Quelqu'un que vous n'avez jamais rencontré et qui parle d'argent n'est pas un ami. Ne lui envoyez rien.
+steps:
+  - say:
+      - Voici l'**Ami qui n'allume jamais sa caméra**. Des semaines de messages tendres. Toujours gentil, toujours là.
+      - "Mais sa caméra est toujours en panne. Et un jour, il parle d'**argent** : un placement en cryptomonnaie, ou une urgence."
+  - ask: Après des semaines de messages tendres, il vous propose de placer 2000 € en cryptomonnaie avec lui. Que faites-vous ?
+    choices:
+      - text: J'envoie l'argent. Il a été si gentil.
+        reply: Sa gentillesse était l'appât, et il est très doué. Ce piège a trompé beaucoup de gens prudents et aimants.
+      - text: Je n'envoie rien, et j'en parle à quelqu'un de confiance.
+        right: true
+        reply: Oui ! Votre cœur reste ouvert et votre porte-monnaie fermé. Il devra trouver une autre histoire.
+      - text: Je lui demande d'abord un appel vidéo.
+        reply: Bonne idée, mais il trouvera une excuse, ou une fausse vidéo. Le vrai indice, c'est l'argent. N'envoyez rien.
+  - say:
+      - "Ses indices : il ne vous rencontre jamais, n'allume jamais sa caméra, et finit toujours par parler d'**argent**."
+      - Souvent, il vous demande de garder vos échanges **secrets**. Ainsi, personne qui vous aime ne voit le piège.
+  - ask: "Il écrit : « Ta famille ne nous comprendrait pas. Gardons ça entre nous. » Qu'est-ce que cela vous dit ?"
+    choices:
+      - text: Il est discret sur notre amour.
+        reply: C'est ce qu'il veut vous faire croire. Le secret est là pour que personne qui vous aime ne puisse vous prévenir.
+      - text: Il veut que personne ne me prévienne. J'en parle à ma famille.
+        right: true
+        reply: Exactement. Ceux qui vous aiment sont ses pires ennemis. Une discussion avec eux, et le charme est rompu.
+  - say:
+      - "La règle : quelqu'un que vous n'avez **jamais rencontré** et qui parle d'argent n'est **pas un ami**."
+      - Un vrai ami ne vous demande jamais de cryptomonnaie, ni de cacher quoi que ce soit à votre famille.
+      - Déjà envoyé de l'argent ? Vous n'y êtes pour rien. Parlez-en à vos proches et appelez votre banque.
+  - ask: Deux messages arrivent. Lequel vient d'une personne de confiance ?
+    choices:
+      - text: « Mon cœur, place 2000 € en cryptomonnaie avec moi, et nous construirons notre avenir. »
+        reply: C'est l'Ami qui n'allume jamais sa caméra. Des mots doux, puis de l'argent. Un vrai ami ne fait pas de l'amour un placement.
+      - text: « Quel bon déjeuner mardi ! Même café le mois prochain ? Bises, Monique. »
+        right: true
+        reply: Oui ! Quelqu'un que vous avez vraiment vu, un vrai déjeuner, et pas un mot d'argent. Ça, c'est une vraie amie.

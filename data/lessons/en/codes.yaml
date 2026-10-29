@@ -1,0 +1,41 @@
+id: codes
+title: The "read me the code" trick
+character: Mr. Read-Me-The-Code
+emoji: "🔑"
+minutes: 1
+badge: Code keeper
+rule: A code sent to you is a key. Never read it out or send it to anyone who calls or writes.
+demo_case: B10
+steps:
+  - say:
+      - Meet **Mr. Read-Me-The-Code**. Very polite. He only wants six little numbers.
+      - '"I am sending you a code by text. Just read it to me, so I can protect your account."'
+  - ask: A code arrives by text, and a caller asks you to read it to him. What do you do?
+    choices:
+      - text: Read it. It is only six numbers.
+        reply: Those six numbers can open your account to him. Many careful people have read one out. It is a clever trick.
+      - text: Keep it to myself and hang up.
+        right: true
+        reply: Yes! The door stays locked. Mr. Read-Me-The-Code is left with a phone in his hand and nothing else.
+      - text: Ask him why he needs it.
+        reply: He always has a lovely reason ready. No reason is good enough. A code is for you, and no one else.
+  - say:
+      - A code is a **key**. It opens your bank account, your email or your WhatsApp.
+      - 'Look at the text that brings it. It often says: **do not share this code**. Even your bank says so!'
+  - ask: The text with your code says "Do not share it." Who can you read it to?
+    choices:
+      - text: Only my bank, if they call me.
+        reply: The caller only says he is your bank. A real bank that calls you never asks for the code it sent.
+      - text: No one. Not even someone who says they are my bank.
+        right: true
+        reply: Exactly. Your bank already has your money. It does not need your code as well.
+  - say:
+      - 'The rule: a code is a key. **Never read it out or send it** to anyone who calls or writes.'
+      - WhatsApp never asks for your 6-digit code. A real bank never calls to ask for one either.
+  - ask: Two texts arrive. Which one can you trust?
+    choices:
+      - text: '"Hi Grandma, I sent you my code by mistake. Can you send it back to me?"'
+        reply: That is Mr. Read-Me-The-Code in a grandson costume. That code would open your WhatsApp to him.
+      - text: '"Your code is 482913. Do not share it. We will never call you to ask for it."'
+        right: true
+        reply: Yes! A real code comes with a warning to keep it. Use it only when you asked for it yourself.

@@ -1,0 +1,41 @@
+id: grandchild
+title: It's me, Grandma!
+character: Cousin Stuck Abroad
+emoji: "👵"
+minutes: 1
+badge: Call-back champion
+rule: If family asks for money in a hurry, call them back on the number you already have.
+demo_case: B2
+steps:
+  - say:
+      - Meet **Cousin Stuck Abroad**. He is never really your cousin. Today, he plays your grandson.
+      - '"Hi Grandma, it''s me! I changed my number. Can you send $300 today? I''ll explain later."'
+  - ask: Your "grandson" texts from a new number and asks for $300 today. What do you do?
+    choices:
+      - text: Send it. He is family.
+        reply: Your kind heart is what he counts on. Many loving grandparents have been fooled this way.
+      - text: Call my grandson on the number I already have.
+        right: true
+        reply: Yes! Your real grandson answers, safe and sound, and very surprised. Cousin Stuck Abroad stays stuck.
+      - text: Text back a question only he would know.
+        reply: Good thinking, but he may dodge it or guess. Calling the number you already have is the sure way.
+  - say:
+      - 'His clues never change: a **new number**, **trouble**, money **now**, and often a secret.'
+      - The secret is there so no one checks his story. One call to the family breaks it.
+  - ask: 'He adds: "Please don''t tell Mom." What does that tell you?'
+    choices:
+      - text: He is embarrassed. I should keep his secret.
+        reply: That is just how he hopes you will feel. The secret is there so that no one checks his story.
+      - text: It is a trick so no one checks. I call the family.
+        right: true
+        reply: Exactly. One call to the family, and his story falls apart.
+  - say:
+      - 'The rule: **call them back** on the number you already have. Never on the new one.'
+      - A real lawyer or police officer never sends someone to collect cash, or asks for gift cards.
+  - ask: Two texts arrive. Which one is really from your grandson?
+    choices:
+      - text: 'From a new number: "Grandma, I had an accident. Send money now and don''t tell Mom."'
+        reply: Cousin Stuck Abroad again, in costume. New number, trouble, a secret. All his favorite clues.
+      - text: 'From his usual number: "See you Sunday, Grandma! I will bring dessert."'
+        right: true
+        reply: Yes! His usual number, and no money, no rush, no secret. That is the real one. Enjoy the dessert!

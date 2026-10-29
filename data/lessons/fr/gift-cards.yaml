@@ -1,0 +1,41 @@
+id: gift-cards
+title: Le piège des cartes cadeaux
+character: Monsieur Carte Cadeau
+emoji: "🎁"
+minutes: 1
+badge: Incollable sur les cartes cadeaux
+rule: Aucun organisme officiel ne se fait payer en cartes cadeaux ou en coupons. Qui vous en demande est un escroc.
+steps:
+  - say:
+      - Voici **Monsieur Carte Cadeau**. Il se déguise en gendarme, en huissier, et même en ami dans le pétrin.
+      - « Vous avez une amende impayée de 135 €. Réglez-la aujourd'hui en **coupons PCS**, sinon les gendarmes passeront. »
+  - ask: On vous dit de payer une amende aujourd'hui, en coupons PCS ou en cartes cadeaux. Que faites-vous ?
+    choices:
+      - text: J'achète vite les coupons, pour éviter les ennuis.
+        reply: La peur, c'est son outil préféré, et beaucoup de gens prudents ont acheté les coupons. Aucune amende ne se paie ainsi.
+      - text: Je raccroche. Une amende ne se paie jamais en coupons.
+        right: true
+        reply: Oui ! Les gendarmes ne prennent pas les cartes cadeaux, même joliment emballées. Monsieur Carte Cadeau repart bredouille.
+      - text: Je demande à payer la moitié maintenant.
+        reply: Il prendra volontiers la moitié, puis réclamera le reste. Aucun service public n'accepte de coupons.
+  - say:
+      - Pourquoi des coupons ? Dès qu'il a **le code au dos**, l'argent est parti, et presque impossible à récupérer.
+      - "Il vous dit même quoi répondre au bureau de tabac : « C'est un cadeau pour mes petits-enfants. »"
+  - ask: Au bureau de tabac, on vous demande pour qui sont tous ces coupons. Que répondez-vous ?
+    choices:
+      - text: Un cadeau, comme on me l'a conseillé.
+        reply: Ce petit mensonge le protège, lui, pas vous. Beaucoup de buralistes connaissent ce piège. Laissez-les vous aider.
+      - text: La vérité. Le buraliste connaît peut-être ce piège.
+        right: true
+        reply: Exactement ! Beaucoup de buralistes ont déjà croisé Monsieur Carte Cadeau. Un mot honnête, et son plan tombe à l'eau.
+  - say:
+      - "La règle : **aucun organisme officiel ne se fait payer en cartes cadeaux** ni en coupons."
+      - Les amendes ne se paient jamais en scannant un QR code sur l'avis papier.
+      - Ni en coupons, bien sûr. Une vraie amende, vous pouvez la vérifier vous-même sur antai.gouv.fr.
+  - ask: Deux messages parlent d'une amende. Lequel est le vrai ?
+    choices:
+      - text: "« Gendarmerie : amende de 135 € à régler aujourd'hui en coupons PCS. Lisez-nous le code au dos. »"
+        reply: Encore Monsieur Carte Cadeau, en uniforme cette fois. Aucun gendarme ne demande de coupons, ni le code au dos.
+      - text: « Un avis de contravention a été émis. Consultez-le vous-même sur antai.gouv.fr avec le numéro de l'avis papier. »
+        right: true
+        reply: Oui ! Il vous envoie vérifier vous-même, sur le vrai site, avec votre avis papier. Pas un coupon en vue.

@@ -1,0 +1,41 @@
+id: tech-support
+title: The screaming pop-up
+character: The Pop-up That Screams
+emoji: "🖥️"
+minutes: 1
+badge: Pop-up silencer
+rule: Never call a number shown in a pop-up window. Close it, or turn the computer off.
+demo_case: D6
+steps:
+  - say:
+      - 'Meet the **Pop-up That Screams**. It jumps onto your screen and yells: "VIRUS! CALL MICROSOFT NOW!"'
+      - It beeps, it flashes, it begs you not to close it. Quite a show for a little window.
+  - ask: A window says your computer is infected and shows a number to call. What do you do?
+    choices:
+      - text: Call the number. It says Microsoft.
+        reply: That number rings the scammers, not Microsoft. Many careful people have called it, then paid to fix nothing.
+      - text: Close the window, or turn the computer off.
+        right: true
+        reply: Yes! Silence at last. The Pop-up That Screams was only a web page, and now it is gone.
+      - text: Click on the window to read more.
+        reply: Clicking can make it fill the screen, or open more windows. Close it, or turn the computer off.
+  - say:
+      - It is only a **web page**, dressed up as a scary warning.
+      - Microsoft does not watch your screen and phone you each time your computer sneezes.
+  - ask: A loud warning on your screen gives a phone number. Who is behind it?
+    choices:
+      - text: Microsoft, trying to help me.
+        reply: Microsoft fixes things quietly, with no phone number. That number is the Pop-up's signature.
+      - text: Scammers. The phone number is the trap.
+        right: true
+        reply: Right! No call, no trick. The Pop-up That Screams cannot reach you if you do not call.
+  - say:
+      - 'The rule: **never call a number** from a pop-up. Close the window, or turn the computer off.'
+      - Microsoft never puts a phone number in a security warning.
+  - ask: Two messages appear on your screen. Which one is a real warning?
+    choices:
+      - text: '"VIRUS FOUND! Call 1-555-0166 now. Do not turn off your computer."'
+        reply: The Pop-up That Screams again. A real warning never gives you a number to call.
+      - text: '"Windows Security: a threat was found and removed. No action is needed."'
+        right: true
+        reply: Yes! A real warning is calm. No phone number, no shouting, nothing to pay.

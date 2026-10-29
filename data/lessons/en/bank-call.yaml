@@ -1,0 +1,41 @@
+id: bank-call
+title: The bank calls you
+character: The Bank That Forgot Your Name
+emoji: "🏦"
+minutes: 1
+badge: Hang-up hero
+rule: When "your bank" calls about fraud, hang up and call the number on the back of your card.
+demo_case: D4
+steps:
+  - say:
+      - Meet the **Bank That Forgot Your Name**. It forgot your name, yes. Your savings, not at all.
+      - 'It texts: "Fraud alert! Did you send $1,250?" Then its "fraud team" calls to save the day.'
+  - ask: 'The "fraud team" says: "Move your money to a **safe account** to protect it." What do you do?'
+    choices:
+      - text: Move it fast, before the thief does.
+        reply: Many careful people have been fooled this way. The "safe account" belongs to the thief himself.
+      - text: Hang up and call the number on the back of my card.
+        right: true
+        reply: Yes! Your real bank answers, and your money stays put. The Bank That Forgot Your Name gets a dial tone.
+      - text: Ask the caller for a name and an employee number.
+        reply: You would get a lovely name and a number, all made up. Hang up and call your bank yourself.
+  - say:
+      - The fraud team that calls to protect you from fraud **is the fraud**.
+      - It can even make your bank's name show on your phone. That part is easy to fake.
+  - ask: Your phone shows "Chase" when it rings. Can you trust the call?
+    choices:
+      - text: Yes. It says Chase right there on the screen.
+        reply: Anyone can make a phone show "Chase". The Bank That Forgot Your Name does it all day long.
+      - text: Not by itself. I hang up and call the number on my card.
+        right: true
+        reply: Exactly. The screen can lie; the number on your card cannot. You call, so you know who answers.
+  - say:
+      - 'The rule: **hang up**, then call the number on the back of your card yourself.'
+      - Chase never asks you to move money to protect it.
+  - ask: Two texts arrive. Which one really comes from your bank?
+    choices:
+      - text: '"Fraud alert: move your savings to a safe account today."'
+        reply: That is the Bank That Forgot Your Name again. A real bank never asks you to move your money.
+      - text: '"A payment of $120 was made. If this was not you, call the number on your card."'
+        right: true
+        reply: Right! No link, no rush, no "safe account". It sends you to the number you already trust.

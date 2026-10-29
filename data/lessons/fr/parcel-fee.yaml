@@ -4,7 +4,7 @@ character: Monsieur Petits Frais
 emoji: "📦"
 minutes: 1
 badge: Détective des faux frais
-rule: Un vrai transporteur ne vous demande jamais de payer des frais par SMS.
+rule: Ne payez jamais de frais de livraison depuis un lien dans un SMS. Passez par le site ou l'application du transporteur.
 demo_case: A4
 steps:
   - say:

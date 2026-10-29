@@ -1,0 +1,42 @@
+id: romance-crypto
+title: Too sweet to be true
+character: The Friend Who Never Video-Calls
+emoji: "💘"
+minutes: 1
+badge: Big heart, closed wallet
+rule: Someone you have never met who talks about money is not a friend. Send them nothing.
+demo_case: B12
+steps:
+  - say:
+      - Meet the **Friend Who Never Video-Calls**. Weeks of sweet messages. Always kind, always there.
+      - 'But his camera is always broken. And one day, he talks about **money**: a crypto tip, or an emergency.'
+  - ask: After weeks of kind messages, he asks you to invest $2,000 in crypto with him. What do you do?
+    choices:
+      - text: Send it. He has been so kind to me.
+        reply: His kindness was the bait, and he is very good at it. This trick has fooled many careful, loving people.
+      - text: Send nothing, and talk to someone I trust.
+        right: true
+        reply: Yes! Your heart stays open and your wallet stays shut. He will have to find another story.
+      - text: Ask him for a video call first.
+        reply: A fair test, but he will dodge it or fake it. The money talk is the real clue. Send nothing.
+  - say:
+      - 'His clues: he never meets you, never turns on his camera, and sooner or later talks about **money**.'
+      - He often asks you to keep your talks **secret**. That way, no one who loves you can see the trick.
+  - ask: '"Your family would not understand us. Keep this between us." What does that tell you?'
+    choices:
+      - text: He is shy about our love.
+        reply: That is how he wants it to feel. The secret is there so no one who loves you can warn you.
+      - text: He wants no one to warn me. Time to tell my family.
+        right: true
+        reply: Exactly. The people who love you are his worst enemy. One talk with them, and the spell breaks.
+  - say:
+      - 'The rule: someone you have **never met** who talks about money is **not a friend**.'
+      - A real friend never asks you for crypto, or to keep secrets from your family.
+      - Already sent money? You are far from alone. Tell your family and call your bank.
+  - ask: Two messages arrive. Which one is from a real friend?
+    choices:
+      - text: '"My dear, invest $2,000 in crypto with me, and we will build our future together."'
+        reply: That is the Friend Who Never Video-Calls. Sweet words, then money. A real friend does not turn love into an investment.
+      - text: '"Lovely lunch on Tuesday! Same café next month? Love, Mary."'
+        right: true
+        reply: Yes! Someone you have really met, a real lunch, and not a word about money. That is a friend.

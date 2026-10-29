@@ -1,0 +1,41 @@
+id: gift-cards
+title: The gift card trap
+character: Mr. Gift Card
+emoji: "🎁"
+minutes: 1
+badge: Gift card guard
+rule: Nobody official is ever paid in gift cards. Anyone who asks for them is a scammer.
+demo_case: B7
+steps:
+  - say:
+      - Meet **Mr. Gift Card**. He dresses up as the IRS, the power company, even a friend in trouble.
+      - '"You owe $900 in taxes. Pay today with **gift cards**, or the police will come to your door."'
+  - ask: A caller says you owe taxes and must pay today with gift cards. What do you do?
+    choices:
+      - text: Buy the cards quickly, to avoid trouble.
+        reply: Fear is his favorite tool, and many careful people have bought the cards. No tax office takes them.
+      - text: Hang up. Taxes are never paid with gift cards.
+        right: true
+        reply: Yes! The tax office does not take supermarket gift cards, however carefully you scratch them.
+      - text: Ask if I can pay half now and half later.
+        reply: He will gladly take half, then ask for the rest. A real tax office never takes gift cards at all.
+  - say:
+      - Why gift cards? Once he has **the numbers on the back**, the money is gone and very hard to get back.
+      - 'He even tells you what to say at the store: "They are presents for my grandchildren."'
+  - ask: At the store, the cashier asks who all these gift cards are for. What do you say?
+    choices:
+      - text: Presents, just as the caller told me to say.
+        reply: That little fib protects him, not you. Many cashiers know this trick. Let them help you.
+      - text: The truth. The cashier may know this trick.
+        right: true
+        reply: Exactly! Many cashiers have met Mr. Gift Card before. One honest word, and his plan falls apart.
+  - say:
+      - 'The rule: **nobody official is ever paid in gift cards.** Anyone who asks for them is a scammer.'
+      - The IRS never threatens arrest by email or asks for gift cards.
+  - ask: Two messages arrive. Which one is a real bill?
+    choices:
+      - text: '"IRS: you owe $900. Pay today with gift cards and read us the numbers on the back."'
+        reply: Mr. Gift Card again, in his IRS costume. No real office asks for gift cards, or for the numbers on the back.
+      - text: '"Your power bill of $84 is due Nov. 20. Pay as usual, by check or on our website."'
+        right: true
+        reply: Yes! A normal bill, a normal date, a normal way to pay. Not a gift card in sight.

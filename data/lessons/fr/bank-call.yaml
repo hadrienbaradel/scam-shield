@@ -1,0 +1,42 @@
+id: bank-call
+title: La banque vous appelle
+character: La Banque qui a oublié votre nom
+emoji: "🏦"
+minutes: 1
+badge: As du raccrochage
+rule: Si « votre banque » appelle pour une fraude, raccrochez et appelez le numéro au dos de votre carte.
+demo_case: A6
+steps:
+  - say:
+      - Voici la **Banque qui a oublié votre nom**. Votre nom, elle l'a oublié. Votre épargne, pas du tout.
+      - "Elle écrit : « Paiement suspect de 700 € ! » Puis son « service antifraude » vous appelle pour vous sauver."
+  - ask: "Le « service antifraude » dit : « Virez votre argent sur un **compte sécurisé**. » Que faites-vous ?"
+    choices:
+      - text: Je vire l'argent vite, avant le voleur.
+        reply: Beaucoup de gens prudents s'y sont laissé prendre. Le « compte sécurisé » appartient au voleur lui-même.
+      - text: Je raccroche et j'appelle le numéro au dos de ma carte.
+        right: true
+        reply: Oui ! Votre vraie banque répond, et votre argent ne bouge pas. La Banque qui a oublié votre nom n'entend que la tonalité.
+      - text: Je demande son nom et son matricule.
+        reply: Vous auriez un joli nom et un matricule, tout inventés. Raccrochez et appelez vous-même votre banque.
+  - say:
+      - Le service antifraude qui vous appelle pour vous protéger de la fraude, **c'est la fraude**.
+      - Il peut même faire afficher le nom de votre banque sur votre téléphone. C'est facile à truquer.
+  - ask: Votre téléphone affiche « Société Générale » quand il sonne. Pouvez-vous faire confiance à l'appel ?
+    choices:
+      - text: Oui, c'est écrit Société Générale sur l'écran.
+        reply: N'importe qui peut faire afficher « Société Générale ». La Banque qui a oublié votre nom le fait toute la journée.
+      - text: Pas forcément. Je raccroche et j'appelle le numéro de ma carte.
+        right: true
+        reply: Exactement. L'écran peut mentir, pas le numéro au dos de votre carte. C'est vous qui appelez, vous savez qui répond.
+  - say:
+      - "La règle : **raccrochez**, puis appelez vous-même le numéro au dos de votre carte."
+      - Société Générale ne vous demandera jamais vos codes par e-mail.
+      - Et aucune vraie banque ne vous demande de déplacer votre argent pour le protéger.
+  - ask: Deux SMS arrivent. Lequel vient vraiment de votre banque ?
+    choices:
+      - text: "« Alerte fraude : virez votre épargne sur un compte sécurisé aujourd'hui. »"
+        reply: C'est encore la Banque qui a oublié votre nom. Une vraie banque ne vous demande jamais de déplacer votre argent.
+      - text: « Paiement de 120 € effectué. Si ce n'est pas vous, appelez le numéro au dos de votre carte. »
+        right: true
+        reply: Oui ! Pas de lien, pas de course, pas de « compte sécurisé ». Il vous renvoie vers le numéro que vous connaissez.

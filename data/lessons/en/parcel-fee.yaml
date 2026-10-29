@@ -4,7 +4,7 @@ character: Mr. Tiny Fee
 emoji: "📦"
 minutes: 1
 badge: Parcel-fee spotter
-rule: A real carrier never asks you to pay a fee by text.
+rule: Never pay a delivery fee from a link in a text. Go to the carrier's own website or app.
 demo_case: D1
 steps:
   - say:
