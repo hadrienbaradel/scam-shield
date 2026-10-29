@@ -19,3 +19,15 @@ export function subscribe(userId, reply) {
 export function publish(userId, type, data = {}) {
   for (const raw of streams.get(userId) || []) raw.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
 }
+
+// For the admin console: how many tabs are listening, for how many people.
+export function streamStats() {
+  let connections = 0;
+  let people = 0;
+  for (const set of streams.values()) {
+    if (!set.size) continue;
+    people++;
+    connections += set.size;
+  }
+  return { connections, people };
+}

@@ -1,6 +1,6 @@
 // Housekeeping (PRD privacy rules): verdicts are kept 90 days, sign-in
-// leftovers an hour, the local outbox a week. Pattern cards with no
-// sighting for 90 days retire.
+// leftovers an hour, the local outbox a week, job runs 30 days. Pattern
+// cards with no sighting for 90 days retire.
 
 import { q } from "../db/pool.js";
 
@@ -14,6 +14,7 @@ export async function runRetention() {
   await del("oauthStates", "DELETE FROM oauth_states WHERE created_at < now() - interval '1 hour'");
   await del("outbox", "DELETE FROM outbox WHERE created_at < now() - interval '7 days'");
   await del("llmCache", "DELETE FROM llm_cache WHERE created_at < now() - interval '30 days'");
+  await del("jobRuns", "DELETE FROM job_runs WHERE started_at < now() - interval '30 days'");
   await del("pairCodes", "UPDATE devices SET pair_code_hash = NULL WHERE pair_code_hash IS NOT NULL AND pair_expires_at < now()");
   await del("retiredCards", `UPDATE pattern_cards SET status = 'retired', updated_at = now()
                              WHERE status IN ('active', 'candidate') AND (card->>'last_seen') IS NOT NULL

@@ -1,19 +1,102 @@
-// Threat-feed review (ADMIN_EMAILS only): a candidate card can only reach
-// "active" through a human here (PRD). Plus the local outbox for testing
-// guardian emails without an email provider.
+// The admin console (ADMIN_EMAILS only): the shell at /admin/, and its API
+// (health, background jobs with Run now, people, outbox). Threat-feed
+// review stays here too: a candidate card can only reach "active" through
+// a human (PRD). Plus the local outbox page for testing guardian emails
+// without an email provider.
 
+import { readFile } from "node:fs/promises";
 import { requireUser, requireAdmin } from "../auth.js";
 import { config } from "../config.js";
 import { many, one, q } from "../db/pool.js";
 import { validatePatternCard, promoteCard } from "../../lib/threatfeed.js";
 import { runThreatFeed, reviewQueue, SOURCES } from "../jobs/threatfeed.js";
-import { jobStatus } from "../jobs/scheduler.js";
+import { jobStatus, jobsReport, hydrateJobs, recentRuns, runJob } from "../jobs/scheduler.js";
+import { healthReport } from "../admin/health.js";
+import { listUsers, userDetail, outboxList } from "../admin/users.js";
+import { syncUser } from "../sync/worker.js";
 import { page, esc } from "../pages.js";
 
+// The console shell (src/admin/console.html) is read on the first request
+// and kept; until the file exists a placeholder says so, and is not kept.
+const shellPath = new URL("../admin/console.html", import.meta.url);
+const PLACEHOLDER = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Prudence admin</title></head>
+<body><h1>Admin console shell missing</h1><p>src/admin/console.html is not there yet; the API under /api/admin/ works.</p></body></html>`;
+let shell = null;
+async function consoleShell() {
+  if (!shell) {
+    try { shell = await readFile(shellPath, "utf8"); } catch { return PLACEHOLDER; }
+  }
+  return shell;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function adminRoutes(app) {
+  // The shell answers in HTML, so the refusals are pages, not JSON.
+  const serveShell = async (request, reply) => {
+    reply.type("text/html; charset=utf-8");
+    if (!request.user) {
+      return reply.code(403).send(page({ title: "Sign in first", body: `<h1>Sign in first</h1>
+<p>The admin console is for the people who run Prudence.</p>
+<p><a class="btn" href="/auth/google?mode=basic">Sign in with Google</a></p>` }));
+    }
+    if (!request.user.isAdmin) {
+      return reply.code(403).send(page({ title: "Admins only", body: `<h1>Admins only</h1>
+<p>This account is not listed in ADMIN_EMAILS.</p><p><a href="/">Back to Prudence</a></p>` }));
+    }
+    return consoleShell();
+  };
+  app.get("/admin", serveShell);
+  app.get("/admin/", serveShell);
+
   app.register(async (adm) => {
     adm.addHook("preHandler", requireUser);
     adm.addHook("preHandler", requireAdmin);
+
+    adm.get("/api/admin/health", async () => {
+      const [health] = await Promise.all([healthReport(), hydrateJobs()]);
+      return { generatedAt: health.generatedAt, overall: health.overall, server: health.server, checks: health.checks,
+        jobs: jobsReport().jobs, counts: health.counts };
+    });
+
+    adm.get("/api/admin/jobs", async () => {
+      await hydrateJobs();
+      const { jobs, errors } = jobsReport();
+      return { jobs, runs: await recentRuns(), errors };
+    });
+
+    // The run goes on in the background; the page polls the jobs list.
+    adm.post("/api/admin/jobs/:id/run", async (request, reply) => {
+      const id = request.params.id;
+      try {
+        runJob(id, { trigger: "manual" }).catch((e) => request.log.error(e, `job ${id}`));
+      } catch (e) {
+        if (e.statusCode) return reply.code(e.statusCode).send({ error: e.message });
+        throw e;
+      }
+      return reply.code(202).send({ started: true, job: id });
+    });
+
+    adm.get("/api/admin/users", async () => ({ users: await listUsers() }));
+
+    adm.get("/api/admin/users/:id", async (request, reply) => {
+      const detail = UUID.test(request.params.id) ? await userDetail(request.params.id) : null;
+      if (!detail) return reply.code(404).send({ error: "unknown user" });
+      return detail;
+    });
+
+    adm.post("/api/admin/users/:id/sync", async (request, reply) => {
+      const id = request.params.id;
+      const row = UUID.test(id) ? await one(`SELECT (s.user_id IS NOT NULL) AS senior, t.status FROM users u
+                                              LEFT JOIN gmail_state s ON s.user_id = u.id LEFT JOIN google_tokens t ON t.user_id = u.id
+                                              WHERE u.id = $1`, [id]) : null;
+      if (!row) return reply.code(404).send({ error: "unknown user" });
+      if (!row.senior || row.status !== "ok") return reply.code(409).send({ error: "Gmail is not connected for this person" });
+      syncUser(id).catch(() => {});
+      return reply.code(202).send({ started: true });
+    });
+
+    adm.get("/api/admin/outbox", async () => ({ mails: await outboxList() }));
 
     adm.get("/api/admin/cards", async () => ({ cards: await reviewQueue(), sources: SOURCES, jobs: jobStatus }));
 

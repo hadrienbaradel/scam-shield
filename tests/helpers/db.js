@@ -14,7 +14,7 @@ export async function dbAvailable() {
 export async function resetDb() {
   await migrate();
   await pool.query(`TRUNCATE users, google_tokens, gmail_state, contexts, checks, guardianships, alerts, feed_items, devices,
-                    sessions, oauth_states, audit_log, outbox CASCADE`);
+                    sessions, oauth_states, audit_log, outbox, job_runs, lesson_progress CASCADE`);
   await pool.query("DELETE FROM pattern_cards");
   await migrate();
 }

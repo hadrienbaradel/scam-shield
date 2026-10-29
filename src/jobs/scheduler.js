@@ -1,9 +1,13 @@
 // Background work inside the server process (single local process):
 // - Gmail push events from Pub/Sub, when configured (instant checks)
 // - polling every SYNC_POLL_SECONDS as a backup, or as the only trigger
-// - daily: renew Gmail watches, threat feed, retention
+// - every 12 h: renew Gmail watches; daily: threat feed; every 6 h: retention
 // Failures are logged loudly and retried on the next tick; nothing here
 // is allowed to crash the server.
+// Every run goes through runJob, which writes a job_runs row (start, end,
+// result counts or the error line) so the admin console's jobs page and its
+// health survive a restart. The bookkeeping itself never stops a job: a
+// database error there is only logged.
 
 import { config, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
@@ -12,9 +16,11 @@ import { pullGmailEvents } from "../google/pubsub.js";
 import { runThreatFeed } from "./threatfeed.js";
 import { runRetention } from "./retention.js";
 
+const MINUTE = 60000;
 const HOUR = 3600000;
 const timers = [];
 let stopping = false;
+export const startedAt = new Date();
 export const jobStatus = { pubsub: "off", lastPoll: null, lastFeed: null, lastRetention: null, lastWatchRenewal: null, errors: [] };
 
 function note(err, where) {
@@ -25,8 +31,10 @@ function note(err, where) {
 
 // Several mailboxes at a time, so one slow mailbox never delays the rest.
 async function pollAll() {
-  await mapLimit(await usersToSync(), 4, ({ id }) => syncUser(id).catch((e) => note(e, "sync")));
+  const users = await usersToSync();
+  await mapLimit(users, 4, ({ id }) => syncUser(id).catch((e) => note(e, "sync")));
   jobStatus.lastPoll = new Date().toISOString();
+  return { users: users.length };
 }
 
 export async function renewWatches() {
@@ -62,18 +70,161 @@ async function pubsubLoop() {
   }
 }
 
-function every(ms, fn, name, runNow = false) {
-  const wrapped = () => fn().catch((e) => note(e, name));
-  if (runNow) setTimeout(wrapped, 2000);
-  timers.push(setInterval(wrapped, ms));
+// ------------------------------------------------------------ registry ---
+// Every piece of background work, with its in-memory state (running,
+// lastRun, nextDueAt). The listener is listed so the console shows it, but
+// it runs on its own: no Run now, no job_runs rows.
+const job = (fields) => ({ running: false, lastRun: null, nextDueAt: null, ...fields });
+export const JOBS = [
+  job({ id: "poll", name: "Gmail poll", what: "Checks every connected mailbox for new mail (backup for push, or the only trigger)",
+    kind: "interval", everyMs: config.pollSeconds * 1000, run: pollAll }),
+  job({ id: "watch", name: "Gmail push renewal", what: "Renews the Gmail push subscriptions that expire within 2 days",
+    kind: "interval", everyMs: 12 * HOUR, run: async () => ({ renewed: await renewWatches() }) }),
+  job({ id: "threatfeed", name: "Threat feed", what: "Turns new IC3 and cybermalveillance.gouv.fr alerts into candidate scam cards",
+    kind: "interval", everyMs: 24 * HOUR, run: async () => {
+      const report = await runThreatFeed();
+      jobStatus.lastFeed = { at: new Date().toISOString(), ...report };
+      return report;
+    } }),
+  job({ id: "retention", name: "Retention", what: "Deletes old verdicts, sessions, outbox mail, cached answers and job runs; retires stale cards",
+    kind: "interval", everyMs: 6 * HOUR, run: async () => {
+      const counts = await runRetention();
+      jobStatus.lastRetention = { at: new Date().toISOString(), ...counts };
+      return counts;
+    } }),
+  job({ id: "pubsub", name: "Instant checks listener", what: "Pulls Gmail push events from Pub/Sub and syncs the mailbox at once",
+    kind: "loop", everyMs: null, run: null }),
+];
+
+export const canRun = (j) => j.kind === "interval" && typeof j.run === "function";
+
+// "every 2 min", "every 12 h", "continuous": how the operator says it.
+export function scheduleLabel(everyMs) {
+  if (!everyMs) return "continuous";
+  if (everyMs % HOUR === 0) return `every ${everyMs / HOUR} h`;
+  if (everyMs % MINUTE === 0) return `every ${everyMs / MINUTE} min`;
+  return `every ${Math.round(everyMs / 1000)} s`;
+}
+
+// ------------------------------------------------------------ job_runs ---
+const iso = (d) => (d ? new Date(d).toISOString() : null);
+const runFromRow = (r) => ({
+  id: r.id, job: r.job, trigger: r.trigger, startedAt: iso(r.started_at), finishedAt: iso(r.finished_at),
+  durationMs: r.finished_at ? new Date(r.finished_at) - new Date(r.started_at) : null, ok: r.ok, result: r.result, error: r.error,
+});
+
+// Where runs are written. Tests inject their own (a memory, or one that fails).
+export const jobRunStore = {
+  start: async (run) => (await one("INSERT INTO job_runs (job, trigger, started_at) VALUES ($1, $2, $3) RETURNING id::int AS id",
+    [run.job, run.trigger, run.startedAt])).id,
+  end: (run) => q("UPDATE job_runs SET finished_at = $2, ok = $3, result = $4::jsonb, error = $5 WHERE id = $1",
+    [run.id, run.finishedAt, run.ok, run.result == null ? null : JSON.stringify(run.result), run.error]),
+};
+
+async function guarded(what, fn) {
+  try { return await fn(); } catch (e) { console.error(`[jobs] ${what}: ${e.message || e}`); return null; }
+}
+
+const refuse = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+
+// Starts one run and returns a promise of its record ({ id, job, trigger,
+// startedAt, finishedAt, durationMs, ok, result, error }); the promise never
+// rejects (a failing job is a record with ok false). Refusals are thrown
+// synchronously with a statusCode: 404 unknown, 400 runs on its own, 409
+// already running.
+export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStore } = {}) {
+  const j = jobs.find((x) => x.id === id);
+  if (!j) throw refuse(404, "unknown job");
+  if (!canRun(j)) throw refuse(400, "this job runs on its own");
+  if (j.running) throw refuse(409, "already running");
+  j.running = true;
+  return (async () => {
+    const started = new Date();
+    const run = { id: null, job: id, trigger, startedAt: started.toISOString(), finishedAt: null, durationMs: null, ok: null, result: null, error: null };
+    run.id = await guarded(`could not record the start of ${id}`, () => store.start(run));
+    try {
+      const result = await j.run();
+      run.result = result && typeof result === "object" ? result : null;
+      run.ok = true;
+    } catch (e) {
+      run.ok = false;
+      run.error = String(e?.message || e).slice(0, 500);
+      note(e, id);
+    } finally {
+      const finished = new Date();
+      run.finishedAt = finished.toISOString();
+      run.durationMs = finished - started;
+      j.running = false;
+      j.lastRun = run;
+      if (run.id != null) await guarded(`could not record the end of ${id}`, () => store.end(run));
+    }
+    return run;
+  })();
+}
+
+// After a restart the in-memory state is empty: the last finished run of
+// each job comes back from the table, so the health is honest at once.
+export async function hydrateJobs({ jobs = JOBS } = {}) {
+  if (!jobs.some((j) => canRun(j) && !j.lastRun)) return;
+  const rows = await guarded("could not read job_runs", () => many(`SELECT DISTINCT ON (job) id::int AS id, job, trigger, started_at, finished_at, ok, result, error
+                                                                       FROM job_runs WHERE finished_at IS NOT NULL ORDER BY job, started_at DESC, id DESC`));
+  for (const row of rows || []) {
+    const j = jobs.find((x) => x.id === row.job);
+    if (j && !j.lastRun) j.lastRun = runFromRow(row);
+  }
+}
+
+export async function recentRuns({ limit = 100 } = {}) {
+  const rows = await many("SELECT id::int AS id, job, trigger, started_at, finished_at, ok, result, error FROM job_runs ORDER BY started_at DESC, id DESC LIMIT $1", [limit]);
+  return rows.map(runFromRow);
+}
+
+// --------------------------------------------------------------- report ---
+// Health of one job (spec line 6). Pure: the clock, the process start, the
+// worker flag and the listener state are all parameters.
+export function jobHealth(j, { now = Date.now(), started = startedAt.getTime(), worker = config.worker, pubsub = jobStatus.pubsub } = {}) {
+  if (j.kind === "loop") return pubsub === "listening" ? "ok" : String(pubsub).startsWith("error") ? "failing" : "off";
+  if (!worker) return "off";
+  if (j.running) return "running";
+  const last = j.lastRun;
+  if (last && !last.ok) return "failing";
+  const window = 2 * j.everyMs;
+  if (!last) return now - started < window ? "pending" : "stale";
+  return now - Date.parse(last.finishedAt || last.startedAt) > window ? "stale" : "ok";
+}
+
+export function jobsReport({ jobs = JOBS, now = Date.now(), started = startedAt.getTime(), worker = config.worker, pubsub = jobStatus.pubsub, errors = jobStatus.errors } = {}) {
+  return {
+    jobs: jobs.map((j) => ({
+      id: j.id, name: j.name, what: j.what, kind: j.kind, schedule: scheduleLabel(j.everyMs), everyMs: j.everyMs ?? null, canRun: canRun(j),
+      health: jobHealth(j, { now, started, worker, pubsub }), running: Boolean(j.running), nextDueAt: j.nextDueAt ?? null,
+      state: j.kind === "loop" ? String(pubsub) : null, lastRun: j.lastRun ?? null,
+    })),
+    errors: [...errors],
+  };
+}
+
+// ------------------------------------------------------------ schedule ---
+// A tick that finds the job still running (a slow poll) is skipped silently;
+// the next one is in everyMs anyway.
+function every(j, runNow = false) {
+  const tick = (trigger) => () => {
+    j.nextDueAt = new Date(Date.now() + j.everyMs).toISOString();
+    if (j.running) return;
+    try { runJob(j.id, { trigger }).catch((e) => note(e, j.id)); } catch (e) { note(e, j.id); }
+  };
+  if (runNow) {
+    j.nextDueAt = new Date(Date.now() + 2000).toISOString();
+    timers.push(setTimeout(tick("startup"), 2000));
+  } else {
+    j.nextDueAt = new Date(Date.now() + j.everyMs).toISOString();
+  }
+  timers.push(setInterval(tick("schedule"), j.everyMs));
 }
 
 export function startJobs() {
   if (!config.worker) return;
-  every(config.pollSeconds * 1000, pollAll, "poll", true);
-  every(12 * HOUR, renewWatches, "watch", true);
-  every(24 * HOUR, async () => { jobStatus.lastFeed = { at: new Date().toISOString(), ...(await runThreatFeed()) }; }, "threatfeed", true);
-  every(6 * HOUR, async () => { jobStatus.lastRetention = { at: new Date().toISOString(), ...(await runRetention()) }; }, "retention", true);
+  for (const j of JOBS) if (canRun(j)) every(j, true);
   if (pubsubConfigured()) pubsubLoop();
 }
 
