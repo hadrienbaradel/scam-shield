@@ -1,4 +1,4 @@
-Keywords: commit, branch, git, pr, merge
+Keywords: commit, branch, git, pr, merge, main, pull --rebase, push
 
 # Git rules
 
@@ -20,8 +20,8 @@ Area is the part of the product or repo (Engine, Sync, Guardians, Android, Spec,
 
 ## Branches
 
-- Work on a branch (`<name>/<topic>`, e.g. `vlad/product-first`). `main` is Hadrien's integration branch until the team decides otherwise: changes reach it through a PR or Hadrien merging, never a direct push by someone else.
-- Pull `main` into the branch often; nine days leave no room for a long divergence.
+- Since Oct 29 both of us commit on `main` in small steps (before that, `vlad/product-first` was merged by Hadrien): claim the task in `_product/log.md` first, `git pull --rebase` before every commit, push each commit at once. A branch (`<name>/<topic>`) only for work that would leave `main` broken for more than an hour; it comes back through a PR.
+- `git pull --rebase` before you start, before every commit and after any cut session. The log's tables are append-mostly: a conflict there keeps both sides' rows.
 - A PR says what changed for the user and names the spec rows it touches.
 
 ## Never committed

@@ -8,6 +8,7 @@ Docs move with the code: a change is done when every doc it touches matches what
 | Path | What it holds |
 |---|---|
 | `spec.md` | One table row per feature: status (Idea / Planned / Partial / Built / Dropped), a one-line spec, a link; an Ideas table for what is raised but not yet planned. Read this first. |
+| `log.md` | The team log: In progress (who, since, what, files), To do per person (asked by, since), Done (date, who, what, commit). Claim a task here before the first edit; the session brief prints your rows. |
 | `specs/<feature>.md` | The detail per feature: why, behavior lines, demo path, out of scope, acceptance, pointers, open questions. |
 | `competitors.md`, `competitors/` | Who else does this: one line each in the index, one file per competitor worth more. |
 | `research.md`, `research/` | What we looked up (practices, data, rules of the game): index plus one file per topic, with sources. |

@@ -1,4 +1,4 @@
-Keywords: spec, feature, product, change request, research, docs, definition of done
+Keywords: spec, feature, product, change request, research, docs, definition of done, log, claim, in progress, to do, handoff, pull --rebase
 # Product process: spec first, then code
 
 `_product/spec.md` is the product's source of truth. When the implementation changes, the spec changes too, ideally first. A task is not done until the docs match the code.
@@ -17,6 +17,16 @@ Every request to build or change something goes through these steps, in this ord
 8. **Commit** small and coherent (see `_product/docs/git.md`).
 
 Demo first: the hackathon is judged from a 3-minute video. Every feature spec carries a "Demo path", and when scope must be cut, keep what can be shown.
+
+## The team log
+
+`_product/log.md` is how two people and several agent sessions (sometimes on the same computer) avoid doing the same thing twice and keep handoffs out of chat. The session brief prints your rows.
+
+- Claim first: before the first edit, add a row under In progress (who, with the session label when several sessions run; since; what; which files), commit that one file and push, then `git pull --rebase`. Someone else's row on the same files means a message first, not a race.
+- Pull often: `git pull --rebase` before every commit and whenever a session resumes. Commit small and push each commit at once; sessions get cut by the network or by usage limits, and a pushed commit is the only state that survives.
+- Hand off through the log: anything one of us needs from the other goes under To do (for whom, what, who asked, since). A message in chat is not a handoff until it is a row.
+- Close: when the task is done, delete the In progress row and add one Done line (date, who, what, commit); delete the To do rows it answers. Done stays short: one line per task, not per commit.
+- Resume after a cut: `git status`, `git pull --rebase`, read your In progress row and the last commit, continue. The log's tables are append-mostly, so a rebase conflict there keeps both sides' rows.
 
 ## Spec writing rules
 
@@ -71,6 +81,7 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 | New competitor | `competitors/<name>.md` + a line in `competitors.md` |
 | Demo change | `marketing/demo-plan.md` + the feature's Demo path |
 | A new rule or process | `_product/docs/<rule>.md` + a pointer in `CLAUDE.md` |
+| A task started or finished, or something you need from the other person | a row in `_product/log.md`: In progress, Done, To do |
 
 ## Definition of done
 
@@ -81,3 +92,4 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 - [ ] Ideas raised during the work sit in the Ideas table of `spec.md` with status Idea, not lost in chat.
 - [ ] No secret, token or `.env` content in the diff.
 - [ ] Committed in small, coherent steps with messages in the repo style.
+- [ ] `_product/log.md`: your In progress row replaced by one Done line; every ask for the other person under To do.
