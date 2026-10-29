@@ -41,7 +41,7 @@ export async function renderOnboarding(root, status, refresh) {
            <p class="reassure">${t("onb_mode_note")}</p>`,
     () => `<h2>${t("onb_people_q")}</h2><p>${t("onb_people_sub")}</p>${inviteForm()}<div id="inviteResult"></div>`,
     () => `<h2>${t("onb_breach_q")}</h2><p>${t("onb_breach_sub")}</p>
-           ${breachOptions.filter((b) => !b.country || b.country === country).map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}"> ${esc(b.source)} (${esc(b.date)})</label>`).join("")}`,
+           ${breachOptions.filter((b) => !b.country || b.country === country).map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}"> ${esc(breachLabel(b))}</label>`).join("")}`,
   ];
   let i = 0;
   const draw = () => {
@@ -65,6 +65,10 @@ export async function renderOnboarding(root, status, refresh) {
   };
   draw();
 }
+
+// Breach names come from the server in English; the one without a company
+// or a date is said in the person's language.
+const breachLabel = (b) => (b.id === "old-password" ? t("breach_old_password") : `${b.source} (${b.date})`);
 
 function inviteForm() {
   return `<form id="inviteForm" class="stack">
@@ -222,7 +226,7 @@ export async function renderSettings(root, status, refresh) {
       <h3>${t("k_contacts")}</h3>${list("contact", context.trustedContacts, (c) => `${esc(c.name)} <span class="small">${esc(c.email)} · ${esc(c.relation || "")}</span>`)}
       <h3>${t("k_subs")}</h3>${list("subscription", context.subscriptions, (s) => esc(s))}
       <h3>${t("k_senders")}</h3>${list("sender", (context.knownSenders || []).slice(-40), (s) => `${esc(s.name)} <span class="small">${esc(s.email)}</span>`)}
-      <h3>${t("k_breaches")}</h3>${breachOptions.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(b.source)} (${esc(b.date)})</label>`).join("")}
+      <h3>${t("k_breaches")}</h3>${breachOptions.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}</label>`).join("")}
       <button id="rebuild" class="btn btn-light-dark btn-big">${t("k_rebuild")}</button>
     </section>
     <section class="card"><h2>${t("history_title")}</h2><p class="small">${t("history_lead")}</p>
