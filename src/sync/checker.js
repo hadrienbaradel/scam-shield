@@ -33,15 +33,31 @@ export async function seenBeforeFor(userId, from, messageId = null) {
   return { organisation: org, messages: row.n, judged_safe: row.safe, first_seen: row.n ? new Date(row.first).toISOString().slice(0, 10) : null };
 }
 
+// "Be careful" is the unsure answer, and on real mail it is mostly a link
+// whose address is hidden (an email service's tracker, a redirect). Before
+// showing it, look once where the links really land and what the page asks
+// for (src/links/resolver.js: no cookies, no private addresses, never an
+// unsubscribe or delete link), then let the rules and Muse Spark decide
+// again. Never for Scam: opening a scam's links only tells it the address
+// is read.
+export const needsLandingLook = (verdict, message, resolveLinks = false) =>
+  !resolveLinks && verdict?.verdict === "be_careful" && (message.links || []).some((l) => /^https?:\/\//i.test(l.href || ""));
+
 export async function runCheck({ user, message, threadHistory = [], resolveLinks = false }) {
-  // (resolveLinks: follow redirects too, only when the person asks)
+  // (resolveLinks: follow every link, when the person asks)
   const ctx = { ...(await loadContext(user)), seenBefore: await seenBeforeFor(user.id, message.from, message.id || null) };
-  const linkInspection = await inspectMessageLinks(message, ctx, { resolve: resolveLinks });
-  const verdict = await checkMessage({
-    locale: user.locale || "en-US", message, personalContext: ctx, patternCards: await liveCards(),
-    threadHistory, mockLinkInspection: linkInspection, linkInspection,
-  }, { cache: llmCacheFor(user.id) });
-  return { verdict, ctx, linkInspection };
+  const cards = await liveCards();
+  const judge = async (resolve) => {
+    const linkInspection = await inspectMessageLinks(message, ctx, { resolve });
+    const verdict = await checkMessage({
+      locale: user.locale || "en-US", message, personalContext: ctx, patternCards: cards,
+      threadHistory, mockLinkInspection: linkInspection, linkInspection,
+    }, { cache: llmCacheFor(user.id) });
+    return { verdict, linkInspection };
+  };
+  let out = await judge(resolveLinks);
+  if (needsLandingLook(out.verdict, message, resolveLinks)) out = await judge(true);
+  return { ...out, ctx };
 }
 
 // The insert is also the claim: of two workers checking the same message,

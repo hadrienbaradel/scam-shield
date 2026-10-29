@@ -195,6 +195,20 @@ test("links: RDAP domain age, and only unknown domains are looked up", async () 
   assert.ok(!seen.some((u) => u.includes("rdap.org")), "registries are queried directly");
 });
 
+test("links: opening links for a second look never opens unsubscribe, delete or cancel links", async () => {
+  const opened = [];
+  const fetchImpl = async (url) => {
+    if (!String(url).includes("news.example-shop.test")) return new Response("{}", { status: 404 });
+    opened.push(String(url));
+    return new Response("<html><title>Spring report</title></html>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  const links = [{ text: "Unsubscribe", href: "https://news.example-shop.test/u?id=7" }, { text: "Read the report", href: "https://news.example-shop.test/report" },
+    { text: "Manage preferences", href: "https://news.example-shop.test/prefs" }, { text: "Supprimer mon compte", href: "https://news.example-shop.test/delete" }];
+  const out = await inspectMessageLinks({ links }, {}, { resolve: true, fetchImpl, checkHost: async () => {} });
+  assert.deepEqual(opened, ["https://news.example-shop.test/report"]);
+  assert.equal(out["https://news.example-shop.test/report"].page_shows, 'Page titled "Spring report"');
+});
+
 test("links: URLhaus gets host names only, and shared hosts need the exact link", async () => {
   const listings = {
     "files.evil-host.example": { query_status: "ok", blacklists: { spamhaus_dbl: "not listed" }, urls: [{ url: "http://files.evil-host.example/a.exe", url_status: "online", threat: "malware_download", tags: ["exe"] }] },
@@ -289,4 +303,14 @@ test("eml: a downloaded email parses into the same shape as Gmail sync", async (
   assert.equal(forged.auth, "spf=none dkim=none dmarc=none");
   assert.equal(forged.authVerified, false);
   assert.deepEqual(m.links, [{ href: "https://3.massemiaks.test/", text: "Accéder au service antifraude" }]);
+});
+
+test("a second look at the landing pages only for Be careful with web links, never for Scam", async () => {
+  const { needsLandingLook } = await import("../src/sync/checker.js");
+  const withLink = { links: [{ text: "Read", href: "https://news.example-shop.test/r" }] };
+  assert.equal(needsLandingLook({ verdict: "be_careful" }, withLink), true);
+  assert.equal(needsLandingLook({ verdict: "scam" }, withLink), false, "opening a scam's links only tells it the address is read");
+  assert.equal(needsLandingLook({ verdict: "safe" }, withLink), false);
+  assert.equal(needsLandingLook({ verdict: "be_careful" }, { links: [] }), false);
+  assert.equal(needsLandingLook({ verdict: "be_careful" }, withLink, true), false, "already opened when the person asked");
 });

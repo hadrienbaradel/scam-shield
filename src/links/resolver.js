@@ -23,6 +23,9 @@ import { domainOf, sameOrSub, BRANDS, FREE_HOSTING_SUFFIXES } from "../../lib/br
 import { config } from "../config.js";
 
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "rb.gy", "cutt.ly", "is.gd", "ow.ly", "buff.ly", "shorturl.at", "tiny.cc"];
+// Links that do something when opened (a one-click unsubscribe, a delete,
+// a cancellation, accepting an invitation) are never opened for a check.
+const ACTION_LINK = /unsubscrib|opt[-_ ]?out|d[ée]sinscri|d[ée]sabonn|preferences|pr[ée]f[ée]rences|manage[-_ ]?(subscription|email)|delete|supprim|cancel|annul|r[ée]sili|one[-_ ]?click|approve|accept|decline|rsvp|confirm[-_ ]?unsub/i;
 const TWO_PART_SUFFIXES = ["co.uk", "com.br", "com.au", "co.jp", "gouv.fr", "gov.uk", "com.mx", "co.nz", "org.uk", "ac.uk"];
 const DAY = 86400000;
 
@@ -280,7 +283,8 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
     const listed = urlhausVerdict(listings.get(startDomain), link.href);
     if (listed) entry.urlhaus = listed;
     // At most a few distinct sites are visited per check, however many links.
-    if ((resolve || SHORTENERS.includes(startDomain)) && (resolved.has(startDomain) || resolved.size < maxResolved)) {
+    const action = ACTION_LINK.test(`${link.text || ""} ${link.href}`);
+    if ((SHORTENERS.includes(startDomain) || (resolve && !action)) && (resolved.has(startDomain) || resolved.size < maxResolved)) {
       resolved.add(startDomain);
       try {
         const r = await resolveLink(link.href, { ...(fetchImpl ? { fetchImpl } : {}), ...(checkHost ? { checkHost } : {}) });
