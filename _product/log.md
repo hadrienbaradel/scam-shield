@@ -10,6 +10,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 | Who | Since | Working on | Touches |
 |---|---|---|---|
+| Hadrien · Claude | 2026-10-29 | V2 header/badge/Sign out overflow at Largest and in French; video script v2 (new card, proposed decisions); seeded "it's Ethan" voicemail in demo mode | `public/js/views/today.js`, `public/styles.css`, `public/js/i18n.js`, `public/js/main.js`, `_product/marketing/video-script.md`, demo voicemail files |
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
 
