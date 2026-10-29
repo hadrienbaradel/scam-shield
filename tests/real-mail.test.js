@@ -228,3 +228,23 @@ test("authenticated brand mail that fits history is marked _authentic for the mo
   assert.equal(v.verdict, "safe");
   assert.equal(v._authentic, true);
 });
+
+// /codex plan challenge (2026-10-29): for someone who really uses PayPal,
+// an authenticated PayPal invoice carrying a callback number or a money ask
+// must not count as "authentic history", or the guardrail would cap Muse
+// Spark's Scam at Be careful. Authentication proves who carried it, not
+// that the request inside is legitimate.
+test("a real PayPal user's PayPal invoice with a callback number is not 'authentic'", () => {
+  const withPaypal = { ...ctx, providers: [{ type: "payment", name: "PayPal", realDomains: ["paypal.com"] }],
+    knownSenders: [{ name: "PayPal", email: "service@paypal.com", brand: "PayPal" }] };
+  const v = run({ fromName: "PayPal", from: "service@paypal.com", auth: PASS, subject: "Invoice from Help Desk",
+    body: "You owe $499 for annual protection. To cancel call 202-555-0148.",
+    links: [{ text: "View invoice", href: "https://www.paypal.com/invoice/p/EXAMPLE" }] }, withPaypal);
+  assert.equal(v._authentic, false, v.reasons.map((r) => r.text).join(" | "));
+  assert.notEqual(v.verdict, "safe");
+  const receipt = run({ fromName: "PayPal", from: "service@paypal.com", auth: PASS, subject: "Receipt for your payment to Etsy",
+    body: "You sent a payment of $24.00 USD to Etsy. View the details in your account.",
+    links: [{ text: "View details", href: "https://www.paypal.com/myaccount/transactions" }] }, withPaypal);
+  assert.equal(receipt._authentic, true, "a plain receipt from a provider she uses stays authentic");
+  assert.equal(receipt.verdict, "safe");
+});
