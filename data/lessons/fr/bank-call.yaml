@@ -1,4 +1,5 @@
 id: bank-call
+order: 4
 title: La banque vous appelle
 character: La Banque qui a oublié votre nom
 emoji: "🏦"

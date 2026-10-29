@@ -37,7 +37,7 @@ const ask = (question, n = 2) => ({
   choices: Array.from({ length: n }, (_, i) => ({ text: `Choice ${i + 1}`, reply: `Reply ${i + 1}`, ...(i === 1 ? { right: true } : {}) })),
 });
 const lesson = (over = {}) => ({
-  id: "parcel-fee", title: "The $1.99 parcel trap", character: "Mr. Tiny Fee", emoji: "📦", minutes: 1,
+  id: "parcel-fee", order: 1, title: "The $1.99 parcel trap", character: "Mr. Tiny Fee", emoji: "📦", minutes: 1,
   badge: "Parcel-fee spotter", rule: "A real carrier never asks you to pay a fee by text.",
   steps: [
     { say: ["Meet **Mr. Tiny Fee**. He never asks for much.", "He counts on one thought."] },
@@ -77,7 +77,7 @@ test("a well-formed lesson passes every check, with or without a demo case", () 
 });
 
 test("a lesson missing a field is refused, and the problem names the field", () => {
-  for (const key of ["id", "title", "character", "emoji", "minutes", "badge", "rule", "steps"]) {
+  for (const key of ["id", "order", "title", "character", "emoji", "minutes", "badge", "rule", "steps"]) {
     assert.deepEqual(broken((d) => { delete d[key]; }), [`${key}: missing`], key);
   }
   assert.deepEqual(broken((d) => { d.title = ""; }), ["title: missing"]);
@@ -168,6 +168,31 @@ test("bold is the only markup a lesson may use: no HTML, no links, no lone star"
   assert.match(broken((d) => { d.title = "*New*"; }).join("\n"), /^title: a lone \*/);
 });
 
+test("each lesson has its own place in the list: a whole number, never shared within a language", () => {
+  for (const bad of [0, -1, 1.5, "1"]) assert.match(broken((d) => { d.order = bad; }).join("\n"), /^order: must be a whole number, 1 or more/, String(bad));
+  assert.deepEqual(broken((d) => { d.order = 12; }), []);
+  const root = checkout({
+    "testcases/cases.json": CASES,
+    "data/lessons/en/alpha.yaml": lesson({ id: "alpha", order: 1 }),
+    "data/lessons/en/beta.yaml": lesson({ id: "beta", order: 1 }),
+    "data/lessons/en/gamma.yaml": lesson({ id: "gamma", order: 2 }),
+    "data/lessons/fr/alpha.yaml": lesson({ id: "alpha", order: 1 }),
+    "data/lessons/fr/beta.yaml": lesson({ id: "beta", order: 3 }),
+    "data/lessons/fr/gamma.yaml": lesson({ id: "gamma", order: 2 }),
+  });
+  try {
+    const { lessons, problems } = load(root);
+    assert.deepEqual(problems.map((p) => `${relative(root, p.file)}: ${p.problem}`), [
+      "data/lessons/en/alpha.yaml: order: 1 is also the order of en/beta.yaml; each lesson needs its own number",
+      "data/lessons/en/beta.yaml: order: 1 is also the order of en/alpha.yaml; each lesson needs its own number",
+    ], "their French twins are left out with them, without a second problem");
+    assert.deepEqual(lessons.en.map((l) => l.id), ["gamma"]);
+    assert.deepEqual(lessons.fr.map((l) => l.id), ["gamma"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a lesson that names a demo case names a real message in its own language", () => {
   assert.deepEqual(validateLesson(lesson({ demo_case: "A4" }), { lang: "fr", caseIds: FR }), []);
   assert.deepEqual(validateLesson(lesson({ demo_case: "D1" }), { lang: "fr", caseIds: FR }),
@@ -179,14 +204,14 @@ test("a lesson that names a demo case names a real message in its own language",
 
 test("a typo in a field name is caught, never silently ignored", () => {
   assert.deepEqual(validateLesson(lesson({ "demo-case": "D1" }), { lang: "en", caseIds: EN }),
-    ["demo-case: unknown field; expected id, title, character, emoji, minutes, badge, rule, steps, demo_case"]);
+    ["demo-case: unknown field; expected id, order, title, character, emoji, minutes, badge, rule, steps, demo_case"]);
   assert.deepEqual(broken((d) => { d.steps[1].choices[0].rigth = true; }), ["steps[1].choices[0].rigth: unknown field; expected text, reply, right"]);
   assert.deepEqual(broken((d) => { d.steps[0].choices = []; }), ["steps[0].choices: unknown field; expected say"]);
   assert.deepEqual(broken((d) => { d.steps[1].hint = "Look closely."; }), ["steps[1].hint: unknown field; expected ask, choices"]);
 });
 
 test("a file that is not a lesson at all is refused in plain words", () => {
-  for (const doc of [null, [], "hello", 3]) assert.match(validateLesson(doc)[0], /^not a lesson: expected the fields id, title, character/, String(doc));
+  for (const doc of [null, [], "hello", 3]) assert.match(validateLesson(doc)[0], /^not a lesson: expected the fields id, order, title, character/, String(doc));
 });
 
 // ---------------------------------------------------------------- English and French twins (Behavior 8)
@@ -199,8 +224,9 @@ test("every English lesson has its French twin, and every French one its English
     [{ id: "gift-card", lang: "fr", problem: "no English twin: add en/gift-card.yaml with the same id and steps" }]);
 });
 
-test("the twins tell the same lesson: the same steps in the same order, the same number of answers", () => {
+test("the twins tell the same lesson: the same place in the list, the same steps in the same order, the same number of answers", () => {
   const fr = (mutate) => { const d = structuredClone(lesson()); mutate(d); return twinProblems([lesson()], [d]).map((p) => p.problem); };
+  assert.deepEqual(twinProblems([lesson()], [lesson({ order: 2 })]), [{ id: "parcel-fee", lang: "fr", problem: "differs from en/parcel-fee.yaml: order 2 here, 1 in English" }]);
   assert.deepEqual(fr((d) => { d.steps[0].say.push("Une ligne de plus."); }), [], "a translation may take more or fewer lines");
   assert.deepEqual(fr((d) => { d.steps.pop(); }), ["differs from en/parcel-fee.yaml: 4 steps here, 5 in English"]);
   assert.deepEqual(fr((d) => { [d.steps[0], d.steps[1]] = [d.steps[1], d.steps[0]]; }), [
@@ -222,8 +248,8 @@ test("a broken lesson file is reported with its name and the problem, and the ot
     "data/lessons/en/parcel-fee.yaml": lesson({ demo_case: "D1" }),
     "data/lessons/fr/parcel-fee.yaml": lesson({ demo_case: "A4" }),
     "data/lessons/en/urgency.yaml": "id: urgency\ntitle: [unclosed\n",
-    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency" }),
-    "data/lessons/en/gift-card.yaml": lesson({ id: "gift-card" }),
+    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency", order: 2 }),
+    "data/lessons/en/gift-card.yaml": lesson({ id: "gift-card", order: 3 }),
     "data/lessons/fr/.DS_Store": "finder noise",
     "data/lessons/fr/notes.txt": "a draft",
   });
@@ -241,20 +267,20 @@ test("a broken lesson file is reported with its name and the problem, and the ot
   }
 });
 
-test("a lesson file is named after its id, and the lessons come sorted by file name", () => {
+test("a lesson file is named after its id, and the lessons come in their order, not by file name", () => {
   const root = checkout({
     "testcases/cases.json": CASES,
-    "data/lessons/en/urgency.yaml": lesson({ id: "urgency" }),
-    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency" }),
-    "data/lessons/en/bank.yaml": lesson({ id: "bank" }),
-    "data/lessons/fr/bank.yaml": lesson({ id: "bank" }),
+    "data/lessons/en/urgency.yaml": lesson({ id: "urgency", order: 1 }),
+    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency", order: 1 }),
+    "data/lessons/en/bank.yaml": lesson({ id: "bank", order: 2 }),
+    "data/lessons/fr/bank.yaml": lesson({ id: "bank", order: 2 }),
     "data/lessons/en/parcel.yaml": lesson(),
     "data/lessons/fr/parcel.yaml": lesson(),
   });
   try {
     const { lessons, problems } = load(root);
-    assert.deepEqual(lessons.en.map((l) => l.id), ["bank", "urgency"]);
-    assert.deepEqual(lessons.fr.map((l) => l.id), ["bank", "urgency"]);
+    assert.deepEqual(lessons.en.map((l) => l.id), ["urgency", "bank"]);
+    assert.deepEqual(lessons.fr.map((l) => l.id), ["urgency", "bank"]);
     assert.deepEqual(problems.map((p) => `${relative(root, p.file)}: ${p.problem}`), [
       'data/lessons/en/parcel.yaml: id: "parcel-fee" does not match the file name; the file must be parcel-fee.yaml',
       'data/lessons/fr/parcel.yaml: id: "parcel-fee" does not match the file name; the file must be parcel-fee.yaml',
@@ -286,8 +312,8 @@ test("make lessons-check fails on a broken file and names it, and passes on the 
     "testcases/cases.json": CASES,
     "data/lessons/en/parcel-fee.yaml": lesson(),
     "data/lessons/fr/parcel-fee.yaml": twin,
-    "data/lessons/en/urgency.yaml": lesson({ id: "urgency", minutes: 0 }),
-    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency" }),
+    "data/lessons/en/urgency.yaml": lesson({ id: "urgency", order: 2, minutes: 0 }),
+    "data/lessons/fr/urgency.yaml": lesson({ id: "urgency", order: 2 }),
   });
   try {
     const out = sink();
@@ -317,6 +343,16 @@ test("every shipped lesson loads in English and French with no problem", () => {
   assert.ok(lessons.en.length >= 2, "at least the two seed lessons");
   assert.deepEqual(lessons.en.map((l) => l.id), lessons.fr.map((l) => l.id));
   for (const id of ["parcel-fee", "urgency"]) assert.ok(lessons.en.some((l) => l.id === id), id);
+});
+
+test("the Learn home lists the shipped lessons in their order, the parcel lesson first for the video", () => {
+  const known = ["parcel-fee", "grandchild", "urgency", "bank-call", "codes", "tech-support", "gift-cards", "romance-crypto"];
+  for (const lang of LANGS) {
+    const orders = SHIPPED[lang].map((l) => l.order);
+    assert.ok(orders.every((n, i) => i === 0 || n > orders[i - 1]), `${lang}: ${orders.join(", ")}`);
+    assert.equal(SHIPPED[lang][0].id, "parcel-fee", lang);
+    assert.deepEqual(SHIPPED[lang].map((l) => l.id).filter((id) => known.includes(id)), known, lang);
+  }
 });
 
 test("'Try it on a real one' opens a real message in the lesson's language", () => {
