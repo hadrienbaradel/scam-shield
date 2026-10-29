@@ -6,6 +6,7 @@ Index of `_product/marketing/` plus the two research files it relies on.
 |---|---|
 | [marketing/demo-plan.md](marketing/demo-plan.md) | 3-minute video storyboard with timings mapped to the rubric, two cold-open options, preparation checklist, fallback plan |
 | [marketing/pitch.md](marketing/pitch.md) | Positioning, the "reverse the roles" opening frame, 30-second and 2-minute pitches, stats with sources, Meta and senior-first angles, five lines, judge Q&A |
+| [marketing/video-script.md](marketing/video-script.md) | Video script v1 (Oct 29), timed to the second: Prudence, Linda (US), the organizers' opening line, V2 screens, narration and captions per scene, what is built vs still to build, pre-recording checklist |
 | [marketing/ideas.md](marketing/ideas.md) | Prioritized ideas to make the demo land (impact/effort), Vlad's feature ideas (marked as ideas), risks and mitigations |
 | [research/hackathon.md](research/hackathon.md) | Rules, dates, tracks, judging weights, prizes, submission checklist, past-winner lessons, sources |
 | [research/hackathon-other-teams.md](research/hackathon-other-teams.md) | Other teams' projects (direct scam and senior competitors first), threats and opportunities |
