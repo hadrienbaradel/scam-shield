@@ -36,6 +36,7 @@ Statuses: **Idea** (raised, not decided) Â· **Planned** (decided, not started) Â
 | Chrome extension ("Check this" in Gmail web) | Planned | Docs call it "next"; no code yet. | [specs/chrome-extension.md](specs/chrome-extension.md) |
 | Public deployment and Google verification | Planned | Railway EU, OAuth verification, CASA, Resend for real guardian email; not before the hackathon. | [specs/public-deployment.md](specs/public-deployment.md) |
 | CI workflow (tests + score on Postgres, Android tests + build) | Built | Every push runs `make check` and `make score` on Postgres and builds the Android debug APK (downloadable from the run) with its unit tests; green on main (Oct 29). | [specs/public-deployment.md](specs/public-deployment.md) |
+| Admin console (health, background jobs, users) | Planned | `/admin/`, admins only, separate from the senior app: one health line per dependency, every background job with its last run, next due, health and Run now (runs kept 30 days), every user with Gmail and sync state and counts, scam-report review; never a message's text or a verdict's words. | [specs/admin-console.md](specs/admin-console.md) |
 
 ## Ideas (not yet planned)
 Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom); being written in the PRD or STATUS does not count. A session can grep `| no |` to surface undiscussed ideas.
