@@ -19,7 +19,7 @@ Who = the person, plus the session label or agent name when several sessions run
 |---|---|---|---|
 | Hadrien | Video: a 15-second Learn beat after the USPS scene (0:57): Linda taps Learn → "The $1.99 parcel trap" → one right answer, confetti, the rule; take it into script v2 or not (`_product/specs/micro-learning.md`, Demo path) | Vlad · learn | 2026-10-29 |
 | Hadrien | Reading check of one lesson (`#/demo/learn`) with one senior outside the team, as design.md asks; micro-learning goes Built after it | Vlad · learn | 2026-10-29 |
-| Vlad | Share the Learn design canvas with Hadrien from its Share menu (private today): https://claude.ai/artifact/Du4GYnasCba6jrZgKHCNAZ | Vlad · learn | 2026-10-29 |
+| Vlad | Share the Learn design canvas with Hadrien from its Share menu (private today): https://claude.ai/artifact/Jtbbq6m8txVZxPBdPkFSJZ | Vlad · learn | 2026-10-29 |
 | Vlad | If the Nov 1 rehearsal keeps the Prompt Guard scene: add D8 to Linda's Today queue in `src/routes/demo.js`, set GROQ_API_KEY or HF_TOKEN on the recording machine (mock otherwise), and add the Groq and HF keys to the leak-rotation list in `_product/docs/secrets.md` | Prompt Guard build | 2026-10-29 |
 | Hadrien | Learn tab (four tabs): the French "Aujourd'hui" label does not fit a quarter-width tab at the two larger text sizes; rename to "Accueil" or keep two-line labels? | Vlad · learn (design) | 2026-10-29 |
 | Hadrien | Verdict card header (Back · 2 of 3 · Listen) needs about 354 px at Largest but has 336 px on a 390 px phone: it overflows at the size the video is filmed at (`public/js/views/today.js`) | Vlad · learn (design review finding) | 2026-10-29 |
