@@ -476,7 +476,10 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2-line { display: flex; align-items: center; gap: 0.7rem; color: var(--muted); font-size: 0.95rem; }
 .v2-avatar { flex: 0 0 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--navy); color: var(--gold); font-weight: 700; }
 
-.v2-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+/* Back · count · Listen on one row; at the larger text sizes (and in
+   French) Listen moves to its own row on the right instead of spilling. */
+.v2-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.v2-head .v2-read { margin-left: auto; }
 .v2-back {
   display: inline-flex;
   align-items: center;
@@ -510,7 +513,6 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   cursor: pointer;
 }
 .v2 .small { font-size: 1rem; }
-@media (max-width: 340px) { .v2-head { flex-wrap: wrap; } }
 /* The language switch is for the demo and for testing: on a phone it is a
    small "FR"/"EN" next to the brand, not a second headline. */
 .lang-short { display: none; }
@@ -564,7 +566,8 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2-card.caution { border-color: var(--careful); }
 .v2-card.ok { border-color: var(--safe); }
 
-.v2-badge { display: flex; align-items: center; gap: 0.7rem; font-size: 2rem; font-weight: 700; line-height: 1; }
+/* The verdict word stays big, but never wider than the phone at Largest. */
+.v2-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; font-size: min(2rem, 11vw); font-weight: 700; line-height: 1.05; }
 .v2-card.danger .v2-badge { color: var(--scam); }
 .v2-card.caution .v2-badge { color: var(--careful); }
 .v2-card.ok .v2-badge { color: var(--safe); }
@@ -689,7 +692,9 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   .v2-app .brand-sub { display: none; }
   .v2-app .topbar { flex-wrap: nowrap; padding: 0.6rem 1rem; }
   .v2-app .shield { width: 40px; height: 40px; font-size: 1.2rem; }
-  .v2-app .brand-name { font-size: 1.15rem; }
+  .v2-app .brand-name { font-size: min(1.15rem, 5.4vw); }
+  /* Sign out / FR in the bar: readable, but the bar never spills at Largest. */
+  .v2-app .topbar .btn { min-height: 48px; padding: 0 0.8rem; font-size: min(1rem, 4.6vw); }
   .v2-app .main { padding-bottom: 6.5rem; }
   .v2-app .footer { padding-bottom: 6rem; }
 }
