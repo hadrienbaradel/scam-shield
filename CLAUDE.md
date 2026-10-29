@@ -32,6 +32,7 @@ Product map: `_product/spec.md` (features, statuses, ideas; read it first), `_pr
 - Spec before code: `_product/spec.md` and `_product/specs/<feature>.md` change before (or with) the implementation.
 - Docs move with the code: a task is done when every doc it touches matches what shipped and `node scripts/docs-check.mjs` passes.
 - Never read, cat or print `.env` or `config/master.key`; keys go in only through `make secrets-set KEY=value`; reports name keys, never values.
+- Meta registrations by Vlad (developer account, apps, WhatsApp test numbers, hackathon forms) use `vladztools@gmail.com`, never another address; Hadrien registers under his own account (`_product/docs/secrets.md`, Accounts).
 - Many agents work at the same time: touch only the files of your task, run tests with `make test TEST_DB_SUFFIX=<your-name>`, never commit, revert or reformat someone else's files.
 - Claim first, pull often: before the first edit, add your row under In progress in `_product/log.md` (who, since, what, which files), commit that file and push, then `git pull --rebase`; rebase again before every commit and whenever you resume. Someone else's row on the same files means a message first, not a race.
 - Commit small and push every commit at once: sessions get cut (network, quotas). The log is the handoff: a finished task becomes one Done line; anything you need from the other person goes under their To do; chat does not count until it is a row.

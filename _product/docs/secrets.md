@@ -1,4 +1,4 @@
-Keywords: secrets, credentials, master.key, env, api key, token, google client json
+Keywords: secrets, credentials, master.key, env, api key, token, google client json, account, register, meta app, developer account
 
 # Secrets
 
@@ -29,6 +29,12 @@ A fresh clone has the encrypted file but no key. Ask a teammate for the master k
 or a chat with history (a password manager share, Signal with disappearing messages, or in person), then `make secrets-init` and
 paste it: it is saved as `config/master.key` and checked against the file. Working alone or judging? `rm config/credentials.enc`,
 then `make secrets-init` makes a key and an empty file of your own (demo mode until keys are set).
+
+## Accounts
+
+Meta registrations by Vlad (developer account, apps, WhatsApp test numbers and tokens, hackathon forms) use `vladztools@gmail.com`,
+never another address; Hadrien registers under his own account. An agent that reaches a sign-up or login form while acting for Vlad
+fills that address and stops: passwords and verification codes are typed by the person, never pasted in a chat.
 
 ## What agents and scripts never do
 
