@@ -14,10 +14,13 @@ import {
 } from "../lib/errorTracking.js";
 import { JOBS, canRun, runJob, pingHeartbeat, heartbeats } from "../src/jobs/scheduler.js";
 import { buildApp } from "../src/server.js";
+import { healthCheck } from "../src/routes/account.js";
 import { config, parseTrustProxy, PRIVATE_PROXIES } from "../src/config.js";
 import { dbAvailable, pool } from "./helpers/db.js";
 
 const hasDb = await dbAvailable();
+// Timers that keep the process (and so the test runner) alive.
+const liveTimers = () => process.getActiveResourcesInfo().filter((r) => r === "Timeout").length;
 const OOPS = { error: "Something went wrong on our side. To be safe, do not click anything in the message." };
 
 // A stand-in for the Rollbar class: keeps its options and every call.
@@ -414,10 +417,12 @@ test("GET /api/health, without sign-in, asks Postgres SELECT 1 and answers 200 w
   const saved = config.appVersion;
   config.appVersion = "3f2c1ab";
   t.after(() => { config.appVersion = saved; });
+  const timers = liveTimers();
   const res = await app.inject({ method: "GET", url: "/api/health" });
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.json(), { ok: true, db: "ok", version: "3f2c1ab" });
   assert.deepEqual(queries, ["SELECT 1"]);
+  assert.equal(liveTimers(), timers, "the 2 s timer keeps nothing alive once Postgres answered");
 });
 
 test("GET /api/health answers 503 with db down and the version when the query fails, and that is no Rollbar item", async (t) => {
@@ -428,6 +433,21 @@ test("GET /api/health answers 503 with db down and the version when the query fa
   assert.deepEqual(res.json(), { ok: false, db: "down", version: config.appVersion });
   assert.equal(client.calls.length, 0, "the monitor reports a dead database, not Rollbar");
   assert.equal(config.appVersion, process.env.APP_VERSION || "dev");
+});
+
+test("GET /api/health answers 503 when Postgres does not answer within 2 s, and its timer keeps nothing alive", async (t) => {
+  assert.equal(healthCheck.timeoutMs, 2000);
+  const saved = healthCheck.timeoutMs;
+  healthCheck.timeoutMs = 25;
+  t.after(() => { healthCheck.timeoutMs = saved; });
+  t.mock.method(pool, "query", () => new Promise(() => {}));
+  const timers = liveTimers();
+  const started = Date.now();
+  const res = await app.inject({ method: "GET", url: "/api/health" });
+  assert.equal(res.statusCode, 503);
+  assert.deepEqual(res.json(), { ok: false, db: "down", version: config.appVersion });
+  assert.ok(Date.now() - started < 1000, "answered at the timeout, not whenever the query gives up");
+  assert.equal(liveTimers(), timers, "nothing left keeping the process alive");
 });
 
 test("GET /api/health on the real test database", { skip: !hasDb && "Postgres unreachable" }, async () => {

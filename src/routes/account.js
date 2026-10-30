@@ -17,19 +17,31 @@ import { jobStatus } from "../jobs/scheduler.js";
 
 const rebuilds = new Map();
 
+// How long /api/health waits for Postgres to answer SELECT 1 (tests shorten it).
+export const healthCheck = { timeoutMs: 2000 };
+
 export default async function accountRoutes(app) {
   // The uptime monitor's and the deploy's check (_product/specs/observability.md,
   // line 6): no sign-in, one SELECT 1, and the version, so a deploy can wait for
-  // its own sha. Its request lines are not logged (Docker and the monitor call
-  // it every few seconds); a database that does not answer is.
+  // its own sha. A database that does not answer within 2 s is down too; the
+  // timer is cleared (and unref'd) so it never keeps the process alive. Its
+  // request lines are not logged (Docker and the monitor call it every few
+  // seconds); a database that does not answer is.
   app.get("/api/health", { logLevel: "warn" }, async (request, reply) => {
     const version = config.appVersion;
+    let timer;
+    const late = new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(Object.assign(new Error("no answer in time"), { code: "TIMEOUT" })), healthCheck.timeoutMs);
+      timer.unref?.();
+    });
     try {
-      await q("SELECT 1");
+      await Promise.race([q("SELECT 1"), late]);
       return { ok: true, db: "ok", version };
     } catch (e) {
       request.log.warn(`health: Postgres did not answer (${e?.code || e?.message || e})`);
       return reply.code(503).send({ ok: false, db: "down", version });
+    } finally {
+      clearTimeout(timer);
     }
   });
 
