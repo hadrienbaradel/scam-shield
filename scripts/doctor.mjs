@@ -120,6 +120,8 @@ function checkSecrets(s) {
   const optional = ["ABUSECH_AUTH_KEY", "RESEND_API_KEY", "HIBP_API_KEY", "GMAIL_PUBSUB_TOPIC", "GMAIL_PUBSUB_SUBSCRIPTION", "LLM_TRANSCRIBE_MODEL"];
   info(`optional: ${optional.map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
   info(`Prompt Guard 2 (optional injection shield, off without a key): ${["GROQ_API_KEY", "HF_TOKEN"].map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
+  const observability = ["ROLLBAR_ACCESS_TOKEN", "HEARTBEAT_POLL_URL", "HEARTBEAT_WATCH_URL", "HEARTBEAT_THREATFEED_URL", "HEARTBEAT_RETENTION_URL"];
+  info(`Observability (optional: Rollbar errors, heartbeats in production only): ${observability.map((k) => `${k} ${s.get(k) ? "present" : "missing"}`).join(", ")}`);
   if (s.strayEnv) warn(".env still exists: run make secrets-import (moves its keys into config/credentials.enc), then delete it (rm .env); it keeps winning over the credentials until then");
 }
 
