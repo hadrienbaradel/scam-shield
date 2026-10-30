@@ -2,9 +2,10 @@
 // same-origin, so a form posted from our own script-free pages (the trusted
 // person's one-tap answer at /answer/:token, the local sign-in) carries a
 // real Origin and passes the Origin check (src/server.js); under helmet's
-// default no-referrer a browser would send Origin: null, which stays refused.
-// The Content-Security-Policy is still there. The one lookup the answer page
-// makes is answered empty here, so nothing opens a connection.
+// default no-referrer a browser would send Origin: null, which stays refused,
+// as does a Referer that is not a URL. The Content-Security-Policy is still
+// there. The lookups the routes make are answered empty here, so nothing
+// opens a connection.
 import "./helpers/env.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -47,4 +48,19 @@ test("a form posted to the answer page with this site's Origin passes the Origin
     assert.equal(res.statusCode, 403, origin);
     assert.deepEqual(res.json(), { error: `Requests must come from ${ORIGIN}` }, origin);
   }
+});
+
+test("a Referer that is not a URL, with no Origin, counts as no origin: 403 and no cookie, never a 500", async () => {
+  const post = (url, referer, payload) => app.inject({ method: "POST", url, payload,
+    headers: { "content-type": "application/x-www-form-urlencoded", referer } });
+  for (const [url, payload] of [["/dev/signin", "email=referer-local%40example.test&role=senior"], ["/answer/x", "answer=scam"]]) {
+    for (const referer of ["not a url", "/answer/x"]) {
+      const res = await post(url, referer, payload);
+      assert.equal(res.statusCode, 403, `${url}, Referer ${JSON.stringify(referer)}`);
+      assert.deepEqual(res.json(), { error: `Requests must come from ${ORIGIN}` });
+      assert.equal(res.headers["set-cookie"], undefined, "no cookie");
+    }
+  }
+  // A browser that sends only a well-formed Referer of this site still gets through.
+  assert.equal((await post("/answer/x", `${ORIGIN}/answer/x`, "answer=scam")).statusCode, 200);
 });

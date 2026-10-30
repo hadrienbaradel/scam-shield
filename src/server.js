@@ -65,7 +65,9 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   app.addHook("onRequest", async (request, reply) => {
     if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
     if (/^Bearer\s/i.test(request.headers.authorization || "") || request.url === "/api/devices/pair" || request.url === "/api/whatsapp/webhook") return; // Meta signs the webhook (src/routes/whatsapp.js)
-    const from = request.headers.origin || (request.headers.referer ? new URL(request.headers.referer).origin : null);
+    // No Origin: the Referer's origin; a Referer that is not a URL counts as no origin (403, never a 500).
+    const { origin: sent, referer } = request.headers;
+    const from = sent || (referer && URL.canParse(referer) ? new URL(referer).origin : null);
     if (from !== origin) return reply.code(403).send({ error: `Requests must come from ${origin}` });
   });
   app.addHook("onRequest", async (request) => {
