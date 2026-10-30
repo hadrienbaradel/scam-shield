@@ -43,8 +43,9 @@ Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the
 
 ## Production skeleton: untested on a real host
 
-`make prod-build` builds the image locally; `make prod-smoke` runs the prod compose on port 3100 with throwaway data, curls
-`/api/health`, and stops it (both verified locally). The Ansible playbook (Docker from Docker's apt repository, repo at a branch,
+`make prod-build` builds the image locally; `make prod-smoke` runs the prod compose on port 3100 with throwaway data and no
+background jobs (`WORKER=0`, so it never pings the production heartbeats with the team's credentials), curls `/api/health`, and
+stops it (both verified locally). The Ansible playbook (Docker from Docker's apt repository, repo at a branch,
 compose env from a vault, `up -d --build --wait`, migrations, health) has never run against a host. The app binds `127.0.0.1:3000`
 on the host: a TLS reverse proxy and `BASE_URL=https://...` are needed for Google sign-in. `POSTGRES_PASSWORD`: letters and digits.
 

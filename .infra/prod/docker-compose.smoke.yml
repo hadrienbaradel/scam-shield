@@ -2,12 +2,16 @@
 # removes it) instead of the _volumes/postgres bind mount, a local image tag, and both
 # services on Docker's default bridge (a legacy link gives the app the "postgres" name), so
 # the smoke runs on a machine that has no subnet left for one more network. Not for a host.
+# No background jobs (WORKER=0): the image carries the team's credentials, so a smoke run must
+# never ping the production heartbeats or report a job to Rollbar as production.
 services:
   app:
     image: scam-shield:smoke
     network_mode: bridge
     links:
       - postgres
+    environment:
+      WORKER: "0"
   postgres:
     network_mode: bridge
     volumes:
