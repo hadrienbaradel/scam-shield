@@ -10,16 +10,22 @@ import { toWav16k } from "../audio.js";
 
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
 
-export function renderLanding(root, status) {
+// Without Google keys, the developer's own computer still signs in: the
+// buttons open the local sign-in page (_product/specs/developer-sign-in.md).
+const localSignin = async (status) => !status.googleConfigured && Boolean((await api("/auth/config").catch(() => null))?.devSignin);
+
+export async function renderLanding(root, status) {
   const params = new URLSearchParams(location.search);
   const note = params.get("signin") ? t(SIGNIN_MESSAGES[params.get("signin")] || "signin_error") : params.get("invite") ? t("invite_expired") : "";
-  const off = !status.googleConfigured;
+  const local = await localSignin(status);
+  if (root.dataset.view !== "landing") return; // another screen was drawn meanwhile
+  const off = !status.googleConfigured && !local;
   root.innerHTML = `
     <section class="hero">
       ${note ? `<p class="banner caution">${esc(note)}</p>` : ""}
       <h1>${t("landing_title")}</h1>
       <p class="lead">${t("landing_lead")}</p>
-      ${off ? `<p class="banner caution">${t("not_configured")}</p>` : ""}
+      ${off ? `<p class="banner caution">${t("not_configured")}</p>` : local ? `<p class="banner caution">${t("local_signin_note")}</p>` : ""}
       <div class="hero-actions">
         <a class="btn btn-gold btn-big${off ? " disabled" : ""}" href="${off ? "#/" : "/auth/google?mode=gmail"}">${t("protect_me")}<span class="btn-sub">${t("protect_me_sub")}</span></a>
         <a class="btn btn-light-dark btn-big${off ? " disabled" : ""}" href="${off ? "#/" : "/auth/google?mode=basic"}">${t("im_guardian")}</a>
@@ -326,10 +332,10 @@ export async function renderAdmin(root) {
 }
 
 export async function renderDemo(root, status) {
-  const { emails } = await api(`/api/demo/inbox?lang=${getLang()}`);
+  const [{ emails }, local] = await Promise.all([api(`/api/demo/inbox?lang=${getLang()}`), localSignin(status)]);
   root.innerHTML = `
     <section class="card"><h1>${t("demo_title")}</h1><p class="lead">${t("demo_lead")}</p>
-      ${status.googleConfigured ? `<a class="btn btn-gold" href="/auth/google?mode=gmail">${t("demo_signin")}</a>` : ""}</section>
+      ${status.googleConfigured || local ? `<a class="btn btn-gold" href="/auth/google?mode=gmail">${t("demo_signin")}</a>` : ""}</section>
     <div class="layout">
       <section class="inbox-pane"><div class="email-list">${emails.map((e, i) => `<button class="email-item" data-i="${i}">
         <p class="email-from">${esc(e.fromName || e.from)} ${e.channel !== "email" ? `<span class="pill">${esc(e.channel)}</span>` : ""}</p>

@@ -6,7 +6,8 @@
 
 import { readFile } from "node:fs/promises";
 import { requireUser, requireAdmin } from "../auth.js";
-import { config } from "../config.js";
+import { config, googleConfigured } from "../config.js";
+import { isLocalDevRequest } from "../localDev.js";
 import { many, one, q } from "../db/pool.js";
 import { validatePatternCard, promoteCard } from "../../lib/threatfeed.js";
 import { reviewQueue, SOURCES } from "../jobs/threatfeed.js";
@@ -36,9 +37,12 @@ export default async function adminRoutes(app) {
   const serveShell = async (request, reply) => {
     reply.type("text/html; charset=utf-8");
     if (!request.user) {
+      // Only the local sign-in (Google off, on this computer) follows next
+      // back to the console; Google sign-in ignores it, so it is left out there.
+      const signin = googleConfigured() ? "/auth/google?mode=basic" : "/auth/google?mode=basic&next=%2Fadmin%2F";
       return reply.code(403).send(page({ title: "Sign in first", body: `<h1>Sign in first</h1>
 <p>The admin console is for the people who run Prudence.</p>
-<p><a class="btn" href="/auth/google?mode=basic">Sign in with Google</a></p>` }));
+<p><a class="btn" href="${esc(signin)}">Sign in with Google</a></p>` }));
     }
     if (!request.user.isAdmin) {
       return reply.code(403).send(page({ title: "Admins only", body: `<h1>Admins only</h1>
@@ -136,7 +140,8 @@ export default async function adminRoutes(app) {
   });
 
   // Local outbox: only outside production, only from this machine (its
-  // copies hold live one-tap links). With trustProxy off, request.ip is the
+  // copies hold live one-tap links): isLocalDevRequest (src/localDev.js),
+  // shared with the local sign-in. With trustProxy off, request.ip is the
   // socket's address, and a tunnel or a local reverse proxy connects from
   // 127.0.0.1 too, so the page also refuses a request carrying a forwarding
   // header (cloudflared, ngrok and Caddy add one by default, nginx when
@@ -147,18 +152,8 @@ export default async function adminRoutes(app) {
   // no forwarding header: a proxy that rewrites Host to localhost, an SSH
   // local forward from another machine. The page is for testing on one
   // machine, never behind a tunnel or a proxy.
-  const FORWARDING_HEADERS = ["x-forwarded-for", "cf-connecting-ip", "x-real-ip", "forwarded"];
-  const LOCAL_NAMES = ["localhost", "127.0.0.1", "[::1]"];
-  // The Host header's name without its port ("[::1]:3000" is "[::1]"); "" without one.
-  const hostName = (host = "") => {
-    const h = String(host).toLowerCase();
-    return h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.split(":")[0];
-  };
   app.get("/dev/outbox", async (request, reply) => {
-    const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip);
-    const forwarded = FORWARDING_HEADERS.some((h) => request.headers[h] !== undefined);
-    const local = LOCAL_NAMES.includes(hostName(request.headers.host));
-    if (config.production || !loopback || forwarded || !local) return reply.code(404).send();
+    if (!isLocalDevRequest(request)) return reply.code(404).send();
     const mails = await many("SELECT * FROM outbox ORDER BY created_at DESC LIMIT 50");
     reply.type("text/html");
     return page({

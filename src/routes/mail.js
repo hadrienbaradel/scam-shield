@@ -15,6 +15,7 @@ import { callBackFor } from "../../lib/context.js";
 import { putBack, fileAsScam, undoThrow, undoKeep, decideAction } from "../sync/actions.js";
 import { alertGuardians, answersForSenior } from "../guardians.js";
 import { ReauthNeeded } from "../google/oauth.js";
+import { tokenStatus } from "../google/tokens.js";
 
 const cache = new Map(); // `${userId}:${box}` -> { at, data }
 
@@ -39,6 +40,10 @@ export default async function mailRoutes(app) {
     // Gmail allows a limited cost per user per minute: even a "fresh" list
     // is reused for 10 s, and a plain one for 20 s.
     if (hit && hit.at > Date.now() - (request.query.fresh ? 10000 : 20000)) return hit.data;
+    // No Google token at all (a local sign-in, _product/specs/developer-sign-in.md):
+    // there is no Gmail to read, so nothing to refresh and nothing to
+    // reconnect. A token Google refused (reauth_needed) still answers 409.
+    if (!(await tokenStatus(request.user.id))) return { box, messages: [] };
     const labels = await labelsFor(request.user.id);
     const labelId = box === "inbox" ? "INBOX" : labels[box];
     if (!labelId) return { box, messages: [] };
