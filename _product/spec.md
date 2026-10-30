@@ -6,7 +6,7 @@
 **Secondary user:** the trusted person (son, granddaughter, caregiver) who gets a one-tap "Scam / Real / I'll call you" request and only ever sees what the senior chose to share.
 **Hackathon context:** Meta Global AI Developer Hackathon 2026 (Cerebral Valley), Indie track, "Build for Your World"; due Wednesday Nov 4, 2026, 9:00 PM ET with a 3-minute demo video, a public GitHub repo and every teammate registered. Team: Hadrien Baradel (product, built everything so far), Vlad Zloteanu (joining as CTO).
 
-Last updated: 2026-10-29
+Last updated: 2026-10-30
 
 ## Principles
 - Demo-first: every feature must be showable in the 3-minute video. If it cannot be shown, it is cut or deferred.
@@ -40,6 +40,7 @@ Statuses: **Idea** (raised, not decided) Â· **Planned** (decided, not started) Â
 | Public deployment and Google verification | Planned | Railway EU, OAuth verification, CASA, Resend for real guardian email; not before the hackathon. | [specs/public-deployment.md](specs/public-deployment.md) |
 | CI workflow (tests + score on Postgres, Android tests + build) | Built | Every push runs `make check` and `make score` on Postgres and builds the Android debug APK (downloadable from the run) with its unit tests; green on main (Oct 29). | [specs/public-deployment.md](specs/public-deployment.md) |
 | Admin console (health, background jobs, users) | Built | `/admin/`, admins only, separate from the senior app: one health line per dependency, every background job with its last run, next due, health and Run now (runs kept 30 days), every user with Gmail and sync state and counts, scam-report review; never a message's text or a verdict's words. | [specs/admin-console.md](specs/admin-console.md) |
+| Observability: errors, heartbeats, health | Planned | Errors and job failures reach Rollbar with no personal data, each job pings a heartbeat, /api/health tests Postgres and names the version. | [specs/observability.md](specs/observability.md) |
 
 ## Ideas (not yet planned)
 Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom); being written in the PRD or STATUS does not count. A session can grep `| no |` to surface undiscussed ideas.
