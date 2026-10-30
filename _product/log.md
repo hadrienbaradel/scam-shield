@@ -53,6 +53,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Hadrien | Glasses: say whether Linda must wear the glasses in the Boston footage (a second pair at Best Buy South Bay or Watertown, Sat Oct 31, once Vlad's loop runs) or the Paris clip is cut in; and which beat the doorstep Listen scene replaces (1:47-2:05?) under the four-Meta-surface cap (`research/glasses.md`) | Vlad | 2026-10-29 |
 | Hadrien | Social scams: pick the Nov 4 slot, if any, among the whole-conversation check (1.5 d, the Daniel WhatsApp scene), the hiring-file check (1.5 d) and "Who is this?" (+1 d), or keep them Ideas (`specs/social-scams.md`) | Vlad | 2026-10-29 |
 | Vlad | Buy the Ray-Ban Meta Gen 3 Wayfarer clear (€449, Boulanger 30-minute pickup, 15-day returns; Gen 2 clear €419 fallback) by Fri Oct 30 and pair it in Developer Mode, or drop the Look scene and film Listen with earbuds and the letter with the phone camera; then decide which idea earns Planned: Listen (1.25 d, zero glasses code) and/or the whole-conversation check (1.5 d), spec first (`research/glasses/buying.md`) | Glasses and social research | 2026-10-29 |
+| Vlad | Ops program: three decisions before the deploy and shared-database agents start: which hosting provider already has a verified account with a card (DigitalOcean, Scaleway, Hetzner; none means Railway Hobby); a VPS with Tailscale, or Railway without it; which email the non-Meta accounts use (Rollbar, Better Stack, Tailscale). Research: `_product/research/ops-services.md` | coord session | 2026-10-30 |
 
 ## Done
 
