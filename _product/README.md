@@ -21,7 +21,7 @@ Docs move with the code: a change is done when every doc it touches matches what
 |---|---|
 | `docs/product-process.md` | The change loop (think → research → challenge → spec → code → tests → docs → commit), spec templates, which doc moves with which change, definition of done. |
 | `docs/git.md` | Commit rhythm and messages, branches, what never gets committed, the public-repo check. |
-| `docs/testing.md` | How behavior is tested: `make test` / `coverage` / `check`, the 84% line-coverage ratchet, per-agent test databases, one test per spec line, the mock model. |
+| `docs/testing.md` | How behavior is tested: `make test` / `coverage` / `check`, the 93% line-coverage ratchet, per-agent test databases, one test per spec line, the mock model. |
 | `docs/dx.md` | Don't make me think: `make` is the help, the three commands, `make doctor`, where things live, every script gets a target. |
 | `docs/design.md` | Senior-first screens designed with Claude Design before they are built; the design system; accessibility checks before Built. |
 | `docs/infra.md` | Postgres in Docker Compose for dev and what lives where, per-agent test databases, CI (GitHub Actions), the production skeleton (image, compose, Ansible), three common failures. |

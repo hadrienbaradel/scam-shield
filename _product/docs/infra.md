@@ -36,7 +36,7 @@ on first use by `tests/helpers/db.js` through the maintenance database `postgres
 
 `.github/workflows/ci.yml` runs on every push and pull request (superseded runs are cancelled). Job `node`: Node from `.nvmrc` with
 the npm cache, `npm ci`, the dev compose Postgres (`docker compose -f .infra/dev/docker-compose.yml up -d --wait`, `PG_USER=postgres`),
-`make check` (master key not tracked, all tests, line coverage >= 84%), `make score`, `coverage/lcov.info` as an artifact. Job
+`make check` (master key not tracked, all tests, line coverage >= 93%), `make score`, `coverage/lcov.info` as an artifact. Job
 `android`: JDK 17, Gradle cache, `./gradlew assembleDebug testDebugUnitTest`, the debug APK as an artifact. No secret is configured:
 the tests set their own environment, and `make score` runs with `CREDENTIALS_FILE` pointing at a file that does not exist.
 Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).

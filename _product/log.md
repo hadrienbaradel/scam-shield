@@ -24,7 +24,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | Share the Learn design canvas with Hadrien from its Share menu (private today): https://claude.ai/artifact/Jtbbq6m8txVZxPBdPkFSJZ | Vlad · learn | 2026-10-29 |
 | Vlad | If the Nov 1 rehearsal keeps the Prompt Guard scene: add D8 to Linda's Today queue in `src/routes/demo.js`, set GROQ_API_KEY or HF_TOKEN on the recording machine (mock otherwise), and add the Groq and HF keys to the leak-rotation list in `_product/docs/secrets.md` | Prompt Guard build | 2026-10-29 |
 | Hadrien | Learn tab (four tabs): the French "Aujourd'hui" label does not fit a quarter-width tab at the two larger text sizes; rename to "Accueil" or keep two-line labels? | Vlad · learn (design) | 2026-10-29 |
-| Vlad | Raise the coverage threshold in package.json from 84 to 90 (line coverage is 91.7%; ratchet rule) once the learn session has committed its package.json changes | Voice review | 2026-10-29 |
 | Vlad | `outbox` has no owner column, so "Delete my account" leaves copies of mails already sent to trusted people for up to 7 days; the privacy spec says every row is erased (found while writing docs/ARCHITECTURE.md) | Architecture review | 2026-10-29 |
 | Vlad | Send `config/master.key` to Hadrien over a private channel (never the repo, never a chat with an agent) | Hadrien | 2026-10-29 |
 | Vlad | Baseten credits: claim them if not done | Hadrien | 2026-10-29 |
@@ -33,7 +32,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | WhatsApp "forward it to Prudence" bot, Hadrien's pick for the extra Meta scene (Cloud API test number, 5 phones, needs the public URL) | Hadrien | 2026-10-29 |
 | Vlad | "Checked:" chips under the reasons on the V2 card (`public/js/views/today.js`); the reasoning summary on Thomas's view only if the Responses API returns one | Video script, Oct 29 | 2026-10-29 |
 | Vlad | Point heyprudence.com at the live demo and settle the public repo name (org publication check first) | Video script, Oct 30 | 2026-10-29 |
-| Vlad | ffmpeg into `.infra/prod/Dockerfile` (WhatsApp voice notes need it); raise the coverage threshold in package.json to 88 once the learn session has committed its package.json | whatsapp-channel build | 2026-10-29 |
+| Vlad | ffmpeg into `.infra/prod/Dockerfile` (WhatsApp voice notes need it) | whatsapp-channel build | 2026-10-29 |
 | Hadrien | git.md now says both of us commit on main in small steps (claim first, pull --rebase); object here if you want branches and merges back | Vlad | 2026-10-29 |
 | Hadrien | heyprudence.com already sits on Cloudflare nameservers: in that Cloudflare account create a Tunnel (Zero Trust → Networks → Tunnels) with public hostname `demo.heyprudence.com` → `http://localhost:3000`, and send Vlad the tunnel token privately (or add Vlad as a member of the account) | Vlad | 2026-10-29 |
 | Hadrien | Add the public origin (the tunnel or heyprudence.com) to the OAuth client's redirect URIs in scam-shield-hb26 once Vlad posts it here | Vlad | 2026-10-29 |
@@ -47,7 +46,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Hadrien | Record a 12–15 s "Grandma, it's me… gift cards… don't tell Mom" voicemail (your voice or a consenting friend's, 16 kHz mono WAV) as `public/demo/voicemail-en.wav` (and `-fr` if wanted); until then only the local placeholder in `.runtime/demo/` plays (synthetic Mac voice, never committed) | Demo voicemail build | 2026-10-29 |
 | Both | Nov 1 rehearsal: decide the conditional swaps (Prompt Guard, reasoning summary, open weights) | Video script | 2026-10-29 |
 | Vlad | Retire the senior app's `#/admin` page in favour of `/admin/#/cards` (one line in `public/js/main.js`, `renderAdmin` in `public/js/views/pages.js`, the `admin_*` strings in `i18n.js`) once the chips and learn sessions have landed; its Fetch now has no catch for the new 409 | Vlad · admin | 2026-10-29 |
-| Vlad | Raise the coverage threshold in `package.json` (`--test-coverage-lines`, ratchet rule) once the learn session has committed that file: the suite measured 93.6 % lines on Oct 29 | Vlad · admin | 2026-10-29 |
 | Vlad | `config/credentials.example`: the `ADMIN_EMAILS` comment should name the admin console (`/admin/`: health, jobs, users, scam reports), once the WhatsApp session releases the file | Vlad · admin | 2026-10-29 |
 | Vlad | Threat feed: card ids get `feed-` twice (`src/jobs/threatfeed.js` skeletonCard and the insert) and the run's `cards` count includes duplicates the database skipped; found by the console QA | Vlad · admin | 2026-10-29 |
 | Hadrien | Before the tunnel goes public: put both our Google addresses in `ADMIN_EMAILS` and open `/admin/` through the tunnel once (health, jobs, users); `/dev/outbox` now refuses forwarded requests, so the test links are read on the laptop only | Vlad · admin | 2026-10-29 |

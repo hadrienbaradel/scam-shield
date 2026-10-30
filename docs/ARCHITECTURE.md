@@ -131,7 +131,7 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 ## Testing and evaluation
 
 - `node:test` suites in `tests/*.test.js`, one file at a time. `tests/helpers/env.js` fixes the environment, the model is the mock provider (`LLM_PROVIDER=mock`), Gmail is `tests/helpers/fake-gmail.js`, and every external API gets an injected `fetch`; the suites that need Postgres (`integration`, `admin`, `lessons`) skip without it and run on a database of their own per agent (`TEST_DB_SUFFIX`). Rules: `_product/docs/testing.md`.
-- `make check` fails below 84% line coverage of `lib/` and `src/`, a ratchet that only moves up. The whole suite ran green for this doc on Oct 29: 300 tests, the Postgres suites included (213 at `9561016` on Oct 28). The Android app has 64 JVM unit tests.
+- `make check` fails below 93% line coverage of `lib/` and `src/` (84% until Oct 30), a ratchet that only moves up. The whole suite ran green for this doc on Oct 29: 300 tests, the Postgres suites included (213 at `9561016` on Oct 28). The Android app has 64 JVM unit tests.
 - The score corpus is `testcases/cases.json`: 36 PRD cases in four sets (A: 9 real scams received by Hadrien, redacted; B: 9 scam patterns such as family emergency, sextortion, recovery and romance; C: 11 genuine messages; D: 7 US scams), judged with the two seed profiles and seven cards. Pass: A 100%, no false Scam on C. Detector alone: 37/37, re-run for this doc on Oct 29. Muse Spark: 34/36 on Oct 27, calling B2 and B12 Scam where Be careful is expected (`docs/STATUS.md`).
 
 | Measured (date, source) | Rules alone | Muse Spark |

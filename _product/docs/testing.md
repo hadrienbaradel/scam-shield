@@ -15,9 +15,9 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 | `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice. Part of the definition of done. |
 | `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, 1 to 3 lines per say, exactly three questions with one right answer, texts under 140 characters, `**bold**` only, EN/FR twins with the same steps, demo cases that exist. Part of `make check`. |
 
-## Coverage threshold: 84% of lines, ratcheted
+## Coverage threshold: 93% of lines, ratcheted
 
-`make check` fails below 84% line coverage on `lib/` and `src/` (`--test-coverage-lines` in `package.json`). The rule is a ratchet: when coverage rises, raise the threshold to the new floor in the same commit; never lower it. A change that drops coverage adds tests, it does not touch the number.
+`make check` fails below 93% line coverage on `lib/` and `src/` (`--test-coverage-lines` in `package.json`; raised from 84 on Oct 30 at 93.98% measured). The rule is a ratchet: when coverage rises, raise the threshold to the new floor in the same commit; never lower it. A change that drops coverage adds tests, it does not touch the number.
 
 ## Postgres and per-agent databases
 
