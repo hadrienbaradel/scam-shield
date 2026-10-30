@@ -24,6 +24,9 @@ COPY prompts ./prompts
 COPY data ./data
 COPY testcases ./testcases
 COPY config/credentials.enc ./config/credentials.enc
+# The version /api/health and Rollbar name: make prod-build passes the git sha (empty here means "dev").
+ARG GIT_SHA
+ENV APP_VERSION=$GIT_SHA
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

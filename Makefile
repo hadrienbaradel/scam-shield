@@ -176,8 +176,8 @@ gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety 
 
 ##@ Prod  (.infra/prod: Dockerfile, docker-compose.yml, ansible/; untested on a real host)
 
-prod-build: ## Build the production image here (node:24-alpine, npm ci --omit=dev, non-root): PROD_IMAGE=scam-shield:local
-	@docker build -f .infra/prod/Dockerfile -t $(PROD_IMAGE) .
+prod-build: ## Build the production image here (node:24-alpine, npm ci --omit=dev, non-root, APP_VERSION = the git sha): PROD_IMAGE=scam-shield:local
+	@docker build -f .infra/prod/Dockerfile --build-arg GIT_SHA=$$(git rev-parse HEAD) -t $(PROD_IMAGE) .
 
 prod-smoke: ## Run the prod compose locally on port 3100 with throwaway data, curl /api/health, stop it (needs the master key)
 	@[ -n "$$MASTER_KEY" ] || [ -f config/master.key ] || { echo "No master key: make secrets-init (or set MASTER_KEY)"; exit 1; }
