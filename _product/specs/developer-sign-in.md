@@ -1,5 +1,5 @@
 # Developer sign-in (local, without Google)
-Status: Planned · Last updated: 2026-10-30
+Status: Built · Last updated: 2026-10-30
 
 ## Why
 Google sign-in needs an OAuth client that only the Cloud Console can create (Hadrien's project, `docs/GOOGLE_SETUP.md`); until it exists nobody can open a signed-in screen or `/admin/` on a laptop, and a judge who clones the repo has the same problem. A local sign-in, on the developer's own computer only, opens every screen today. The Google flow itself does not change.
