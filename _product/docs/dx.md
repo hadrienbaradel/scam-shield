@@ -14,6 +14,8 @@ make test      # every suite; add TEST_DB_SUFFIX=<your-name> when others may be 
 
 `make` alone prints every target with its one-line help, grouped (Setup, Run, Quality, Secrets, Data, Prod, Ops). `make doctor` says what is missing (Node, dependencies, master key and credentials by name, Docker and Postgres, databases, port 3000) and what to run for each; it is the first answer to "it does not work". The README quick start is these three commands and stays three commands long.
 
+Without Google keys the app still signs you in on your own computer: the welcome buttons open `/dev/signin`, a local sign-in as anyone in the database or as a new person, `/admin/` included for an address in `ADMIN_EMAILS` (`_product/specs/developer-sign-in.md`; the real Google client: `docs/GOOGLE_SETUP.md`).
+
 ## Where things live
 
 | Path | Holds |

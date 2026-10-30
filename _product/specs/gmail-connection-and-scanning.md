@@ -1,5 +1,5 @@
 # Gmail connection and scanning
-Status: Built (unverified live) · Last updated: 2026-10-27
+Status: Built (unverified live) · Last updated: 2026-10-30
 
 ## Why
 The senior should not have to forward anything: once connected, every new email is checked before they open it. The whole promise ("it knows your life") depends on reading the real inbox.
@@ -30,5 +30,6 @@ src/routes/auth.js (PKCE sign-in, modes), src/google/oauth.js, src/google/gmail.
 
 ## Open questions
 - Who creates the OAuth consent screen and Web client (Hadrien, console step), and by when? The video cannot be filmed without it.
+  - Still open on 2026-10-30: the steps and the two ways (Hadrien does them, or adds Vlad to the project) are in `docs/GOOGLE_SETUP.md`; development uses the local sign-in (`specs/developer-sign-in.md`); the video needs the real client.
 - First-run cost on a big mailbox: 300 messages read for context + 50 checked (Muse calls) — acceptable latency for the welcome screen?
 - Test users must be added by hand in the Cloud Console: who are the three seniors for the comprehension test?
