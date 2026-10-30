@@ -50,6 +50,8 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
     },
     hsts: config.secureCookies,
     crossOriginEmbedderPolicy: false,
+    // Form posts from our own script-free pages must carry a real Origin (no-referrer sends Origin: null); other sites still get no Referer.
+    referrerPolicy: { policy: "same-origin" },
   });
   // Limits count per signed-in person (per IP otherwise), after sign-in is known.
   await app.register(rateLimit, { global: false, hook: "preHandler", keyGenerator: (request) => request.user?.id || request.ip });

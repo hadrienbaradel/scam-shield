@@ -1,12 +1,14 @@
 // The local sign-in over HTTP and Postgres (_product/specs/developer-sign-in.md):
 // without Google keys, on the developer's own computer, the welcome buttons
 // open /dev/signin, which signs in as someone already here or as a new person
-// (a senior gets a mailbox entry and never a Google token). The session is a
-// real one (the senior's screens, the admin console), an invitation is
-// accepted, next is followed only within this site, a local senior has
-// nothing to reconnect and the background jobs skip them, and the page is
-// not found in production or through a tunnel or a proxy. One test per
-// behavior line. Needs Postgres; skipped without it.
+// (a senior gets a mailbox entry and never a Google token); with the keys set
+// (the default here, tests/helpers/env.js) only local test people sign in
+// there. The session is a real one (the senior's screens, the admin console),
+// a post from another site is refused, an invitation is accepted, next is
+// followed only within this site, a local senior has nothing to reconnect and
+// the background jobs (the push listener included) skip them, and the page is
+// not found in production or through a tunnel or a proxy. At least one test
+// per behavior line. Needs Postgres; skipped without it.
 
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
 import { test, before, after } from "node:test";
@@ -15,7 +17,7 @@ import { one } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { config } from "../src/config.js";
 import { inviteGuardian } from "../src/guardians.js";
-import { pollAll, renewWatches, jobStatus } from "../src/jobs/scheduler.js";
+import { pollAll, renewWatches, jobStatus, mailboxForPush } from "../src/jobs/scheduler.js";
 import { usersToSync } from "../src/sync/worker.js";
 
 const ORIGIN = "http://localhost:3999";
@@ -40,6 +42,11 @@ after(async () => {
 async function withoutGoogle(fn) {
   config.google.clientId = "";
   try { return await fn(); } finally { config.google.clientId = saved.google.clientId; }
+}
+// The same for a whole test, until it ends (t: the test's context).
+function withoutGoogleFor(t) {
+  config.google.clientId = "";
+  t.after(() => { config.google.clientId = saved.google.clientId; });
 }
 
 // The local page's forms, as a browser on this computer sends them.
@@ -77,7 +84,8 @@ test("without Google keys, on this computer the two buttons open the local sign-
   });
 });
 
-test("the local page lists the people already here (senior or trusted person, admin, local) and signs in as one of them with one tap", opts, async () => {
+test("without Google keys, the local page lists everyone already here (senior or trusted person, admin, local) and signs in as one of them with one tap", opts, async (t) => {
+  withoutGoogleFor(t);
   const linda = await makeUser({ email: "linda-list@example.test", name: "Linda", gmail: true });
   const thomas = await makeUser({ email: "thomas-list@example.test", name: "Thomas" });
   await makeUser({ email: "admin@example.test", name: "Ada" });
@@ -89,7 +97,7 @@ test("the local page lists the people already here (senior or trusted person, ad
   assert.match(page.body, /only on this computer, and never in production/);
   assert.ok(page.body.includes("docs/GOOGLE_SETUP.md"), "points to the real Google sign-in");
   assert.ok(!/<script/i.test(page.body), "no script");
-  // Under the app's default no-referrer, a browser posts these forms with Origin: null and the Origin check refuses them.
+  // The app's referrer policy (src/server.js): under no-referrer a browser would post these forms with Origin: null, which the Origin check refuses.
   assert.equal(page.headers["referrer-policy"], "same-origin", "the page's forms carry the real Origin");
   const row = (email) => page.body.split("<li>").find((li) => li.includes(email)) ?? "";
   assert.match(row("linda-list@example.test"), />Linda<\/button> <span class="small">linda-list@example\.test · senior<\/span>/);
@@ -162,9 +170,9 @@ test("the same email twice is the same person, whoever signed them in first", op
   const b = (await as(cookieOf(second), "/api/status")).json();
   assert.equal(a.user.id, b.user.id);
   assert.deepEqual([b.user.name, b.user.onboarded, Boolean(b.gmail)], ["Tim", true, true], "the person is signed in as they are, unchanged");
-  // Someone who came through Google is found by their email too, not doubled.
+  // Without Google keys, someone who came through Google is found by their email too, not doubled.
   const google = await makeUser({ email: "google-person@example.test", name: "Gail", gmail: true });
-  const res = await signIn({ email: "Google-Person@example.test", role: "trusted" });
+  const res = await withoutGoogle(() => signIn({ email: "Google-Person@example.test", role: "trusted" }));
   assert.equal((await as(cookieOf(res), "/api/status")).json().user.id, google.id);
   assert.equal((await one("SELECT count(*)::int AS n FROM users WHERE lower(email) = 'google-person@example.test'")).n, 1);
 });
@@ -265,6 +273,20 @@ test("a local senior has a mailbox entry but no Gmail access: Today reads up to 
   assert.equal((await one("SELECT sync_status FROM gmail_state WHERE user_id = $1", [tina.id])).sync_status, "ok", "still up to date");
 });
 
+test("a Gmail push event goes only to a mailbox with a live Google token: never to a local senior, who never shadows a real person with the same address", opts, async () => {
+  await signIn({ email: "push-local@example.test", name: "Pia", role: "senior" });
+  const local = await userByEmail("push-local@example.test");
+  assert.equal((await one("SELECT backfill_done FROM gmail_state WHERE user_id = $1", [local.id])).backfill_done, true, "her mailbox reads synced");
+  assert.equal(await mailboxForPush("push-local@example.test"), null, "a push for her address syncs no one");
+  // Later the real person with that address signs in with Google: once their first sync is done, the push is theirs.
+  const real = await makeUser({ email: "push-local@example.test", name: "Pia", gmail: true });
+  assert.equal(await mailboxForPush("push-local@example.test"), null, "not before their first sync");
+  await pool.query("UPDATE gmail_state SET backfill_done = true WHERE user_id = $1", [real.id]);
+  assert.equal(await mailboxForPush("Push-Local@Example.test"), real.id, "the local senior who came first does not shadow them");
+  await pool.query("UPDATE google_tokens SET status = 'reauth_needed' WHERE user_id = $1", [real.id]);
+  assert.equal(await mailboxForPush("push-local@example.test"), null, "nor a mailbox whose token Google refused");
+});
+
 test("an invitation followed on this computer is accepted by the local sign-in, like after Google", opts, async () => {
   const senior = await makeUser({ email: "inviter-local@example.test", name: "Linda" });
   const { inviteUrl } = await inviteGuardian({ senior, name: "Theo", email: "theo-invited@example.test", relation: "grandson" });
@@ -300,6 +322,8 @@ test("the local sign-in is not found in production, through a tunnel or a proxy,
   const refused = [
     ...["cf-connecting-ip", "x-forwarded-for", "x-real-ip"].map((h) => ({ headers: { [h]: "203.0.113.9" } })),
     { headers: { forwarded: "for=203.0.113.9" } },
+    // A proxy that keeps the client's address to itself still names the public host, the scheme or itself.
+    { headers: { "x-forwarded-host": "demo.example.test" } }, { headers: { "x-forwarded-proto": "https" } }, { headers: { via: "1.1 caddy" } },
     { headers: { host: "demo.example.test" } },
     { remoteAddress: "203.0.113.9" },
   ];
@@ -323,6 +347,21 @@ test("the local sign-in is not found in production, through a tunnel or a proxy,
   assert.equal(await userByEmail("door-local@example.test"), null, "no refused request created anyone");
 });
 
+test("a sign-in posted from another site, or from a page that hides its origin (Origin: null), is refused: no login CSRF", opts, async () => {
+  await signIn({ email: "csrf-local@example.test", role: "senior" });
+  const person = await userByEmail("csrf-local@example.test");
+  for (const origin of ["https://evil.example.test", "null"]) {
+    for (const fields of [{ user_id: person.id }, { email: "csrf-new@example.test", role: "senior" }]) {
+      const res = await signIn(fields, { origin });
+      assert.equal(res.statusCode, 403, `${origin} ${JSON.stringify(fields)}`);
+      assert.match(res.json().error, /^Requests must come from /);
+      assert.equal(cookieOf(res), null, "no session");
+    }
+  }
+  assert.equal(await userByEmail("csrf-new@example.test"), null, "nobody is created");
+  assert.equal((await one("SELECT count(*)::int AS n FROM audit_log WHERE user_id = $1 AND event = 'signed_in_locally'", [person.id])).n, 1, "only the real sign-in is recorded");
+});
+
 test("each local sign-in appears in the person's audit list as signed in locally", opts, async () => {
   const first = await signIn({ email: "audit-local@example.test", role: "senior" });
   const user = await userByEmail("audit-local@example.test");
@@ -330,7 +369,6 @@ test("each local sign-in appears in the person's audit list as signed in locally
   const { events } = (await as(cookieOf(first), "/api/audit")).json();
   const local = events.filter((e) => e.event === "signed_in_locally");
   assert.equal(local.length, 2, "one per sign-in");
-  assert.equal(local[0].event.replaceAll("_", " "), "signed in locally", "the words the Settings history shows");
 });
 
 test("with Google keys set, the buttons go to Google as before and the local page still opens on this computer", opts, async () => {
@@ -342,4 +380,53 @@ test("with Google keys set, the buttons go to Google as before and the local pag
   assert.equal((await app.inject({ url: "/dev/signin" })).statusCode, 200);
   const local = await signIn({ email: "keys-local@example.test", role: "trusted" });
   assert.equal(local.headers.location, "/#/guardian");
+});
+
+test("with Google keys set, the local page lists only local test people and refuses anyone who signs in with Google, from the list or by address", opts, async () => {
+  const gail = await makeUser({ email: "keys-google@example.test", name: "Gail", gmail: true });
+  const created = await signIn({ email: "keys-tess@example.test", name: "Tess", role: "trusted" });
+  assert.equal(created.statusCode, 302, "a new local test person is still created");
+  const tess = await userByEmail("keys-tess@example.test");
+  assert.equal(tess.google_sub, "local:keys-tess@example.test");
+
+  const page = await app.inject({ url: "/dev/signin" });
+  assert.equal(page.statusCode, 200);
+  assert.match(page.body, /Google sign-in is on: this page lists only local test people, and everyone else signs in with Google\./);
+  const rows = page.body.split("<li>").slice(1);
+  assert.ok(rows.some((li) => li.includes(`value="${tess.id}"`)), "a local test person is listed");
+  assert.ok(rows.every((li) => / · local<\/span>/.test(li)), "and only local test people");
+  assert.ok(!page.body.includes("keys-google@example.test") && !page.body.includes(gail.id), "someone who came through Google is not");
+
+  for (const fields of [{ user_id: gail.id }, { email: " Keys-Google@example.test ", role: "senior" }]) {
+    const res = await signIn(fields);
+    assert.equal(res.statusCode, 403, JSON.stringify(fields));
+    assert.match(res.body, /That person signs in with Google\. Pick a local test person, or create one with another address\./);
+    assert.equal(cookieOf(res), null, "no session");
+  }
+  assert.equal((await one("SELECT count(*)::int AS n FROM users WHERE lower(email) = 'keys-google@example.test'")).n, 1, "no local double of her is created");
+  assert.equal(await one("SELECT 1 FROM audit_log WHERE user_id = $1 AND event = 'signed_in_locally'", [gail.id]), null, "no sign-in is recorded");
+
+  const again = await signIn({ user_id: tess.id });
+  assert.equal(again.headers.location, "/#/guardian", "a local test person signs in from the list");
+  assert.equal((await as(cookieOf(again), "/api/status")).json().user.id, tess.id);
+
+  // Without the keys, the same page lists her and signs her in, as before.
+  await withoutGoogle(async () => {
+    const all = await app.inject({ url: "/dev/signin" });
+    assert.ok(all.body.includes("keys-google@example.test") && !all.body.includes("everyone else signs in with Google"));
+    assert.equal((await as(cookieOf(await signIn({ user_id: gail.id })), "/api/status")).json().user.id, gail.id);
+  });
+});
+
+test("an address a Google person shares with a local test person signs in as the Google person without keys, and is refused with them", opts, async () => {
+  // The local test person came first, before the keys were set; then the real person signed in with Google.
+  await withoutGoogle(() => signIn({ email: "shared@example.test", name: "Sue (local)", role: "senior" }));
+  const local = await userByEmail("shared@example.test");
+  const real = await makeUser({ email: "shared@example.test", name: "Sue", gmail: true });
+  const res = await withoutGoogle(() => signIn({ email: "Shared@Example.test", role: "senior" }));
+  assert.equal((await as(cookieOf(res), "/api/status")).json().user.id, real.id, "the Google person, never their local double");
+  const refused = await signIn({ email: "shared@example.test", role: "senior" });
+  assert.equal(refused.statusCode, 403, "with the keys, the address belongs to someone who signs in with Google");
+  assert.equal(cookieOf(refused), null);
+  assert.equal((await signIn({ user_id: local.id })).statusCode, 302, "the local test person is still there, from the list");
 });

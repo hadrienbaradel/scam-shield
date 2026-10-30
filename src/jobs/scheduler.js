@@ -93,13 +93,23 @@ export async function threatFeedRun({ fetchImpl } = {}) {
   return report;
 }
 
+// Whose mailbox a Gmail push event is about: the backfilled mailbox with that
+// address and a live Google token, as renewWatches picks them. A local senior
+// (no token row, _product/specs/developer-sign-in.md) never gets one, and
+// never shadows a real person with the same address. The user id, or null.
+export async function mailboxForPush(emailAddress) {
+  const row = await one(`SELECT s.user_id FROM gmail_state s JOIN google_tokens t ON t.user_id = s.user_id
+                         WHERE lower(s.email) = lower($1) AND s.backfill_done AND t.status = 'ok'`, [emailAddress]);
+  return row?.user_id ?? null;
+}
+
 async function pubsubLoop() {
   jobStatus.pubsub = "listening";
   while (!stopping) {
     try {
       for (const ev of await pullGmailEvents()) {
-        const row = await one("SELECT user_id FROM gmail_state WHERE lower(email) = lower($1) AND backfill_done", [ev.emailAddress]);
-        if (row) syncUser(row.user_id).catch((e) => note(e, "push sync"));
+        const userId = await mailboxForPush(ev.emailAddress);
+        if (userId) syncUser(userId).catch((e) => note(e, "push sync"));
       }
     } catch (e) {
       jobStatus.pubsub = `error: ${e.message}`;

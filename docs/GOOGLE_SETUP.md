@@ -53,7 +53,7 @@ After the first sign-in with Gmail access, wait for the first pass over recent m
 
 ## Working without the client
 
-On your own computer, without Google keys, the welcome buttons open a local sign-in, `/dev/signin`. It signs you in as anyone already in the database, or creates a person, with the same session as Google's; `/admin/` opens for an address in `ADMIN_EMAILS`. It never exists in production, answers only on loopback and refuses forwarded requests. It reads no Gmail, so real mail and the video still need the client above. Spec: `_product/specs/developer-sign-in.md`.
+On your own computer, without Google keys, the welcome buttons open a local sign-in, `/dev/signin`. It signs you in as anyone already in the database, or creates a person, with the same session as Google's; `/admin/` opens for an address in `ADMIN_EMAILS`. It never exists in production, answers only on loopback and refuses forwarded requests. Once the keys are set it signs in local test people only; everyone else uses Google. It reads no Gmail, so real mail and the video still need the client above. Spec: `_product/specs/developer-sign-in.md`.
 
 ## What testers will see, and the limits of Testing mode
 

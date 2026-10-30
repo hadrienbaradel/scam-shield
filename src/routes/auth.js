@@ -2,7 +2,8 @@
 // gmail.modify) or mode=basic (guardians: sign in only, no mail access).
 // Without Google keys, the developer's own computer gets a local sign-in
 // instead (/dev/signin, _product/specs/developer-sign-in.md): the same
-// session, never a Google token, and nowhere else (src/localDev.js).
+// session, never a Google token, and nowhere else (src/localDev.js). With
+// the keys set it stays there for the local test people only.
 
 import { config, googleConfigured, isAdmin } from "../config.js";
 import { pkcePair, randomToken, sha256 } from "../crypto.js";
@@ -45,26 +46,31 @@ const isLocalPath = (s) => typeof s === "string" && /^\/[\x21-\x5b\x5d-\x7e]*$/.
 
 const hidden = (fields) => Object.entries(fields).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
 
-// The local sign-in page: everyone already in the database, one tap each,
-// then a form for a new person. Plain forms, no script.
+// A person this page created (google_sub "local:<email>"), never one who came through Google.
+const isLocalPerson = (user) => user.google_sub.startsWith("local:");
+
+// The local sign-in page: everyone already in the database (only the local
+// test people while Google keys are set), one tap each, then a form for a
+// new person. Plain forms, no script.
 async function signinPage(reply, keep, { status = 200, error = "" } = {}) {
+  const onlyLocal = googleConfigured();
   const people = await many(`SELECT u.id, u.name, u.email, u.google_sub, (s.user_id IS NOT NULL) AS senior
                              FROM users u LEFT JOIN gmail_state s ON s.user_id = u.id
+                             ${onlyLocal ? "WHERE u.google_sub LIKE 'local:%'" : ""}
                              ORDER BY lower(coalesce(u.name, u.email)), lower(u.email)`);
-  const tags = (p) => [p.senior ? "senior" : "trusted person", isAdmin(p.email) && "admin", p.google_sub.startsWith("local:") && "local"].filter(Boolean).join(" · ");
+  const tags = (p) => [p.senior ? "senior" : "trusted person", isAdmin(p.email) && "admin", isLocalPerson(p) && "local"].filter(Boolean).join(" · ");
   const trusted = keep.mode === "basic";
-  // Under helmet's no-referrer a browser posts a form with Origin: null, which
-  // the Origin check (src/server.js) refuses; same-origin keeps the real one.
-  reply.code(status).type("text/html; charset=utf-8").header("referrer-policy", "same-origin");
+  reply.code(status).type("text/html; charset=utf-8");
   return page({ title: "Local sign-in", body: `<h1>Local sign-in</h1>
 ${error ? `<p class="banner danger">${esc(error)}</p>` : ""}
 <p>Sign in without Google, to test Prudence. This page works only on this computer, and never in production.</p>
+${onlyLocal ? "<p>Google sign-in is on: this page lists only local test people, and everyone else signs in with Google.</p>" : ""}
 <p class="small">Real Google sign-in is set up as described in docs/GOOGLE_SETUP.md.</p>
 ${keep.invite ? "<p>You followed an invitation: the person you sign in as accepts it.</p>" : ""}
 <h2>Sign in as</h2>
 ${people.length ? `<ul class="people">${people.map((p) => `<li><form method="post" action="/dev/signin">${hidden({ ...keep, user_id: p.id })}
 <button class="btn btn-light-dark" type="submit">${esc(p.name || p.email)}</button> <span class="small">${esc(p.email)} · ${tags(p)}</span></form></li>`).join("\n")}</ul>`
-    : "<p>No one yet: create the first person below.</p>"}
+    : onlyLocal ? "<p>No local test person yet: create one below.</p>" : "<p>No one yet: create the first person below.</p>"}
 <h2>New person</h2>
 <form method="post" action="/dev/signin">${hidden(keep)}
 <label>Email<input type="email" name="email" required maxlength="200" autocomplete="off"></label>
@@ -163,8 +169,9 @@ export default async function authRoutes(app) {
   });
 
   // One person from the list (user_id), or the one with this email, created
-  // when there is none. Then the landing a Google sign-in would give: the
-  // invitation, else next, else the senior's Today or the trusted person's page.
+  // when there is none; while Google keys are set, only a local test person.
+  // Then the landing a Google sign-in would give: the invitation, else next,
+  // else the senior's Today or the trusted person's page.
   app.post("/dev/signin", async (request, reply) => {
     if (!isLocalDevRequest(request)) return reply.code(404).send();
     const body = request.body && typeof request.body === "object" ? request.body : {};
@@ -176,7 +183,13 @@ export default async function authRoutes(app) {
     } else {
       const email = String(body.email ?? "").trim().toLowerCase();
       if (email.length > 200 || !/^[^\s@]+@[^\s@]+$/.test(email)) return signinPage(reply, keep, { status: 400, error: "Type an email address, such as linda@example.com." });
-      user = await one("SELECT * FROM users WHERE lower(email) = $1 ORDER BY created_at LIMIT 1", [email]) || await createLocalPerson(email, body, keep.mode);
+      // A Google person and a local test person may share an address: the
+      // Google person comes first, so the two are never confused.
+      user = await one("SELECT * FROM users WHERE lower(email) = $1 ORDER BY google_sub LIKE 'local:%', created_at LIMIT 1", [email])
+        || await createLocalPerson(email, body, keep.mode);
+    }
+    if (googleConfigured() && !isLocalPerson(user)) {
+      return signinPage(reply, keep, { status: 403, error: "That person signs in with Google. Pick a local test person, or create one with another address." });
     }
     await audit(user.id, "signed_in_locally", {});
     await startSession(reply, user.id);

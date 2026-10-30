@@ -21,7 +21,7 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 
 ## Postgres and per-agent databases
 
-- Only `tests/integration.test.js`, `tests/admin.test.js` and `tests/dev-signin.test.js` need Postgres (`dbAvailable()` in `tests/helpers/db.js`); without it those suites are skipped and `make test` stays green. `make check` refuses to run without it.
+- Only `tests/integration.test.js`, `tests/admin.test.js` and `tests/dev-signin.test.js` need Postgres (`tests/security-headers.test.js` stubs the pool and runs without it) (`dbAvailable()` in `tests/helpers/db.js`); without it those suites are skipped and `make test` stays green. `make check` refuses to run without it.
 - The database is `TEST_DATABASE_URL` (default `postgres://localhost/scam_shield_test`). Each run truncates it, so two runs on the same database collide.
 - Several agents or terminals at once: `make test TEST_DB_SUFFIX=<your-name>` (same for `make check` and `make coverage`) runs against `scam_shield_test_<your-name>`, created on first use by the helper (`src/db/testDatabase.js`); `make db-test-clean` drops every suffixed copy and never the base database.
 - `tests/lessons.test.js` also uses Postgres for the lesson-progress routes and account deletion (skipped with a reason without it); the lesson files, the rules and `GET /api/lessons` are tested without a database.

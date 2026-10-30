@@ -140,18 +140,7 @@ export default async function adminRoutes(app) {
   });
 
   // Local outbox: only outside production, only from this machine (its
-  // copies hold live one-tap links): isLocalDevRequest (src/localDev.js),
-  // shared with the local sign-in. With trustProxy off, request.ip is the
-  // socket's address, and a tunnel or a local reverse proxy connects from
-  // 127.0.0.1 too, so the page also refuses a request carrying a forwarding
-  // header (cloudflared, ngrok and Caddy add one by default, nginx when
-  // configured to) and one whose Host is not this machine's name, or that
-  // has no Host: through a tunnel or a raw forward such as ssh -R the Host
-  // is the public name, and a DNS-rebinding page sends its own. What still
-  // gets through is a request reaching the loopback with Host localhost and
-  // no forwarding header: a proxy that rewrites Host to localhost, an SSH
-  // local forward from another machine. The page is for testing on one
-  // machine, never behind a tunnel or a proxy.
+  // copies hold live one-tap links); the rule and why: src/localDev.js.
   app.get("/dev/outbox", async (request, reply) => {
     if (!isLocalDevRequest(request)) return reply.code(404).send();
     const mails = await many("SELECT * FROM outbox ORDER BY created_at DESC LIMIT 50");

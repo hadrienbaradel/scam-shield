@@ -143,7 +143,7 @@ export function summary(result) {
 
 export function banner(err, { retry = false } = {}) {
   if (err?.status === 401 || err?.status === 403) {
-    return `<div class="banner banner-info"><p>Admins only. Sign in with a Google account listed in ADMIN_EMAILS.</p><a class="btn" href="/auth/google?mode=basic">Sign in with Google</a></div>`;
+    return `<div class="banner banner-info"><p>Admins only. Sign in with a Google account listed in ADMIN_EMAILS.</p><a class="btn" href="/auth/google?mode=basic&amp;next=%2Fadmin%2F">Sign in with Google</a></div>`;
   }
   const text = typeof err === "string" ? err : err?.message || "Something went wrong.";
   return `<div class="banner" role="alert"><p>${esc(text)}</p>${retry ? `<button type="button" class="btn btn-ghost" data-retry>Retry</button>` : ""}</div>`;
