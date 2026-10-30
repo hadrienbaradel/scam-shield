@@ -1,6 +1,6 @@
 # Prudence: technical architecture
 
-Last updated: 2026-10-29
+Last updated: 2026-10-30
 
 How the code fits together and why it is built this way, for an engineer joining the project or a judge reading its history. What the product does, feature by feature, is in `_product/spec.md`; the rules for working on it are in `_product/docs/`. Code, database and repository names still say `scam-shield`: the product became Prudence on Oct 28 (`9561016`). Facts here were read from the code on the date above; anything that could not be confirmed in code says (unverified).
 
@@ -63,6 +63,8 @@ After the verdict, `recordCheck` writes one `checks` row, never the body. For Gm
 **WhatsApp channel.** `src/routes/whatsapp.js` is the WhatsApp Cloud API webhook: Meta's verification handshake, then deliveries that must carry a valid `X-Hub-Signature-256`. `src/channels/whatsapp.js` handles each forwarded text, picture or voice note once: media comes only through the Graph API from Meta's own media host, a voice note goes through ffmpeg to WAV and Muse Voice Transcribe, a picture through `extractFromImage`, and `checkMessage` judges the message with no life context and the shipped pattern cards. The verdict goes back as one WhatsApp reply quoting the forward; nothing is stored. Not yet verified on the live Cloud API (unverified, spec status Partial).
 
 **Admin console.** `/admin/` is a separate vanilla JS app (`public/admin/`, shell `src/admin/console.html`) for addresses in `ADMIN_EMAILS`. Its API in `src/routes/admin.js` serves `src/admin/health.js` (one status line per dependency), `src/admin/users.js` (accounts with Gmail state and counts), the background jobs with Run now (every run is written to `job_runs` by `runJob` in `src/jobs/scheduler.js`), card review and the outbox. It shows counts, statuses and ids, never a message's words: the outbox lists to, subject, channel and time only and links to `/dev/outbox` outside production. Job semantics: the threat feed job fails when every source failed and notes each dead source otherwise; the Gmail poll fails when every mailbox failed; a run cut by a restart is closed as failed ("interrupted") at the next start; "Fetch now" on Scam reports is a manual run of the Threat feed job.
+
+**Observability.** `lib/errorTracking.js` sends to Rollbar, only when `ROLLBAR_ACCESS_TOKEN` is set, the errors of 500 and above from the error handler in `src/server.js`, uncaught exceptions (reported, then exit 1 so compose restarts the container), unhandled rejections, and each scheduled job's change of state from `runJob` (its first failure, its recovery); an item carries the method and route pattern only, scrubbed keys and masked addresses and phone numbers. `runJob` also pings the job's `HEARTBEAT_<JOB>_URL` in production (`/fail` after a failed run, fire and forget), `/api/health` answers `SELECT 1` and the version (`APP_VERSION`, the image's git sha), and `TRUST_PROXY` lets the tunnel name the visitor's address for the rate limits (`_product/specs/observability.md`).
 
 **Micro-learning.** Lessons are YAML files in `data/lessons/<lang>/`, each with its English or French twin. `lib/lessons.js` checks their format and holds the progress rules (best stars, badges, days in a row) with no server imports; `src/routes/lessons.js` serves the lessons without sign-in and keeps a signed-in person's progress in `lesson_progress`; `scripts/lessons-check.mjs` (`make lessons-check`, part of `make check`) fails on a broken file.
 
@@ -166,6 +168,7 @@ The public data and the live inbox never enter the repository, so these rows wer
 - **Earlier mail is a dated fact, never trust** (`4934822`, Oct 29, prompt v4): the history covers only the emails read, so an absence proves nothing.
 - **WhatsApp judges the message alone and keeps nothing** (`0861c6f`, Oct 29): the sender is a phone number, not an account, so no life context is used; a delivery without a valid signature is refused.
 - **The admin console shows counts, never words** (`363ae33`, Oct 29): operators see statuses, counts and ids, never a message, a verdict's words or what a senior shared.
+- **Rollbar sees the route, never the request** (Oct 30, `_product/research/ops-services.md` A): the SDK is handed a method and a route pattern only, every address and number is masked before sending, and jobs report changes of state, not every failing tick, to stay within the free 5,000 items a month.
 
 ## How to keep this current
 

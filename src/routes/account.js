@@ -18,7 +18,20 @@ import { jobStatus } from "../jobs/scheduler.js";
 const rebuilds = new Map();
 
 export default async function accountRoutes(app) {
-  app.get("/api/health", async () => ({ ok: true }));
+  // The uptime monitor's and the deploy's check (_product/specs/observability.md,
+  // line 6): no sign-in, one SELECT 1, and the version, so a deploy can wait for
+  // its own sha. Its request lines are not logged (Docker and the monitor call
+  // it every few seconds); a database that does not answer is.
+  app.get("/api/health", { logLevel: "warn" }, async (request, reply) => {
+    const version = config.appVersion;
+    try {
+      await q("SELECT 1");
+      return { ok: true, db: "ok", version };
+    } catch (e) {
+      request.log.warn(`health: Postgres did not answer (${e?.code || e?.message || e})`);
+      return reply.code(503).send({ ok: false, db: "down", version });
+    }
+  });
 
   app.get("/api/status", async (request) => {
     const u = request.user;

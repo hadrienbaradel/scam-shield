@@ -2,6 +2,9 @@
 // Security defaults: strict CSP (no inline scripts), httpOnly session
 // cookie, Origin check on every state-changing request from a browser,
 // per-route rate limits, loopback-only unless HOST says otherwise.
+// Observability: errors of 500 and above go to Rollbar when
+// ROLLBAR_ACCESS_TOKEN is set, as method and route only (lib/errorTracking.js);
+// TRUST_PROXY says which proxy may name the client's address.
 
 import "../lib/credentials.js";
 import Fastify from "fastify";
@@ -12,6 +15,7 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { config, googleConfigured } from "./config.js";
+import { initErrorTracking, errorTrackingOn, reportError, flushErrorTracking } from "../lib/errorTracking.js";
 import { loadUser } from "./auth.js";
 import { migrate } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
@@ -30,8 +34,9 @@ import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 
 const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
 
-export async function buildApp({ logger = true } = {}) {
-  const app = Fastify({ logger, trustProxy: false, bodyLimit: 1024 * 1024 });
+// trustProxy: TRUST_PROXY by default (src/config.js); tests pass their own.
+export async function buildApp({ logger = true, trustProxy = config.trustProxy } = {}) {
+  const app = Fastify({ logger, trustProxy, bodyLimit: 1024 * 1024 });
 
   await app.register(cookie);
   await app.register(helmet, {
@@ -80,12 +85,14 @@ export async function buildApp({ logger = true } = {}) {
   app.setErrorHandler((err, request, reply) => {
     request.log.error(err);
     const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+    if (status >= 500) reportError(err, request);
     reply.code(status).send({ error: status === 500 ? "Something went wrong on our side. To be safe, do not click anything in the message." : err.message });
   });
   return app;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  initErrorTracking(); // first, so a failed migration is reported too
   await migrate();
   const app = await buildApp({ logger: { level: process.env.LOG_LEVEL || "info" } });
   await app.listen({ port: config.port, host: config.host });
@@ -94,8 +101,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
   console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);
   console.log(`  WhatsApp channel: ${webhookActive() ? "on (/api/whatsapp/webhook)" : whatsappConfigured() ? "webhook inactive until WHATSAPP_APP_SECRET is set" : "off (no WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID)"}`);
+  console.log(`  Rollbar error tracking: ${errorTrackingOn() ? `on (${process.env.NODE_ENV || "development"}, version ${config.appVersion})` : "off (no ROLLBAR_ACCESS_TOKEN)"}`);
+  const beats = Object.values(config.heartbeats).filter(Boolean).length;
+  console.log(`  Heartbeats: ${!config.production ? "off outside production" : beats ? `${beats} of ${Object.keys(config.heartbeats).length} jobs` : "off (no HEARTBEAT_*_URL)"}`);
   startJobs();
-  const shutdown = async () => { stopJobs(); await app.close(); await pool.end(); process.exit(0); };
+  const shutdown = async () => { stopJobs(); await app.close(); await pool.end(); await flushErrorTracking(); process.exit(0); };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }

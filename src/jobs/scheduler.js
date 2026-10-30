@@ -8,7 +8,9 @@
 // result counts or the error line) so the admin console's jobs page and its
 // health survive a restart. The bookkeeping itself never stops a job: a
 // database error there is only logged. A run cut by a restart or a crash is
-// closed as failed ("interrupted") at the next start.
+// closed as failed ("interrupted") at the next start. runJob also tells
+// Rollbar when a job starts failing and when it recovers, and pings the job's
+// heartbeat in production (_product/specs/observability.md, lines 4 and 5).
 
 import { config, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
@@ -16,6 +18,7 @@ import { syncUser, usersToSync, clientFor, mapLimit } from "../sync/worker.js";
 import { pullGmailEvents } from "../google/pubsub.js";
 import { runThreatFeed, SOURCES } from "./threatfeed.js";
 import { runRetention } from "./retention.js";
+import { ADDRESS, reportJobFailing, reportJobRecovered } from "../../lib/errorTracking.js";
 
 const MINUTE = 60000;
 const HOUR = 3600000;
@@ -40,7 +43,6 @@ function note(err, where) {
 // feed, the run fails only when every mailbox failed (a partial outage
 // stays OK), and the failed run keeps its counts. sync: tests.
 const FAILED_SYNC = ["reauth_needed", "error"];
-const ADDRESS = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
 export async function pollAll({ sync = syncUser } = {}) {
   const users = await usersToSync();
   const outcomes = await mapLimit(users, 4, async ({ id }) => {
@@ -112,7 +114,9 @@ async function pubsubLoop() {
 // Every piece of background work, with its in-memory state (running,
 // lastRun, nextDueAt). The listener is listed so the console shows it, but
 // it runs on its own: no Run now, no job_runs rows.
-const job = (fields) => ({ running: false, lastRun: null, nextDueAt: null, ...fields });
+// failures: failed runs in a row in this process (Rollbar hears of the first
+// and of the recovery, spec line 4).
+const job = (fields) => ({ running: false, lastRun: null, nextDueAt: null, failures: 0, ...fields });
 export const JOBS = [
   job({ id: "poll", name: "Gmail poll", what: "Checks every connected mailbox for new mail (backup for push, or the only trigger)",
     kind: "interval", everyMs: config.pollSeconds * 1000, run: () => pollAll() }),
@@ -161,12 +165,50 @@ async function guarded(what, fn) {
 
 const refuse = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
+// Rollbar hears of a job when it starts failing (its first failed run since it
+// last succeeded, or since this process started) and once when it recovers;
+// the failed runs in between are in job_runs and the console only.
+function trackState(j, run, err) {
+  if (!run.ok) {
+    if (!j.failures) reportJobFailing(j.id, err, { trigger: run.trigger });
+    j.failures = (j.failures || 0) + 1;
+  } else if (j.failures) {
+    reportJobRecovered(j.id, j.failures);
+    j.failures = 0;
+  }
+}
+
+// Heartbeats (Better Stack's convention): after a run, GET the job's URL, or
+// <url>/fail when the run failed. Production only: the laptops load the same
+// credentials file and would keep a dead server's heartbeat green. One URL per
+// job (HEARTBEAT_<JOB ID>_URL), unset means no ping. Tests inject their own.
+export const heartbeats = { urls: config.heartbeats, enabled: config.production, fetchImpl: (...args) => fetch(...args), timeoutMs: 5000 };
+
+// Fire and forget: the run never waits for it, it never throws, and it never
+// logs the URL (a secret), only the job and what went wrong. Returns the
+// ping's promise (tests), or null when there is nothing to ping.
+export function pingHeartbeat(id, ok, options = {}) {
+  const { urls, enabled, fetchImpl, timeoutMs } = { ...heartbeats, ...options };
+  const url = enabled ? String(urls?.[id] || "").trim() : "";
+  if (!url) return null;
+  const target = ok ? url : `${url.replace(/\/+$/, "")}/fail`;
+  return (async () => {
+    try {
+      const res = await fetchImpl(target, { method: "GET", signal: AbortSignal.timeout(timeoutMs) });
+      if (!res?.ok) console.error(`[jobs] heartbeat of ${id} answered ${res?.status}`);
+      await res?.body?.cancel?.();
+    } catch (e) {
+      console.error(`[jobs] heartbeat of ${id} failed (${e?.name || "error"})`);
+    }
+  })();
+}
+
 // Starts one run and returns a promise of its record ({ id, job, trigger,
 // startedAt, finishedAt, durationMs, ok, result, error }); the promise never
 // rejects (a failing job is a record with ok false). Refusals are thrown
 // synchronously with a statusCode: 404 unknown, 400 runs on its own, 409
 // already running.
-export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStore } = {}) {
+export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStore, heartbeat = heartbeats } = {}) {
   const j = jobs.find((x) => x.id === id);
   if (!j) throw refuse(404, "unknown job");
   if (!canRun(j)) throw refuse(400, "this job runs on its own");
@@ -176,11 +218,13 @@ export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStor
     const started = new Date();
     const run = { id: null, job: id, trigger, startedAt: started.toISOString(), finishedAt: null, durationMs: null, ok: null, result: null, error: null };
     run.id = await guarded(`could not record the start of ${id}`, () => store.start(run));
+    let failure = null;
     try {
       const result = await j.run();
       run.result = result && typeof result === "object" ? result : null;
       run.ok = true;
     } catch (e) {
+      failure = e;
       run.ok = false;
       run.error = String(e?.message || e).slice(0, 500);
       // A job that failed after counting keeps its counts (the poll: how
@@ -197,6 +241,8 @@ export function runJob(id, { trigger = "manual", jobs = JOBS, store = jobRunStor
       j.lastRun = run;
       if (run.id != null) await guarded(`could not record the end of ${id}`, () => store.end(run));
     }
+    trackState(j, run, failure);
+    pingHeartbeat(id, run.ok, heartbeat);
     return run;
   })();
 }
