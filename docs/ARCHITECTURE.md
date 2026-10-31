@@ -1,6 +1,6 @@
 # Prudence: technical architecture
 
-Last updated: 2026-10-30
+Last updated: 2026-10-31
 
 How the code fits together and why it is built this way, for an engineer joining the project or a judge reading its history. What the product does, feature by feature, is in `_product/spec.md`; the rules for working on it are in `_product/docs/`. Code, database and repository names still say `scam-shield`: the product became Prudence on Oct 28 (`9561016`). Facts here were read from the code on the date above; anything that could not be confirmed in code says (unverified).
 
@@ -154,7 +154,7 @@ The public data and the live inbox never enter the repository, so these rows wer
 - **Label only by default, never destructive** (`9adcd29`, Oct 26, migration 002): moving needs a recorded choice and never follows a degraded verdict; send, trash and delete do not exist in the client.
 - **Write the Gmail action down before doing it** (`9adcd29`): a crash in between is finished by the next sync instead of losing a moved message.
 - **Never store a mail body** (`a285eb3`, migration 001, the PRD's privacy rule): verdicts, message ids and sender domains are enough for history, undo and the guardian loop.
-- **Redact before Meta, Standard mode only** (`bff4730`, Oct 26; the mode check since `a285eb3`): personal numbers, codes and names never reach the model, and nothing trains Meta's models.
+- **Redact before Meta, Standard mode only** (`bff4730`, Oct 26; the mode check since `a285eb3`): personal numbers, codes and names never reach the model, and nothing a person sends trains Meta's models. One exception since Oct 31 (`d4b5af1`): `scripts/eval-corpus.mjs --contributor` scores the public Zenodo corpora on `muse-spark-1.3-contributor` after calling `allowContributorForPublicEval()`; the server never calls it.
 - **No name-based trust** (`e2ae428`, Oct 26): a trusted person is their saved address or number; a typed name is a claim, and matching on it once turned a scam Safe.
 - **Only Gmail's own, aligned authentication counts** (`3887df0`, Oct 26): lower headers and `.eml` files can be written by the sender.
 - **Never open a link to judge it** (`a285eb3`; pinned fetches `950b970`; URLhaus `9b09a2f`): a visit tells the scammer the address is live.
