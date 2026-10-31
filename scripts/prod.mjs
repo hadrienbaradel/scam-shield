@@ -127,10 +127,10 @@ async function deploy() {
 // ------------------------------------------------------------------ the host
 
 const prodShell = (args) => {
-  const r = ssh(args.join(" "), { tty: !args.length || process.stdout.isTTY });
+  const r = ssh(args.join(" "), { tty: Boolean(process.stdin.isTTY) });
   return r.status ?? 1;
 };
-const logs = () => ssh(`${COMPOSE} logs --follow --tail=200 app`, { tty: true }).status ?? 1;
+const logs = () => ssh(`${COMPOSE} logs --follow --tail=200 app`, { tty: Boolean(process.stdin.isTTY) }).status ?? 1;
 const status = () => ssh(`sudo bash ${APP_DIR}/.infra/prod/scripts/status.sh`).status ?? 1;
 
 function backupNow() {
