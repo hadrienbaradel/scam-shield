@@ -136,8 +136,8 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 
 | Measured (date, source) | Rules alone | Muse Spark |
 |---|---|---|
-| 500 held-back public emails, Zenodo 8339691: phishing called Scam (Oct 26, `docs/STATUS.md`) | 32.0% | 80.8% |
-| The same 500: phishing flagged at all; genuine called Scam | 47.2%; 1 of 250 | 97.6%; 0 of 250 |
+| 500 held-back public emails, Zenodo 8339691: phishing called Scam (prompt v4, Oct 31, `docs/STATUS.md`) | 32.0% | 79.2% |
+| The same 500: phishing flagged at all; genuine called Scam | 47.2%; 1 of 250 | 96.8%; 0 of 250 |
 | 18,849 held-back public emails: phishing called Scam; genuine called Scam (`docs/STATUS.md`) | 28.7%; 0.3% | not run |
 | 300 OpenPhish links, a bare link from a stranger (`docs/STATUS.md`) | 48% flagged | not run |
 | A real Gmail inbox, 50 emails (Oct 28, commit `6c97b56`) | not reported | 47 Safe, 3 Be careful, 0 Scam |

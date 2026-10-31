@@ -11,7 +11,7 @@ Today the people already using AI against the most vulnerable are the scammers:
 "What if we reversed the roles?" Scam Shield puts the same class of model, Meta's Muse Spark, on the senior's side: a personal agent that knows her life and reads every message before she does.
 
 ## 30-second pitch
-"Americans over 60 reported $7.7 billion lost to online fraud last year. Gmail already blocks 99.9% of phishing; the 0.1% that gets through is the dangerous part, and nobody explains it to a 74-year-old at 9 pm. Scam Shield connects to her Gmail and her texts and judges each message against her own life: her real orders and carrier, her bank, the breaches she was in, the people she writes to. Meta's Muse Spark writes the verdict in words she can act on, with evidence. Scams leave the inbox, reversibly; doubtful ones get 'Ask my trusted person': one tap, answered live by her daughter. On 500 held-back emails, Muse Spark took phishing caught from 32% to 81%, with zero false scams on 250 genuine mails."
+"Americans over 60 reported $7.7 billion lost to online fraud last year. Gmail already blocks 99.9% of phishing; the 0.1% that gets through is the dangerous part, and nobody explains it to a 74-year-old at 9 pm. Scam Shield connects to her Gmail and her texts and judges each message against her own life: her real orders and carrier, her bank, the breaches she was in, the people she writes to. Meta's Muse Spark writes the verdict in words she can act on, with evidence. Scams leave the inbox, reversibly; doubtful ones get 'Ask my trusted person': one tap, answered live by her daughter. On 500 held-back emails, Muse Spark took phishing caught from 32% to 79%, with zero false scams on 250 genuine mails."
 
 ## 2-minute pitch (four beats)
 1. Problem (25 s): the stats below; "the filter removes the bulk; what remains is personal, polite and urgent, and the victim is alone".
@@ -43,7 +43,7 @@ A generic checker reads one message. Scam Shield reads it against the providers 
 
 ## Likely judge questions, with answers
 - Doesn't Gmail already do this? It filters in bulk and silently. We explain, check against her life, and act reversibly; 0 of 250 genuine mails were called Scam, because authenticated known senders are never moved.
-- Why a frontier model instead of rules? Rules alone catch about a third of phishing at 0.3% false alarms; Muse Spark with the detector's evidence catches 81% with no new false Scams. The rules stay as guardrail and fallback.
+- Why a frontier model instead of rules? Rules alone catch about a third of phishing at 0.3% false alarms; Muse Spark with the detector's evidence catches 79% with no new false Scams. The rules stay as guardrail and fallback.
 - Do you read my mail? The model sees a redacted message (IBANs, cards, codes, names replaced) plus a compact context; bodies are never stored; Standard mode means nothing trains Meta's models; no human reads anything.
 - What stops a prompt injection hidden in the mail? Inputs go in as escaped JSON blocks; injection attempts count as a scam signal; the output must pass a strict schema; the guardrail can overrule the model both ways.
 - What was built during the hackathon? Answer with the README's "Built during the hackathon" section (commit range, feature list) and show only that in the video.

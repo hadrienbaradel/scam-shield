@@ -8,7 +8,7 @@ Where the project stands after the first build sprint (Oct 26–27), what has be
 ## TL;DR
 
 - **A real multi-user app exists**: Google sign-in, Gmail sync (push via Pub/Sub plus polling), Muse Spark verdicts with a deterministic detector as evidence-gatherer, guardrail and fallback, the guardian loop, screenshot checks, a threat-feed review page, and an Android SMS companion. All local; nothing is deployed.
-- **Muse Spark makes the difference**: on 500 held-back public emails, phishing called Scam went from **32% (rules alone) to 81%**, with **0 false Scam on 250 genuine emails**.
+- **Muse Spark makes the difference**: on 500 held-back public emails, phishing called Scam went from **32% (rules alone) to 79%**, with **0 false Scam on 250 genuine emails** (prompt v4, Oct 31; 81% on prompt v3, Oct 26).
 - **The rules alone are tuned for precision**: 0.3–0.4% false Scam on ~38k genuine public emails, catching about a third of phishing. They decide alone only when Muse is unavailable.
 - **Not yet done**: the live test on a real Gmail inbox (needs the OAuth client from the Cloud Console; Hadrien is doing it), a working abuse.ch key, the CI workflow push, a Chrome extension.
 - `npm test`: 146 passing. `npm run score`: 36/36 with the rules, 34/36 with Muse (see B2/B12 below).
@@ -70,16 +70,17 @@ All public data lives in git-ignored `.runtime/eval/` and never enters the repo.
 | Tuning set, now | 94.8% | 35.6% | 0.4% |
 | Held back (1,558 / 17,291), never tuned on | 91.0% | 28.7% | 0.3% |
 
-**Rules vs Muse on the same 500 held-back emails** (125 phishing, 250 genuine; 125 Enron spam not scored):
+**Rules vs Muse on the same 500 held-back emails** (125 phishing, 250 genuine; 125 Enron spam not scored; `--sample 125`, seed 1, so both runs score the same rows):
 
-| | Rules alone | Muse Spark |
-|---|---|---|
-| Phishing called Scam | 32.0% | **80.8%** |
-| Phishing flagged at all (Scam or Be careful) | 47.2% | **97.6%** |
-| Genuine called Scam | 1 / 250 | **0 / 250** |
-| Genuine marked Be careful | 0% | 8.4% (16 of the 21 are Enron rows with no sender, impossible in Gmail) |
+| | Rules alone | Muse Spark, prompt v3 (Oct 26) | Muse Spark, prompt v4 (Oct 31) |
+|---|---|---|---|
+| Phishing called Scam | 32.0% | 80.8% | **79.2%** (99 of 125) |
+| Phishing flagged at all (Scam or Be careful) | 47.2% | 97.6% | **96.8%** |
+| Genuine called Scam | 1 / 250 | 0 / 250 | **0 / 250** |
+| Genuine marked Be careful | 0% | 8.4% (16 of 21 are Enron rows with no sender) | **8.0%** (16 of 20 are Enron rows with no sender, impossible in Gmail) |
+| Median time per email | | 4.0 s | 5.8 s |
 
-About 4.0k tokens in and 0.9k out per email; median 4.0 s; 1 failed call in 299.
+v3: about 4.0k tokens in and 0.9k out per email; median 4.0 s; 1 failed call in 299. v4 (muse-spark-1.3): about 4.3k in and 0.9k out per email, 400 paid calls and 100 cached, median 5.8 s, no failed call. The two-email gap on phishing is inside the ±7-point margin; the slower median is the real change.
 
 **Links alone** (300 URLs from the OpenPhish community feed, research use; bare link from an unknown sender, no lookups): flagged 0.7% → **48%**. Remaining misses: number-only hosts, free hosting without sign-in words, shorteners.
 

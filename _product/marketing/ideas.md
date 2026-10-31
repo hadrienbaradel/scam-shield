@@ -7,7 +7,7 @@ Impact and effort are judgments against the Nov 4 deadline. "Built" means in the
 |---|---|---|---|---|
 | 1 | Open the video on the life-context verdict ("your parcels come by Amazon Logistics, not Chronopost"), not on "AI detects scams" | High | Low | The one sentence no other scam checker in the hackathon can say |
 | 2 | "Built during the hackathon" section in the README: kickoff timestamp, commit range, feature list; show only those features | High | Low | Insurance against the new-work disqualification rule; the Indie track has no existing-code clause |
-| 3 | Accuracy card in the video: 32% → 81% phishing called Scam, 0 of 250 false Scam, median 4 s | High | Low | Already measured; judges rarely see numbers from a 10-day build |
+| 3 | Accuracy card in the video: 32% → 79% phishing called Scam, 0 of 250 false Scam, median 6 s (prompt v4, Oct 31) | High | Low | Already measured; judges rarely see numbers from a 10-day build |
 | 4 | Guardian loop filmed on two real devices with the live update | High | Medium | The most human moment; make sure email delivery works or use the dashboard path |
 | 5 | Show Muse Spark doing non-obvious things: reads a screenshot, returns schema JSON with evidence, gets overruled by the guardrail, reasoning effort tuned | High | Low | "Use of Meta AI Tooling" is 25% and asks for capabilities "that surprised even us" |
 | 6 | Make the repo public after a secret scan and a data scan; open it logged-out; add the video link | High | Low | Private today; a hard requirement |
