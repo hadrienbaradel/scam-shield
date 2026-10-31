@@ -14,6 +14,8 @@
 // The host is the first one under [scam_shield] in .infra/prod/ansible/inventory.ini (gitignored; copy
 // inventory.example.ini). Never prints a secret: the master key, the Postgres password, the Tailscale auth
 // key and the tunnel token go from a file or the environment into the playbook (no_log) or through a pipe.
+// The decisions and the commands it builds are exported pure functions (tests/prod-script.test.js); the
+// functions that run them talk to the host.
 
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -36,7 +38,8 @@ const warn = (s) => console.error(`warning: ${s}`);
 class Stop extends Error {}
 const stop = (s) => { throw new Stop(s); };
 const rel = (p) => relative(ROOT, p) || ".";
-const shq = (s) => `'${String(s).replaceAll("'", "'\\''")}'`;
+// One shell word, whatever it holds (a path, a remote command).
+export const shq = (s) => `'${String(s).replaceAll("'", "'\\''")}'`;
 const has = (cmd) => spawnSync("/bin/sh", ["-c", `command -v ${cmd}`], { stdio: "ignore" }).status === 0;
 const git = (...args) => spawnSync("git", args, { cwd: ROOT, encoding: "utf8" }).stdout?.trimEnd() ?? "";
 
@@ -56,13 +59,19 @@ export function readInventory(text) {
   return null;
 }
 
-function target() {
-  if (!existsSync(INVENTORY)) stop(`No ${rel(INVENTORY)}: cp .infra/prod/ansible/inventory.example.ini ${rel(INVENTORY)}, then set ansible_host and ansible_user (_product/docs/ops.md)`);
-  const t = readInventory(readFileSync(INVENTORY, "utf8"));
-  if (!t) stop(`${rel(INVENTORY)} names no host under [scam_shield]`);
-  return t;
+// The inventory's text (null when the file is missing) → { target } or { error }, the line to show.
+export function inventoryCheck(label, text) {
+  if (text == null) return { error: `No ${label}: cp .infra/prod/ansible/inventory.example.ini ${label}, then set ansible_host and ansible_user (_product/docs/ops.md)` };
+  const t = readInventory(text);
+  return t ? { target: t } : { error: `${label} names no host under [scam_shield]` };
 }
-const sshArgs = (t, extra = []) => [...extra, ...(t.port ? ["-p", t.port] : []), t.user ? `${t.user}@${t.host}` : t.host];
+const readTarget = () => inventoryCheck(rel(INVENTORY), existsSync(INVENTORY) ? readFileSync(INVENTORY, "utf8") : null);
+function target() {
+  const r = readTarget();
+  if (r.error) stop(r.error);
+  return r.target;
+}
+export const sshArgs = (t, extra = []) => [...extra, ...(t.port ? ["-p", t.port] : []), t.user ? `${t.user}@${t.host}` : t.host];
 const ssh = (command, { tty = false, capture = false } = {}) =>
   spawnSync("ssh", [...sshArgs(target(), tty ? ["-t"] : []), ...(command ? [command] : [])],
     { stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit", encoding: "utf8" });
@@ -77,46 +86,91 @@ async function credentials() {
 
 // ------------------------------------------------------------------ deploy
 
+// What stops a deploy and what only warns, from facts the caller gathered: ansible-playbook on PATH,
+// config/master.key present (the playbook reads that file), the inventory check, HEAD's sha, the
+// porcelain status of tracked files, and whether HEAD is on origin/main.
+export function preflight({ hasAnsible, hasMasterKey, inventory, sha, dirty, onOriginMain }) {
+  const errors = [];
+  const warnings = [];
+  if (!hasAnsible) errors.push("ansible-playbook not found: brew install ansible (or pipx install ansible-core)");
+  if (!hasMasterKey) errors.push("No config/master.key: get it from a teammate, then make secrets-init (_product/docs/secrets.md)");
+  if (inventory?.error) errors.push(inventory.error);
+  if (!/^[0-9a-f]{40}$/.test(sha || "")) errors.push("Not a git checkout with a commit: make deploy ships git archive HEAD");
+  const short = String(sha || "").slice(0, 12);
+  if (dirty) warnings.push(`tracked files have uncommitted changes; they are NOT deployed (the archive is HEAD ${short}):\n${dirty}`);
+  if (!onOriginMain) warnings.push(`HEAD ${short} is not on origin/main (git fetch, then push or deploy main): the team deploys green main`);
+  return { errors, warnings };
+}
+
+// git archive of exactly that commit (a commit landing meanwhile changes nothing), files 0644 and folders 0755.
+export const archiveArgs = (sha, file) => ["-c", "tar.umask=0022", "archive", "--format=tar.gz", "-o", file, sha];
+// The only extra vars on disk: where the archive is and its sha, which becomes GIT_SHA, the image's
+// APP_VERSION and what /api/health must name before the deploy counts as done. No secret.
+export const deployVars = (archive, sha) => ({ deploy_archive: archive, deploy_sha: sha });
+export const playbookArgs = ({ inventory, playbook, varsFile, extra = "" }) =>
+  ["-i", inventory, playbook, "-e", `@${varsFile}`, ...String(extra || "").split(/\s+/).filter(Boolean)];
+
+// The playbook's environment: the caller's, plus the Tailscale auth key from its gitignored file and the
+// backup heartbeat from the team's credentials, each only when the environment has none. Values travel
+// to ansible-playbook (no_log tasks), never to the screen; the base environment is left as it was.
+export function deployEnv(base, { ansibleConfig, authKey = "", heartbeat = "" } = {}) {
+  const env = { ...base, ANSIBLE_CONFIG: ansibleConfig };
+  if (!env.TS_AUTHKEY && authKey) env.TS_AUTHKEY = authKey;
+  if (!env.HEARTBEAT_BACKUP_URL && heartbeat) env.HEARTBEAT_BACKUP_URL = heartbeat;
+  return env;
+}
+// What make deploy says about the secrets it passes: whether each one is there, never what it is.
+export const secretsLine = (env) =>
+  `Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}; tunnel: ${env.TUNNEL_TOKEN ? "a TUNNEL_TOKEN is given" : "the host keeps what it has"}`;
+
+// PROD_DATABASE_URL from the host's .env in one pipeline: sed on the host prints the KEY=value line,
+// credentials.mjs set reads it on stdin and prints the name only; this process never holds the password.
+export const PROD_URL_SED = "s|^POSTGRES_PASSWORD=\\([A-Za-z0-9][A-Za-z0-9]*\\)$|PROD_DATABASE_URL=postgres://scam_shield:\\1@prudence-prod:5432/scam_shield|p";
+export const prodUrlPipeline = (t, { appDir = APP_DIR, node = process.execPath } = {}) =>
+  `ssh ${sshArgs(t).map(shq).join(" ")} ${shq(`sudo sed -n ${shq(PROD_URL_SED)} ${appDir}/.infra/prod/.env`)} | ${shq(node)} scripts/credentials.mjs set`;
+
 async function deploy() {
-  if (!has("ansible-playbook")) stop("ansible-playbook not found: brew install ansible (or pipx install ansible-core)");
-  if (!process.env.MASTER_KEY && !existsSync(join(ROOT, "config/master.key"))) stop("No config/master.key: get it from a teammate, then make secrets-init (_product/docs/secrets.md)");
-  const t = target();
+  const inventory = readTarget();
   const sha = git("rev-parse", "HEAD");
-  if (!/^[0-9a-f]{40}$/.test(sha)) stop("Not a git checkout with a commit: make deploy ships git archive HEAD");
+  const { errors, warnings } = preflight({
+    hasAnsible: has("ansible-playbook"),
+    hasMasterKey: existsSync(join(ROOT, "config/master.key")),
+    inventory,
+    sha,
+    dirty: git("status", "--porcelain", "--untracked-files=no"),
+    onOriginMain: spawnSync("git", ["merge-base", "--is-ancestor", "HEAD", "origin/main"], { cwd: ROOT }).status === 0,
+  });
+  if (errors.length) stop(errors.join("\n"));
+  for (const w of warnings) warn(w);
+  const t = inventory.target;
   const short = sha.slice(0, 12);
-  const dirty = git("status", "--porcelain", "--untracked-files=no");
-  if (dirty) warn(`tracked files have uncommitted changes; they are NOT deployed (the archive is HEAD ${short}):\n${dirty}`);
-  if (spawnSync("git", ["merge-base", "--is-ancestor", "HEAD", "origin/main"], { cwd: ROOT }).status !== 0) {
-    warn(`HEAD ${short} is not on origin/main (git fetch, then push or deploy main): the team deploys green main`);
-  }
   const creds = await credentials();
-  const env = { ...process.env, ANSIBLE_CONFIG: join(ANSIBLE, "ansible.cfg") };
   const keyFile = join(ANSIBLE, ".tailscale-authkey");
-  if (!env.TS_AUTHKEY && existsSync(keyFile)) env.TS_AUTHKEY = readFileSync(keyFile, "utf8").trim();
-  if (!env.HEARTBEAT_BACKUP_URL && creds.get("HEARTBEAT_BACKUP_URL")) env.HEARTBEAT_BACKUP_URL = creds.get("HEARTBEAT_BACKUP_URL");
+  const env = deployEnv(process.env, {
+    ansibleConfig: join(ANSIBLE, "ansible.cfg"),
+    authKey: existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : "",
+    heartbeat: creds.get("HEARTBEAT_BACKUP_URL") || "",
+  });
 
   const dir = mkdtempSync(join(tmpdir(), "prudence-deploy-"));
   chmodSync(dir, 0o700);
   try {
     const archive = join(dir, `scam-shield-${sha}.tar.gz`);
-    const a = spawnSync("git", ["-c", "tar.umask=0022", "archive", "--format=tar.gz", "-o", archive, sha], { cwd: ROOT, stdio: "inherit" });
+    const a = spawnSync("git", archiveArgs(sha, archive), { cwd: ROOT, stdio: "inherit" });
     if (a.status !== 0) stop("git archive failed");
     const vars = join(dir, "vars.json");
-    writeFileSync(vars, JSON.stringify({ deploy_archive: archive, deploy_sha: sha }), { mode: 0o600 });
+    writeFileSync(vars, JSON.stringify(deployVars(archive, sha)), { mode: 0o600 });
     say(`Deploying ${short} to ${t.name} (${t.user ? `${t.user}@` : ""}${t.host}): git archive of HEAD, then the playbook`);
-    say(`Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}; tunnel: ${env.TUNNEL_TOKEN ? "a TUNNEL_TOKEN is given" : "the host keeps what it has"}`);
-    const extra = (process.env.ANSIBLE_ARGS || "").split(/\s+/).filter(Boolean);
-    const r = spawnSync("ansible-playbook", ["-i", INVENTORY, join(ANSIBLE, "playbook.yml"), "-e", `@${vars}`, ...extra], { cwd: ANSIBLE, env, stdio: "inherit" });
+    say(secretsLine(env));
+    const args = playbookArgs({ inventory: INVENTORY, playbook: join(ANSIBLE, "playbook.yml"), varsFile: vars, extra: process.env.ANSIBLE_ARGS });
+    const r = spawnSync("ansible-playbook", args, { cwd: ANSIBLE, env, stdio: "inherit" });
     if (r.status !== 0) stop(`deploy FAILED (ansible-playbook exit ${r.status ?? r.signal}): the task above names the step. Containers the run did not replace keep running; make prod-status shows what is up.`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 
   if (!creds.get("PROD_DATABASE_URL")) {
-    // One pipeline: the host's .env → the team's encrypted credentials. The password never reaches this process or the screen.
-    const sed = `sudo sed -n 's|^POSTGRES_PASSWORD=\\([A-Za-z0-9][A-Za-z0-9]*\\)$|PROD_DATABASE_URL=postgres://scam_shield:\\1@prudence-prod:5432/scam_shield|p' ${APP_DIR}/.infra/prod/.env`;
-    const pipe = `ssh ${sshArgs(t).map(shq).join(" ")} ${shq(sed)} | ${shq(process.execPath)} scripts/credentials.mjs set`;
-    const s = spawnSync("/bin/sh", ["-c", pipe], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
+    const s = spawnSync("/bin/sh", ["-c", prodUrlPipeline(t)], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
     if (s.status === 0) say("PROD_DATABASE_URL is in config/credentials.enc now: commit and push that file so the team has it (make server DB=prod, make db-prod-shell).");
     else warn("PROD_DATABASE_URL was not stored (see above); the next make deploy tries again");
   }
@@ -138,10 +192,13 @@ function backupNow() {
   return r.status ?? 1;
 }
 
+// The newest daily dump in an `ls -1` of the backup folder; pre-restore and partial files never count.
+export const pickLatestDump = (listing) => String(listing || "").split("\n").map((s) => s.trim()).filter((s) => DAILY_DUMP.test(s)).sort().pop();
+
 function latestDump() {
   const r = ssh(`sudo ls -1 ${BACKUPS}`, { capture: true });
   if (r.status !== 0) stop(`Cannot list ${BACKUPS} on the host (has make deploy run?)`);
-  return r.stdout.split("\n").map((s) => s.trim()).filter((s) => DAILY_DUMP.test(s)).sort().pop();
+  return pickLatestDump(r.stdout);
 }
 
 function backupPull() {
@@ -156,17 +213,38 @@ function backupPull() {
   say(`${name} copied to ${rel(dest)}/ (gitignored, mode 600): the off-host copy. Older copies stay there until you delete them.`);
 }
 
+// Which dump a restore uses: FILE must name a .dump (the Makefile's FILE defaults to .env); a file here is
+// sent up as restore-<name>, a bare name is one already in the backup folder.
+export function restoreSource(file, existsHere) {
+  if (!file || !/\.dump$/.test(file)) return { error: "Name a dump: make backup-restore FILE=2026-10-31.dump (in /var/backups/prudence on the host) or FILE=.runtime/backups/2026-10-31.dump (sent to the host first)" };
+  if (existsHere) return { upload: true, onHost: `${BACKUPS}/restore-${basename(file)}` };
+  if (file.includes("/")) return { error: `${file} does not exist here; a dump on the host is named without a folder (ssh in and ls ${BACKUPS})` };
+  return { upload: false, onHost: `${BACKUPS}/${file}` };
+}
+
+// The restore, as one script for the host: a dump of the current data first, the app stopped, the dump
+// restored in one transaction, the app started (it migrates), then its health.
+export const restoreScript = (onHost) => [
+  "set -euo pipefail",
+  `sudo test -s ${shq(onHost)} || { echo "no dump at ${onHost}"; exit 1; }`,
+  `safety=${BACKUPS}/pre-restore-$(date +%F-%H%M%S).dump`,
+  `${COMPOSE} exec -T postgres pg_dump -U scam_shield -d scam_shield -Fc | sudo tee "$safety" > /dev/null`,
+  `sudo chmod 600 "$safety"; echo "current data saved in $safety"`,
+  `${COMPOSE} stop app`,
+  `sudo cat ${shq(onHost)} | ${COMPOSE} exec -T postgres pg_restore -U scam_shield -d scam_shield --clean --if-exists --no-owner --single-transaction`,
+  `${COMPOSE} start app`,
+  `for i in $(seq 30); do if out=$(curl -fsS -m 5 http://127.0.0.1:3000/api/health); then echo "restored; /api/health: $out"; exit 0; fi; sleep 2; done`,
+  `echo "restored, but /api/health does not answer: make logs"; exit 1`,
+].join("\n");
+
 async function backupRestore([file]) {
-  if (!file || !/\.dump$/.test(file)) stop("Name a dump: make backup-restore FILE=2026-10-31.dump (in /var/backups/prudence on the host) or FILE=.runtime/backups/2026-10-31.dump (sent to the host first)");
+  const source = restoreSource(file, Boolean(file) && existsSync(file));
+  if (source.error) stop(source.error);
   const t = target();
-  let onHost;
-  if (existsSync(file)) {
-    onHost = `${BACKUPS}/restore-${basename(file)}`;
+  const { onHost } = source;
+  if (source.upload) {
     const r = spawnSync("rsync", ["-t", ...rsyncSsh(t), file, remote(t, onHost)], { stdio: "inherit" });
     if (r.status !== 0) stop("rsync to the host failed");
-  } else {
-    if (file.includes("/")) stop(`${file} does not exist here; a dump on the host is named without a folder (make backup-pull lists none: ssh in and ls ${BACKUPS})`);
-    onHost = `${BACKUPS}/${file}`;
   }
   if (process.env.FORCE !== "1") {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -174,22 +252,25 @@ async function backupRestore([file]) {
     rl.close();
     if (a.trim() !== "restore") stop("kept: nothing changed");
   }
-  const script = [
-    "set -euo pipefail",
-    `sudo test -s ${shq(onHost)} || { echo "no dump at ${onHost}"; exit 1; }`,
-    `safety=${BACKUPS}/pre-restore-$(date +%F-%H%M%S).dump`,
-    `${COMPOSE} exec -T postgres pg_dump -U scam_shield -d scam_shield -Fc | sudo tee "$safety" > /dev/null`,
-    `sudo chmod 600 "$safety"; echo "current data saved in $safety"`,
-    `${COMPOSE} stop app`,
-    `sudo cat ${shq(onHost)} | ${COMPOSE} exec -T postgres pg_restore -U scam_shield -d scam_shield --clean --if-exists --no-owner --single-transaction`,
-    `${COMPOSE} start app`,
-    `for i in $(seq 30); do if out=$(curl -fsS -m 5 http://127.0.0.1:3000/api/health); then echo "restored; /api/health: $out"; exit 0; fi; sleep 2; done`,
-    `echo "restored, but /api/health does not answer: make logs"; exit 1`,
-  ].join("\n");
-  return ssh(`bash -c ${shq(script)}`).status ?? 1;
+  return ssh(`bash -c ${shq(restoreScript(onHost))}`).status ?? 1;
 }
 
 // ------------------------------------------------------------------ the shared database (over Tailscale)
+
+// host:port of a database URL, the only part of it a message names.
+export const dbWhere = (url) => { const u = new URL(url); return `${u.hostname}:${u.port || 5432}`; };
+export const unreachableMessage = (url, err) =>
+  `The shared database does not answer at ${dbWhere(url)} (${err?.code || err?.message || err}): is Tailscale up on this laptop (tailscale status shows prudence-prod)? _product/docs/ops.md`;
+// The migration files this checkout has that the database has not applied (the app would apply them at start).
+export const migrationsAhead = (files, applied) => files.filter((f) => f.endsWith(".sql") && !new Set(applied).has(f));
+// psql's arguments and environment for a URL: the password goes in PGPASSWORD, never on the command line.
+export function psqlCall(url, host) {
+  const u = new URL(url);
+  return {
+    args: ["-h", host || u.hostname, "-p", u.port || "5432", "-U", decodeURIComponent(u.username), "-d", u.pathname.slice(1)],
+    env: { PGPASSWORD: decodeURIComponent(u.password) },
+  };
+}
 
 async function prodUrl() {
   const url = process.env.PROD_DATABASE_URL || (await credentials()).get("PROD_DATABASE_URL");
@@ -199,19 +280,18 @@ async function prodUrl() {
 
 async function dbServer() {
   const url = await prodUrl();
-  const where = `${new URL(url).hostname}:${new URL(url).port || 5432}`;
   const { default: pg } = await import("pg");
   const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 8000 });
   try {
     await client.connect();
   } catch (e) {
-    stop(`The shared database does not answer at ${where} (${e.code || e.message}): is Tailscale up on this laptop (tailscale status shows prudence-prod)? _product/docs/ops.md`);
+    stop(unreachableMessage(url, e));
   }
-  const applied = new Set((await client.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
+  const applied = (await client.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name);
   await client.end();
-  const ahead = readdirSync(join(ROOT, "src/db/migrations")).filter((f) => f.endsWith(".sql") && !applied.has(f));
+  const ahead = migrationsAhead(readdirSync(join(ROOT, "src/db/migrations")), applied);
   if (ahead.length) stop(`This checkout has migrations production has not applied (${ahead.join(", ")}). The app migrates at start, so it would change the shared database: deploy first (make deploy), or stay local (make server).`);
-  say(`The laptop app on the shared production database (${where}) with WORKER=0: production alone runs the jobs. Each page pays round trips across the ocean.`);
+  say(`The laptop app on the shared production database (${dbWhere(url)}) with WORKER=0: production alone runs the jobs. Each page pays round trips across the ocean.`);
   const child = spawn(process.execPath, ["--env-file-if-exists=.env", "--import", "./lib/credentials.js", "--watch-path=src", "--watch-path=lib", "--watch-path=public", "src/server.js"],
     { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url, WORKER: "0" } });
   for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
@@ -219,14 +299,15 @@ async function dbServer() {
 }
 
 async function dbShell() {
-  const u = new URL(await prodUrl());
-  const env = { ...process.env, PGPASSWORD: decodeURIComponent(u.password) };
-  const args = (host) => ["-h", host, "-p", u.port || "5432", "-U", decodeURIComponent(u.username), "-d", u.pathname.slice(1)];
-  if (has("psql")) return spawnSync("psql", args(u.hostname), { stdio: "inherit", env }).status ?? 1;
+  const url = await prodUrl();
+  const { hostname } = new URL(url);
+  const call = psqlCall(url);
+  const env = { ...process.env, ...call.env };
+  if (has("psql")) return spawnSync("psql", call.args, { stdio: "inherit", env }).status ?? 1;
   if (!has("docker")) stop("psql not found: brew install libpq && brew link --force libpq (or install Docker)");
   let address;
-  try { ({ address } = await lookup(u.hostname)); } catch { stop(`${u.hostname} does not resolve: is Tailscale up on this laptop, with MagicDNS on?`); }
-  return spawnSync("docker", ["run", "--rm", "-it", "-e", "PGPASSWORD", "postgres:16-alpine", "psql", ...args(address)], { stdio: "inherit", env }).status ?? 1;
+  try { ({ address } = await lookup(hostname)); } catch { stop(`${hostname} does not resolve: is Tailscale up on this laptop, with MagicDNS on?`); }
+  return spawnSync("docker", ["run", "--rm", "-it", "-e", "PGPASSWORD", "postgres:16-alpine", "psql", ...psqlCall(url, address).args], { stdio: "inherit", env }).status ?? 1;
 }
 
 // ------------------------------------------------------------------
