@@ -12,11 +12,13 @@ Who = the person, plus the session label or agent name when several sessions run
 |---|---|---|---|
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
+| Hadrien · eval | 2026-10-31 12:45 | Contributor tier for public-corpus evaluation only (decided by Hadrien: Muse Spark 1.3 Contributor, about 20x cheaper, trains on inputs, so never a person's mail): an explicit opt-in in `eval-corpus.mjs --contributor`, the app and every other script still refuse it; then the whole held-back set (about 18,800 emails, Enron spam skipped) | `lib/llm/meta.js`, `scripts/eval-corpus.mjs`, `tests/llm.test.js`, `_product/docs/llm.md`, `_product/specs/privacy-and-account.md`, `docs/STATUS.md`, `docs/PRD.md`, `_product/log.md` |
 
 ## To do
 
 | For | Item | Asked by | Since |
 |---|---|---|---|
+| Vlad | Your Contributor guard gets one exception (Hadrien's call, Oct 31): `scripts/eval-corpus.mjs --contributor` may use `muse-spark-1.3-contributor` on the public Zenodo corpora only, after calling `allowContributorForPublicEval()`; the server and every other script still refuse it. Object here if you see a hole | Hadrien | 2026-10-31 |
 | Vlad | Tunnel `prudence-demo` is live (demo.heyprudence.com → localhost:3000): Hadrien sends you its token privately; run `cloudflared tunnel run --token-file <file>` with `BASE_URL=https://demo.heyprudence.com` and `TRUST_PROXY=true`, and only while Hadrien's connector is off: two connectors on one token split visitors between two databases | Hadrien | 2026-10-31 |
 | Hadrien | Reading check of one lesson (`#/demo/learn`) with one senior outside the team, as design.md asks; micro-learning goes Built after it | Vlad · learn | 2026-10-29 |
 | Vlad | Share the Learn design canvas with Hadrien from its Share menu (private today): https://claude.ai/artifact/Jtbbq6m8txVZxPBdPkFSJZ | Vlad · learn | 2026-10-29 |
