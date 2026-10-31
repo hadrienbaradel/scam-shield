@@ -112,12 +112,15 @@ when a kernel update waits (`/var/run/reboot-required`), not on a demo day. `rp_
 cloudflared runs in the compose file (profile `cloudflared`, no published port) once `make deploy TUNNEL_TOKEN=...` has
 stored the token in the host's `.env`; later deploys keep it, `TUNNEL_TOKEN=off` stops the tunnel. A token that does not
 connect fails the deploy with what to do. The app runs with `BASE_URL=https://heyprudence.com` (sign-in and the Origin
-check are built from it) and `TRUST_PROXY=true`, so the rate limits key on the visitor's address.
+check are built from it) and `TRUST_PROXY=true`, so the rate limits key on the visitor's address. Once it is live,
+Better Stack's HTTP monitor belongs on https://heyprudence.com/api/health; `prudence-demo` (demo.heyprudence.com to a
+laptop) stays for takes from a laptop.
 
 ## For Hadrien
 
 1. Cloudflare Zero Trust → Networks → Tunnels: create a tunnel named `prudence` (cloudflared, Docker), with public
-   hostnames `heyprudence.com` and `www.heyprudence.com`, both to the service `http://app:3000`. Add a Redirect Rule
+   hostnames `heyprudence.com` and `www.heyprudence.com`, both to the service `http://app:3000`. A new tunnel, not a
+   hostname on `prudence-demo`: one tunnel with two connectors splits visitors between two databases. Add a Redirect Rule
    (Rules → Redirect Rules) from `www.heyprudence.com/*` to `https://heyprudence.com/${1}`: the app accepts writes from
    `https://heyprudence.com` only. Send the tunnel token (in the install command, after `--token`) to Vlad privately:
    never in the repository, never in a chat with an agent.
