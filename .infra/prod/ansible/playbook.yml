@@ -280,6 +280,9 @@
 
           [sshd]
           enabled = true
+          backend = systemd
+          # OpenSSH 10 logs failed logins as sshd-session, which Ubuntu's defaults-debian.conf does not name.
+          journalmatch = _SYSTEMD_UNIT=ssh.service + _COMM=sshd + _COMM=sshd-session
           bantime = 1h
           findtime = 10m
           maxretry = 5
