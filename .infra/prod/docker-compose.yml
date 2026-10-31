@@ -1,7 +1,7 @@
 # Prudence (code name scam-shield) in production on the OVH host: the app (built from the Dockerfile
-# here) and Postgres, with the data in a bind mount at .infra/prod/_volumes/postgres. Settings come from
-# the environment or the .env file next to this file, which `make deploy` writes on the host (mode 600,
-# never shown; _product/docs/ops.md):
+# here), Postgres, and cloudflared for heyprudence.com once a tunnel token is set. Postgres data lives in
+# a bind mount at .infra/prod/_volumes/postgres. Settings come from the environment or the .env file next
+# to this file, which `make deploy` writes on the host (mode 600, never shown; _product/docs/ops.md):
 #   MASTER_KEY         64 hex characters, the content of config/master.key (required)
 #   POSTGRES_PASSWORD  letters and digits only, it is embedded in DATABASE_URL (required; generated on the host)
 #   BASE_URL           the public URL (https://heyprudence.com on the host)
@@ -9,6 +9,7 @@
 #   GIT_SHA            the deployed commit, baked into the image as APP_VERSION (what /api/health names)
 #   LOG_LEVEL          pino level, info by default
 #   APP_PORT, APP_BIND published port (3000) and address (127.0.0.1)
+#   TUNNEL_TOKEN       the Cloudflare tunnel's token; COMPOSE_PROFILES=cloudflared (also in .env) starts cloudflared
 # Docker publishes ports past ufw, so every published port here is on 127.0.0.1. Postgres reaches the tailnet
 # through `tailscale serve` on the host (prudence-prod:5432), never through a port on 0.0.0.0.
 # `make prod-smoke` runs this file locally with throwaway data (docker-compose.smoke.yml).
@@ -63,3 +64,15 @@ services:
       retries: 20
       start_period: 10s
 
+  # heyprudence.com through a Cloudflare Tunnel: outbound connections only, no published port. Started only
+  # with the cloudflared profile, which `make deploy TUNNEL_TOKEN=...` enables in the host .env.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    profiles: [cloudflared]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      app:
+        condition: service_healthy

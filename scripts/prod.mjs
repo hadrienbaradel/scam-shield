@@ -12,8 +12,8 @@
 //   node scripts/prod.mjs db-shell            make db-prod-shell: psql on the shared database
 //
 // The host is the first one under [scam_shield] in .infra/prod/ansible/inventory.ini (gitignored; copy
-// inventory.example.ini). Never prints a secret: the master key, the Postgres password, and the Tailscale
-// auth key go from a file or the environment into the playbook (no_log) or through a pipe.
+// inventory.example.ini). Never prints a secret: the master key, the Postgres password, the Tailscale auth
+// key and the tunnel token go from a file or the environment into the playbook (no_log) or through a pipe.
 
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -104,7 +104,7 @@ async function deploy() {
     const vars = join(dir, "vars.json");
     writeFileSync(vars, JSON.stringify({ deploy_archive: archive, deploy_sha: sha }), { mode: 0o600 });
     say(`Deploying ${short} to ${t.name} (${t.user ? `${t.user}@` : ""}${t.host}): git archive of HEAD, then the playbook`);
-    say(`Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}`);
+    say(`Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}; tunnel: ${env.TUNNEL_TOKEN ? "a TUNNEL_TOKEN is given" : "the host keeps what it has"}`);
     const extra = (process.env.ANSIBLE_ARGS || "").split(/\s+/).filter(Boolean);
     const r = spawnSync("ansible-playbook", ["-i", INVENTORY, join(ANSIBLE, "playbook.yml"), "-e", `@${vars}`, ...extra], { cwd: ANSIBLE, env, stdio: "inherit" });
     if (r.status !== 0) stop(`deploy FAILED (ansible-playbook exit ${r.status ?? r.signal}): the task above names the step. Containers the run did not replace keep running; make prod-status shows what is up.`);

@@ -182,7 +182,7 @@ gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety 
 
 ##@ Prod  (the OVH host, _product/docs/ops.md; .infra/prod: Dockerfile, compose, ansible/, the host in ansible/inventory.ini)
 
-deploy: deps ## Ship this checkout's HEAD to the OVH host (Ansible) until /api/health names it: [TS_AUTHKEY=...]
+deploy: deps ## Ship this checkout's HEAD to the OVH host (Ansible) until /api/health names it: [TS_AUTHKEY=...] [TUNNEL_TOKEN=...]
 	@$(PROD) deploy
 
 logs: ## Follow the app's logs on the OVH host (pino JSON, over SSH; Ctrl-C stops)

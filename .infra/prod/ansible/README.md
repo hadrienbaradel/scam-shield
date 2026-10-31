@@ -9,7 +9,8 @@ a warning says so) with its sha, and the playbook:
    unattended security upgrades (no automatic reboot, a daily apt cleanup), keeps the journal on disk
    (`Storage=persistent`, 2 GB at most), sets `rp_filter=1`, `tcp_syncookies=1` and `vm.swappiness=0`,
    turns swap off (now and in `/etc/fstab`), and sets sshd to keys only, no root login, no X11
-   forwarding (reloaded, then a new SSH connection must log in before the play goes on);
+   forwarding (reloaded, then a new SSH connection must log in before the play goes on); the public keys
+   listed in `authorized_keys` (the gitignored `group_vars/scam_shield.yml`) are added for the SSH user;
 2. installs Docker Engine and the compose plugin from Docker's apt repository, with log rotation in
    `/etc/docker/daemon.json` (json-file, 5 files of 50 MB per container), and Tailscale from Tailscale's;
 3. joins the tailnet as `prudence-prod` with Tailscale SSH, only when an auth key is given (`make deploy
@@ -25,9 +26,11 @@ a warning says so) with its sha, and the playbook:
    Postgres data in `.infra/prod/_volumes/postgres`) and writes `GIT_SHA`;
 6. writes `.infra/prod/.env` (mode 600, root only, never logged): `MASTER_KEY` read from the laptop's
    `config/master.key`, `POSTGRES_PASSWORD` generated on the host at the first deploy and kept after,
-   `BASE_URL=https://heyprudence.com`, `TRUST_PROXY=true`, `LOG_LEVEL=info`, `GIT_SHA`;
-7. `docker compose up -d --build --wait` (the sha is the image's `APP_VERSION`), the migrations, then
-   waits until `/api/health` answers `db: ok` with the deployed sha;
+   `BASE_URL=https://heyprudence.com`, `TRUST_PROXY=true`, `LOG_LEVEL=info`, `GIT_SHA`, and when given
+   `TUNNEL_TOKEN` with `COMPOSE_PROFILES=cloudflared` (kept from deploy to deploy; `TUNNEL_TOKEN=off` drops it);
+7. `docker compose up -d --build --wait` (the sha is the image's `APP_VERSION`; cloudflared too when the
+   profile is on, and removed when it is not), the migrations, then waits until `/api/health` answers
+   `db: ok` with the deployed sha;
 8. installs the daily backup: `prudence-backup.timer` (03:00 host time) runs `.infra/prod/scripts/backup.sh`
    (`pg_dump -Fc` into `/var/backups/prudence/<date>.dump`, mode 600, 30 days kept, one journal line,
    `HEARTBEAT_BACKUP_URL` pinged when set), and takes the first dump unless one from today exists.
@@ -36,6 +39,7 @@ a warning says so) with its sha, and the playbook:
 cp inventory.example.ini inventory.ini   # the host's address and user
 make deploy                              # from the repository root
 make deploy TS_AUTHKEY=tskey-auth-...    # once: joins the tailnet (the key is single use)
+make deploy TUNNEL_TOKEN=...             # once: heyprudence.com through the Cloudflare tunnel
 make logs | make prod-status | make prod-shell
 make backup-now | make backup-pull       # a dump now; the latest one copied to .runtime/backups/
 ```
