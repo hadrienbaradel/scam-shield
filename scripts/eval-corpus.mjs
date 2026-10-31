@@ -8,6 +8,10 @@
 //     so a paid Muse Spark run stays small; the detector is scored on the
 //     same rows, side by side. Muse answers are cached in
 //     .runtime/eval/muse-cache.json, so re-runs are free.
+//     --skip-spam: drop label-1 rows of plain-spam files (Enron, SpamAssassin, CEAS),
+//     which the phishing figures never score.
+//     --contributor: muse-spark-1.3-contributor, the same model at the Contributor
+//     price; Meta trains on what it reads, so public corpora only, never anyone's mail.
 //
 // Each row (sender, receiver, date, subject, body, urls, label) becomes the
 // same message shape Gmail sync produces and goes through the detector as a
@@ -24,6 +28,7 @@ import { emptyContext } from "../lib/context.js";
 import { domainOf } from "../lib/brands.js";
 import { htmlToText, linksFromHtml, linksFromText, parseAddress } from "../src/google/gmail.js";
 import { checkMessage, museConfigured, museLabel, museModel } from "../lib/muse.js";
+import { allowContributorForPublicEval } from "../lib/llm/meta.js";
 import { fileCache, usageSummary } from "./muse-file-cache.mjs";
 
 const args = process.argv.slice(2);
@@ -42,7 +47,18 @@ if (useMuse && !sample && !limit) {
   console.error("--muse sends every row to the paid API: add --sample N (or --limit N).");
   process.exit(2);
 }
+const flag = (name) => { const i = args.indexOf(name); if (i >= 0) args.splice(i, 1); return i >= 0; };
+const skipSpam = flag("--skip-spam");
+if (flag("--contributor")) {
+  // Public corpora only: the Contributor tier trains Meta's models on what it reads.
+  if (!useMuse || (process.env.LLM_PROVIDER || "meta") !== "meta") { console.error("--contributor needs --muse with the Meta provider."); process.exit(2); }
+  const base = process.env.LLM_MODEL || process.env.META_MODEL_NAME || "muse-spark-1.3";
+  process.env.LLM_MODEL = /contributor/i.test(base) ? base : `${base}-contributor`;
+  allowContributorForPublicEval();
+}
 const cache = useMuse ? await fileCache(new URL("../.runtime/eval/muse-cache.json", import.meta.url).pathname) : null;
+// A long run keeps what it paid for: the cache is written every minute, so a re-run after a crash only asks for what is missing.
+const flush = cache ? setInterval(() => cache.save().catch(() => {}), 60000) : null;
 const cards = JSON.parse(await readFile(new URL("../data/patterns/cards.json", import.meta.url), "utf8"));
 
 // RFC 4180 CSV: quoted fields may hold commas, quotes ("") and newlines.
@@ -90,10 +106,16 @@ const summaries = Object.fromEntries(engines.map((e) => [e, []]));
 const details = [];
 const museVerdicts = [];
 
+// Phishing = label 1 rows of phishing/fraud corpora (Nazario, Nigerian…);
+// legitimate = label 0 rows. Plain spam (label 1 of Enron, SpamAssassin,
+// CEAS) is not a scam: left out of the metrics, and of the run with --skip-spam.
+const isPhishFile = (f) => /nazario|nigerian|phish|fraud/i.test(f);
+
 for (const file of args) {
   const started = Date.now();
   let rows = parseCsv(await readFile(file, "utf8"))
     .filter((r) => (r.body || "").trim() && !/MAILER-DAEMON/i.test(r.sender || "") && !/FOLDER INTERNAL DATA/.test(r.subject || ""));
+  if (skipSpam && !isPhishFile(basename(file))) rows = rows.filter((r) => String(r.label).trim() !== "1");
   if (sample) rows = [...pick(rows.filter((r) => String(r.label).trim() === "1"), sample, seed), ...pick(rows.filter((r) => String(r.label).trim() !== "1"), sample, seed)];
   if (limit) rows = rows.slice(0, limit);
   const by = Object.fromEntries(engines.map((e) => [e, { 1: { scam: 0, be_careful: 0, safe: 0 }, 0: { scam: 0, be_careful: 0, safe: 0 }, misses: [], falseAlarms: [] }]));
@@ -102,7 +124,11 @@ for (const file of args) {
     const input = { locale: "en-US", message, personalContext: emptyContext(""), patternCards: cards, linkInspection: {}, mockLinkInspection: {} };
     const v = {};
     try { v.detector = detect(input); } catch (e) { v.detector = { verdict: "safe", reasons: [{ text: `error: ${e.message}` }] }; }
-    if (useMuse) { v.muse = await checkMessage(input, { cache }); museVerdicts.push(v.muse); }
+    if (useMuse) {
+      v.muse = await checkMessage(input, { cache });
+      museVerdicts.push(v.muse);
+      if (museVerdicts.length % 250 === 0) console.error(`   ${museVerdicts.length} judged by Muse (${museVerdicts.filter((m) => m.degraded).length} fell back to the detector)`);
+    }
     return { row, message, v };
   }));
   for (const { row, message, v } of judged) {
@@ -126,6 +152,7 @@ for (const file of args) {
       legit: l.scam + l.be_careful + l.safe, legitScam: l.scam, legitCareful: l.be_careful, legitSafe: l.safe, misses: by[e].misses, falseAlarms: by[e].falseAlarms });
   }
 }
+if (flush) clearInterval(flush);
 if (cache) await cache.save();
 
 const report = {};
@@ -139,10 +166,7 @@ for (const s of summary) {
   const top = (items) => Object.entries(items.reduce((m, x) => ((m[x.reason] = (m[x.reason] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 4);
   if (s.falseAlarms.length) console.log("   top reasons for false Scam:", top(s.falseAlarms).map(([r, n]) => `${n}× ${r.slice(0, 90)}`).join(" | "));
 }
-// Confusion matrix and the usual metrics. Phishing = label 1 rows of
-// phishing/fraud corpora (Nazario, Nigerian…); legitimate = label 0 rows.
-// Plain spam (label 1 of SpamAssassin/CEAS) is not a scam and is left out.
-const isPhishFile = (f) => /nazario|nigerian|phish|fraud/i.test(f);
+// Confusion matrix and the usual metrics (isPhishFile above).
 const phish = summary.filter((s) => isPhishFile(s.file));
 const totals = {
   P: phish.reduce((n, s) => n + s.positives, 0),

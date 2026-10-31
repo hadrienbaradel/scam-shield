@@ -5,7 +5,7 @@ import "./helpers/env.js";
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { getProvider, llmConfigured, llmModel, llmLabel, llmThinking, providerName, capabilities, PROVIDER_NAMES } from "../lib/llm/index.js";
-import { createMetaProvider } from "../lib/llm/meta.js";
+import { createMetaProvider, allowContributorForPublicEval } from "../lib/llm/meta.js";
 import { createOpenAiCompatibleProvider, toOpenAiMessages } from "../lib/llm/openai-compatible.js";
 import { createAnthropicProvider, API_VERSION } from "../lib/llm/anthropic.js";
 import { createMockProvider } from "../lib/llm/mock.js";
@@ -175,6 +175,21 @@ test("meta: errors keep their wording, Contributor mode is refused before any re
   process.env.META_MODEL_NAME = "muse-spark-1.3-contributor";
   await assert.rejects(createMetaProvider({ fetchImpl }).complete({ messages: [] }), /Refusing Contributor-mode model muse-spark-1.3-contributor/);
   assert.equal(calls.length, 0);
+});
+
+test("meta: Contributor only after allowContributorForPublicEval (public-corpus evaluation), refused again once it is off", async () => {
+  process.env.META_MODEL_API_KEY = "k";
+  process.env.META_MODEL_NAME = "muse-spark-1.3-contributor";
+  const refused = fakeFetch(ok(chat("x")));
+  await assert.rejects(createMetaProvider({ fetchImpl: refused.fetchImpl }).complete({ messages: [] }), /Refusing Contributor-mode/);
+  allowContributorForPublicEval();
+  try {
+    const { fetchImpl, calls } = fakeFetch(ok(chat("x")));
+    assert.equal((await createMetaProvider({ fetchImpl }).complete({ messages: [] })).text, "x");
+    assert.equal(calls[0].body.model, "muse-spark-1.3-contributor");
+  } finally { allowContributorForPublicEval(false); }
+  await assert.rejects(createMetaProvider({ fetchImpl: refused.fetchImpl }).complete({ messages: [] }), /Refusing Contributor-mode/);
+  assert.equal(refused.calls.length, 0);
 });
 
 test("openai-compatible: presets, LLM_BASE_URL, a key header only with a key, LLM_MODEL", async () => {

@@ -11,7 +11,7 @@ Reading someone's Gmail is the most sensitive thing an app can do, and Google wi
 4. Settings → "What Scam Shield did" lists every label, move, put-back, invitation and answer with its time.
 5. Settings → "Delete my account" asks for one confirmation, then stops Gmail checks, revokes Scam Shield's access at Google, erases every row (verdicts, context, guardians, alerts, devices, cache) and signs the user out. Emails and labels in Gmail stay exactly where they are.
 6. A guardian's sign-in grants no access to their own mail, and removing a guardian ends their access to anything shared.
-7. Every browser write must come from the app's own origin; the AI is refused any Contributor-mode model id; a one-tap email link never answers by itself.
+7. Every browser write must come from the app's own origin; the AI is refused any Contributor-mode model id (one exception since 2026-10-31: `scripts/eval-corpus.mjs --contributor` on the public Zenodo corpora, never a person's mail; the server and every other script still refuse it); a one-tap email link never answers by itself.
 
 ## Demo path
 Two seconds on "What Scam Shield did" and the Delete button; mention "no email text is ever stored" in the voice-over. Likely a single sentence in the video.

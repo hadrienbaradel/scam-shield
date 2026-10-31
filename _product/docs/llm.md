@@ -14,7 +14,7 @@ Set keys with `make secrets-set KEY=value` (`_product/docs/secrets.md`); provide
 | `LLM_MODEL` | Model id for the selected provider. Defaults: `muse-spark-1.3`, `claude-opus-5-5`, `gpt-4o-mini`, `llama-3.3-70b-versatile`, `meta-llama/Llama-3.3-70B-Instruct-Turbo`, `llama3.2`, `Llama-4-Maverick-17B-128E-Instruct-FP8`; `openai-compatible` has none |
 | `LLM_BASE_URL` | Address of an OpenAI-compatible endpoint (any `/v1` that serves `chat/completions`); overrides the preset address |
 | `LLM_THINKING` | Reasoning effort for any provider: `minimal`, `low`, `medium`, `high`; `off` sends none |
-| `META_MODEL_API_KEY`, `META_MODEL_NAME`, `META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT` | Muse Spark, unchanged (effort default `low`; a `-contributor` model id is refused) |
+| `META_MODEL_API_KEY`, `META_MODEL_NAME`, `META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT` | Muse Spark, unchanged (effort default `low`; a `-contributor` model id is refused, except by `scripts/eval-corpus.mjs --contributor`, which calls `allowContributorForPublicEval()` and may only read public corpora) |
 | `OPENAI_API_KEY` | Key for every OpenAI-compatible provider; not needed for `ollama` or a custom `LLM_BASE_URL` |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | Claude (Messages API, version 2026-10-21) |
 

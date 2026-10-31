@@ -43,7 +43,7 @@ Gmail message ─► normalize (text, links, attachments, Gmail's own auth resul
 ```
 
 Muse layer details worth knowing:
-- `muse-spark-1.3`, **Standard mode only** (the code refuses `-contributor` ids, so nothing trains Meta's models).
+- `muse-spark-1.3`, **Standard mode only** for every person's mail (the code refuses `-contributor` ids, so nothing a person sends trains Meta's models). The one exception: evaluation on public corpora may run `muse-spark-1.3-contributor` (`eval-corpus.mjs --contributor`, same model, Contributor price), and its tables say so.
 - **It is a reasoning model**: thinking tokens count against `max_tokens`. At 900 it spent 898 thinking and returned nothing, so every live check silently fell back to the detector. Now `reasoning_effort: "low"` (env `META_MODEL_REASONING_EFFORT`), `max_tokens` 4000, 20 s deadline. Measured on one case: default effort ~2,950 thinking tokens / 11.5 s, low ~930 / 4.7 s, minimal ~280 / 2.8 s, same verdict.
 - Before the model sees anything: IBANs, card numbers (Luhn), SSNs, French social-security numbers, codes, phones, email local parts and the user's name are replaced with labels. Contacts' names, addresses and numbers are never sent.
 - All inputs go in as JSON blocks with `<`/`>` escaped (prompt-injection hardening). The answer must pass the schema and be in the user's language.

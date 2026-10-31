@@ -49,7 +49,7 @@ Run `npm test` (146 tests) and `npm run score` (36/36 cases). Measured accuracy 
 
 ## Privacy and platform constraints (from PRD)
 
-Standard mode only (never Contributor). Demo data redacted or synthetic only; real .eml stays off the repo (organizers get a perpetual license). Gmail restricted scopes: Testing mode + test users for the hackathon; verification + CASA planned from November. Guardian sees only what the senior shares. Store verdicts and features, not mail bodies.
+Standard mode only (never Contributor) for anyone's mail; evaluation on public corpora may use the Contributor tier (decided 2026-10-31). Demo data redacted or synthetic only; real .eml stays off the repo (organizers get a perpetual license). Gmail restricted scopes: Testing mode + test users for the hackathon; verification + CASA planned from November. Guardian sees only what the senior shares. Store verdicts and features, not mail bodies.
 
 ## Open decisions for Vlad
 
