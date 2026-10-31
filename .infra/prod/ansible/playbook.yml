@@ -1,93 +1,298 @@
-# Scam Shield on one Debian or Ubuntu host with Docker Compose. UNTESTED ON A REAL HOST (README.md).
-#   ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass
-# Secrets come from an Ansible vault (group_vars/scam_shield/vault.yml): vault_master_key
-# (64 hex characters, the content of config/master.key) and vault_postgres_password (letters
-# and digits). The other variables have defaults below; override them in the inventory.
-- name: Scam Shield host
+# Prudence on the OVH host: one Ubuntu machine with Docker Compose (README.md here, _product/docs/ops.md).
+# `make deploy` runs it from a laptop with the archive of the local HEAD (the repository is private, so the
+# host never needs git credentials):
+#   make deploy
+#   ansible-playbook -i inventory.ini playbook.yml -e deploy_archive=<git archive .tar.gz> -e deploy_sha=<40 hex>
+# Sections, in order: base system; Docker, from its apt repository; the code; the compose environment; the
+# app; summary.
+# Every task that handles a secret (master key, Postgres password) has no_log: true.
+- name: Prudence on the OVH host
   hosts: scam_shield
   become: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    NEEDRESTART_MODE: a
   vars:
+    scam_shield_dir: /opt/scam-shield
+    # archive: make deploy ships `git archive HEAD` (deploy_archive, deploy_sha). git: a clone of
+    # scam_shield_repo at scam_shield_branch, for when the repository is public (no credentials either way).
+    scam_shield_source: archive
     scam_shield_repo: https://github.com/hadrienbaradel/scam-shield.git
     scam_shield_branch: main
-    scam_shield_dir: /opt/scam-shield
-    scam_shield_base_url: "http://{{ ansible_host }}:3000"
+    deploy_archive: ""
+    deploy_sha: ""
+    scam_shield_base_url: https://heyprudence.com
+    scam_shield_trust_proxy: "true"
+    scam_shield_log_level: info
     scam_shield_app_port: 3000
     scam_shield_app_bind: 127.0.0.1
+    scam_shield_master_key_file: "{{ playbook_dir }}/../../../config/master.key"
+    scam_shield_env_file: "{{ scam_shield_dir }}/.infra/prod/.env"
     scam_shield_compose: "docker compose -f {{ scam_shield_dir }}/.infra/prod/docker-compose.yml"
-    deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_architecture, 'amd64') }}"
+    distro: "{{ ansible_facts['distribution'] | lower }}"
+    codename: "{{ ansible_facts['distribution_release'] }}"
+    deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_facts['architecture'], 'amd64') }}"
+
   pre_tasks:
-    - name: The secrets must come from the vault
+    - name: The deploy names one commit and its archive
       ansible.builtin.assert:
         that:
-          - vault_master_key is defined
-          - vault_postgres_password is defined
-        fail_msg: define vault_master_key and vault_postgres_password in an ansible-vault file
+          - scam_shield_source in ['archive', 'git']
+          - scam_shield_source == 'git' or deploy_sha is match('^[0-9a-f]{40}$')
+          - scam_shield_source == 'git' or (deploy_archive | length > 0)
+        fail_msg: "run make deploy (it passes deploy_archive and deploy_sha), or -e deploy_archive=... -e deploy_sha=..."
+        quiet: true
+
+    - name: The master key comes from the laptop's config/master.key (never shown)
+      ansible.builtin.set_fact:
+        master_key: "{{ lookup('ansible.builtin.file', scam_shield_master_key_file) | trim }}"
+      no_log: true
+
+    - name: The master key is 64 hex characters (else make secrets-init on the laptop)
+      ansible.builtin.assert:
+        that: master_key is match('^[0-9a-fA-F]{64}$')
+        quiet: true
+      no_log: true
+
   tasks:
-    - name: Packages Docker's repository needs
+    # ------------------------------------------------------------------ base system
+    - name: needrestart restarts outdated services by itself, so apt never stops to ask
+      ansible.builtin.copy:
+        dest: /etc/needrestart/conf.d/50-prudence.conf
+        mode: "0644"
+        content: |
+          # Prudence playbook: restart services after library updates without asking (needrestart's own
+          # override_rc still leaves Docker alone).
+          $nrconf{restart} = 'a';
+
+    - name: Base packages
       ansible.builtin.apt:
-        name: [ca-certificates, curl, git, gnupg]
+        name: [ca-certificates, curl, gnupg, rsync, needrestart]
         state: present
         update_cache: true
+        cache_valid_time: 3600
+
+    # ------------------------------------------------------------------ Docker, from its apt repository
+    - name: Docker settings folder
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: "0755"
+
+    - name: Docker log rotation (json-file, 5 files of 50 MB per container), before Docker starts
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        content: "{{ {'log-driver': 'json-file', 'log-opts': {'max-size': '50m', 'max-file': '5'}} | to_nice_json }}\n"
+      notify: Restart docker
+
     - name: Keyrings folder
       ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
         mode: "0755"
+
     - name: Docker's apt key
       ansible.builtin.get_url:
-        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        url: "https://download.docker.com/linux/{{ distro }}/gpg"
         dest: /etc/apt/keyrings/docker.asc
         mode: "0644"
+
     - name: Docker's apt repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch={{ deb_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
-        state: present
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        mode: "0644"
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/{{ distro }}
+          Suites: {{ codename }}
+          Components: stable
+          Architectures: {{ deb_arch }}
+          Signed-By: /etc/apt/keyrings/docker.asc
+      register: docker_repo
+
     - name: Docker Engine and the compose plugin
       ansible.builtin.apt:
-        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
         state: present
-        update_cache: true
+        update_cache: "{{ docker_repo.changed }}"
+
     - name: Docker running and enabled
-      ansible.builtin.service:
+      ansible.builtin.systemd_service:
         name: docker
         state: started
         enabled: true
-    - name: The repository at the branch (local changes on the host are discarded)
+
+    - name: Docker restarted now if its settings changed
+      ansible.builtin.meta: flush_handlers
+
+    # ------------------------------------------------------------------ the code
+    - name: The code from the laptop's archive (tracked files only)
+      when: scam_shield_source == 'archive'
+      block:
+        - name: Staging folder, empty
+          ansible.builtin.file:
+            path: "{{ scam_shield_dir }}.incoming"
+            state: absent
+
+        - name: Staging folder
+          ansible.builtin.file:
+            path: "{{ scam_shield_dir }}.incoming"
+            state: directory
+            mode: "0755"
+
+        - name: The archive unpacked into the staging folder
+          ansible.builtin.unarchive:
+            src: "{{ deploy_archive }}"
+            dest: "{{ scam_shield_dir }}.incoming"
+
+        - name: The code replaced cleanly (the host .env and the Postgres data stay)
+          ansible.builtin.command: >-
+            rsync -a --delete --itemize-changes
+            --exclude=/.infra/prod/.env --exclude=/.infra/prod/_volumes/ --exclude=/GIT_SHA
+            {{ scam_shield_dir }}.incoming/ {{ scam_shield_dir }}/
+          register: code_sync
+          changed_when: code_sync.stdout | length > 0
+
+        - name: Staging folder removed
+          ansible.builtin.file:
+            path: "{{ scam_shield_dir }}.incoming"
+            state: absent
+
+    - name: The code from the public repository (scam_shield_source=git; local changes on the host are discarded)
       ansible.builtin.git:
         repo: "{{ scam_shield_repo }}"
         dest: "{{ scam_shield_dir }}"
         version: "{{ scam_shield_branch }}"
         force: true
-    - name: Data folder for Postgres
+      register: code_git
+      when: scam_shield_source == 'git'
+
+    - name: The commit a git deploy checked out
+      ansible.builtin.set_fact:
+        deploy_sha: "{{ code_git.after }}"
+      when: scam_shield_source == 'git'
+
+    - name: GIT_SHA names the deployed commit
+      ansible.builtin.copy:
+        dest: "{{ scam_shield_dir }}/GIT_SHA"
+        content: "{{ deploy_sha }}\n"
+        mode: "0644"
+
+    # ------------------------------------------------------------------ the compose environment
+    - name: Postgres data folder
+      ansible.builtin.stat:
+        path: "{{ scam_shield_dir }}/.infra/prod/_volumes/postgres"
+      register: pg_dir
+
+    - name: Postgres data folder created (first deploy)
       ansible.builtin.file:
         path: "{{ scam_shield_dir }}/.infra/prod/_volumes/postgres"
         state: directory
         mode: "0700"
-    - name: Compose environment from the vault (never shown)
+      when: not pg_dir.stat.exists
+
+    - name: Postgres data initialized already
+      ansible.builtin.stat:
+        path: "{{ scam_shield_dir }}/.infra/prod/_volumes/postgres/PG_VERSION"
+      register: pg_initialized
+
+    - name: The host .env so far
+      ansible.builtin.stat:
+        path: "{{ scam_shield_env_file }}"
+      register: env_stat
+
+    - name: The host .env read (never shown)
+      ansible.builtin.slurp:
+        src: "{{ scam_shield_env_file }}"
+      register: env_slurp
+      when: env_stat.stat.exists
+      no_log: true
+
+    - name: The values a deploy keeps (never shown)
+      ansible.builtin.set_fact:
+        postgres_password: "{{ env_kept.get('POSTGRES_PASSWORD', '') }}"
+      vars:
+        env_text: "{{ (env_slurp.content | b64decode) if env_stat.stat.exists else '' }}"
+        env_kept: "{{ dict(env_text.splitlines() | select('match', '^[A-Z_]+=') | map('split', '=', 1)) }}"
+      no_log: true
+
+    - name: Postgres data never meets a new password (restore the .env that created it instead)
+      ansible.builtin.assert:
+        that:
+          - postgres_password | length > 0 or not pg_initialized.stat.exists
+          - postgres_password is match('^[A-Za-z0-9]*$')
+        quiet: true
+      no_log: true
+
+    - name: First deploy, a Postgres password generated on the host (letters and digits, never shown)
+      ansible.builtin.command: openssl rand -hex 24
+      register: pg_password_new
+      when: postgres_password | length == 0
+      changed_when: true
+      no_log: true
+
+    - name: The new password kept for the .env (never shown)
+      ansible.builtin.set_fact:
+        postgres_password: "{{ pg_password_new.stdout | trim }}"
+      when: pg_password_new is not skipped
+      no_log: true
+
+    - name: The compose environment (.infra/prod/.env, mode 600, root only, never shown)
       ansible.builtin.copy:
-        dest: "{{ scam_shield_dir }}/.infra/prod/.env"
+        dest: "{{ scam_shield_env_file }}"
+        owner: root
+        group: root
         mode: "0600"
         content: |
-          MASTER_KEY={{ vault_master_key }}
-          POSTGRES_PASSWORD={{ vault_postgres_password }}
+          # Written by the Prudence playbook at every make deploy (_product/docs/ops.md): an edit here is lost at the
+          # next deploy, except POSTGRES_PASSWORD, which it keeps.
+          MASTER_KEY={{ master_key }}
+          POSTGRES_PASSWORD={{ postgres_password }}
           BASE_URL={{ scam_shield_base_url }}
+          TRUST_PROXY={{ scam_shield_trust_proxy }}
+          LOG_LEVEL={{ scam_shield_log_level }}
           APP_PORT={{ scam_shield_app_port }}
           APP_BIND={{ scam_shield_app_bind }}
+          GIT_SHA={{ deploy_sha }}
       no_log: true
-    - name: Build and start the app and Postgres
+
+    # ------------------------------------------------------------------ the app
+    - name: Build and start the app and Postgres, until healthy
       ansible.builtin.command:
-        cmd: "{{ scam_shield_compose }} up -d --build --wait"
+        cmd: "{{ scam_shield_compose }} up -d --build --wait --wait-timeout 300"
       changed_when: true
-    - name: Migrations (the app applies them at start too; this reports the result)
+
+    - name: Migrations (the app applies them at start too, under an advisory lock; this reports the result)
       ansible.builtin.command:
         cmd: "{{ scam_shield_compose }} exec -T app node src/db/migrate.js"
       register: migrate
       changed_when: "'Applied' in migrate.stdout"
-    - name: Health
+
+    - name: Health names the deployed commit, with the database up
       ansible.builtin.uri:
         url: "http://127.0.0.1:{{ scam_shield_app_port }}/api/health"
+        status_code: [200, 503]
       register: health
-      until: health.status == 200
-      retries: 10
-      delay: 3
-      when: scam_shield_app_bind in ['127.0.0.1', '0.0.0.0']
+      until: >-
+        (health.json | default({})).get('version') == deploy_sha and
+        (health.json | default({})).get('db') == 'ok'
+      retries: 30
+      delay: 2
+
+    - name: Unused image layers removed (dangling images only)
+      ansible.builtin.command: docker image prune --force
+      register: image_prune
+      changed_when: "'Total reclaimed space: 0B' not in image_prune.stdout"
+
+    # ------------------------------------------------------------------ summary
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Deployed {{ deploy_sha }} to {{ scam_shield_dir }}; /api/health: {{ health.json | to_json }}; migrations: {{ migrate.stdout | trim }}"
+
+  handlers:
+    - name: Restart docker
+      ansible.builtin.systemd_service:
+        name: docker
+        state: restarted

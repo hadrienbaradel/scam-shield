@@ -9,7 +9,8 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke clean clean-all \
+        prod-build prod-smoke deploy \
+        clean clean-all \
         secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
 NODE   ?= node
@@ -32,7 +33,10 @@ DB       ?= scam_shield
 TEST_DB_SUFFIX ?=
 export PG_PORT PG_USER TEST_DB_SUFFIX
 
-# Production image and compose (.infra/prod), tried locally by make prod-build and make prod-smoke.
+# Production image and compose (.infra/prod), tried locally by make prod-build and make prod-smoke;
+# the OVH host (make deploy) through scripts/prod.mjs, which reads
+# the host from .infra/prod/ansible/inventory.ini (_product/docs/ops.md).
+PROD         := $(NODE) scripts/prod.mjs
 PROD_COMPOSE := docker compose -f .infra/prod/docker-compose.yml
 PROD_IMAGE   ?= scam-shield:local
 SMOKE_PORT   ?= 3100
@@ -174,7 +178,10 @@ gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety 
 	@$(DOCTOR) db --quiet
 	@$(NPM) run gate
 
-##@ Prod  (.infra/prod: Dockerfile, docker-compose.yml, ansible/; untested on a real host)
+##@ Prod  (the OVH host, _product/docs/ops.md; .infra/prod: Dockerfile, compose, ansible/, the host in ansible/inventory.ini)
+
+deploy: deps ## Ship this checkout's HEAD to the OVH host (Ansible) until /api/health names it
+	@$(PROD) deploy
 
 prod-build: ## Build the production image here (node:24-alpine, npm ci --omit=dev, non-root, APP_VERSION = the git sha): PROD_IMAGE=scam-shield:local
 	@docker build -f .infra/prod/Dockerfile --build-arg GIT_SHA=$$(git rev-parse HEAD) -t $(PROD_IMAGE) .

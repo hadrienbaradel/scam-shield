@@ -1,12 +1,16 @@
-# Scam Shield in production: the app (built from the Dockerfile here) and Postgres, with
-# the data in a bind mount at .infra/prod/_volumes/postgres. Settings come from the
-# environment or a .env file next to this file (the Ansible playbook writes it):
+# Prudence (code name scam-shield) in production on the OVH host: the app (built from the Dockerfile
+# here) and Postgres, with the data in a bind mount at .infra/prod/_volumes/postgres. Settings come from
+# the environment or the .env file next to this file, which `make deploy` writes on the host (mode 600,
+# never shown; _product/docs/ops.md):
 #   MASTER_KEY         64 hex characters, the content of config/master.key (required)
-#   POSTGRES_PASSWORD  letters and digits only, it is embedded in DATABASE_URL (required)
-#   BASE_URL           the public URL, https://... behind a TLS reverse proxy
-#   APP_PORT, APP_BIND published port (3000) and address (127.0.0.1: the proxy talks to it)
-# Status: untested on a real host (_product/docs/infra.md). `make prod-smoke` runs it
-# locally with throwaway data (docker-compose.smoke.yml).
+#   POSTGRES_PASSWORD  letters and digits only, it is embedded in DATABASE_URL (required; generated on the host)
+#   BASE_URL           the public URL (https://heyprudence.com on the host)
+#   TRUST_PROXY        true behind cloudflared, so the visitor's address keys the rate limits
+#   GIT_SHA            the deployed commit, baked into the image as APP_VERSION (what /api/health names)
+#   LOG_LEVEL          pino level, info by default
+#   APP_PORT, APP_BIND published port (3000) and address (127.0.0.1)
+# Docker publishes ports past ufw, so every published port here is on 127.0.0.1.
+# `make prod-smoke` runs this file locally with throwaway data (docker-compose.smoke.yml).
 name: scam-shield-prod
 
 services:
@@ -14,6 +18,8 @@ services:
     build:
       context: ../..
       dockerfile: .infra/prod/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-}
     image: ${APP_IMAGE:-scam-shield:prod}
     restart: unless-stopped
     environment:
@@ -21,6 +27,8 @@ services:
       HOST: 0.0.0.0
       PORT: "3000"
       BASE_URL: ${BASE_URL:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://scam_shield:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (letters and digits)}@postgres:5432/scam_shield
       MASTER_KEY: ${MASTER_KEY:?set MASTER_KEY (64 hex characters, the content of config/master.key)}
     ports:
@@ -50,3 +58,4 @@ services:
       timeout: 3s
       retries: 20
       start_period: 10s
+
