@@ -6,7 +6,7 @@
 **Secondary user:** the trusted person (son, granddaughter, caregiver) who gets a one-tap "Scam / Real / I'll call you" request and only ever sees what the senior chose to share.
 **Hackathon context:** Meta Global AI Developer Hackathon 2026 (Cerebral Valley), Indie track, "Build for Your World"; due Wednesday Nov 4, 2026, 9:00 PM ET with a 3-minute demo video, a public GitHub repo and every teammate registered. Team: Hadrien Baradel (product, built everything so far), Vlad Zloteanu (joining as CTO).
 
-Last updated: 2026-10-30
+Last updated: 2026-10-31
 
 ## Principles
 - Demo-first: every feature must be showable in the 3-minute video. If it cannot be shown, it is cut or deferred.
