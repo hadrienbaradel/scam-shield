@@ -2,6 +2,9 @@
 // The laptop side of the OVH host (_product/docs/ops.md); the make targets call it.
 //
 //   node scripts/prod.mjs deploy              make deploy: preflight, git archive of HEAD, the playbook
+//   node scripts/prod.mjs ssh [command]       make prod-shell: SSH into the host
+//   node scripts/prod.mjs logs                make logs: follow the app's logs (pino JSON)
+//   node scripts/prod.mjs status              make prod-status: containers, health, disk, backups, tailnet, firewall
 //
 // The host is the first one under [scam_shield] in .infra/prod/ansible/inventory.ini (gitignored; copy
 // inventory.example.ini). Never prints a secret: the master key goes from config/master.key into the
@@ -16,6 +19,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const ANSIBLE = join(ROOT, ".infra/prod/ansible");
 const INVENTORY = process.env.PROD_INVENTORY || join(ANSIBLE, "inventory.ini");
+const APP_DIR = "/opt/scam-shield";
+const COMPOSE = `sudo docker compose -f ${APP_DIR}/.infra/prod/docker-compose.yml`;
 
 const say = (s) => console.log(s);
 const warn = (s) => console.error(`warning: ${s}`);
@@ -47,6 +52,10 @@ function target() {
   if (!t) stop(`${rel(INVENTORY)} names no host under [scam_shield]`);
   return t;
 }
+const sshArgs = (t, extra = []) => [...extra, ...(t.port ? ["-p", t.port] : []), t.user ? `${t.user}@${t.host}` : t.host];
+const ssh = (command, { tty = false, capture = false } = {}) =>
+  spawnSync("ssh", [...sshArgs(target(), tty ? ["-t"] : []), ...(command ? [command] : [])],
+    { stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit", encoding: "utf8" });
 
 // ------------------------------------------------------------------ deploy
 
@@ -83,6 +92,15 @@ async function deploy() {
   say(`Deployed ${short}. Now: make logs for a minute, Rollbar for new items, make prod-status (_product/docs/ops.md, Deploy often).`);
 }
 
+// ------------------------------------------------------------------ the host
+
+const prodShell = (args) => {
+  const r = ssh(args.join(" "), { tty: !args.length || process.stdout.isTTY });
+  return r.status ?? 1;
+};
+const logs = () => ssh(`${COMPOSE} logs --follow --tail=200 app`, { tty: true }).status ?? 1;
+const status = () => ssh(`sudo bash ${APP_DIR}/.infra/prod/scripts/status.sh`).status ?? 1;
+
 // ------------------------------------------------------------------
 
 function help() {
@@ -90,7 +108,7 @@ function help() {
 }
 
 const commands = {
-  deploy, help,
+  deploy, ssh: prodShell, logs, status, help,
 };
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [cmd = "help", ...rest] = process.argv.slice(2);
