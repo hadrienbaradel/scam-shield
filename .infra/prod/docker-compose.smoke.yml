@@ -1,7 +1,8 @@
 # make prod-smoke: the prod compose with throwaway data in a named volume (compose down -v
-# removes it) instead of the _volumes/postgres bind mount, a local image tag, and both
-# services on Docker's default bridge (a legacy link gives the app the "postgres" name), so
-# the smoke runs on a machine that has no subnet left for one more network. Not for a host.
+# removes it) instead of the _volumes/postgres bind mount, a local image tag, no published
+# Postgres port (the laptop's own Postgres already holds 127.0.0.1:5432), and both services on
+# Docker's default bridge (a legacy link gives the app the "postgres" name), so the smoke runs on
+# a machine that has no subnet left for one more network. Not for a host.
 # No background jobs (WORKER=0): the image carries the team's credentials, so a smoke run must
 # never ping the production heartbeats or report a job to Rollbar as production.
 services:
@@ -14,6 +15,7 @@ services:
       WORKER: "0"
   postgres:
     network_mode: bridge
+    ports: !reset []
     volumes:
       - smoke-data:/var/lib/postgresql/data
 volumes:

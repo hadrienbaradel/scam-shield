@@ -1,11 +1,11 @@
 # Prudence on the OVH host: one Ubuntu machine with Docker Compose (README.md here, _product/docs/ops.md).
 # `make deploy` runs it from a laptop with the archive of the local HEAD (the repository is private, so the
 # host never needs git credentials):
-#   make deploy
+#   make deploy [TS_AUTHKEY=tskey-auth-...]
 #   ansible-playbook -i inventory.ini playbook.yml -e deploy_archive=<git archive .tar.gz> -e deploy_sha=<40 hex>
-# Sections, in order: base system; Docker, from its apt repository; firewall; the code; the compose
-# environment; the app; summary.
-# Every task that handles a secret (master key, Postgres password) has no_log: true.
+# Sections, in order: base system; Docker and Tailscale, from their apt repositories; Tailscale (joins only
+# with an auth key); firewall; the code; the compose environment; the app; summary.
+# Every task that handles a secret (master key, Postgres password, Tailscale auth key) has no_log: true.
 - name: Prudence on the OVH host
   hosts: scam_shield
   become: true
@@ -32,6 +32,8 @@
     # Port 22 stays open to the internet until Tailscale SSH is verified; ssh_public: false (in inventory.ini,
     # so every later deploy keeps it) closes it, and only the tailnet reaches sshd.
     ssh_public: true
+    tailscale_authkey: "{{ lookup('ansible.builtin.env', 'TS_AUTHKEY') }}"
+    tailscale_hostname: prudence-prod
     distro: "{{ ansible_facts['distribution'] | lower }}"
     codename: "{{ ansible_facts['distribution_release'] }}"
     deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_facts['architecture'], 'amd64') }}"
@@ -187,7 +189,7 @@
         'passwordauthentication no' not in sshd_effective.stdout or
         'x11forwarding no' not in sshd_effective.stdout
 
-    # ------------------------------------------------------------------ Docker, from its apt repository
+    # ------------------------------------------------------------------ Docker and Tailscale, from their apt repositories
     - name: Docker settings folder
       ansible.builtin.file:
         path: /etc/docker
@@ -226,22 +228,113 @@
           Signed-By: /etc/apt/keyrings/docker.asc
       register: docker_repo
 
-    - name: Docker Engine and the compose plugin
-      ansible.builtin.apt:
-        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
-        state: present
-        update_cache: "{{ docker_repo.changed }}"
+    - name: Tailscale's apt key
+      ansible.builtin.get_url:
+        url: "https://pkgs.tailscale.com/stable/{{ distro }}/{{ codename }}.noarmor.gpg"
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: "0644"
 
-    - name: Docker running and enabled
+    - name: Tailscale's apt repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/tailscale.list
+        mode: "0644"
+        content: |
+          deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ distro }} {{ codename }} main
+      register: tailscale_repo
+
+    - name: Docker Engine, the compose plugin and Tailscale
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin, tailscale]
+        state: present
+        update_cache: "{{ docker_repo.changed or tailscale_repo.changed }}"
+
+    - name: Docker and tailscaled running and enabled
       ansible.builtin.systemd_service:
-        name: docker
+        name: "{{ item }}"
         state: started
         enabled: true
+      loop: [docker, tailscaled]
 
     - name: Docker restarted now if its settings changed
       ansible.builtin.meta: flush_handlers
 
+    # ------------------------------------------------------------------ Tailscale (joins only with an auth key)
+    - name: Tailscale state
+      ansible.builtin.command: tailscale status --json
+      register: ts_status
+      changed_when: false
+      failed_when: false
+
+    - name: Join the tailnet as {{ tailscale_hostname }} with Tailscale SSH (only with TS_AUTHKEY)
+      when:
+        - tailscale_authkey | length > 0
+        - (ts_status.stdout | default('{}', true) | from_json).BackendState | default('') != 'Running'
+      block:
+        - name: The auth key in a root-only file, so the join's own output can be shown (never shown)
+          ansible.builtin.copy:
+            dest: /root/.tailscale-authkey
+            content: "{{ tailscale_authkey }}"
+            mode: "0600"
+          no_log: true
+
+        - name: tailscale up --ssh --hostname={{ tailscale_hostname }}
+          ansible.builtin.command:
+            argv: [tailscale, up, --ssh, "--hostname={{ tailscale_hostname }}", "--auth-key=file:/root/.tailscale-authkey"]
+          changed_when: true
+      always:
+        - name: The auth key file removed (a single-use key)
+          ansible.builtin.file:
+            path: /root/.tailscale-authkey
+            state: absent
+
+    - name: Tailscale state after the join
+      ansible.builtin.command: tailscale status --json
+      register: ts_status
+      changed_when: false
+      failed_when: false
+
+    - name: On the tailnet or not
+      ansible.builtin.set_fact:
+        ts_running: "{{ (ts_status.stdout | default('{}', true) | from_json).BackendState | default('') == 'Running' }}"
+        ts_name: "{{ ((ts_status.stdout | default('{}', true) | from_json).Self | default({})).DNSName | default('') }}"
+
+    - name: Tailscale SSH stays on
+      ansible.builtin.command: tailscale set --ssh
+      when: ts_running | bool
+      changed_when: false
+
+    - name: Tailscale serve configuration
+      ansible.builtin.command: tailscale serve status --json
+      register: ts_serve
+      changed_when: false
+      failed_when: false
+      when: ts_running | bool
+
+    - name: Postgres on the tailnet at {{ tailscale_hostname }}:5432 (tailscale serve to 127.0.0.1:5432)
+      ansible.builtin.command: tailscale serve --bg --tcp=5432 tcp://127.0.0.1:5432
+      when:
+        - ts_running | bool
+        - "'5432' not in ((ts_serve.stdout | default('{}', true) | from_json).TCP | default({}))"
+      changed_when: true
+
     # ------------------------------------------------------------------ firewall
+    - name: How this play reached the host
+      ansible.builtin.command: printenv SSH_CONNECTION
+      become: false
+      register: ssh_connection
+      changed_when: false
+      failed_when: false
+
+    - name: Public SSH closes only from a play that came in over the tailnet
+      ansible.builtin.assert:
+        that:
+          - ts_running | bool
+          - server_addr is match('^100[.](6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])[.]') or server_addr is match('^fd7a:115c:a1e0:')
+        fail_msg: "ssh_public is false but this host is not on the tailnet, or this play came in over the public address: set ansible_host=prudence-prod in inventory.ini first"
+      vars:
+        server_addr: "{{ (ssh_connection.stdout.split() + ['', '', ''])[2] }}"
+      when: not (ssh_public | bool)
+
     - name: Firewall state
       ansible.builtin.command: ufw status verbose
       register: ufw_status
@@ -263,6 +356,12 @@
       ansible.builtin.command: ufw allow in on tailscale0 comment 'tailnet'
       register: ufw_tailnet
       changed_when: "'Skipping' not in ufw_tailnet.stdout"
+
+    - name: Firewall closes public SSH (ssh_public is false; the tailnet still reaches sshd)
+      ansible.builtin.command: ufw delete allow 22/tcp
+      register: ufw_ssh_closed
+      changed_when: "'non-existent' not in ufw_ssh_closed.stdout"
+      when: not (ssh_public | bool)
 
     - name: Firewall on, only once the SSH rules exist
       ansible.builtin.command: ufw --force enable
@@ -458,6 +557,7 @@
       ansible.builtin.debug:
         msg:
           - "Deployed {{ deploy_sha }} to {{ scam_shield_dir }}; /api/health: {{ health.json | to_json }}; migrations: {{ migrate.stdout | trim }}"
+          - "Tailscale: {{ ('on the tailnet as ' ~ ts_name ~ ', Tailscale SSH on, Postgres served on port 5432') if ts_running | bool else 'not joined (no TS_AUTHKEY given): make deploy TS_AUTHKEY=tskey-auth-...' }}"
           - "Public SSH (port 22): {{ 'open to the internet (ssh_public: true)' if ssh_public | bool else 'closed (tailnet only)' }}; ufw and fail2ban on"
 
   handlers:

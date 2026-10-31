@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 // The laptop side of the OVH host (_product/docs/ops.md); the make targets call it.
 //
-//   node scripts/prod.mjs deploy              make deploy: preflight, git archive of HEAD, the playbook
+//   node scripts/prod.mjs deploy              make deploy: preflight, git archive of HEAD, the playbook, PROD_DATABASE_URL
 //   node scripts/prod.mjs ssh [command]       make prod-shell: SSH into the host
 //   node scripts/prod.mjs logs                make logs: follow the app's logs (pino JSON)
 //   node scripts/prod.mjs status              make prod-status: containers, health, disk, backups, tailnet, firewall
+//   node scripts/prod.mjs db-server           make server DB=prod: the laptop app on the shared database, no jobs
+//   node scripts/prod.mjs db-shell            make db-prod-shell: psql on the shared database
 //
 // The host is the first one under [scam_shield] in .infra/prod/ansible/inventory.ini (gitignored; copy
-// inventory.example.ini). Never prints a secret: the master key goes from config/master.key into the
-// playbook (no_log), and the Postgres password never leaves the host.
+// inventory.example.ini). Never prints a secret: the master key, the Postgres password, and the Tailscale
+// auth key go from a file or the environment into the playbook (no_log) or through a pipe.
 
-import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { lookup } from "node:dns/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -27,6 +30,7 @@ const warn = (s) => console.error(`warning: ${s}`);
 class Stop extends Error {}
 const stop = (s) => { throw new Stop(s); };
 const rel = (p) => relative(ROOT, p) || ".";
+const shq = (s) => `'${String(s).replaceAll("'", "'\\''")}'`;
 const has = (cmd) => spawnSync("/bin/sh", ["-c", `command -v ${cmd}`], { stdio: "ignore" }).status === 0;
 const git = (...args) => spawnSync("git", args, { cwd: ROOT, encoding: "utf8" }).stdout?.trimEnd() ?? "";
 
@@ -57,6 +61,12 @@ const ssh = (command, { tty = false, capture = false } = {}) =>
   spawnSync("ssh", [...sshArgs(target(), tty ? ["-t"] : []), ...(command ? [command] : [])],
     { stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit", encoding: "utf8" });
 
+// The team's credentials, read in place (names and the two values used here, never printed).
+async function credentials() {
+  const { openOrThrow } = await import("../lib/credentialStore.js");
+  return openOrThrow().map;
+}
+
 // ------------------------------------------------------------------ deploy
 
 async function deploy() {
@@ -71,7 +81,10 @@ async function deploy() {
   if (spawnSync("git", ["merge-base", "--is-ancestor", "HEAD", "origin/main"], { cwd: ROOT }).status !== 0) {
     warn(`HEAD ${short} is not on origin/main (git fetch, then push or deploy main): the team deploys green main`);
   }
+  const creds = await credentials();
   const env = { ...process.env, ANSIBLE_CONFIG: join(ANSIBLE, "ansible.cfg") };
+  const keyFile = join(ANSIBLE, ".tailscale-authkey");
+  if (!env.TS_AUTHKEY && existsSync(keyFile)) env.TS_AUTHKEY = readFileSync(keyFile, "utf8").trim();
 
   const dir = mkdtempSync(join(tmpdir(), "prudence-deploy-"));
   chmodSync(dir, 0o700);
@@ -82,6 +95,7 @@ async function deploy() {
     const vars = join(dir, "vars.json");
     writeFileSync(vars, JSON.stringify({ deploy_archive: archive, deploy_sha: sha }), { mode: 0o600 });
     say(`Deploying ${short} to ${t.name} (${t.user ? `${t.user}@` : ""}${t.host}): git archive of HEAD, then the playbook`);
+    say(`Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}`);
     const extra = (process.env.ANSIBLE_ARGS || "").split(/\s+/).filter(Boolean);
     const r = spawnSync("ansible-playbook", ["-i", INVENTORY, join(ANSIBLE, "playbook.yml"), "-e", `@${vars}`, ...extra], { cwd: ANSIBLE, env, stdio: "inherit" });
     if (r.status !== 0) stop(`deploy FAILED (ansible-playbook exit ${r.status ?? r.signal}): the task above names the step. Containers the run did not replace keep running; make prod-status shows what is up.`);
@@ -89,7 +103,16 @@ async function deploy() {
     rmSync(dir, { recursive: true, force: true });
   }
 
+  if (!creds.get("PROD_DATABASE_URL")) {
+    // One pipeline: the host's .env → the team's encrypted credentials. The password never reaches this process or the screen.
+    const sed = `sudo sed -n 's|^POSTGRES_PASSWORD=\\([A-Za-z0-9][A-Za-z0-9]*\\)$|PROD_DATABASE_URL=postgres://scam_shield:\\1@prudence-prod:5432/scam_shield|p' ${APP_DIR}/.infra/prod/.env`;
+    const pipe = `ssh ${sshArgs(t).map(shq).join(" ")} ${shq(sed)} | ${shq(process.execPath)} scripts/credentials.mjs set`;
+    const s = spawnSync("/bin/sh", ["-c", pipe], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
+    if (s.status === 0) say("PROD_DATABASE_URL is in config/credentials.enc now: commit and push that file so the team has it (make server DB=prod, make db-prod-shell).");
+    else warn("PROD_DATABASE_URL was not stored (see above); the next make deploy tries again");
+  }
   say(`Deployed ${short}. Now: make logs for a minute, Rollbar for new items, make prod-status (_product/docs/ops.md, Deploy often).`);
+  if (env.TS_AUTHKEY && existsSync(keyFile)) say(`${rel(keyFile)} is a single-use key: delete it once prod-status shows the tailnet.`);
 }
 
 // ------------------------------------------------------------------ the host
@@ -101,6 +124,45 @@ const prodShell = (args) => {
 const logs = () => ssh(`${COMPOSE} logs --follow --tail=200 app`, { tty: true }).status ?? 1;
 const status = () => ssh(`sudo bash ${APP_DIR}/.infra/prod/scripts/status.sh`).status ?? 1;
 
+// ------------------------------------------------------------------ the shared database (over Tailscale)
+
+async function prodUrl() {
+  const url = process.env.PROD_DATABASE_URL || (await credentials()).get("PROD_DATABASE_URL");
+  if (!url) stop("PROD_DATABASE_URL is not in the credentials yet: git pull (a deploy stores it), or make deploy once (_product/docs/ops.md)");
+  return url;
+}
+
+async function dbServer() {
+  const url = await prodUrl();
+  const { default: pg } = await import("pg");
+  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 8000 });
+  try {
+    await client.connect();
+  } catch (e) {
+    stop(`The shared database does not answer at prudence-prod:5432 (${e.code || e.message}): is Tailscale up on this laptop (tailscale status shows prudence-prod)? _product/docs/ops.md`);
+  }
+  const applied = new Set((await client.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name));
+  await client.end();
+  const ahead = readdirSync(join(ROOT, "src/db/migrations")).filter((f) => f.endsWith(".sql") && !applied.has(f));
+  if (ahead.length) stop(`This checkout has migrations production has not applied (${ahead.join(", ")}). The app migrates at start, so it would change the shared database: deploy first (make deploy), or stay local (make server).`);
+  say("The laptop app on the shared production database (prudence-prod:5432) with WORKER=0: production alone runs the jobs. Each page pays round trips across the ocean.");
+  const child = spawn(process.execPath, ["--env-file-if-exists=.env", "--import", "./lib/credentials.js", "--watch-path=src", "--watch-path=lib", "--watch-path=public", "src/server.js"],
+    { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url, WORKER: "0" } });
+  for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
+  return await new Promise((resolve) => child.on("exit", (code) => resolve(code ?? 0)));
+}
+
+async function dbShell() {
+  const u = new URL(await prodUrl());
+  const env = { ...process.env, PGPASSWORD: decodeURIComponent(u.password) };
+  const args = (host) => ["-h", host, "-p", u.port || "5432", "-U", decodeURIComponent(u.username), "-d", u.pathname.slice(1)];
+  if (has("psql")) return spawnSync("psql", args(u.hostname), { stdio: "inherit", env }).status ?? 1;
+  if (!has("docker")) stop("psql not found: brew install libpq && brew link --force libpq (or install Docker)");
+  let address;
+  try { ({ address } = await lookup(u.hostname)); } catch { stop(`${u.hostname} does not resolve: is Tailscale up on this laptop, with MagicDNS on?`); }
+  return spawnSync("docker", ["run", "--rm", "-it", "-e", "PGPASSWORD", "postgres:16-alpine", "psql", ...args(address)], { stdio: "inherit", env }).status ?? 1;
+}
+
 // ------------------------------------------------------------------
 
 function help() {
@@ -108,7 +170,7 @@ function help() {
 }
 
 const commands = {
-  deploy, ssh: prodShell, logs, status, help,
+  deploy, ssh: prodShell, logs, status, "db-server": dbServer, "db-shell": dbShell, help,
 };
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [cmd = "help", ...rest] = process.argv.slice(2);

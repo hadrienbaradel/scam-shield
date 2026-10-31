@@ -18,4 +18,5 @@ config/*.key
 .infra/**/_volumes/*
 !.infra/**/_volumes/.gitkeep
 .infra/prod/ansible/inventory.ini
+.infra/prod/ansible/.tailscale-authkey
 .infra/prod/ansible/group_vars/

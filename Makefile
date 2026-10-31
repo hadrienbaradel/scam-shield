@@ -9,7 +9,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke deploy logs prod-status prod-shell \
+        prod-build prod-smoke deploy logs prod-status prod-shell db-prod-shell \
         clean clean-all \
         secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
@@ -34,7 +34,7 @@ TEST_DB_SUFFIX ?=
 export PG_PORT PG_USER TEST_DB_SUFFIX
 
 # Production image and compose (.infra/prod), tried locally by make prod-build and make prod-smoke;
-# the OVH host (make deploy, logs, status) through scripts/prod.mjs, which reads
+# the OVH host (make deploy, logs, the shared database) through scripts/prod.mjs, which reads
 # the host from .infra/prod/ansible/inventory.ini (_product/docs/ops.md).
 PROD         := $(NODE) scripts/prod.mjs
 PROD_COMPOSE := docker compose -f .infra/prod/docker-compose.yml
@@ -70,9 +70,8 @@ doctor: ## What is missing: Node, dependencies, master key + credentials (names 
 
 ##@ Run
 
-server: deps ## One command: Postgres up (compose, waits for healthy), databases, migrations, then the app with restart on change
-	@$(MAKE) --no-print-directory db-up
-	@$(NPM) run dev
+server: deps ## One command: Postgres up (compose, waits for healthy), databases, migrations, then the app with restart on change; DB=prod: on the shared database over Tailscale, no jobs
+	@if [ "$(DB)" = "prod" ]; then $(PROD) db-server; else $(MAKE) --no-print-directory db-up && $(NPM) run dev; fi
 
 dev: server ## Alias of make server
 
@@ -171,6 +170,9 @@ db-logs: ## Follow the compose Postgres logs
 db-shell: ## psql on the compose Postgres: make db-shell [DB=scam_shield_test]
 	@$(COMPOSE) exec postgres psql -U $(PG_USER) -d $(DB)
 
+db-prod-shell: deps ## psql on the shared production database over Tailscale (PROD_DATABASE_URL; psql from brew install libpq, or Docker)
+	@$(PROD) db-shell
+
 db-test-clean: deps ## Drop every scam_shield_test_<suffix> database (the agents' copies), never scam_shield_test
 	@$(NPM) run --silent test:db-clean
 
@@ -180,7 +182,7 @@ gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety 
 
 ##@ Prod  (the OVH host, _product/docs/ops.md; .infra/prod: Dockerfile, compose, ansible/, the host in ansible/inventory.ini)
 
-deploy: deps ## Ship this checkout's HEAD to the OVH host (Ansible) until /api/health names it
+deploy: deps ## Ship this checkout's HEAD to the OVH host (Ansible) until /api/health names it: [TS_AUTHKEY=...]
 	@$(PROD) deploy
 
 logs: ## Follow the app's logs on the OVH host (pino JSON, over SSH; Ctrl-C stops)
