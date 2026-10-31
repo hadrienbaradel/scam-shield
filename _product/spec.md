@@ -153,7 +153,7 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 - A public, multi-tenant service before Google verification and CASA (localhost and test users only until then).
 
 ## Open questions
-1. B2/B12: Muse Spark calls "it's Ethan, new number, send $300" and the romance crypto ask **Scam**; the PRD expects **Be careful**. Accept Scam (the action "call them on the number you have" stays the same)? Owner: Hadrien.
+1. B2/B12: Muse Spark calls "it's Ethan, new number, send $300" and the romance crypto ask **Scam**; the PRD expects **Be careful**. Decided 2026-10-31 (Hadrien): Scam is accepted, since the action "call them on the number you have" stays the same; `testcases/cases.json` lists it as acceptable for both, with Be careful still the expected answer.
 2. Default action mode is label-only (post security review) while the onboarding copy calls "move" Recommended, and the video wants to show "moved out of the way" + Put it back. Which default do we ship and which do we film?
 3. The demo depends on the live Gmail flow (OAuth client not yet created) and on guardian emails, which only leave the machine with a Resend key. Fallbacks: film `/#/demo` and `/dev/outbox`? Decide by Oct 29.
 4. Decided 2026-10-28: **Linda (US, English)** leads the video; her trusted person is her grandson Thomas, the "new number" is Ethan; USPS and Amazon, not Chronopost ([marketing/video-script.md](marketing/video-script.md)).

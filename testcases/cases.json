@@ -483,6 +483,9 @@
       "profile": "linda",
       "locale": "en-US",
       "expected": "be_careful",
+      "acceptable": [
+        "scam"
+      ],
       "threadHistory": [
         {
           "body": "You are so beautiful and kind, I think of you every day, dear Linda."
@@ -525,6 +528,9 @@
       "profile": "linda",
       "locale": "en-US",
       "expected": "be_careful",
+      "acceptable": [
+        "scam"
+      ],
       "message": {
         "channel": "sms",
         "fromName": "+1 555-0161",
