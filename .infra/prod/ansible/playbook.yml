@@ -4,7 +4,7 @@
 #   make deploy [TS_AUTHKEY=tskey-auth-...] [TUNNEL_TOKEN=...]
 #   ansible-playbook -i inventory.ini playbook.yml -e deploy_archive=<git archive .tar.gz> -e deploy_sha=<40 hex>
 # Sections, in order: base system; Docker and Tailscale, from their apt repositories; Tailscale (joins only
-# with an auth key); firewall; the code; the compose environment; the app; backups; summary.
+# with an auth key); firewall; the code; the compose environment; the app; backups; the tunnel; summary.
 # Every task that handles a secret (master key, Postgres password, Tailscale auth key, heartbeat URL, tunnel
 # token) has no_log: true.
 - name: Prudence on the OVH host
@@ -663,13 +663,35 @@
       changed_when: false
       failed_when: false
 
+    # ------------------------------------------------------------------ the tunnel
+    - name: The tunnel connects to Cloudflare (cloudflared logs a registered connection within 30 s)
+      ansible.builtin.shell: |
+        for i in $(seq 15); do
+          n=$({{ scam_shield_compose }} logs --no-log-prefix cloudflared 2>&1 | grep -c 'Registered tunnel connection')
+          if [ "${n:-0}" -gt 0 ]; then echo "$n"; exit 0; fi
+          sleep 2
+        done
+        echo 0
+      args:
+        executable: /bin/bash
+      register: tunnel_up
+      changed_when: false
+      when: tunnel_final | length > 0
+
+    - name: A tunnel token that does not connect fails the deploy (the app itself is up)
+      ansible.builtin.assert:
+        that: tunnel_up.stdout | int > 0
+        fail_msg: "cloudflared does not connect: a wrong or revoked TUNNEL_TOKEN? make prod-shell, then sudo docker logs scam-shield-prod-cloudflared-1; make deploy TUNNEL_TOKEN=off stops it"
+        quiet: true
+      when: tunnel_final | length > 0
+
     # ------------------------------------------------------------------ summary
     - name: Summary
       ansible.builtin.debug:
         msg:
           - "Deployed {{ deploy_sha }} to {{ scam_shield_dir }}; /api/health: {{ health.json | to_json }}; migrations: {{ migrate.stdout | trim }}"
           - "Tailscale: {{ ('on the tailnet as ' ~ ts_name ~ ', Tailscale SSH on, Postgres served on port 5432') if ts_running | bool else 'not joined (no TS_AUTHKEY given): make deploy TS_AUTHKEY=tskey-auth-...' }}"
-          - "Tunnel: {{ 'cloudflared running (heyprudence.com)' if tunnel_final else 'off (no TUNNEL_TOKEN): make deploy TUNNEL_TOKEN=...' }}"
+          - "Tunnel: {{ 'cloudflared connected to Cloudflare (heyprudence.com)' if tunnel_final else 'off (no TUNNEL_TOKEN): make deploy TUNNEL_TOKEN=...' }}"
           - "Public SSH (port 22): {{ 'open to the internet (ssh_public: true)' if ssh_public | bool else 'closed (tailnet only)' }}; ufw and fail2ban on"
           - "Backups: daily at 03:00 host time in {{ backup_dir }}; latest {{ latest_dump.stdout | default('none', true) }}; heartbeat {{ 'on' if heartbeat_final else 'off (no HEARTBEAT_BACKUP_URL)' }}"
 
