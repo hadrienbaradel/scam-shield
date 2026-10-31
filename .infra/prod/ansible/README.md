@@ -27,13 +27,17 @@ a warning says so) with its sha, and the playbook:
    `config/master.key`, `POSTGRES_PASSWORD` generated on the host at the first deploy and kept after,
    `BASE_URL=https://heyprudence.com`, `TRUST_PROXY=true`, `LOG_LEVEL=info`, `GIT_SHA`;
 7. `docker compose up -d --build --wait` (the sha is the image's `APP_VERSION`), the migrations, then
-   waits until `/api/health` answers `db: ok` with the deployed sha.
+   waits until `/api/health` answers `db: ok` with the deployed sha;
+8. installs the daily backup: `prudence-backup.timer` (03:00 host time) runs `.infra/prod/scripts/backup.sh`
+   (`pg_dump -Fc` into `/var/backups/prudence/<date>.dump`, mode 600, 30 days kept, one journal line,
+   `HEARTBEAT_BACKUP_URL` pinged when set), and takes the first dump unless one from today exists.
 
 ```bash
 cp inventory.example.ini inventory.ini   # the host's address and user
 make deploy                              # from the repository root
 make deploy TS_AUTHKEY=tskey-auth-...    # once: joins the tailnet (the key is single use)
 make logs | make prod-status | make prod-shell
+make backup-now | make backup-pull       # a dump now; the latest one copied to .runtime/backups/
 ```
 
 No Ansible vault: the laptop sends the master key, read from `config/master.key` (the team's encrypted

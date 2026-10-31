@@ -4,8 +4,9 @@
 #   make deploy [TS_AUTHKEY=tskey-auth-...]
 #   ansible-playbook -i inventory.ini playbook.yml -e deploy_archive=<git archive .tar.gz> -e deploy_sha=<40 hex>
 # Sections, in order: base system; Docker and Tailscale, from their apt repositories; Tailscale (joins only
-# with an auth key); firewall; the code; the compose environment; the app; summary.
-# Every task that handles a secret (master key, Postgres password, Tailscale auth key) has no_log: true.
+# with an auth key); firewall; the code; the compose environment; the app; backups; summary.
+# Every task that handles a secret (master key, Postgres password, Tailscale auth key, heartbeat URL) has
+# no_log: true.
 - name: Prudence on the OVH host
   hosts: scam_shield
   become: true
@@ -34,6 +35,9 @@
     ssh_public: true
     tailscale_authkey: "{{ lookup('ansible.builtin.env', 'TS_AUTHKEY') }}"
     tailscale_hostname: prudence-prod
+    # Better Stack heartbeat for the daily dump; make deploy passes the team credentials' value.
+    heartbeat_backup_url: "{{ lookup('ansible.builtin.env', 'HEARTBEAT_BACKUP_URL') }}"
+    backup_dir: /var/backups/prudence
     distro: "{{ ansible_facts['distribution'] | lower }}"
     codename: "{{ ansible_facts['distribution_release'] }}"
     deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_facts['architecture'], 'amd64') }}"
@@ -479,6 +483,7 @@
     - name: The values a deploy keeps (never shown)
       ansible.builtin.set_fact:
         postgres_password: "{{ env_kept.get('POSTGRES_PASSWORD', '') }}"
+        heartbeat_kept: "{{ env_kept.get('HEARTBEAT_BACKUP_URL', '') }}"
       vars:
         env_text: "{{ (env_slurp.content | b64decode) if env_stat.stat.exists else '' }}"
         env_kept: "{{ dict(env_text.splitlines() | select('match', '^[A-Z_]+=') | map('split', '=', 1)) }}"
@@ -505,6 +510,11 @@
       when: pg_password_new is not skipped
       no_log: true
 
+    - name: Backup heartbeat for this deploy (never shown)
+      ansible.builtin.set_fact:
+        heartbeat_final: "{{ heartbeat_backup_url or heartbeat_kept }}"
+      no_log: true
+
     - name: The compose environment (.infra/prod/.env, mode 600, root only, never shown)
       ansible.builtin.copy:
         dest: "{{ scam_shield_env_file }}"
@@ -513,7 +523,7 @@
         mode: "0600"
         content: |
           # Written by the Prudence playbook at every make deploy (_product/docs/ops.md): an edit here is lost at the
-          # next deploy, except POSTGRES_PASSWORD, which it keeps.
+          # next deploy, except POSTGRES_PASSWORD and HEARTBEAT_BACKUP_URL, which it keeps.
           MASTER_KEY={{ master_key }}
           POSTGRES_PASSWORD={{ postgres_password }}
           BASE_URL={{ scam_shield_base_url }}
@@ -522,6 +532,9 @@
           APP_PORT={{ scam_shield_app_port }}
           APP_BIND={{ scam_shield_app_bind }}
           GIT_SHA={{ deploy_sha }}
+          {% if heartbeat_final %}
+          HEARTBEAT_BACKUP_URL={{ heartbeat_final }}
+          {% endif %}
       no_log: true
 
     # ------------------------------------------------------------------ the app
@@ -552,6 +565,76 @@
       register: image_prune
       changed_when: "'Total reclaimed space: 0B' not in image_prune.stdout"
 
+    # ------------------------------------------------------------------ backups
+    - name: Backup folder (root only)
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Backup service (pg_dump -Fc into {{ backup_dir }}, one journal line per run)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/prudence-backup.service
+        mode: "0644"
+        content: |
+          # Prudence playbook (_product/docs/ops.md, Backups)
+          [Unit]
+          Description=Prudence: dump the production database into {{ backup_dir }}
+          Requires=docker.service
+          After=docker.service
+
+          [Service]
+          Type=oneshot
+          Environment=BACKUP_DIR={{ backup_dir }} APP_DIR={{ scam_shield_dir }}
+          ExecStart=/bin/bash {{ scam_shield_dir }}/.infra/prod/scripts/backup.sh
+          SyslogIdentifier=prudence-backup
+          Nice=10
+      register: backup_service
+
+    - name: Backup timer (every day at 03:00 host time; a missed run happens at the next boot)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/prudence-backup.timer
+        mode: "0644"
+        content: |
+          # Prudence playbook (_product/docs/ops.md, Backups)
+          [Unit]
+          Description=Prudence: daily database dump at 03:00
+
+          [Timer]
+          OnCalendar=*-*-* 03:00:00
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+      register: backup_timer
+
+    - name: Backup timer on
+      ansible.builtin.systemd_service:
+        name: prudence-backup.timer
+        enabled: true
+        state: started
+        daemon_reload: "{{ backup_service.changed or backup_timer.changed }}"
+
+    - name: A dump from today
+      ansible.builtin.stat:
+        path: "{{ backup_dir }}/{{ ansible_facts['date_time']['date'] }}.dump"
+      register: today_dump
+
+    - name: First backup right after a successful deploy (skipped when today's dump exists)
+      ansible.builtin.command: systemctl start prudence-backup.service
+      when: not today_dump.stat.exists
+      changed_when: true
+
+    - name: Latest dump
+      ansible.builtin.shell: set -o pipefail; ls -1 {{ backup_dir }} | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.dump$' | tail -n 1
+      args:
+        executable: /bin/bash
+      register: latest_dump
+      changed_when: false
+      failed_when: false
+
     # ------------------------------------------------------------------ summary
     - name: Summary
       ansible.builtin.debug:
@@ -559,6 +642,7 @@
           - "Deployed {{ deploy_sha }} to {{ scam_shield_dir }}; /api/health: {{ health.json | to_json }}; migrations: {{ migrate.stdout | trim }}"
           - "Tailscale: {{ ('on the tailnet as ' ~ ts_name ~ ', Tailscale SSH on, Postgres served on port 5432') if ts_running | bool else 'not joined (no TS_AUTHKEY given): make deploy TS_AUTHKEY=tskey-auth-...' }}"
           - "Public SSH (port 22): {{ 'open to the internet (ssh_public: true)' if ssh_public | bool else 'closed (tailnet only)' }}; ufw and fail2ban on"
+          - "Backups: daily at 03:00 host time in {{ backup_dir }}; latest {{ latest_dump.stdout | default('none', true) }}; heartbeat {{ 'on' if heartbeat_final else 'off (no HEARTBEAT_BACKUP_URL)' }}"
 
   handlers:
     - name: Restart journald

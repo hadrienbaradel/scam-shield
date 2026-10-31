@@ -9,7 +9,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke deploy logs prod-status prod-shell db-prod-shell \
+        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell \
         clean clean-all \
         secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
@@ -34,7 +34,7 @@ TEST_DB_SUFFIX ?=
 export PG_PORT PG_USER TEST_DB_SUFFIX
 
 # Production image and compose (.infra/prod), tried locally by make prod-build and make prod-smoke;
-# the OVH host (make deploy, logs, the shared database) through scripts/prod.mjs, which reads
+# the OVH host (make deploy, logs, backups, the shared database) through scripts/prod.mjs, which reads
 # the host from .infra/prod/ansible/inventory.ini (_product/docs/ops.md).
 PROD         := $(NODE) scripts/prod.mjs
 PROD_COMPOSE := docker compose -f .infra/prod/docker-compose.yml
@@ -193,6 +193,15 @@ prod-status: ## The OVH host at a glance: deployed commit, containers, health, d
 
 prod-shell: ## SSH into the OVH host (user and address from .infra/prod/ansible/inventory.ini)
 	@$(PROD) ssh
+
+backup-now: ## Dump the production database now, on the host (/var/backups/prudence/<date>.dump)
+	@$(PROD) backup-now
+
+backup-pull: ## Copy the latest production dump into .runtime/backups/ here (the off-host copy)
+	@$(PROD) backup-pull
+
+backup-restore: deps ## Put a dump back into production (asks first): make backup-restore FILE=<date>.dump, or FILE=.runtime/backups/<date>.dump
+	@$(PROD) backup-restore "$(FILE)"
 
 prod-build: ## Build the production image here (node:24-alpine, npm ci --omit=dev, non-root, APP_VERSION = the git sha): PROD_IMAGE=scam-shield:local
 	@docker build -f .infra/prod/Dockerfile --build-arg GIT_SHA=$$(git rev-parse HEAD) -t $(PROD_IMAGE) .
