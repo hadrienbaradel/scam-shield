@@ -17,9 +17,10 @@ app with restart on change at http://localhost:3000). `make setup` and `make dev
   `.infra/prod/_volumes/postgres` (prod data). `make db-down` keeps the data; `make db-destroy` deletes it (asks; `FORCE=1` skips).
 - `make db-up` (Postgres alone), `make db-logs`, `make db-shell [DB=scam_shield_test]`, `make db-create`, `make db-migrate`.
 - `.infra/prod/`: `Dockerfile` (multi-stage, `node:24-alpine`, `npm ci --omit=dev`, non-root `node`, `node src/server.js`;
-  needs `MASTER_KEY`, `DATABASE_URL`, `PORT`, `HOST=0.0.0.0`), `docker-compose.yml` (app + Postgres, restart policies, healthchecks,
-  `MASTER_KEY` and `POSTGRES_PASSWORD` from the host environment or a `.env` next to it), `docker-compose.smoke.yml` (throwaway
-  data for `make prod-smoke`), `ansible/` (playbook, `inventory.example.ini`, README).
+  needs `MASTER_KEY`, `DATABASE_URL`, `PORT`, `HOST=0.0.0.0`), `docker-compose.yml` (app + Postgres published on 127.0.0.1 only,
+  cloudflared under the `cloudflared` profile, restart policies, healthchecks, settings from the `.env` next to it that
+  `make deploy` writes on the host), `docker-compose.smoke.yml` (throwaway data for `make prod-smoke`), `ansible/` (playbook,
+  `ansible.cfg`, `inventory.example.ini`, README), `scripts/` (the host's daily dump and `make prod-status`).
 - `make doctor` reports Docker, the compose plugin, the compose Postgres state, the data folder and the port, never a secret.
 
 ## Per-agent test databases
@@ -41,13 +42,15 @@ the npm cache, `npm ci`, the dev compose Postgres (`docker compose -f .infra/dev
 the tests set their own environment, and `make score` runs with `CREDENTIALS_FILE` pointing at a file that does not exist.
 Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
 
-## Production skeleton: untested on a real host
+## Production: the OVH host
 
-`make prod-build` builds the image locally; `make prod-smoke` runs the prod compose on port 3100 with throwaway data and no
-background jobs (`WORKER=0`, so it never pings the production heartbeats with the team's credentials), curls `/api/health`, and
-stops it (both verified locally). The Ansible playbook (Docker from Docker's apt repository, repo at a branch,
-compose env from a vault, `up -d --build --wait`, migrations, health) has never run against a host. The app binds `127.0.0.1:3000`
-on the host: a TLS reverse proxy and `BASE_URL=https://...` are needed for Google sign-in. `POSTGRES_PASSWORD`: letters and digits.
+Production is one OVH dedicated server, deployed by `make deploy` from a laptop (the archive of HEAD, then the Ansible playbook;
+no vault, the host never clones the repository): the app and Postgres published on 127.0.0.1 only, cloudflared for
+heyprudence.com once the tunnel token is set, Postgres on the tailnet through `tailscale serve`, a daily dump, ufw and fail2ban.
+Deploying, the deploy-often rule, logs, backups and restore, the shared database, Tailscale and the domain: `_product/docs/ops.md`.
+Locally, `make prod-build` builds the image and `make prod-smoke` runs the prod compose on port 3100 with throwaway data and no
+background jobs (`WORKER=0`, so it never pings the production heartbeats with the team's credentials), curls `/api/health` and
+stops it. `POSTGRES_PASSWORD`: letters and digits (the playbook generates one).
 
 ## Three common failures
 

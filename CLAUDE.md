@@ -20,6 +20,7 @@ Open the rule file whose keywords match what you are about to touch; each starts
 | Tests, coverage, the quality gate | test, coverage, threshold, ratchet, score, mock llm, TEST_DB_SUFFIX | `_product/docs/testing.md` |
 | Scripts, make targets, local setup, the README quick start | make, help, doctor, scripts, layout, dx | `_product/docs/dx.md` |
 | Postgres, Docker, compose, CI, deployment | infra, docker, compose, postgres, test database, ci, github actions, deploy, prod, ansible | `_product/docs/infra.md` |
+| The server, deploys, backups, logs, the prod database | deploy, server, ovh, ops, backup, tailscale, logs, cloudflared | `_product/docs/ops.md` |
 | Keys, env vars, credentials | secrets, master.key, api key, token | `_product/docs/secrets.md` |
 | The model layer, providers, prompts | llm, provider, model, muse, openai, anthropic, ollama | `_product/docs/llm.md` |
 | A user-facing screen | ui, design, ux, screen, css, accessibility, claude design | `_product/docs/design.md` |

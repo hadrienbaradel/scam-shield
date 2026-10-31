@@ -1,5 +1,8 @@
 # Prudence on the OVH host (Ansible)
 
+How to run and look after the host (deploy often, logs, backups, the shared database, Tailscale, the
+domain): `_product/docs/ops.md`. This file is what the playbook does.
+
 `make deploy` runs `playbook.yml` from a laptop against the host in `inventory.ini` (gitignored; copy
 `inventory.example.ini`). The repository is private, so the host never clones it: `make deploy` ships
 `git archive HEAD` of the local checkout (tracked files only; uncommitted changes are not deployed and
@@ -33,7 +36,10 @@ a warning says so) with its sha, and the playbook:
    `db: ok` with the deployed sha;
 8. installs the daily backup: `prudence-backup.timer` (03:00 host time) runs `.infra/prod/scripts/backup.sh`
    (`pg_dump -Fc` into `/var/backups/prudence/<date>.dump`, mode 600, 30 days kept, one journal line,
-   `HEARTBEAT_BACKUP_URL` pinged when set), and takes the first dump unless one from today exists.
+   `HEARTBEAT_BACKUP_URL` pinged when set), and takes the first dump unless one from today exists;
+9. with a tunnel token, waits up to 30 s for cloudflared to register a connection, and fails the deploy
+   with what to do when it does not; then prints a summary (sha and health, tailnet, tunnel, public SSH,
+   latest dump), never a secret.
 
 ```bash
 cp inventory.example.ini inventory.ini   # the host's address and user
@@ -45,7 +51,8 @@ make backup-now | make backup-pull       # a dump now; the latest one copied to 
 ```
 
 No Ansible vault: the laptop sends the master key, read from `config/master.key` (the team's encrypted
-credentials ride inside the image), and a Tailscale auth key when one is given. After the playbook,
+credentials ride inside the image), `HEARTBEAT_BACKUP_URL` from those credentials when set, and a
+Tailscale auth key or a tunnel token when one is given. After the playbook,
 `make deploy` stores `PROD_DATABASE_URL` in the team's credentials once, piped from the host's `.env`.
 `scam_shield_source=git` swaps the archive for a clone of `scam_shield_repo` at `scam_shield_branch`, for
 when the repository is public.

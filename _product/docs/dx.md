@@ -12,7 +12,7 @@ make server    # Postgres up (Docker Compose, waits for healthy), databases, mig
 make test      # every suite; add TEST_DB_SUFFIX=<your-name> when others may be testing on the same Postgres
 ```
 
-`make` alone prints every target with its one-line help, grouped (Setup, Run, Quality, Secrets, Data, Prod, Ops). `make doctor` says what is missing (Node, dependencies, master key and credentials by name, Docker and Postgres, databases, port 3000) and what to run for each; it is the first answer to "it does not work". The README quick start is these three commands and stays three commands long.
+`make` alone prints every target with its one-line help, grouped (Setup, Run, Quality, Secrets, Data, Prod, Ops). The OVH host has its own: `make deploy`, `make logs`, `make prod-status`, `make prod-shell`, `make backup-now`, `make backup-pull`, `make backup-restore FILE=...`, and for the shared database `make server DB=prod` and `make db-prod-shell`, all in `scripts/prod.mjs`, reading the host from `.infra/prod/ansible/inventory.ini` (`_product/docs/ops.md`). `make doctor` says what is missing (Node, dependencies, master key and credentials by name, Docker and Postgres, databases, port 3000) and what to run for each; it is the first answer to "it does not work". The README quick start is these three commands and stays three commands long.
 
 Without Google keys the app still signs you in on your own computer: the welcome buttons open `/dev/signin`, a local sign-in as anyone in the database or as a new person, `/admin/` included for an address in `ADMIN_EMAILS` (`_product/specs/developer-sign-in.md`; the real Google client: `docs/GOOGLE_SETUP.md`). Never put `make server` behind a proxy or a port forward unless `NODE_ENV=production`: the local pages trust loopback.
 
@@ -27,7 +27,7 @@ Without Google keys the app still signs you in on your own computer: the welcome
 | `scripts/` | Every developer command, plain Node, one file each; the `make` targets call them |
 | `tests/` | `node:test` suites and `helpers/` (`_product/docs/testing.md`) |
 | `config/` | `credentials.enc` (committed, encrypted), `credentials.example` (every key documented), `master.key` (never committed) |
-| `.infra/` | `dev/` Docker Compose Postgres with its data in `dev/_volumes/`; `prod/` Dockerfile, compose and Ansible (`_product/docs/infra.md`) |
+| `.infra/` | `dev/` Docker Compose Postgres with its data in `dev/_volumes/`; `prod/` Dockerfile, compose, Ansible and the host's scripts (`_product/docs/infra.md`, `_product/docs/ops.md`) |
 | `_product/` | What the code should do and how we work: spec, feature specs, competitors, research, marketing, rules (`_product/README.md`) |
 | `docs/` | Google Cloud setup, and the original PRD and status notes kept for history |
 
