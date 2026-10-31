@@ -15,7 +15,7 @@ du -sh "$APP_DIR/.infra/prod/_volumes/postgres" "$DEST" 2>/dev/null
 echo "== backups"
 last=$(find "$DEST" -maxdepth 1 -name '*.dump' -printf '%f\n' 2>/dev/null | sort | tail -n 1)
 echo "latest dump: ${last:-none}"
-journalctl -u prudence-backup.service -n 1 -o cat --no-pager 2>/dev/null
+journalctl -u prudence-backup.service -t prudence-backup -n 1 -o cat --no-pager 2>/dev/null
 systemctl list-timers prudence-backup.timer --no-pager 2>/dev/null | sed -n '1,2p'
 echo "== tailnet"
 if command -v tailscale >/dev/null; then tailscale status --self=true --peers=false 2>&1 | head -n 3; tailscale serve status 2>&1 | head -n 3; else echo "tailscale not installed"; fi

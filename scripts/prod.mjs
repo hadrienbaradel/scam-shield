@@ -134,7 +134,7 @@ const logs = () => ssh(`${COMPOSE} logs --follow --tail=200 app`, { tty: true })
 const status = () => ssh(`sudo bash ${APP_DIR}/.infra/prod/scripts/status.sh`).status ?? 1;
 
 function backupNow() {
-  const r = ssh(`sudo systemctl start prudence-backup.service; s=$?; sudo journalctl -u prudence-backup.service -n 1 -o cat --no-pager; exit $s`);
+  const r = ssh(`sudo systemctl start prudence-backup.service; s=$?; sudo journalctl -u prudence-backup.service -t prudence-backup -n 1 -o cat --no-pager; exit $s`);
   return r.status ?? 1;
 }
 

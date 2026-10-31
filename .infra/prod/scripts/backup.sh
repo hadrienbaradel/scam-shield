@@ -40,5 +40,5 @@ for old in "$DEST"/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].dump; do
 done
 
 count=$(find "$DEST" -maxdepth 1 -name '[0-9]*.dump' | wc -l)
-echo "prudence-backup: ok $file ($(stat -c %s "$file") bytes; $count daily dumps kept, $KEEP_DAYS days)"
+echo "prudence-backup: ok $file ($(stat -c %s "$file") bytes; daily dumps kept: $count, at most $KEEP_DAYS)"
 ping ""
