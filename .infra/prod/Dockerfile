@@ -5,7 +5,7 @@
 # Runtime environment: MASTER_KEY (64 hex characters, opens the config/credentials.enc
 # baked in, encrypted), DATABASE_URL (postgres://user:password@host:5432/scam_shield),
 # PORT (3000) and HOST (0.0.0.0 here: the app binds loopback by default). Optional:
-# BASE_URL (the public URL, needed for Google sign-in), LOG_LEVEL. Migrations run at start.
+# BASE_URL (the public URL, needed for Google sign-in), LOG_LEVEL. Migrations run at start. ffmpeg is in the image.
 
 FROM node:24-alpine AS deps
 WORKDIR /app
@@ -13,6 +13,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM node:24-alpine
+# ffmpeg turns WhatsApp voice notes (Ogg/Opus) into WAV for Muse Voice Transcribe (FFMPEG_PATH, ffmpeg on PATH by default).
+RUN apk add --no-cache ffmpeg
 ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
