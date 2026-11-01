@@ -161,15 +161,25 @@ Vlad's three console steps (login.tailscale.com/admin), in this order:
    expires after 30 days; sharing needs an admin on both sides (Hadrien owns his own tailnet). Tailscale SSH to a shared
    machine works only once it is tagged.
 
-Closing public SSH: `ansible_host=100.127.78.127` and `ssh_public=false` in `inventory.ini`, then `make deploy`. The
-playbook refuses to close port 22 unless the play came in over the tailnet; ufw lets everything in on `tailscale0`.
+Closing public SSH (done Nov 1): `ansible_host=100.127.78.127` and `ssh_public=false` in `inventory.ini`, then `make
+deploy`, which Ansible runs through Tailscale SSH like any session (file copies included, about 75 s). The first run left
+port 22 open: the playbook's own `ssh_public: true` was a play var, which outranks the inventory in Ansible. Since
+`1b4a4ed` the playbook's defaults sit in `inventory_defaults` and the inventory's value wins (`tests/prod-script.test.js`
+checks it); the second run closed the port. Now ufw lets in `tailscale0` only, port 22 on the public address refuses,
+`ssh ubuntu@100.127.78.127 true` works, and `make logs`, `make prod-status` and the rest go over the tailnet. The playbook
+refuses to close port 22 unless the play came in over the tailnet. Until Vlad's steps 1 and 2 are done, two things can
+stop a session: an untagged machine's key expires (180 days by default; Machines → meikit → ⋯ → Disable key expiry), and
+the starter policy's `check` ssh rule wants a browser login every 12 h, so an SSH session, Ansible's included, waits on a
+login link (`make prod-shell` first, open the link it prints, then deploy). Reopening port 22: `ssh_public=true` and `make deploy` over the tailnet; with no tailnet at all, only
+OVH's rescue mode or KVM console gets in.
 
 ## Security on the host
 
-ufw denies incoming except the tailnet and, while `ssh_public` is true, 22/tcp (Closing public SSH, above); Docker
-publishes ports past ufw, so every published port is on 127.0.0.1 (app 3000, Postgres 5432). fail2ban bans an address for
-1 h after 5 failed SSH logins in 10 minutes (never the tailnet). Unattended upgrades install security updates daily and never reboot: reboot by hand
-when a kernel update waits (`/var/run/reboot-required`), not on a demo day. `rp_filter=1`, `tcp_syncookies=1`.
+ufw denies incoming except the tailnet (`tailscale0`); port 22 has been closed to the internet since Nov 1 (Closing
+public SSH, above; `ssh_public=true` reopens it). Docker publishes ports past ufw, so every published port is on
+127.0.0.1 (app 3000, Postgres 5432). fail2ban bans an address for 1 h after 5 failed SSH logins in 10 minutes (never the
+tailnet). Unattended upgrades install security updates daily and never reboot: reboot by hand when a kernel update
+waits (`/var/run/reboot-required`), not on a demo day. `rp_filter=1`, `tcp_syncookies=1`.
 
 ## The domain
 
