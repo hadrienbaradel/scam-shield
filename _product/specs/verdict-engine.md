@@ -1,5 +1,5 @@
 # Verdict engine (rules + Muse Spark)
-Status: Built · Last updated: 2026-10-27
+Status: Built · Last updated: 2026-10-31
 
 ## Why
 A senior needs one answer, not a probability: Safe, Be careful, or Scam, with reasons they can check and one thing to do. Generic checkers judge a message alone; this one judges it against the person's life and explains in their words.
@@ -24,7 +24,7 @@ Spam and marketing; attachments' contents (only names and types); voice and vide
 
 ## Acceptance
 - `npm run score`: rules 37/37 on the PRD seed; Muse 34/36 (B2, B12 pending decision). PRD criteria: A set 100%, no false Scam on C.
-- Public corpora (docs/STATUS.md): rules alone 0.3–0.4% genuine called Scam, 29–36% phishing caught; with Muse on 500 held-back emails (prompt v4, Oct 31), phishing called Scam 79.2%, flagged at all 96.8%, 0/250 genuine called Scam, median 5.8 s (v3 on Oct 26: 80.8%, 97.6%, 0/250, 4.0 s).
+- Public corpora (docs/STATUS.md): rules alone 0.3–0.4% genuine called Scam, 29–36% phishing caught; with Muse on 500 held-back emails (prompt v4, Oct 31), phishing called Scam 79.2%, flagged at all 96.8%, 0/250 genuine called Scam, median 5.8 s (v3 on Oct 26: 80.8%, 97.6%, 0/250, 4.0 s); on the whole held-back set (1,558 phishing, 17,291 genuine; Oct 31, Contributor tier, public corpora only) phishing called Scam 81.4%, flagged at all 99.0%, 1 genuine called Scam (an advance-fee letter the corpus labels genuine), median 6.0 s.
 - `npm test`: schema validation, guardrails both ways, Contributor-mode refusal, redaction, injection-proof tags, breaker and cache (tests/muse.test.js, tests/detector.test.js, tests/real-mail.test.js).
 
 ## Implementation pointers
