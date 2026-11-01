@@ -22,20 +22,24 @@
     scam_shield_branch: main
     deploy_archive: ""
     deploy_sha: ""
-    scam_shield_base_url: https://heyprudence.com
-    scam_shield_trust_proxy: "true"
-    scam_shield_log_level: info
-    scam_shield_app_port: 3000
-    scam_shield_app_bind: 127.0.0.1
+    # What the inventory may set ([scam_shield:vars] in inventory.ini, or the gitignored group_vars/scam_shield.yml):
+    # the defaults live in this one play var and the first pre_task copies the inventory's value over each, because a
+    # play var of the same name outranks the inventory in Ansible (until Nov 1 it silently won over ssh_public=false).
+    inventory_defaults:
+      scam_shield_base_url: https://heyprudence.com
+      scam_shield_trust_proxy: "true"
+      scam_shield_log_level: info
+      scam_shield_app_port: 3000
+      scam_shield_app_bind: 127.0.0.1
+      # Port 22 open to the internet; ssh_public=false in inventory.ini (so every later deploy keeps it) closes it,
+      # and only the tailnet reaches port 22, where Tailscale SSH answers.
+      ssh_public: true
+      # Extra public keys for ansible_user (a list); they work over the public port only, Tailscale SSH owning port 22
+      # on the tailnet. Added, never removed.
+      authorized_keys: []
     scam_shield_master_key_file: "{{ playbook_dir }}/../../../config/master.key"
     scam_shield_env_file: "{{ scam_shield_dir }}/.infra/prod/.env"
     scam_shield_compose: "docker compose -f {{ scam_shield_dir }}/.infra/prod/docker-compose.yml"
-    # Port 22 stays open to the internet until Tailscale SSH is verified; ssh_public: false (in inventory.ini,
-    # so every later deploy keeps it) closes it, and only the tailnet reaches sshd.
-    ssh_public: true
-    # Extra public keys for ansible_user, for a teammate until Tailscale SSH works: a list in the gitignored
-    # group_vars/scam_shield.yml next to this file. Added, never removed.
-    authorized_keys: []
     tailscale_authkey: "{{ lookup('ansible.builtin.env', 'TS_AUTHKEY') }}"
     # The machine's name on the tailnet (also its OS hostname): the box may host other projects (_product/docs/ops.md).
     tailscale_hostname: meikit
@@ -49,6 +53,16 @@
     deb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(ansible_facts['architecture'], 'amd64') }}"
 
   pre_tasks:
+    - name: The inventory's settings, the defaults where it sets none (inventory_defaults)
+      ansible.builtin.set_fact:
+        scam_shield_base_url: "{{ scam_shield_base_url | default(inventory_defaults.scam_shield_base_url) }}"
+        scam_shield_trust_proxy: "{{ scam_shield_trust_proxy | default(inventory_defaults.scam_shield_trust_proxy) }}"
+        scam_shield_log_level: "{{ scam_shield_log_level | default(inventory_defaults.scam_shield_log_level) }}"
+        scam_shield_app_port: "{{ scam_shield_app_port | default(inventory_defaults.scam_shield_app_port) }}"
+        scam_shield_app_bind: "{{ scam_shield_app_bind | default(inventory_defaults.scam_shield_app_bind) }}"
+        ssh_public: "{{ ssh_public | default(inventory_defaults.ssh_public) }}"
+        authorized_keys: "{{ authorized_keys | default(inventory_defaults.authorized_keys) }}"
+
     - name: The deploy names one commit and its archive
       ansible.builtin.assert:
         that:

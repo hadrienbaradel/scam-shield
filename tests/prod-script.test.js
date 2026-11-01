@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import YAML from "yaml";
 import {
   SHARED_DB_HOST, archiveArgs, dbUrlPipeline, dbUrlSed, dbWhere, deployEnv, deployVars, dockerPsqlArgs, inventoryCheck, migrationPlan,
   migrationsAhead, pickLatestDump, playbookArgs, preflight, psqlCall, readInventory, restoreScript, restoreSource, secretsLine,
@@ -154,6 +155,19 @@ test("make server migrates the shared database once before the app starts, and r
   assert.deepEqual(migrationPlan(files, ["001_init.sql", "002_actions.sql"], " M src/db/migrations/003_new.sql\n").uncommitted, ["003_new.sql"]);
   assert.deepEqual(migrationPlan(files, ["001_init.sql", "002_actions.sql"], "R  src/db/migrations/003_old.sql -> src/db/migrations/003_new.sql\n").uncommitted, ["003_new.sql"]);
   assert.deepEqual(migrationPlan(files, files, " M src/db/migrations/001_init.sql\n").uncommitted, [], "an applied file being edited is not make server's business");
+});
+
+// Ansible ranks play vars above the inventory: a default written as a play var of the same name silently beat
+// ssh_public=false in inventory.ini until Nov 1, so public SSH never closed.
+test("the playbook's defaults never outrank the inventory: each one is copied over by the inventory's value first", () => {
+  const [play] = YAML.parse(readFileSync(new URL("../.infra/prod/ansible/playbook.yml", import.meta.url), "utf8"));
+  const settings = Object.keys(play.vars.inventory_defaults);
+  for (const name of ["ssh_public", "authorized_keys", "scam_shield_base_url", "scam_shield_app_port", "scam_shield_log_level"]) assert.ok(settings.includes(name), name);
+  for (const name of settings) assert.ok(!(name in play.vars), `${name} is a play var: the inventory could not change it`);
+  const first = play.pre_tasks[0]["ansible.builtin.set_fact"];
+  assert.ok(first, "the first pre_task sets them");
+  for (const name of settings) assert.equal(first[name], `{{ ${name} | default(inventory_defaults.${name}) }}`, name);
+  assert.equal(play.vars.inventory_defaults.ssh_public, true, "without a word from the inventory, port 22 stays open: a first deploy comes in over it");
 });
 
 test("backups: the latest daily dump is picked by its date, and a restore names a .dump, takes a safety dump first and restores in one transaction", () => {
