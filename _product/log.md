@@ -11,6 +11,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
+| Hadrien · numbers | 2026-11-01 11:00 | The video's numbers line and card move to the whole held-back set (Hadrien's pick, Nov 1: 29% → 81%, 1 genuine in 17,291 called Scam), same word count; the pitch, demo plan and ideas follow | `_product/marketing/video-script.md`, `_product/marketing/pitch.md`, `_product/marketing/demo-plan.md`, `_product/marketing/ideas.md`, `_product/log.md` |
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
 
 ## To do
