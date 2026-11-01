@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // The laptop side of the OVH host (_product/docs/ops.md); the make targets call it.
 //
-//   node scripts/prod.mjs deploy              make deploy: preflight, git archive of HEAD, the playbook, PROD_DATABASE_URL
+//   node scripts/prod.mjs deploy              make deploy: preflight, git archive of HEAD, the playbook, DATABASE_URL once
 //   node scripts/prod.mjs ssh [command]       make prod-shell: SSH into the host
 //   node scripts/prod.mjs logs                make logs: follow the app's logs (pino JSON)
 //   node scripts/prod.mjs status              make prod-status: containers, health, disk, backups, tailnet, firewall
 //   node scripts/prod.mjs backup-now          make backup-now: the daily dump, now
 //   node scripts/prod.mjs backup-pull         make backup-pull: the latest dump into .runtime/backups/
 //   node scripts/prod.mjs backup-restore F    make backup-restore FILE=F: a dump back into production (asks first)
-//   node scripts/prod.mjs db-server           make server DB=prod: the laptop app on the shared database, no jobs
+//   node scripts/prod.mjs db-mode [DB]        make server asks: "shared" (DATABASE_URL in the credentials) or "dev"
+//   node scripts/prod.mjs db-server           make server: the laptop app on the shared database, migrated first, no jobs
+//   node scripts/prod.mjs db-url              make db-prod-url: DATABASE_URL into the credentials, piped from the host
 //   node scripts/prod.mjs db-shell            make db-prod-shell: psql on the shared database
 //
 // The host is the first one under [scam_shield] in .infra/prod/ansible/inventory.ini (gitignored; copy
@@ -123,11 +125,20 @@ export function deployEnv(base, { ansibleConfig, authKey = "", heartbeat = "" } 
 export const secretsLine = (env) =>
   `Tailscale: ${env.TS_AUTHKEY ? "an auth key is given (joins the tailnet if not joined yet)" : "no TS_AUTHKEY (the join is skipped)"}; tunnel: ${env.TUNNEL_TOKEN ? "a TUNNEL_TOKEN is given" : "the host keeps what it has"}`;
 
-// PROD_DATABASE_URL from the host's .env in one pipeline: sed on the host prints the KEY=value line,
+// The shared database's host as a laptop reaches it: the box's Tailscale address, since MagicDNS is off on
+// the tailnet (meikit.tail2c017.ts.net works where it is on). PROD_DB_HOST changes it. The only place the
+// code names it: config/credentials.enc carries it inside DATABASE_URL (_product/docs/ops.md).
+export const SHARED_DB_HOST = process.env.PROD_DB_HOST || "100.127.78.127";
+
+// DATABASE_URL from the host's .env in one pipeline: sed on the host prints the KEY=value line,
 // credentials.mjs set reads it on stdin and prints the name only; this process never holds the password.
-export const PROD_URL_SED = "s|^POSTGRES_PASSWORD=\\([A-Za-z0-9][A-Za-z0-9]*\\)$|PROD_DATABASE_URL=postgres://scam_shield:\\1@prudence-prod:5432/scam_shield|p";
-export const prodUrlPipeline = (t, { appDir = APP_DIR, node = process.execPath } = {}) =>
-  `ssh ${sshArgs(t).map(shq).join(" ")} ${shq(`sudo sed -n ${shq(PROD_URL_SED)} ${appDir}/.infra/prod/.env`)} | ${shq(node)} scripts/credentials.mjs set`;
+export function dbUrlSed(host = SHARED_DB_HOST) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(host)) stop(`PROD_DB_HOST must be a host name or an IPv4 address: ${host}`);
+  return `s|^POSTGRES_PASSWORD=\\([A-Za-z0-9][A-Za-z0-9]*\\)$|DATABASE_URL=postgres://scam_shield:\\1@${host}:5432/scam_shield|p`;
+}
+export const dbUrlPipeline = (t, { appDir = APP_DIR, node = process.execPath, host = SHARED_DB_HOST } = {}) =>
+  `ssh ${sshArgs(t).map(shq).join(" ")} ${shq(`sudo sed -n ${shq(dbUrlSed(host))} ${appDir}/.infra/prod/.env`)} | ${shq(node)} scripts/credentials.mjs set`;
+const storeDbUrl = (t) => spawnSync("/bin/sh", ["-c", dbUrlPipeline(t)], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] }).status === 0;
 
 async function deploy() {
   const inventory = readTarget();
@@ -169,10 +180,9 @@ async function deploy() {
     rmSync(dir, { recursive: true, force: true });
   }
 
-  if (!creds.get("PROD_DATABASE_URL")) {
-    const s = spawnSync("/bin/sh", ["-c", prodUrlPipeline(t)], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
-    if (s.status === 0) say("PROD_DATABASE_URL is in config/credentials.enc now: commit and push that file so the team has it (make server DB=prod, make db-prod-shell).");
-    else warn("PROD_DATABASE_URL was not stored (see above); the next make deploy tries again");
+  if (!creds.get("DATABASE_URL")) {
+    if (storeDbUrl(t)) say(`DATABASE_URL (the shared database at ${SHARED_DB_HOST}:5432) is in config/credentials.enc now: commit and push that file so the team has it (make server, make db-prod-shell).`);
+    else warn("DATABASE_URL was not stored (see above); the next make deploy tries again, or make db-prod-url");
   }
   say(`Deployed ${short}. Now: make logs for a minute, Rollbar for new items, make prod-status (_product/docs/ops.md, Deploy often).`);
   if (env.TS_AUTHKEY && existsSync(keyFile)) say(`${rel(keyFile)} is a single-use key: delete it once prod-status shows the tailnet.`);
@@ -259,10 +269,38 @@ async function backupRestore([file]) {
 
 // host:port of a database URL, the only part of it a message names.
 export const dbWhere = (url) => { const u = new URL(url); return `${u.hostname}:${u.port || 5432}`; };
-export const unreachableMessage = (url, err) =>
-  `The shared database does not answer at ${dbWhere(url)} (${err?.code || err?.message || err}): is Tailscale up on this laptop (tailscale status shows prudence-prod)? _product/docs/ops.md`;
+
+// What make server runs on, from DB (dev, prod or anything else) and the team's DATABASE_URL in the
+// credentials ("" when the file has none or cannot be opened, as on a clone without the master key; why
+// says which): the shared database, or this laptop's own Postgres. DB=local, the old name, means dev; only
+// DB=prod insists on the shared one.
+export function serverDatabase({ db = "", sharedUrl = "", why = "" } = {}) {
+  if (db === "dev" || db === "local") return { mode: "dev" };
+  if (sharedUrl) return { mode: "shared", url: sharedUrl };
+  const reason = why || "config/credentials.enc has no DATABASE_URL";
+  if (db === "prod") return { error: `No shared database: ${reason}. git pull, or make db-prod-url (_product/docs/ops.md)` };
+  return { mode: "dev", note: `No shared database here (${reason}): make server runs on this laptop's Postgres, as make server DB=dev does.` };
+}
+
+// One line for a shared database that does not open, naming its host, never its password.
+export function unreachableMessage(url, err) {
+  const where = dbWhere(url);
+  const code = err?.code || (/timeout/i.test(String(err?.message || "")) ? "timeout" : String(err?.message || err));
+  if (code === "28P01" || code === "28000") return `The shared database at ${where} refused the password in DATABASE_URL: git pull (the team's credentials may hold a newer one), or make db-prod-url (_product/docs/ops.md)`;
+  return `The shared database does not answer at ${where} (${code}): is Tailscale running on this laptop, and is meikit shared with you (tailscale status lists it)? make server DB=dev runs on this laptop's Postgres meanwhile (_product/docs/ops.md)`;
+}
+
 // The migration files this checkout has that the database has not applied (the app would apply them at start).
-export const migrationsAhead = (files, applied) => files.filter((f) => f.endsWith(".sql") && !new Set(applied).has(f));
+export const migrationsAhead = (files, applied) => files.filter((f) => f.endsWith(".sql") && !new Set(applied).has(f)).sort();
+// What make server does about them on the shared database: it applies the pending ones once, before the app
+// starts, and refuses when one of them is not committed (untracked or changed in git's porcelain status):
+// production would keep a version nobody else has, and a deploy never applies it again.
+export function migrationPlan(files, applied, gitStatus = "") {
+  const pending = migrationsAhead(files, applied);
+  const changed = new Set(String(gitStatus).split("\n").map((l) => l.slice(3).split(" -> ").pop().trim()).filter(Boolean).map((p) => basename(p)));
+  return { pending, uncommitted: pending.filter((f) => changed.has(f)) };
+}
+
 // psql's arguments and environment for a URL: the password goes in PGPASSWORD, never on the command line.
 export function psqlCall(url, host) {
   const u = new URL(url);
@@ -271,43 +309,68 @@ export function psqlCall(url, host) {
     env: { PGPASSWORD: decodeURIComponent(u.password) },
   };
 }
+// psql from the postgres image when the laptop has none; a terminal gets -it, a pipe -i (echo 'select 1' | make db-prod-shell).
+export const dockerPsqlArgs = (args, tty) => ["run", "--rm", tty ? "-it" : "-i", "-e", "PGPASSWORD", "postgres:16-alpine", "psql", ...args];
 
-async function prodUrl() {
-  const url = process.env.PROD_DATABASE_URL || (await credentials()).get("PROD_DATABASE_URL");
-  if (!url) stop("PROD_DATABASE_URL is not in the credentials yet: git pull (a deploy stores it), or make deploy once (_product/docs/ops.md)");
-  return url;
+// The team's DATABASE_URL and, when there is none, why. Never throws, never prints the value.
+async function sharedDbUrl() {
+  const { open } = await import("../lib/credentialStore.js");
+  const { status, map } = open();
+  if (status.error) return { url: "", why: status.error.startsWith("No master key") ? "no master key on this machine" : status.error };
+  if (!status.exists) return { url: "", why: "no config/credentials.enc" };
+  return { url: map.get("DATABASE_URL") || "", why: "" };
+}
+
+async function dbMode([db = ""]) {
+  const { url, why } = await sharedDbUrl();
+  const choice = serverDatabase({ db, sharedUrl: url, why });
+  if (choice.error) stop(choice.error);
+  if (choice.note) console.error(choice.note);
+  say(choice.mode);
 }
 
 async function dbServer() {
-  const url = await prodUrl();
+  const { url, why } = await sharedDbUrl();
+  if (!url) stop(serverDatabase({ db: "prod", why }).error);
   const { default: pg } = await import("pg");
-  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 8000 });
+  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 5000, application_name: "scam-shield-make-server" });
   try {
     await client.connect();
   } catch (e) {
     stop(unreachableMessage(url, e));
   }
-  const applied = (await client.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name);
+  let applied = [];
+  try { applied = (await client.query("SELECT name FROM schema_migrations")).rows.map((r) => r.name); } catch { /* a fresh database: all pending */ }
   await client.end();
-  const ahead = migrationsAhead(readdirSync(join(ROOT, "src/db/migrations")), applied);
-  if (ahead.length) stop(`This checkout has migrations production has not applied (${ahead.join(", ")}). The app migrates at start, so it would change the shared database: deploy first (make deploy), or stay local (make server).`);
-  say(`The laptop app on the shared production database (${dbWhere(url)}) with WORKER=0: production alone runs the jobs. Each page pays round trips across the ocean.`);
+  const plan = migrationPlan(readdirSync(join(ROOT, "src/db/migrations")), applied, git("status", "--porcelain", "--untracked-files=all", "--", "src/db/migrations"));
+  if (plan.uncommitted.length) stop(`Not committed: ${plan.uncommitted.join(", ")}. make server would apply it to the shared production database, which would keep a version nobody else has: commit and push it first, or make server DB=dev.`);
+  say(`make server on the shared production database (${dbWhere(url)}, DATABASE_URL from config/credentials.enc); background jobs off (WORKER=0): the host runs them. Every query crosses the tailnet: make server DB=dev for query-heavy work.`);
+  say(plan.pending.length ? `Migrations: ${plan.pending.join(", ")} not applied there yet; applying them now (additive only until Nov 4, _product/docs/ops.md).` : "Migrations: none missing there; the pattern cards are checked.");
+  const m = spawnSync(process.execPath, ["--import", "./lib/credentials.js", "src/db/migrate.js"], { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url } });
+  if (m.status !== 0) stop("The migration failed on the shared database (above): the app was not started.");
+  // MIGRATE=0: restarts on a file change do not migrate again (src/server.js).
   const child = spawn(process.execPath, ["--env-file-if-exists=.env", "--import", "./lib/credentials.js", "--watch-path=src", "--watch-path=lib", "--watch-path=public", "src/server.js"],
-    { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url, WORKER: "0" } });
+    { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url, WORKER: "0", MIGRATE: "0" } });
   for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
   return await new Promise((resolve) => child.on("exit", (code) => resolve(code ?? 0)));
 }
 
+function dbUrl() {
+  if (!storeDbUrl(target())) stop("DATABASE_URL was not stored (see above): the host's .env holds the Postgres password once make deploy has run there.");
+  say(`DATABASE_URL points at the shared database (${SHARED_DB_HOST}:5432; the password came from the host's .env and was never shown): commit and push config/credentials.enc.`);
+}
+
 async function dbShell() {
-  const url = await prodUrl();
+  const { url, why } = await sharedDbUrl();
+  if (!url) stop(serverDatabase({ db: "prod", why }).error);
   const { hostname } = new URL(url);
   const call = psqlCall(url);
   const env = { ...process.env, ...call.env };
   if (has("psql")) return spawnSync("psql", call.args, { stdio: "inherit", env }).status ?? 1;
   if (!has("docker")) stop("psql not found: brew install libpq && brew link --force libpq (or install Docker)");
   let address;
-  try { ({ address } = await lookup(hostname)); } catch { stop(`${hostname} does not resolve: is Tailscale up on this laptop, with MagicDNS on?`); }
-  return spawnSync("docker", ["run", "--rm", "-it", "-e", "PGPASSWORD", "postgres:16-alpine", "psql", ...psqlCall(url, address).args], { stdio: "inherit", env }).status ?? 1;
+  try { ({ address } = await lookup(hostname)); } catch { stop(`${hostname} does not resolve here: MagicDNS is off, so use the Tailscale address in DATABASE_URL (as the team's does)`); }
+  return spawnSync("docker", dockerPsqlArgs(psqlCall(url, address).args, Boolean(process.stdin.isTTY)), { stdio: "inherit", env }).status ?? 1;
 }
 
 // ------------------------------------------------------------------
@@ -318,7 +381,7 @@ function help() {
 
 const commands = {
   deploy, ssh: prodShell, logs, status, "backup-now": backupNow, "backup-pull": backupPull,
-  "backup-restore": backupRestore, "db-server": dbServer, "db-shell": dbShell, help,
+  "backup-restore": backupRestore, "db-mode": dbMode, "db-server": dbServer, "db-url": dbUrl, "db-shell": dbShell, help,
 };
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [cmd = "help", ...rest] = process.argv.slice(2);

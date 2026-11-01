@@ -20,7 +20,7 @@ Keys are committed, encrypted: `config/credentials.enc` holds `KEY=value` lines 
 | `make secrets-import FILE=.env` | Merges a dotenv file (names printed), then tells you to delete it. |
 | `make secrets-rotate` | New master key, file re-encrypted; share the key again, update `MASTER_KEY` where set. |
 | `node scripts/credentials.mjs show [KEY]` | The values, for a human at a terminal, after a warning line. |
-| `node scripts/credentials.mjs unset KEY` | Removes a key. `node scripts/set-env.mjs KEY=value` still works (forwards to `set`). |
+| `make secrets-unset KEY=NAME` | Removes keys by name (`KEY="A B"` for several; `node scripts/credentials.mjs unset` underneath). `node scripts/set-env.mjs KEY=value` still works (forwards to `set`). |
 | `node scripts/import-google-client.mjs <json>` | Stores a downloaded Google OAuth client; `make doctor` reports the state by name. |
 
 ## Joining the team
@@ -46,7 +46,9 @@ fills that address and stops: passwords and verification codes are typed by the 
 ## Precedence
 
 A variable set and non-empty in the real environment, or in `.env` when node runs with `--env-file-if-exists=.env`, wins over the
-credentials; empty or unset ones are filled from the file. Tests never load the credentials (the autoload is off under `node --test`;
+credentials; empty or unset ones are filled from the file. That is what keeps the host's container on its compose Postgres
+(compose sets `DATABASE_URL`) and `make server DB=dev` on the local one, while the credentials' `DATABASE_URL` names the
+shared database (`tests/shared-database.test.js`). Tests never load the credentials (the autoload is off under `node --test`;
 `tests/helpers/env.js` sets its own values). A missing `config/credentials.enc` is a no-op; a present file without a usable key stops
 the process with one line naming the fix. `CREDENTIALS_FILE` and `MASTER_KEY_FILE` move the files (tests, mounted secrets).
 
@@ -60,10 +62,10 @@ plus `TOKEN_ENC_KEY` (users reconnect Gmail). Same if a value was committed.
 ## Keys (names; `config/credentials.example` documents each)
 
 Required for the real product: `TOKEN_ENC_KEY` (`make setup` generates it), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `META_MODEL_API_KEY`.
-Optional: `ADMIN_EMAILS`, `DATABASE_URL`, `TEST_DATABASE_URL`, `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION`, `META_MODEL_NAME`,
+Optional: `ADMIN_EMAILS`, `TEST_DATABASE_URL`, `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION`, `META_MODEL_NAME`,
 `META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL, LLM_TRANSCRIBE_MODEL`, `LLM_THINKING`, `OPENAI_API_KEY`,
 `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `RESEND_API_KEY`, `MAIL_FROM`, `HIBP_API_KEY`, `ABUSECH_AUTH_KEY`, `PORT`, `HOST`, `BASE_URL`.
-Shared database (`_product/docs/ops.md`): `PROD_DATABASE_URL`, the production Postgres over Tailscale (`postgres://scam_shield:<password>@prudence-prod:5432/scam_shield`), which `make deploy` pipes once from the host's `.env` into the credentials without printing it; `make server DB=prod` and `make db-prod-shell` read it, tests never do; the host's Postgres password changes with the rest if the master key leaks.
+Shared database (`_product/docs/ops.md`): `DATABASE_URL`, the production Postgres over Tailscale (`postgres://scam_shield:<password>@100.127.78.127:5432/scam_shield`), piped from the host's `.env` into the credentials without being printed, by `make deploy` when it is missing and by `make db-prod-url`; `make server`, `make db-prod-shell` and every command that loads the credentials open it, the host's container and `make server DB=dev` override it from the environment, tests never see it. It replaced `PROD_DATABASE_URL` on Nov 1. The host's Postgres password changes with the rest if the master key leaks.
 WhatsApp channel (`_product/specs/whatsapp-channel.md`; the webhook answers 501 until the first two are set): `WHATSAPP_ACCESS_TOKEN`
 (a system-user token, not the 24-hour temporary one), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`
 (any string, pasted again in Meta's webhook configuration), `WHATSAPP_APP_SECRET` (required: every delivery is signature-checked and

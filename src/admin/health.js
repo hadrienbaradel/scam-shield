@@ -109,7 +109,7 @@ export async function healthReport() {
       : off("Not configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_ENC_KEY); demo only")],
     ["instant_checks", "Instant checks (Gmail push)", instantChecksCheck()],
     ["worker", "Background worker", config.worker ? ok(`On in this process; poll every ${config.pollSeconds} s`)
-      : warn("Off in this process (WORKER=0): nothing runs in the background")],
+      : warn(`Off in this process (${config.workerOff || "WORKER=0"}): nothing runs in the background`)],
     ["email", "Email", config.resend.apiKey ? ok("Resend configured")
       : off(`Local outbox (no RESEND_API_KEY); ${counts?.outboxWaiting ?? "?"} emails waiting`)],
     ["links", "Link lookups (URLhaus)", !config.abusechKey ? off("Off (no ABUSECH_AUTH_KEY)")

@@ -2,11 +2,14 @@ Keywords: docker, compose, infra, database, postgres, ci, github actions, deploy
 
 # Infrastructure
 
-One database: Postgres, the one `make server` starts. Every feature stores its data there (a table and a migration under `src/db/migrations`), including caches, queues and documents; no second datastore (MongoDB, Redis, SQLite, a cloud KV) without a decision noted in `_product/spec.md` and `docs/ARCHITECTURE.md`. Vlad, 2026-10-29.
+One database: Postgres, the one `make server` opens (the team's shared one on the host, or the local compose one). Every feature stores its data there (a table and a migration under `src/db/migrations`), including caches, queues and documents; no second datastore (MongoDB, Redis, SQLite, a cloud KV) without a decision noted in `_product/spec.md` and `docs/ARCHITECTURE.md`. Vlad, 2026-10-29.
 
 Two commands run the project: `make install` (Node check, `npm ci`, master key and credentials, the Postgres image pulled) then
-`make server` (Postgres via Docker Compose, waits for healthy, creates `scam_shield` and `scam_shield_test`, migrates, starts the
-app with restart on change at http://localhost:3000). `make setup` and `make dev` are aliases of these two. `make` lists everything.
+`make server` (the app with restart on change at http://localhost:3000). With the team's master key `make server` runs on the
+shared production database over Tailscale, without the background jobs (`_product/docs/ops.md`, The shared database);
+`make server DB=dev`, or a clone without the master key, starts Postgres via Docker Compose (waits for healthy), creates
+`scam_shield` and `scam_shield_test`, migrates and runs the jobs. `make setup` and `make dev` are aliases of these two. `make`
+lists everything.
 
 ## What lives where
 
@@ -15,7 +18,8 @@ app with restart on change at http://localhost:3000). `make setup` and `make dev
   default `postgres://localhost/scam_shield` works. `postgres/initdb/10-test-database.sql` creates `scam_shield_test` at first start.
 - Volumes are bind mounts in the repo, ignored by git except the `.gitkeep`: `.infra/dev/_volumes/postgres` (dev data),
   `.infra/prod/_volumes/postgres` (prod data). `make db-down` keeps the data; `make db-destroy` deletes it (asks; `FORCE=1` skips).
-- `make db-up` (Postgres alone), `make db-logs`, `make db-shell [DB=scam_shield_test]`, `make db-create`, `make db-migrate`.
+- `make db-up` (Postgres alone), `make db-logs`, `make db-shell [DB=scam_shield_test]`, `make db-create`, `make db-migrate`: always the local
+  compose Postgres; `make db-migrate` and `make start` use `DEV_DATABASE_URL` (default `postgres://localhost:$PG_PORT/scam_shield`).
 - `.infra/prod/`: `Dockerfile` (multi-stage, `node:24-alpine`, `npm ci --omit=dev`, non-root `node`, `node src/server.js`;
   needs `MASTER_KEY`, `DATABASE_URL`, `PORT`, `HOST=0.0.0.0`), `docker-compose.yml` (app + Postgres published on 127.0.0.1 only,
   cloudflared under the `cloudflared` profile, restart policies, healthchecks, settings from the `.env` next to it that
@@ -46,7 +50,8 @@ Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the
 
 Production is one OVH dedicated server, deployed by `make deploy` from a laptop (the archive of HEAD, then the Ansible playbook;
 no vault, the host never clones the repository): the app and Postgres published on 127.0.0.1 only, cloudflared for
-heyprudence.com once the tunnel token is set, Postgres on the tailnet through `tailscale serve`, a daily dump, ufw and fail2ban.
+heyprudence.com once the tunnel token is set, Postgres on the tailnet through `tailscale serve` (the laptops' default database), a
+daily dump, ufw and fail2ban.
 Deploying, the deploy-often rule, logs, backups and restore, the shared database, Tailscale and the domain: `_product/docs/ops.md`.
 Locally, `make prod-build` builds the image and `make prod-smoke` runs the prod compose on port 3100 with throwaway data and no
 background jobs (`WORKER=0`, so it never pings the production heartbeats with the team's credentials), curls `/api/health` and
@@ -55,7 +60,8 @@ stops it. `POSTGRES_PASSWORD`: letters and digits (the playbook generates one).
 ## Three common failures
 
 - `Something already listens on 127.0.0.1:5432`: a local PostgreSQL or an old container. `brew services stop postgresql@14`
-  (or `docker rm -f scam-shield-pg`), or `make server PG_PORT=5433` with `DATABASE_URL`/`TEST_DATABASE_URL` set to that port.
+  (or `docker rm -f scam-shield-pg`), or `make server DB=dev PG_PORT=5433` (`DEV_DATABASE_URL` follows `PG_PORT`) with
+  `TEST_DATABASE_URL` set to that port.
 - `all predefined address pools have been fully subnetted` (prod compose, or any new compose network): Docker has no subnet left
   for one more project network. `docker network prune` removes the networks of stopped projects. The dev compose and the smoke
   override sit on Docker's default bridge (`network_mode: bridge`) precisely so `make server` never hits this.

@@ -22,12 +22,47 @@ export function parseTrustProxy(value) {
   return v.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+export const DEFAULT_DATABASE_URL = "postgres://localhost/scam_shield";
+
+// The database's host is this machine: localhost, a loopback address or a Unix socket. Anything else is
+// another machine, such as the team's shared production database over Tailscale (_product/docs/ops.md).
+const LOCAL_DB_HOSTS = ["", "localhost", "127.0.0.1", "[::1]"];
+export function databaseOnThisMachine(url) {
+  try {
+    const u = new URL(url);
+    return LOCAL_DB_HOSTS.includes(u.hostname) || String(u.searchParams.get("host") || "").startsWith("/");
+  } catch {
+    return false;
+  }
+}
+
+// "host:port/database" of a connection string, never its user or password.
+export function describeDatabase(url) {
+  try {
+    const u = new URL(url);
+    return `${u.hostname || "localhost"}:${u.port || 5432}${u.pathname}`;
+  } catch {
+    return "(a DATABASE_URL that does not parse)";
+  }
+}
+
+// The background jobs (src/jobs/scheduler.js): WORKER=0 turns them off, WORKER=1 on. Otherwise they run in
+// production and on a database on this machine, and stay off when a laptop's app opens a database
+// elsewhere: the team's shared one has its jobs run by the host, and a second scheduler on the same data
+// would poll every mailbox twice and close the host's running jobs as interrupted. Returns the reason
+// they are off, "" when they run.
+export function workerOff(env) {
+  if (env.WORKER === "0") return "WORKER=0";
+  if (env.WORKER === "1" || env.NODE_ENV === "production") return "";
+  return databaseOnThisMachine(env.DATABASE_URL || DEFAULT_DATABASE_URL) ? "" : "the database is on another machine, whose host runs them; WORKER=1 forces them";
+}
+
 export const config = {
   port: Number(env.PORT || 3000),
   // Loopback only by default. Pairing a real phone on the LAN needs HOST=0.0.0.0.
   host: env.HOST || "127.0.0.1",
   baseUrl: (env.BASE_URL || `http://localhost:${env.PORT || 3000}`).replace(/\/$/, ""),
-  databaseUrl: env.DATABASE_URL || "postgres://localhost/scam_shield",
+  databaseUrl: env.DATABASE_URL || DEFAULT_DATABASE_URL,
   tokenKey: env.TOKEN_ENC_KEY || "",
   google: {
     clientId: env.GOOGLE_CLIENT_ID || "",
@@ -41,7 +76,8 @@ export const config = {
   abusechKey: env.ABUSECH_AUTH_KEY || "",
   adminEmails: list(env.ADMIN_EMAILS),
   pollSeconds: Number(env.SYNC_POLL_SECONDS || 120),
-  worker: env.WORKER !== "0",
+  worker: !workerOff(env),
+  workerOff: workerOff(env),
   backfillCount: Number(env.BACKFILL_COUNT || 50),
   contextScanCount: Number(env.CONTEXT_SCAN_COUNT || 300),
   production: env.NODE_ENV === "production",

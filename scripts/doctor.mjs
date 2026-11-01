@@ -31,7 +31,9 @@ const at = (p) => fileURLToPath(new URL(p, root));
 // uses the built-in coverage thresholds (22.8+); engines in package.json says so.
 export const WORKING_NODE = "22.9.0";
 export const CHECKS = ["node", "deps", "secrets", "docker", "db", "testdb", "port"];
-export const DB_FIX = "make server (Docker Compose; make db-up for Postgres alone) or brew services start postgresql@14 && make db-create";
+export const DB_FIX = "make server DB=dev (Docker Compose; make db-up for Postgres alone) or brew services start postgresql@14 && make db-create";
+// DATABASE_URL from the credentials is the team's shared production database, reached over Tailscale (_product/docs/ops.md).
+export const SHARED_DB_FIX = "Tailscale running on this laptop, with meikit shared with you (tailscale status lists it); meanwhile make server DB=dev and make doctor DB=dev use the local one";
 export const COMPOSE_FILE = ".infra/dev/docker-compose.yml";
 export const DATA_DIR = ".infra/dev/_volumes/postgres";
 
@@ -196,7 +198,8 @@ async function checkDb(s, { test = false } = {}) {
   const suffix = test ? sanitizeSuffix(process.env.TEST_DB_SUFFIX) : "";
   if (test && process.env.TEST_DB_SUFFIX && !suffix) warn(`TEST_DB_SUFFIX has no usable character ([a-z0-9_] after lower-casing): the default test database is used`);
   const url = test ? testDatabaseUrl({ TEST_DATABASE_URL: found?.value, TEST_DB_SUFFIX: suffix }) : found?.value || "postgres://localhost/scam_shield";
-  const where = `${describeDbUrl(url)} (${key} ${found ? `from ${found.from}` : "default"}${suffix ? `, TEST_DB_SUFFIX ${suffix}` : ""})`;
+  const shared = !test && found?.from === "credentials";
+  const where = `${describeDbUrl(url)} (${key} ${found ? `from ${found.from}` : "default"}${shared ? ": the team's shared database" : ""}${suffix ? `, TEST_DB_SUFFIX ${suffix}` : ""})`;
   const label = test ? "test database" : "Postgres";
   const bad = test ? warn : fail;
   const consequence = test ? "; the integration tests skip without it" : "";
@@ -204,8 +207,8 @@ async function checkDb(s, { test = false } = {}) {
   if (r.state === "nodeps") return info(`${label} ${where}: not checked until dependencies are installed`);
   if (r.state === "nodb" && suffix) return ok(`test database ${where}: not there yet, the tests create it on first use (make db-test-clean drops it)`);
   if (r.state === "nodb") return bad(`${label}: ${r.message} on ${describeDbUrl(url).split("/")[0]}: make db-create${consequence}`);
-  if (r.state === "auth") return bad(`${label} ${where}: ${r.message}: make secrets-set DATABASE_URL=postgres://user:password@localhost/scam_shield${consequence}`);
-  if (r.state === "down") return bad(`${label} not reachable at ${where}: ${r.message}. Fix: ${DB_FIX}${consequence}`);
+  if (r.state === "auth") return bad(`${label} ${where}: ${r.message}: ${shared ? "git pull (the team's DATABASE_URL may be newer), or make db-prod-url" : "make secrets-set DATABASE_URL=postgres://user:password@localhost/scam_shield"}${consequence}`);
+  if (r.state === "down") return bad(`${label} not reachable at ${where}: ${r.message}. Fix: ${shared ? SHARED_DB_FIX : DB_FIX}${consequence}`);
   try {
     if (test) return ok(`test database ${where}`);
     const files = readdirSync(at("src/db/migrations")).filter((f) => f.endsWith(".sql")).sort();
@@ -213,7 +216,7 @@ async function checkDb(s, { test = false } = {}) {
     try { applied = (await r.client.query("SELECT name FROM schema_migrations")).rows.map((x) => x.name); } catch { /* fresh database */ }
     const pending = files.filter((f) => !applied.includes(f));
     ok(`Postgres ${where}`);
-    return pending.length ? info(`schema: ${pending.length} of ${files.length} migrations pending (make dev applies them at start, or make db-migrate)`) : info(`schema up to date (${files.length} migrations)`);
+    return pending.length ? info(`schema: ${pending.length} of ${files.length} migrations pending (${shared ? "make server applies them to the shared database before it starts, a deploy too" : "make server DB=dev applies them at start, or make db-migrate"})`) : info(`schema up to date (${files.length} migrations)`);
   } finally {
     await r.client.end();
   }

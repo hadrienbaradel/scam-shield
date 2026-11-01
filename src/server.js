@@ -14,7 +14,7 @@ import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { config, googleConfigured } from "./config.js";
+import { config, describeDatabase, googleConfigured } from "./config.js";
 import { initErrorTracking, errorTrackingOn, reportError, flushErrorTracking } from "../lib/errorTracking.js";
 import { loadUser } from "./auth.js";
 import { migrate } from "./db/migrate.js";
@@ -97,10 +97,14 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   initErrorTracking(); // first, so a failed migration is reported too
-  await migrate();
+  // MIGRATE=0 (never in production): make server on the shared database migrated it once before starting
+  // this process (scripts/prod.mjs), so a restart on a file change never applies a migration still being written.
+  const applied = process.env.MIGRATE === "0" && !config.production ? null : await migrate();
   const app = await buildApp({ logger: { level: process.env.LOG_LEVEL || "info" } });
   await app.listen({ port: config.port, host: config.host });
   console.log(`Prudence on ${config.baseUrl}`);
+  console.log(`  Database: ${describeDatabase(config.databaseUrl)}; migrations: ${applied === null ? "not run here (MIGRATE=0)" : applied.length ? `applied ${applied.join(", ")}` : "up to date"}`);
+  console.log(`  Background jobs: ${config.worker ? "on" : `off (${config.workerOff})`}`);
   console.log(`  Google sign-in: ${googleConfigured() ? "configured" : "NOT configured (demo only) — see docs/GOOGLE_SETUP.md"}`);
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
   console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);

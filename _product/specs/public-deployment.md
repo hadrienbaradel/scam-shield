@@ -1,5 +1,5 @@
 # Public deployment and Google verification
-Status: Partial · Last updated: 2026-10-31
+Status: Partial · Last updated: 2026-11-01
 
 ## Why
 Today everything runs on one laptop with up to 100 Google test users whose access expires every 7 days. Real seniors need a stable address, verified Gmail access and a privacy policy at a real domain.
@@ -8,7 +8,7 @@ Today everything runs on one laptop with up to 100 Google test users whose acces
 1. Prudence runs on Vlad's OVH dedicated server, and reaches the internet at https://heyprudence.com through a Cloudflare Tunnel once its token is set (no inbound port for the app); the guardian's email links and the phone app point to it. Until then it answers only on the host itself.
 2. `make deploy` from a laptop ships the laptop's committed HEAD and is done only when the server's health check names that commit with the database up; a deploy never shows a secret, and the server's database password is made on the server at the first deploy and never changes after.
 3. The server takes keys only for SSH, no root login, a firewall that lets in only SSH and the team's private network (Tailscale), bans an address after 5 failed logins in 10 minutes, installs security updates daily without rebooting, and runs without swap.
-4. The production database is shared with the team over Tailscale only (never on the public internet): `make server DB=prod` runs a laptop's app on it without background jobs, `make db-prod-shell` opens it; daily work and tests stay on each laptop's own database.
+4. The production database is shared with the team over Tailscale only (never on the public internet), and it is every laptop's default since Nov 1: `make server` runs a laptop's app on it without background jobs, migrating it first, `make db-prod-shell` opens it, and `make server DB=dev` (or a clone without the master key, as a judge's) uses the laptop's own database; tests always stay on their own test database.
 5. The production database is dumped every day at 03:00 server time and the last 30 dumps are kept; `make backup-pull` copies the latest one to a laptop, and a failed dump pings the backup heartbeat's failure address when one is set.
 6. Google has verified the app for the restricted gmail.modify scope (demo video of the consent flow, privacy policy, homepage), and a yearly CASA security assessment is passed; sign-ins no longer expire after 7 days and the "unverified app" warning disappears.
 7. Guardian emails are delivered by a real provider (Resend) from a real sender address.
@@ -22,7 +22,7 @@ Google verification and CASA before the hackathon deadline; multi-region; a seco
 
 ## Acceptance
 - Lines 1 to 5, checked on the host on Oct 31: `make deploy` passed end to end, `/api/health` on the host answers `{"ok":true,"db":"ok","version":"<deployed sha>"}`; `swapon --show` empty; ufw active with 22/tcp and `tailscale0` only; fail2ban's sshd jail counts failed logins; sshd says `permitrootlogin no`, `passwordauthentication no`, `x11forwarding no`; Postgres and the app listen on 127.0.0.1 only; the timer's first dump `2026-10-31.dump` exists and `make backup-pull` copied it; a deploy with an invalid tunnel token fails with what to do and `TUNNEL_TOKEN=off` stops cloudflared.
-- Built when: the tunnel token is set and https://heyprudence.com serves the app, Google sign-in works there (its redirect URI registered), the host is on the tailnet with Tailscale SSH checked and public SSH closed (`ssh_public=false`), `make server DB=prod` answers from a laptop, and a restore has been rehearsed once. Lines 6 and 7 stay Planned after that.
+- Built when: the tunnel token is set and https://heyprudence.com serves the app, Google sign-in works there (its redirect URI registered), the host is on the tailnet with Tailscale SSH checked and public SSH closed (`ssh_public=false`), `make server` answers from a laptop on the shared database (Nov 1: `/api/health` with `db: ok` over the tailnet), and a restore has been rehearsed once. Lines 6 and 7 stay Planned after that.
 - The CI workflow runs on every push (`.github/workflows/ci.yml`, since 99c1cbf): `make check` and `make score` on Postgres, the Android debug APK with its unit tests; the APK is a downloadable artifact of each run.
 
 ## Implementation pointers

@@ -9,9 +9,9 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell \
+        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell db-prod-url \
         clean clean-all \
-        secrets-init secrets-set secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
+        secrets-init secrets-set secrets-unset secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
 NODE   ?= node
 NPM    ?= npm
@@ -28,6 +28,13 @@ PG_USER  ?= $(shell whoami)
 PG_DBS   := scam_shield scam_shield_test
 PG_DATA  := .infra/dev/_volumes/postgres
 DB       ?= scam_shield
+# Which database the app runs on (_product/docs/ops.md, The shared database). make server: the team's shared
+# production database, DATABASE_URL in config/credentials.enc (over Tailscale, no jobs), or this laptop's
+# Postgres when the credentials name none (no master key: a judge's clone). DB=dev: always the local one,
+# DEV_DATABASE_URL. The Data targets (db-up, db-migrate, ...) and make start always work on the local one.
+DEV_DATABASE_URL ?= postgres://localhost:$(PG_PORT)/scam_shield
+LOCAL_DB := DATABASE_URL='$(DEV_DATABASE_URL)'
+DB_ENV    = $(if $(filter dev local,$(DB)),$(LOCAL_DB))
 # make test TEST_DB_SUFFIX=<name>: the suite runs on scam_shield_test_<name> (created on first use),
 # so agents can run tests side by side. Exported for compose, the doctor and the tests.
 TEST_DB_SUFFIX ?=
@@ -65,19 +72,21 @@ install: ## Fresh clone to ready: Node check, npm ci, master key + credentials, 
 
 setup: install ## Alias of make install (older docs)
 
-doctor: ## What is missing: Node, dependencies, master key + credentials (names only), Docker + compose Postgres, databases, port 3000
-	@$(DOCTOR)
+doctor: ## What is missing: Node, dependencies, master key + credentials (names only), Docker + compose Postgres, the database make server uses (DB=dev: the local one), port 3000
+	@$(DB_ENV) $(DOCTOR)
 
 ##@ Run
 
-server: deps ## One command: Postgres up (compose, waits for healthy), databases, migrations, then the app with restart on change; DB=prod: on the shared database over Tailscale, no jobs
-	@if [ "$(DB)" = "prod" ]; then $(PROD) db-server; else $(MAKE) --no-print-directory db-up && $(NPM) run dev; fi
+server: deps ## The app with restart on change: on the shared production database over Tailscale (migrated first, no jobs; the local one without a master key); DB=dev: local Postgres up (compose), migrations, jobs on
+	@mode=$$($(PROD) db-mode "$(DB)") || exit 1; \
+	if [ "$$mode" = shared ]; then $(PROD) db-server; \
+	else $(LOCAL_DB) $(MAKE) --no-print-directory db-up && $(LOCAL_DB) $(NPM) run dev; fi
 
 dev: server ## Alias of make server
 
-start: deps ## Server without the watcher (what production runs); Postgres must be up (make db-up)
-	@$(DOCTOR) db --quiet
-	@$(NPM) start
+start: deps ## Server without the watcher (what production runs), on the local Postgres with jobs on; make db-up first
+	@$(LOCAL_DB) $(DOCTOR) db --quiet
+	@$(LOCAL_DB) $(NPM) start
 
 ##@ Quality  (make test TEST_DB_SUFFIX=<name> gives this run its own scam_shield_test_<name>)
 
@@ -112,6 +121,10 @@ secrets-init: ## First time: create config/master.key (or paste the team's) and 
 
 secrets-set: ## make secrets-set KEY=value [KEY2=value2], or make secrets-set alone and paste KEY=value lines
 	@$(CRED) set $(MAKEOVERRIDES)
+
+secrets-unset: ## Remove keys by name: make secrets-unset KEY=NAME, or KEY="NAME1 NAME2" (names printed, never a value)
+	@[ -n "$(KEY)" ] || { echo "Name the key: make secrets-unset KEY=NAME"; exit 1; }
+	@$(CRED) unset $(KEY)
 
 secrets-edit: ## Open the decrypted keys in VISUAL or EDITOR (vi by default), re-encrypt on exit
 	@$(CRED) edit
@@ -160,9 +173,9 @@ db-create: ## Create scam_shield and scam_shield_test if missing (the compose Po
 	  else echo "$$out"; exit 1; fi; \
 	done
 
-db-migrate: deps ## Apply the migrations in src/db/migrations (make server does it at start too)
-	@$(DOCTOR) db --quiet
-	@$(NPM) run migrate
+db-migrate: deps ## Apply the migrations in src/db/migrations to the local Postgres (DEV_DATABASE_URL; make server migrates the shared one itself)
+	@$(LOCAL_DB) $(DOCTOR) db --quiet
+	@$(LOCAL_DB) $(NPM) run migrate
 
 db-logs: ## Follow the compose Postgres logs
 	@$(COMPOSE) logs -f --tail=100 postgres
@@ -170,15 +183,18 @@ db-logs: ## Follow the compose Postgres logs
 db-shell: ## psql on the compose Postgres: make db-shell [DB=scam_shield_test]
 	@$(COMPOSE) exec postgres psql -U $(PG_USER) -d $(DB)
 
-db-prod-shell: deps ## psql on the shared production database over Tailscale (PROD_DATABASE_URL; psql from brew install libpq, or Docker)
+db-prod-shell: deps ## psql on the shared production database over Tailscale (DATABASE_URL in the credentials; psql from brew install libpq, or Docker)
 	@$(PROD) db-shell
+
+db-prod-url: deps ## Store DATABASE_URL (the shared database) in config/credentials.enc, piped from the host's .env and never shown; then commit that file
+	@$(PROD) db-url
 
 db-test-clean: deps ## Drop every scam_shield_test_<suffix> database (the agents' copies), never scam_shield_test
 	@$(NPM) run --silent test:db-clean
 
-gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety checks (no mail printed)
-	@$(DOCTOR) db --quiet
-	@$(NPM) run gate
+gate: deps ## After a live Gmail sign-in: sync, verdicts, Gmail actions, safety checks (no mail printed); on the database make server uses (DB=dev: the local one)
+	@$(DB_ENV) $(DOCTOR) db --quiet
+	@$(DB_ENV) $(NPM) run gate
 
 ##@ Prod  (the OVH host, _product/docs/ops.md; .infra/prod: Dockerfile, compose, ansible/, the host in ansible/inventory.ini)
 

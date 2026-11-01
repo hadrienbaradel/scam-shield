@@ -5,7 +5,8 @@
 // Not testable without the host, so not faked here: the playbook run itself (make deploy after the
 // preflight; checked on the host, _product/specs/public-deployment.md Acceptance), the SSH sessions (make
 // logs, prod-status, prod-shell, backup-now), the rsync copies (backup-pull, the restore upload), the
-// restore run, and the database calls of make server DB=prod and make db-prod-shell.
+// restore run, and the database calls of make server and make db-prod-shell (tests/shared-database.test.js
+// covers which database the app and the tests end up on).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -13,8 +14,9 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  archiveArgs, deployEnv, deployVars, inventoryCheck, migrationsAhead, pickLatestDump, playbookArgs, preflight,
-  prodUrlPipeline, psqlCall, readInventory, restoreScript, restoreSource, secretsLine, shq, sshArgs, unreachableMessage,
+  SHARED_DB_HOST, archiveArgs, dbUrlPipeline, dbUrlSed, dbWhere, deployEnv, deployVars, dockerPsqlArgs, inventoryCheck, migrationPlan,
+  migrationsAhead, pickLatestDump, playbookArgs, preflight, psqlCall, readInventory, restoreScript, restoreSource, secretsLine,
+  serverDatabase, shq, sshArgs, unreachableMessage,
 } from "../scripts/prod.mjs";
 
 const SHA = "e1348e4b25f75dc9ac89485b35c20340c8c7d1b9";
@@ -74,7 +76,7 @@ test("secrets reach the playbook's environment, never its command line or what m
   for (const value of ["tskey-auth-secret", "eyJ-tunnel-secret", "beat-secret"]) assert.ok(!args.includes(value));
 });
 
-test("PROD_DATABASE_URL moves from the host's .env into the credentials through the pipe only (ssh and sudo stubbed)", () => {
+test("DATABASE_URL moves from the host's .env into the credentials through the pipe only, on the tailnet host (ssh and sudo stubbed)", () => {
   const dir = mkdtempSync(join(tmpdir(), "prod-script-test-"));
   try {
     const bin = join(dir, "bin");
@@ -87,40 +89,71 @@ test("PROD_DATABASE_URL moves from the host's .env into the credentials through 
     for (const f of ["ssh", "sudo", "record-set"]) chmodSync(join(bin, f), 0o755);
     const app = join(dir, "app");
     mkdirSync(join(app, ".infra/prod"), { recursive: true });
-    const run = (envText) => {
+    const run = (envText, host) => {
       writeFileSync(join(app, ".infra/prod/.env"), envText);
-      const cmd = prodUrlPipeline({ host: "203.0.113.10", user: "ubuntu", port: "" }, { appDir: app, node: join(bin, "record-set") });
+      const cmd = dbUrlPipeline({ host: "203.0.113.10", user: "ubuntu", port: "" }, { appDir: app, node: join(bin, "record-set"), ...(host ? { host } : {}) });
       assert.ok(!cmd.includes("Abc123secret"), "the command line never holds the password");
       const r = spawnSync("/bin/sh", ["-c", cmd], { env: { PATH: `${bin}:/usr/bin:/bin` }, encoding: "utf8" });
       assert.equal(r.status, 0, r.stderr);
       assert.equal(r.stdout, "", "nothing reaches the screen but what credentials.mjs set prints (names only)");
       return readFileSync(join(dir, "stdin.txt"), "utf8");
     };
+    assert.equal(SHARED_DB_HOST, process.env.PROD_DB_HOST || "100.127.78.127", "the box's Tailscale address unless PROD_DB_HOST says otherwise");
     assert.equal(run("MASTER_KEY=00ff\nPOSTGRES_PASSWORD=Abc123secret\nBASE_URL=https://heyprudence.com\n"),
-      "PROD_DATABASE_URL=postgres://scam_shield:Abc123secret@prudence-prod:5432/scam_shield\n");
+      `DATABASE_URL=postgres://scam_shield:Abc123secret@${SHARED_DB_HOST}:5432/scam_shield\n`, "the SSH target (the public address here) is not the database's host");
+    assert.equal(run("POSTGRES_PASSWORD=Abc123secret\n", "meikit.tail2c017.ts.net"),
+      "DATABASE_URL=postgres://scam_shield:Abc123secret@meikit.tail2c017.ts.net:5432/scam_shield\n", "the MagicDNS name, for a tailnet that has it on");
     assert.equal(run("POSTGRES_PASSWORD=has space\n"), "", "a password that is not letters and digits is never turned into a URL");
     assert.equal(run("MASTER_KEY=00ff\n"), "");
+    for (const bad of ["a|b", "x;rm", "h ost", "-oProxyCommand=x", ""]) assert.throws(() => dbUrlSed(bad), /PROD_DB_HOST must be a host name or an IPv4 address/, bad);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("messages and psql's arguments name the database's host, never its password", () => {
-  const url = "postgres://scam_shield:Abc123secret@prudence-prod:5432/scam_shield";
-  const msg = unreachableMessage(url, Object.assign(new Error("getaddrinfo ENOTFOUND prudence-prod"), { code: "ENOTFOUND" }));
-  assert.match(msg, /^The shared database does not answer at prudence-prod:5432 \(ENOTFOUND\)/);
-  assert.ok(!msg.includes("Abc123secret"));
+  const url = "postgres://scam_shield:Abc123secret@100.127.78.127:5432/scam_shield";
+  assert.equal(dbWhere(url), "100.127.78.127:5432");
+  const timeout = unreachableMessage(url, new Error("Connection terminated due to connection timeout"));
+  assert.match(timeout, /^The shared database does not answer at 100\.127\.78\.127:5432 \(timeout\): is Tailscale running on this laptop, and is meikit shared with you \(tailscale status lists it\)\? make server DB=dev runs on this laptop's Postgres meanwhile/);
+  const named = unreachableMessage("postgres://scam_shield:Abc123secret@meikit.tail2c017.ts.net:5432/scam_shield", Object.assign(new Error("getaddrinfo ENOTFOUND meikit.tail2c017.ts.net"), { code: "ENOTFOUND" }));
+  assert.match(named, /^The shared database does not answer at meikit\.tail2c017\.ts\.net:5432 \(ENOTFOUND\)/);
+  const refused = unreachableMessage(url, Object.assign(new Error("password authentication failed"), { code: "28P01" }));
+  assert.match(refused, /refused the password in DATABASE_URL: git pull .*make db-prod-url/);
+  for (const m of [timeout, named, refused]) assert.ok(!m.includes("Abc123secret"));
   const call = psqlCall(url);
-  assert.deepEqual(call.args, ["-h", "prudence-prod", "-p", "5432", "-U", "scam_shield", "-d", "scam_shield"]);
+  assert.deepEqual(call.args, ["-h", "100.127.78.127", "-p", "5432", "-U", "scam_shield", "-d", "scam_shield"]);
   assert.deepEqual(call.env, { PGPASSWORD: "Abc123secret" });
   assert.equal(psqlCall(url, "100.64.0.7").args[1], "100.64.0.7");
+  assert.deepEqual(dockerPsqlArgs(call.args, true).slice(0, 3), ["run", "--rm", "-it"], "a terminal gets a TTY");
+  assert.deepEqual(dockerPsqlArgs(call.args, false).slice(0, 3), ["run", "--rm", "-i"], "a pipe does not (docker refuses -t without one)");
+  assert.ok(!dockerPsqlArgs(call.args, false).join(" ").includes("Abc123secret"), "the password reaches docker as PGPASSWORD from the environment, never as an argument");
   assert.equal(shq("it's"), `'it'\\''s'`);
 });
 
-test("make server DB=prod refuses a checkout whose migrations production has not applied", () => {
+test("make server: the shared database when the credentials name one, this laptop's Postgres with DB=dev or without one; DB=prod insists", () => {
+  const url = "postgres://scam_shield:pw@100.127.78.127:5432/scam_shield";
+  assert.deepEqual(serverDatabase({ db: "", sharedUrl: url }), { mode: "shared", url });
+  assert.deepEqual(serverDatabase({ db: "scam_shield", sharedUrl: url }), { mode: "shared", url }, "the Makefile's DB default (a database name for db-shell) is no mode");
+  assert.deepEqual(serverDatabase({ db: "prod", sharedUrl: url }), { mode: "shared", url });
+  assert.deepEqual(serverDatabase({ db: "dev", sharedUrl: url }), { mode: "dev" });
+  assert.deepEqual(serverDatabase({ db: "local", sharedUrl: url }), { mode: "dev" }, "DB=local, the old name of the local mode, still means it");
+  const judge = serverDatabase({ db: "", sharedUrl: "", why: "no master key on this machine" });
+  assert.equal(judge.mode, "dev", "a clone without the master key (a judge) still gets a working make server");
+  assert.match(judge.note, /^No shared database here \(no master key on this machine\): make server runs on this laptop's Postgres/);
+  assert.match(serverDatabase({ db: "", sharedUrl: "" }).note, /config\/credentials\.enc has no DATABASE_URL/);
+  assert.match(serverDatabase({ db: "prod", sharedUrl: "" }).error, /^No shared database: .*git pull, or make db-prod-url/);
+});
+
+test("make server migrates the shared database once before the app starts, and refuses a migration file git does not hold as committed", () => {
   const files = ["001_init.sql", "002_actions.sql", "003_new.sql", "README.md"];
   assert.deepEqual(migrationsAhead(files, ["001_init.sql", "002_actions.sql"]), ["003_new.sql"]);
   assert.deepEqual(migrationsAhead(files, ["001_init.sql", "002_actions.sql", "003_new.sql", "004_newer.sql"]), [], "a database ahead of the checkout is fine");
+  assert.deepEqual(migrationPlan(files, ["001_init.sql"], ""), { pending: ["002_actions.sql", "003_new.sql"], uncommitted: [] }, "committed and pushed, not deployed yet: applied (additive only)");
+  assert.deepEqual(migrationPlan(files, ["001_init.sql", "002_actions.sql"], "?? src/db/migrations/003_new.sql\n"), { pending: ["003_new.sql"], uncommitted: ["003_new.sql"] });
+  assert.deepEqual(migrationPlan(files, ["001_init.sql", "002_actions.sql"], " M src/db/migrations/003_new.sql\n").uncommitted, ["003_new.sql"]);
+  assert.deepEqual(migrationPlan(files, ["001_init.sql", "002_actions.sql"], "R  src/db/migrations/003_old.sql -> src/db/migrations/003_new.sql\n").uncommitted, ["003_new.sql"]);
+  assert.deepEqual(migrationPlan(files, files, " M src/db/migrations/001_init.sql\n").uncommitted, [], "an applied file being edited is not make server's business");
 });
 
 test("backups: the latest daily dump is picked by its date, and a restore names a .dump, takes a safety dump first and restores in one transaction", () => {

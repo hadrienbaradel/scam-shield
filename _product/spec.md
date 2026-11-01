@@ -6,7 +6,7 @@
 **Secondary user:** the trusted person (son, granddaughter, caregiver) who gets a one-tap "Scam / Real / I'll call you" request and only ever sees what the senior chose to share.
 **Hackathon context:** Meta Global AI Developer Hackathon 2026 (Cerebral Valley), Indie track, "Build for Your World"; due Wednesday Nov 4, 2026, 9:00 PM ET with a 3-minute demo video, a public GitHub repo and every teammate registered. Team: Hadrien Baradel (product, built everything so far), Vlad Zloteanu (joining as CTO).
 
-Last updated: 2026-10-31
+Last updated: 2026-11-01
 
 ## Principles
 - Demo-first: every feature must be showable in the 3-minute video. If it cannot be shown, it is cut or deferred.
@@ -37,7 +37,7 @@ Statuses: **Idea** (raised, not decided) Â· **Planned** (decided, not started) Â
 | Micro-learning (Learn tab) | Partial | A Learn tab (also in demo) with one-minute, funny, gamified lessons written in YAML, EN and FR: a scam character, three questions with big buttons, stars, a badge, a gentle "days in a row"; progress saved in the account (Postgres); "Try it on a real one" opens a demo card judged by the real engine. | [specs/micro-learning.md](specs/micro-learning.md) |
 | Privacy controls and account deletion | Built | No bodies stored, verdicts kept 90 days, encrypted Google tokens, an audit list of every action, "Delete my account" revokes Google access and erases every row. | [specs/privacy-and-account.md](specs/privacy-and-account.md) |
 | Chrome extension ("Check this" in Gmail web) | Planned | Docs call it "next"; no code yet. | [specs/chrome-extension.md](specs/chrome-extension.md) |
-| Public deployment and Google verification | Partial | Runs on Vlad's OVH server (`make deploy`, done when the health check names the commit), locked down, the production database shared over Tailscale and dumped daily; heyprudence.com once the tunnel token is set; OAuth verification, CASA and Resend later. | [specs/public-deployment.md](specs/public-deployment.md) |
+| Public deployment and Google verification | Partial | Runs on Vlad's OVH server (`make deploy`, done when the health check names the commit), locked down, the production database shared over Tailscale (every laptop's `make server` default since Nov 1) and dumped daily; heyprudence.com once the tunnel token is set; OAuth verification, CASA and Resend later. | [specs/public-deployment.md](specs/public-deployment.md) |
 | CI workflow (tests + score on Postgres, Android tests + build) | Built | Every push runs `make check` and `make score` on Postgres and builds the Android debug APK (downloadable from the run) with its unit tests; green on main (Oct 29). | [specs/public-deployment.md](specs/public-deployment.md) |
 | Admin console (health, background jobs, users) | Built | `/admin/`, admins only, separate from the senior app: one health line per dependency, every background job with its last run, next due, health and Run now (runs kept 30 days), every user with Gmail and sync state and counts, scam-report review; never a message's text or a verdict's words. | [specs/admin-console.md](specs/admin-console.md) |
 | Developer sign-in (local, without Google) | Built | On the developer's own computer, without Google keys, the welcome buttons open a local sign-in page (`/dev/signin`): sign in as a local test person or create one (as anyone while Google keys are absent), the same session as Google's, admin console included; never in production, loopback only. | [specs/developer-sign-in.md](specs/developer-sign-in.md) |

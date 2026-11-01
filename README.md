@@ -28,7 +28,7 @@ Needs Node 22.9+ (`.nvmrc` says 24; `nvm install` reads it) and Docker, which ru
 
 ```bash
 make install   # fresh clone to ready: dependencies, master key + credentials, Postgres image
-make server    # Postgres up, databases, migrations, then the app at http://localhost:3000
+make server    # Postgres up, databases, migrations, then the app at http://localhost:3000 (with the team's master key: on the shared database)
 make test      # every suite (make check adds the coverage threshold: what CI runs)
 ```
 
@@ -47,12 +47,12 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 
 | Command | What it does |
 |---|---|
-| `make server` / `make start` | Server plus background jobs (`server` brings Postgres up and restarts on change; `start` is what production runs) |
+| `make server` / `make start` | The app: `server` restarts on change and, with the team's master key, runs on the shared production database without background jobs (`DB=dev`, or no master key: Postgres up locally, with the jobs); `start` is what production runs, on the local Postgres |
 | `make test` / `make coverage` / `make check` | Every suite: engine, real-mail regression, server units, the model layer against fake APIs, the scripts, integration against Postgres (skipped when it is down); `check` adds the line-coverage threshold. `TEST_DB_SUFFIX=<name>` gives a run its own test database |
 | `make score` / `make score-muse` | PRD pass criteria on the seed cases (A 100%, no false Scam on C); `score-muse` runs them through Muse Spark |
 | `make gate` | After a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions, safety checks (no email printed) |
 | `node scripts/eval-corpus.mjs` / `eval-urls.mjs` | Accuracy on public corpora and phishing URL lists (data stays in `.runtime/eval/`) |
-| `make db-migrate` | Apply database migrations (`make server` does it at start too) |
+| `make db-migrate` | Apply database migrations to the local Postgres (`make server` migrates the database it opens) |
 | `make secrets-set KEY=value` | Store a key encrypted; `make secrets-keys` lists names and whether each is set, never a value |
 | `node scripts/docs-check.mjs` | Product docs in step with the code: spec links, statuses, keywords, indexes, stale advice |
 | `make lessons-check` | Every lesson under `data/lessons/` (the Learn tab) against its YAML format: fields, three questions with one right answer, EN/FR twins, demo cases that exist; part of `make check` |
