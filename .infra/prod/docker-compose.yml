@@ -11,7 +11,7 @@
 #   APP_PORT, APP_BIND published port (3000) and address (127.0.0.1)
 #   TUNNEL_TOKEN       the Cloudflare tunnel's token; COMPOSE_PROFILES=cloudflared (also in .env) starts cloudflared
 # Docker publishes ports past ufw, so every published port here is on 127.0.0.1. Postgres reaches the tailnet
-# through `tailscale serve` on the host (prudence-prod:5432), never through a port on 0.0.0.0.
+# through `tailscale serve` on the host (port 5432 of the machine meikit on the tailnet), never through a port on 0.0.0.0.
 # `make prod-smoke` runs this file locally with throwaway data (docker-compose.smoke.yml).
 name: scam-shield-prod
 

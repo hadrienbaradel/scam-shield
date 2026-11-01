@@ -16,7 +16,7 @@ a warning says so) with its sha, and the playbook:
    listed in `authorized_keys` (the gitignored `group_vars/scam_shield.yml`) are added for the SSH user;
 2. installs Docker Engine and the compose plugin from Docker's apt repository, with log rotation in
    `/etc/docker/daemon.json` (json-file, 5 files of 50 MB per container), and Tailscale from Tailscale's;
-3. joins the tailnet as `prudence-prod` with Tailscale SSH, only when an auth key is given (`make deploy
+3. joins the tailnet as `meikit` with Tailscale SSH, only when an auth key is given (`make deploy
    TS_AUTHKEY=...` or the gitignored `.tailscale-authkey` here; written to a root-only file for
    `tailscale up` and deleted after), then serves Postgres to the tailnet (`tailscale serve --bg
    --tcp=5432 tcp://127.0.0.1:5432`); without a key the join is skipped and the summary says so;
@@ -24,7 +24,7 @@ a warning says so) with its sha, and the playbook:
    `tailscale0`), enabled only once the SSH rule exists, and fail2ban's sshd jail (a 1 h ban after 5
    failures in 10 minutes). Docker publishes ports past ufw, so the compose file publishes on 127.0.0.1 only
    (the app on 3000, Postgres on 5432). `ssh_public=false` in `inventory.ini` closes 22 to the internet,
-   and the playbook refuses unless it runs over the tailnet (`ansible_host=prudence-prod`);
+   and the playbook refuses unless it runs over the tailnet (`ansible_host` on the box's Tailscale address);
 5. replaces `/opt/scam-shield` with the archive (rsync `--delete`, keeping `.infra/prod/.env` and the
    Postgres data in `.infra/prod/_volumes/postgres`) and writes `GIT_SHA`;
 6. writes `.infra/prod/.env` (mode 600, root only, never logged): `MASTER_KEY` read from the laptop's
@@ -53,6 +53,7 @@ make backup-now | make backup-pull       # a dump now; the latest one copied to 
 No Ansible vault: the laptop sends the master key, read from `config/master.key` (the team's encrypted
 credentials ride inside the image), `HEARTBEAT_BACKUP_URL` from those credentials when set, and a
 Tailscale auth key or a tunnel token when one is given. After the playbook,
-`make deploy` stores `PROD_DATABASE_URL` in the team's credentials once, piped from the host's `.env`.
+`make deploy` stores `DATABASE_URL` (the shared database, on the box's Tailscale address) in the team's credentials
+when they have none, piped from the host's `.env` and never shown; `make db-prod-url` stores it again.
 `scam_shield_source=git` swaps the archive for a clone of `scam_shield_repo` at `scam_shield_branch`, for
 when the repository is public.

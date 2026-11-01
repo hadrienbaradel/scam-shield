@@ -37,7 +37,8 @@
     # group_vars/scam_shield.yml next to this file. Added, never removed.
     authorized_keys: []
     tailscale_authkey: "{{ lookup('ansible.builtin.env', 'TS_AUTHKEY') }}"
-    tailscale_hostname: prudence-prod
+    # The machine's name on the tailnet (also its OS hostname): the box may host other projects (_product/docs/ops.md).
+    tailscale_hostname: meikit
     # A token from Cloudflare Zero Trust starts cloudflared (kept in the host .env); "off" removes it.
     tunnel_token: "{{ lookup('ansible.builtin.env', 'TUNNEL_TOKEN') }}"
     # Better Stack heartbeat for the daily dump; make deploy passes the team credentials' value.
@@ -349,7 +350,7 @@
         that:
           - ts_running | bool
           - server_addr is match('^100[.](6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])[.]') or server_addr is match('^fd7a:115c:a1e0:')
-        fail_msg: "ssh_public is false but this host is not on the tailnet, or this play came in over the public address: set ansible_host=prudence-prod in inventory.ini first"
+        fail_msg: "ssh_public is false but this host is not on the tailnet, or this play came in over the public address: set ansible_host to the host's Tailscale address in inventory.ini first"
       vars:
         server_addr: "{{ (ssh_connection.stdout.split() + ['', '', ''])[2] }}"
       when: not (ssh_public | bool)
