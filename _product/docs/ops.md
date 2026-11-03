@@ -58,6 +58,12 @@ does not undo the schema.
 
 ## Backups and restore
 
+**A laptop database to production** (once, before anyone works on the shared database): on the laptop `make db-dump`
+(pg_dump -Fc of the compose Postgres into `.runtime/backups/local-<date>.dump`), then `make backup-restore
+FILE=.runtime/backups/local-<date>.dump` from the same laptop: the dump goes up over Tailscale SSH, production's data is
+replaced after a pre-restore dump on the host, the app restarts and migrates if the dump is behind. Needs the machine
+shared with you, your `inventory.ini` and the master key. Never restore an old laptop copy over fresher production data.
+
 `prudence-backup.timer` runs `.infra/prod/scripts/backup.sh` every day at 03:00 host time (UTC): `pg_dump -Fc` inside
 the Postgres container into `/var/backups/prudence/<date>.dump` (mode 600, read back with `pg_restore --list`), the last
 30 kept, one journal line, a GET on `HEARTBEAT_BACKUP_URL` when it is set (`<url>/fail` on failure). The deploy takes the

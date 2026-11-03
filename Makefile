@@ -9,7 +9,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell db-prod-url \
+        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell db-dump db-prod-url \
         clean clean-all \
         secrets-init secrets-set secrets-unset secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
@@ -182,6 +182,9 @@ db-logs: ## Follow the compose Postgres logs
 
 db-shell: ## psql on the compose Postgres: make db-shell [DB=scam_shield_test]
 	@$(COMPOSE) exec postgres psql -U $(PG_USER) -d $(DB)
+
+db-dump: ## Dump this laptop's compose database (pg_dump -Fc) into .runtime/backups/local-<date>.dump, for make backup-restore FILE=...
+	@mkdir -p .runtime/backups && f=.runtime/backups/local-$$(date +%F-%H%M).dump && $(COMPOSE) exec -T postgres pg_dump -U $(PG_USER) -d $(DB) -Fc > $$f && echo "$$f ($$(du -h $$f | cut -f1)); push it to production with: make backup-restore FILE=$$f"
 
 db-prod-shell: deps ## psql on the shared production database over Tailscale (DATABASE_URL in the credentials; psql from brew install libpq, or Docker)
 	@$(PROD) db-shell
