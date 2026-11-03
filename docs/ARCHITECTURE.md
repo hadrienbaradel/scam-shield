@@ -143,6 +143,7 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 | 300 OpenPhish links, a bare link from a stranger (`docs/STATUS.md`) | 48% flagged | not run |
 | A real Gmail inbox, 50 emails (Oct 28, commit `6c97b56`) | not reported | 47 Safe, 3 Be careful, 0 Scam |
 | The same real Gmail inbox, 330 emails (Nov 2, `npm run gate`; 308 judged by Muse Spark, 22 by the rules while Muse was unavailable) | not reported | 312 Safe, 18 Be careful, 0 Scam |
+| The same real Gmail inbox, 470 emails (Nov 3, `npm run gate`; 430 judged by Muse Spark, 40 by the rules while Muse was unreachable from a plane) | not reported | 444 Safe, 24 Be careful, 2 Scam: both by the rules fallback and both genuine (a notice from one of Apple's own `.apple` addresses, a notice whose tracked link differs from its label), labeled, not moved; Muse Spark called none of its 430 Scam |
 | 25 phishing and 50 genuine emails, prompt v4 (Oct 29, `_product/log.md`, with `4934822`) | not reported | 84% Scam, 0 false Scam |
 
 The public data and the live inbox never enter the repository, so these rows were not re-run for this doc (unverified here). Median latency was 4.0 s per email, with about 4.0k tokens in and 0.9k out (`docs/STATUS.md`).
