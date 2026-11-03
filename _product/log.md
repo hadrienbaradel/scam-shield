@@ -11,6 +11,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
+| Hadrien · video | 2026-11-03 23:20 | Cut v3; two bugs from the Nov 3 server log for Vlad | `_product/log.md`, `_product/marketing/video-script.md` |
 
 ## To do
 
