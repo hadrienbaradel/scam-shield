@@ -12,6 +12,7 @@ Who = the person, plus the session label or agent name when several sessions run
 |---|---|---|---|
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
+| Hadrien · video | 2026-11-02 21:25 | Video script: the voicemail beat uses the real cruise-scam voicemail Hadrien got on Nov 2 instead of a staged one | `_product/marketing/video-script.md`, `_product/log.md` |
 
 ## To do
 
