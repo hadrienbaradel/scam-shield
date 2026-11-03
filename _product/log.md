@@ -12,7 +12,6 @@ Who = the person, plus the session label or agent name when several sessions run
 |---|---|---|---|
 | Vlad · guide | 2026-10-29 14:39 | Walking the gates with Vlad in Chrome: Meta app + WhatsApp test number and token, Cloudflare tunnel, Baseten credits, master.key handoff | `_product/log.md` only (accounts, no code) |
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
-| Hadrien · video | 2026-11-02 21:50 | Video script and log: the Android install is dropped (demo Ethan card in the phone frame); first cut built in HyperFrames | `_product/marketing/video-script.md`, `_product/log.md` |
 
 ## To do
 
@@ -31,7 +30,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad | `outbox` has no owner column, so "Delete my account" leaves copies of mails already sent to trusted people for up to 7 days; the privacy spec says every row is erased (found while writing docs/ARCHITECTURE.md) | Architecture review | 2026-10-29 |
 | Vlad | Send `config/master.key` to Hadrien over a private channel (never the repo, never a chat with an agent) | Hadrien | 2026-10-29 |
 | Vlad | Baseten credits: claim them if not done | Hadrien | 2026-10-29 |
-| Vlad | Real-phone Android install for the Ethan scene (video 1:15–1:47) | Hadrien; script says Oct 30 | 2026-10-29 |
 | Vlad | WhatsApp "forward it to Prudence" bot, Hadrien's pick for the extra Meta scene (Cloud API test number, 5 phones, needs the public URL) | Hadrien | 2026-10-29 |
 | Vlad | "Checked:" chips under the reasons on the V2 card (`public/js/views/today.js`); the reasoning summary on Thomas's view only if the Responses API returns one | Video script, Oct 29 | 2026-10-29 |
 | Vlad | Point heyprudence.com at the live demo and settle the public repo name (org publication check first) | Video script, Oct 30 | 2026-10-29 |
@@ -55,6 +53,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-11-02 · Hadrien · video · First cut of the 3-minute video, 2:53, built in HyperFrames (Herk Edit Kit, outside the repo; video-script.md, First cut): the Nov 2 laptop takes in a phone frame, every card in the app's colors and font, captions, the bleeped real voicemail; stand-in Mac voice and dashed TO FILM cards for the shots still missing. The Android install for the Ethan scene is dropped (Hadrien's call): the demo Ethan card in the phone frame replaces it, so Vlad's To do row is closed
 - 2026-11-02 · Hadrien · video · The voicemail beat (1:47–2:05) is a real scam voicemail Hadrien got on Nov 2: "Bonnie" from an "Orlando Promotion Center" offering a free Margaritaville cruise, "almost full", call back a toll-free number. Checked signed in as Linda (Check something → voice message): Scam by Muse Spark, "fake free cruise call pressuring you to call back", 85% on the raw file and on a copy with the number bleeped; filmed Nov 2 with the Norton picture. The number is bleeped in the video and kept off screen; the recording stays in `.runtime/video/voicemail-1102/`, never in the repo. Hadrien's pick over a staged grandchild voicemail
 - 2026-11-02 · Hadrien · video · The 2:30–2:40 shot of an "AI check is busy" card is dropped from the video script: the app has no such card (a failed AI check returns `degraded: true`, moves nothing, and only changes the card's last line to "Judged by detector (Muse Spark unavailable)"); the four caption lines and the narration stay. The Nov 2 laptop takes are cut into a selects reel (`.runtime/video/selects-1102/`, git-ignored)
 - 2026-11-02 · Hadrien · video · The video's own-inbox line now quotes the Nov 2 gate on Hadrien's real Gmail (Hadrien's pick): narration "On my own inbox: over three hundred emails, no false scam", card "my inbox: 300+ emails, 0 false Scam", worded to stay true while the sync catches up (330 checked at the second run: 0 Scam, 18 Be careful, 312 Safe; 308 by Muse Spark, 22 by the rules while Muse was unavailable); ARCHITECTURE's measurements table has the row; Linda's test inbox on the same gate: 30 checked, 7 Scam, all by Muse Spark, every gate PASS
