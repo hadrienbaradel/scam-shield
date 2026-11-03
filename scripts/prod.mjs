@@ -348,8 +348,9 @@ async function dbServer() {
   say(plan.pending.length ? `Migrations: ${plan.pending.join(", ")} not applied there yet; applying them now (additive only until Nov 4, _product/docs/ops.md).` : "Migrations: none missing there; the pattern cards are checked.");
   const m = spawnSync(process.execPath, ["--import", "./lib/credentials.js", "src/db/migrate.js"], { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url } });
   if (m.status !== 0) stop("The migration failed on the shared database (above): the app was not started.");
-  // MIGRATE=0: restarts on a file change do not migrate again (src/server.js).
-  const child = spawn(process.execPath, ["--env-file-if-exists=.env", "--import", "./lib/credentials.js", "--watch-path=src", "--watch-path=lib", "--watch-path=public", "src/server.js"],
+  // MIGRATE=0: restarts on a file change do not migrate again (src/server.js). No --env-file-if-exists here:
+  // node then watches the repo root too and restarts on every .git write (lib/credentials.js reads .env).
+  const child = spawn(process.execPath, ["--import", "./lib/credentials.js", "--watch-path=src", "--watch-path=lib", "--watch-path=public", "src/server.js"],
     { cwd: ROOT, stdio: "inherit", env: { ...process.env, DATABASE_URL: url, WORKER: "0", MIGRATE: "0" } });
   for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
   return await new Promise((resolve) => child.on("exit", (code) => resolve(code ?? 0)));

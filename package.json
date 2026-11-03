@@ -7,7 +7,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "start": "node --env-file-if-exists=.env --import ./lib/credentials.js src/server.js",
-    "dev": "node --env-file-if-exists=.env --import ./lib/credentials.js --watch-path=src --watch-path=lib --watch-path=public src/server.js",
+    "dev": "node --import ./lib/credentials.js --watch-path=src --watch-path=lib --watch-path=public src/server.js",
     "migrate": "node --env-file-if-exists=.env --import ./lib/credentials.js src/db/migrate.js",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "test:db-clean": "node --env-file-if-exists=.env --import ./lib/credentials.js src/db/testDatabase.js clean",

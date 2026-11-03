@@ -139,6 +139,29 @@ test("the autoload fills process.env in an entry point, stops it with one line o
   assert.match(prod.stderr, /^No master key for .*credentials\.enc: .*make secrets-init\n$/);
 });
 
+test("the autoload reads .env from the working directory itself (shell over .env over credentials) and the watch-mode runs drop node's --env-file flag", async (t) => {
+  const sb = sandbox();
+  t.after(() => rmSync(sb.dir, { recursive: true, force: true }));
+  writeKeyFile(sb.keyFile, generateKey());
+  writeStore("PROBE_KEY=probe-value\nSTORE_ONLY=store\n", sb.opts);
+  writeFileSync(join(sb.dir, ".env"), "PROBE_KEY=from-dotenv\nDOT_ONLY=dot\n");
+  const probe = `import ${JSON.stringify(loader)}; console.log([process.env.PROBE_KEY, process.env.DOT_ONLY, process.env.STORE_ONLY].join(" "))`;
+  const spawn = (env) => new Promise((resolve) => execFile(process.execPath, ["--input-type=module", "-e", probe], { env, cwd: sb.dir, timeout: 20000 },
+    (err, stdout, stderr) => resolve({ code: err ? err.code : 0, stdout, stderr })));
+  const entry = { ...sb.env };
+  delete entry.NODE_TEST_CONTEXT;
+  delete entry.PROBE_KEY;
+  assert.deepEqual(await spawn(entry), { code: 0, stdout: "from-dotenv dot store\n", stderr: "" }, ".env wins over the credentials, both fill the gaps");
+  assert.deepEqual(await spawn({ ...entry, PROBE_KEY: "shell" }), { code: 0, stdout: "shell dot store\n", stderr: "" }, "the shell wins over .env");
+  // With node's own --env-file-if-exists, watch mode (make server) watches the repo root recursively and
+  // restarts on every .git write by another session: the two watch-mode runs rely on the loader instead.
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.match(pkg.scripts.dev, /--import \.\/lib\/credentials\.js --watch-path=src/);
+  assert.doesNotMatch(pkg.scripts.dev, /--env-file/);
+  const prodScript = readFileSync(new URL("../scripts/prod.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(prodScript, /--env-file-if-exists=\.env", "--import"/, "the db-server spawn has no --env-file flag either");
+});
+
 test("CLI: init, set, keys, import, check, unset, rotate; only show prints a value", async (t) => {
   const sb = sandbox();
   t.after(() => rmSync(sb.dir, { recursive: true, force: true }));

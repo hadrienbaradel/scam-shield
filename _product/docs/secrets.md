@@ -45,7 +45,8 @@ fills that address and stops: passwords and verification codes are typed by the 
 
 ## Precedence
 
-A variable set and non-empty in the real environment, or in `.env` when node runs with `--env-file-if-exists=.env`, wins over the
+A variable set and non-empty in the real environment, or in `.env` (read by `lib/credentials.js` itself, so that `make server`'s watch mode
+never watches the repo root: node's `--env-file-if-exists` makes it restart on every `.git` write), wins over the
 credentials; empty or unset ones are filled from the file. That is what keeps the host's container on its compose Postgres
 (compose sets `DATABASE_URL`) and `make server DB=dev` on the local one, while the credentials' `DATABASE_URL` names the
 shared database (`tests/shared-database.test.js`). Tests never load the credentials (the autoload is off under `node --test`;
