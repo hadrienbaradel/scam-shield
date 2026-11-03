@@ -20,3 +20,4 @@ config/*.key
 .infra/prod/ansible/inventory.ini
 .infra/prod/ansible/.tailscale-authkey
 .infra/prod/ansible/group_vars/
+.gstack/

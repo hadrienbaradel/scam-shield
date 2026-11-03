@@ -1,7 +1,5 @@
 # Prudence
 
-Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
 *Ask twice.* (Working title until Oct 28, 2026: Scam Shield. Code, database and repository names still say `scam-shield` until after the hackathon.)
 [![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml)
 
@@ -60,6 +58,8 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 ## Product docs
 
 The product side lives in [_product/](_product/README.md). [_product/spec.md](_product/spec.md) has one row per feature with its status (Idea, Planned, Partial, Built, Dropped) and an Ideas table; `_product/specs/` holds the detail per feature; next to them sit competitors, research, marketing and the rules agents and humans follow (`_product/docs/`). Spec first, then code; docs move with the code.
+
+Architecture and the reasons behind it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Layout
 
