@@ -11,6 +11,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
+| Vlad · coord | 2026-11-03 23:40 | `make server` restart loop: Node's `--env-file-if-exists` makes watch mode watch the repo root, so every `.git` write by another session restarts the app (Chrome got error pages); `lib/credentials.js` loads `.env` itself and the two watch-mode runs drop the flag | `lib/credentials.js`, `package.json` (dev script), `scripts/prod.mjs` (db-server spawn), `_product/docs/secrets.md` (Precedence), `tests/credentials.test.js` |
 
 ## To do
 
