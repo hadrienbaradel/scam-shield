@@ -142,6 +142,7 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 | The same 18,849: phishing flagged at all (Scam or Be careful) | 48.1% | 99.0% |
 | 300 OpenPhish links, a bare link from a stranger (`docs/STATUS.md`) | 48% flagged | not run |
 | A real Gmail inbox, 50 emails (Oct 28, commit `6c97b56`) | not reported | 47 Safe, 3 Be careful, 0 Scam |
+| The same real Gmail inbox, 291 emails (Nov 2, `npm run gate`; 270 judged by Muse Spark, 21 by the rules while Muse was unavailable) | not reported | 276 Safe, 15 Be careful, 0 Scam |
 | 25 phishing and 50 genuine emails, prompt v4 (Oct 29, `_product/log.md`, with `4934822`) | not reported | 84% Scam, 0 false Scam |
 
 The public data and the live inbox never enter the repository, so these rows were not re-run for this doc (unverified here). Median latency was 4.0 s per email, with about 4.0k tokens in and 0.9k out (`docs/STATUS.md`).
