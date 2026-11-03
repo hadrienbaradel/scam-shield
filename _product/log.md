@@ -11,7 +11,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
-| Hadrien · video | 2026-11-03 23:45 | Cut v4: the app's read-aloud on the Norton card | `_product/log.md`, `_product/marketing/video-script.md` |
 
 ## To do
 
@@ -63,6 +62,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-11-03 · Hadrien · video · Cut v4 (2:56): after the narration, the app's own "Read this to me" reads the Norton verdict aloud ("Scam. Fake Norton bill tries to scare you into calling.", recorded from the laptop's speaker with Voice Memos), captioned; the voicemail and Norton cards trimmed to stay under 2:57
 - 2026-11-03 · Hadrien · video · Cut v3 (2:54): "What Prudence knows" reshot with Linda's people (two notes each to Ethan and Thomas put in her Sent folder through Prudence's Gmail access, nothing sent, recipients on example.com; Prudence lists people written to at least twice), and the Norton picture's newer verdict, which adds "No Norton subscription in your information we checked"
 <<<<<<< Updated upstream
 - 2026-11-03 · Hadrien · video · Narration recorded (Dublin, one take per line) and cut v2 rendered (2:54): the stand-in voice is gone, the senior beat is out until a senior is filmed. The own-inbox line now reads "over four hundred emails judged by Muse Spark, no false scam" (card: 400+ judged by Muse Spark, 0 false Scam) because the Nov 3 gate shows 2 genuine emails called Scam by the rules fallback while Muse was unreachable (filed for Vlad above); the voicemail beat opens with "Both of these scams reached me this week"
