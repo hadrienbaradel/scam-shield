@@ -20,6 +20,17 @@ Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). 
 - **Live link checks** that never tip off a scammer: domain age from RDAP without visiting the link, known malware and phishing sites from abuse.ch URLhaus (host name only, set `ABUSECH_AUTH_KEY`), and redirects followed only on request or for URL shorteners, with an SSRF guard.
 - Built for 60+: 19px+ type with a three-step size setting, 64px buttons, read aloud, EN/FR, one decision per screen.
 
+## Meta models: what each one does and where it runs
+
+All calls go to the Meta Model API (`api.meta.ai/v1`) from the server; nothing runs in the browser, and personal numbers are masked before a message leaves.
+
+| Model | What it does in Prudence | Where in the code |
+|---|---|---|
+| Muse Spark 1.3 (`muse-spark-1.3`, Standard mode) | Judges every message (email, text, voicemail transcript, picture) against the person's own context and the rules' evidence; answers in a fixed JSON schema (verdict, confidence, headline, reasons with the evidence each rests on, what to do) | `checkMessage` in `lib/muse.js` |
+| Muse Spark 1.3, vision | Reads screenshots and photos (a fake invoice sent as a picture, a WhatsApp screenshot) into a message, then the same judgement | `extractFromImage` in `lib/muse.js` |
+| Muse Voice Transcribe | Writes down voicemails and voice notes; the transcript is judged like any message | `transcribeVoice` in `lib/muse.js` |
+| Muse Spark 1.3, Contributor tier (`muse-spark-1.3-contributor`) | Scored the 18,849-email public evaluation (public corpora only, never a person's mail; the server refuses this tier) | `scripts/eval-corpus.mjs --contributor`, `allowContributorForPublicEval` in `lib/llm/meta.js` |
+
 ## Quick start
 
 Needs Node 22.9+ (`.nvmrc` says 24; `nvm install` reads it) and Docker, which runs Postgres for you (details, including a local PostgreSQL already on port 5432: [_product/docs/infra.md](_product/docs/infra.md)). Three commands:

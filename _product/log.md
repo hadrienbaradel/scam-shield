@@ -11,7 +11,6 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
-| Hadrien · video | 2026-11-04 00:50 | README: which Meta models, what each does, where it runs (organizers' ask); final-cut candidates | `README.md`, `_product/log.md`, `_product/marketing/video-script.md` |
 
 ## To do
 
@@ -63,6 +62,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-11-04 · Hadrien · video · Final-cut candidate 3 (2:56, high quality, no draft tag), after the organizers' guidance (show the working product rather than slides, make the live Meta model calls visible): only the opening and end cards remain full-screen; the $7.7B figure, the title, the pipeline, the numbers and the privacy lines now sit beside real app footage (Linda's test Gmail being judged, her Settings); the USPS scene shows a real Muse Spark call captured Nov 3 (`POST api.meta.ai/v1/chat/completions`, `muse-spark-1.3`, 6.4 s: the masked message, the link check, her orders, and the JSON answer with "Your recent order ships with Amazon Logistics, not USPS"). README gains a table of the Meta models, what each does and where it runs (organizers' ask)
 - 2026-11-03 · Hadrien · video · Cut v4 (2:56): after the narration, the app's own "Read this to me" reads the Norton verdict aloud ("Scam. Fake Norton bill tries to scare you into calling.", recorded from the laptop's speaker with Voice Memos), captioned; the voicemail and Norton cards trimmed to stay under 2:57
 - 2026-11-03 · Hadrien · video · Cut v3 (2:54): "What Prudence knows" reshot with Linda's people (two notes each to Ethan and Thomas put in her Sent folder through Prudence's Gmail access, nothing sent, recipients on example.com; Prudence lists people written to at least twice), and the Norton picture's newer verdict, which adds "No Norton subscription in your information we checked"
 <<<<<<< Updated upstream
