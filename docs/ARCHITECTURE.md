@@ -1,6 +1,6 @@
 # Prudence: technical architecture
 
-Last updated: 2026-11-01
+Last updated: 2026-11-03
 
 How the code fits together and why it is built this way, for an engineer joining the project or a judge reading its history. What the product does, feature by feature, is in `_product/spec.md`; the rules for working on it are in `_product/docs/`. Code, database and repository names still say `scam-shield`: the product became Prudence on Oct 28 (`9561016`). Facts here were read from the code on the date above; anything that could not be confirmed in code says (unverified).
 
