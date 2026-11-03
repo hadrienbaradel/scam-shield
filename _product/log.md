@@ -11,12 +11,13 @@ Who = the person, plus the session label or agent name when several sessions run
 | Who | Since | Working on | Touches |
 |---|---|---|---|
 | Vlad · coord | 2026-10-29 15:25 | Coordination session: rules every session shares (this round: Meta registrations by Vlad use vladztools@gmail.com), then the ops program Vlad asked for (Rollbar error tracking, a deployment outside our laptops, one shared Postgres over Tailscale, free uptime monitoring, a deploy-often rule): research and challenge first, one build agent per item once Vlad decides | `_product/log.md`, `CLAUDE.md` (one non-negotiable line), `_product/docs/secrets.md` (Accounts section), `_product/research/ops-services.md` (new), `_product/research.md` (one line) |
-| Hadrien · video | 2026-11-03 23:20 | Cut v3; two bugs from the Nov 3 server log for Vlad | `_product/log.md`, `_product/marketing/video-script.md` |
 
 ## To do
 
 | For | Item | Asked by | Since |
 |---|---|---|---|
+| Vlad | Check something shows the raw "fetch failed" to the senior when Muse Spark cannot be reached (Nov 3, `POST /api/check/image` answered 500 after a 10 s connect timeout to api.meta.ai; `src/routes/mail.js` around line 180): it should say in plain words that the check could not run and to try again in a minute | Hadrien · video | 2026-11-03 |
+| Vlad | Hadrien's laptop logs `pubsub: Pub/Sub 401` every 15 s (Nov 3): the Gmail push pull job has no valid credentials there, so instant checks fall back to the regular sync; harmless for filming, but worth a line in `make doctor` | Hadrien · video | 2026-11-03 |
 <<<<<<< Updated upstream
 | Vlad | Two false Scams on Hadrien's real inbox, both from the rules fallback while Muse Spark was unreachable (Nov 3 gate, `docs/ARCHITECTURE.md`): (1) a notice from one of Apple's own `.apple` addresses judged "not apple.com": the brand check does not know Apple's `.apple` domains; (2) a notice from an authenticated sender whose button label names one domain and whose tracked link goes to another: label-versus-link mismatch from an authenticated sender (Hadrien gives the exact addresses privately). Muse Spark called neither of its 430 Scam | Hadrien · video | 2026-11-03 |
 | Hadrien | Take the Prudence/Scam label off the two genuine emails in your Gmail (the two in Vlad's row above: Put back in the app, or remove the label in Gmail) | Hadrien · video | 2026-11-03 |
@@ -61,6 +62,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-11-03 · Hadrien · video · Cut v3 (2:54): "What Prudence knows" reshot with Linda's people (two notes each to Ethan and Thomas put in her Sent folder through Prudence's Gmail access, nothing sent, recipients on example.com; Prudence lists people written to at least twice), and the Norton picture's newer verdict, which adds "No Norton subscription in your information we checked"
 <<<<<<< Updated upstream
 - 2026-11-03 · Hadrien · video · Narration recorded (Dublin, one take per line) and cut v2 rendered (2:54): the stand-in voice is gone, the senior beat is out until a senior is filmed. The own-inbox line now reads "over four hundred emails judged by Muse Spark, no false scam" (card: 400+ judged by Muse Spark, 0 false Scam) because the Nov 3 gate shows 2 genuine emails called Scam by the rules fallback while Muse was unreachable (filed for Vlad above); the voicemail beat opens with "Both of these scams reached me this week"
 =======
