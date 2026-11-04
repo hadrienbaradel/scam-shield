@@ -39,7 +39,7 @@ Product map: `_product/spec.md` (features, statuses, ideas; read it first), `_pr
 - Commit small and push every commit at once: sessions get cut (network, quotas). The log is the handoff: a finished task becomes one Done line; anything you need from the other person goes under their To do; chat does not count until it is a row.
 - Meta's Muse Spark stays the default model and stays visible in the product and the demo; other providers are development fallbacks.
 - Senior-first UI, designed with Claude Design before it is built (`_product/docs/design.md`): one verdict, one action, plain words.
-- Every new capability ships with its Settings entry (state, one action) and its onboarding step (one question, skippable), in the spec and in the build (`_product/docs/product-process.md`, the settings and onboarding rule).
+- Every new capability ships with its Settings entry (state, one action), its onboarding step (one question, skippable) and its criterion in the protection score on Today, in the spec and in the build (`_product/docs/product-process.md`, the settings and onboarding rule).
 - Demo-first scope: what cannot be shown in the 3-minute video is cut or deferred.
 
 ## Skill routing

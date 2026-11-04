@@ -61,9 +61,9 @@ Findings, in the shortest form that supports a decision. Claims not checked at t
 ## Sources                  URL + accessed date
 ```
 
-## Every capability has a settings entry and an onboarding step
+## Every capability has a settings entry, an onboarding step and a score criterion
 
-When a feature lets Prudence read, send, store or reach something new of the person's (a mailbox, a phone number, a device, a person, a channel like WhatsApp, a voice note), its spec carries two more Behavior lines: what the person sees in Settings (the state in words and one action) and what the onboarding (the welcome) asks or shows for it (one question, skippable). The build ships both with the feature: a capability without its Settings row, or a row without its capability, is not done. When there is nothing to show (a check that keeps nothing), the spec says so in one line, with the reason. What is connected today, row by row and step by step: `_product/specs/settings-and-onboarding.md`.
+When a feature lets Prudence read, send, store or reach something new of the person's (a mailbox, a phone number, a device, a person, a channel like WhatsApp, a voice note), its spec carries three more Behavior lines: what the person sees in Settings (the state in words and one action), what the onboarding (the welcome) asks or shows for it (one question, skippable), and its criterion in the protection score on Today (what counts as on, the step that earns it: `specs/protection-menu.md` line 2b, the table in `public/js/protects.js`). The build ships all three with the feature: a capability without its Settings row or its criterion, or a row without its capability, is not done. When there is nothing to show (a check that keeps nothing), the spec says so in one line, with the reason. What is connected today, row by row and step by step: `_product/specs/settings-and-onboarding.md`.
 
 ## Progressive disclosure
 
@@ -93,7 +93,7 @@ When a feature lets Prudence read, send, store or reach something new of the per
 - [ ] The requester saw concerns, alternatives and a recommendation before the build.
 - [ ] `spec.md` row and `specs/<feature>.md` describe the behavior as shipped; status correct; Demo path current.
 - [ ] Code matches the spec; `npm test` passes; each spec line that can be tested has a test.
-- [ ] A feature that lets Prudence read, send, store or reach something new has its Settings entry (state, one action) and its onboarding step (one question, skippable), in the spec and in the build.
+- [ ] A feature that lets Prudence read, send, store or reach something new has its Settings entry (state, one action), its onboarding step (one question, skippable) and its protection score criterion, in the spec and in the build.
 - [ ] Every doc in the table above that the change touches is updated.
 - [ ] Ideas raised during the work sit in the Ideas table of `spec.md` with status Idea, not lost in chat.
 - [ ] No secret, token or `.env` content in the diff.
