@@ -334,12 +334,25 @@ test("in French, every check and the answer are in French", async () => {
   const out = await investigate({ message: A4.message, locale: "fr-FR", personalContext: FRANCOISE, patternCards: CARDS, first: SCAM, deps: deps({ blocklistKey: true }) });
   const found = out.checks.map((c) => c.found);
   assert.equal(found[0], "chronopost-suivi.test est une adresse d'exemple : aucun registre ne la connaît");
-  assert.match(found[1], /^(Aucun colis Chronopost dans vos commandes ; vos colis arrivent par |Vous avez une commande récente|Prudence ne connaît aucune commande)/);
-  assert.match(found[2], /^(Correspond à l'arnaque connue « |Ne correspond à aucune des \d+ arnaques connues)/);
-  assert.match(found[3], /^(Aucun piratage connu n'a divulgué vos coordonnées bancaires|Un piratage connu a divulgué vos coordonnées bancaires)/);
+  assert.equal(found[1], "Vous avez une commande récente de Fnac livrée par Chronopost (2026-10-22)");
+  assert.equal(found[2], "Ne correspond à aucune des 7 arnaques connues que Prudence suit");
+  assert.equal(found[3], "Un piratage connu a divulgué vos coordonnées bancaires (Bouygues Telecom, 2025)", "her IBAN leaked: the builder's word for bank details");
   assert.equal(found[4], "chronopost-suivi.test est une adresse d'exemple : la liste des sites dangereux n'a pas été consultée");
   assert.equal(out.verdict, "scam");
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
+});
+
+test("a breach counts only for the kind of data it leaked, in the words the context uses: IBAN is bank details, username is not a name", async () => {
+  const ctx = { ...LINDA, breaches: [{ source: "A forum", date: "2023", leaked: ["username", "email"] }, { source: "Bouygues Telecom", date: "2025", leaked: ["name", "address", "IBAN", "BIC"] }] };
+  const run = async (kinds, context = ctx) => {
+    mock.script(ask(...kinds.map((k) => ["known_breach", { data: k }])), answer("be_careful", [{ text: "x", check: 1 }]));
+    return (await investigate({ message: D1.message, personalContext: context, patternCards: CARDS, first: SCAM, deps: deps() })).checks.map((c) => c.found);
+  };
+  assert.deepEqual(await run(["bank details", "email address", "password"]), [
+    "A known breach leaked your bank details (Bouygues Telecom, 2025)", "A known breach leaked your email address (A forum, 2023)", "No known breach leaked your password"]);
+  assert.deepEqual(await run(["name"], { ...LINDA, breaches: [{ source: "A forum", date: "2023", leaked: ["username"] }] }), ["No known breach leaked your name"]);
+  assert.deepEqual(await run(["password", "address"]), ["No known breach leaked your password", "A known breach leaked your home address (Bouygues Telecom, 2025)"]);
+  assert.deepEqual(await run(["password"], LINDA), ["A known breach leaked your password (a retail mailing list, 2024)"], "Linda's old password");
 });
 
 test("every other result is said in plain words: a demo example's landing page, months and years, a company's real or other address, a saved sender, a lookup that fails", async () => {
