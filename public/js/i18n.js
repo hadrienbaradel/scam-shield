@@ -612,3 +612,8 @@ export function ago(iso) {
   if (min < 1440) return say("when_hour", Math.round(min / 60));
   return say("when_day", Math.round(min / 1440));
 }
+
+// What a data breach leaked, in the person's words and language ("bank
+// account number", not "IBAN": the leak_* strings), joined for one line;
+// a kind without a word is shown as it is (breach-exposure.md, line 8).
+export const leakWords = (kinds) => (kinds || []).map((k) => STRINGS[getLang()][`leak_${String(k).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`] || k).join(", ");

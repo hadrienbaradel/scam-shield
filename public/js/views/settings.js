@@ -20,7 +20,7 @@
 // tests/settings-view.test.js imports the pure helpers under Node.
 
 import { api } from "../api.js";
-import { t, ago, getLang, dateTime } from "../i18n.js";
+import { t, ago, getLang, dateTime, leakWords } from "../i18n.js";
 import { $, $$, esc, icon, toast, signOut, focusHeading } from "../ui.js";
 import { protectRows, renderProtects } from "../protects.js";
 
@@ -480,7 +480,8 @@ export async function renderKnows(root) {
         <p class="set-item-sub">${esc(t("k_breach_lookup_sub"))}</p>
         <button class="btn btn-outline" type="button" id="setLookup" aria-describedby="setLookupState">${esc(t(lookup ? "k_breach_lookup_again" : "k_breach_lookup"))}</button>
         ${breaches.map((b) => `<label class="choice"><input type="checkbox" name="breach" value="${esc(b.id)}"${chosen.has(b.id) ? " checked" : ""}>
-          <span class="choice-text"><span class="choice-name">${esc(breachLabel(b))}</span></span></label>`).join("")}
+          <span class="choice-text"><span class="choice-name">${esc(breachLabel(b))}</span>${b.leaked?.length ? `<span class="choice-sub">${esc(t("k_breach_leaked", { what: leakWords(b.leaked) }))}</span>` : ""}</span></label>`).join("")}
+        ${breaches.length ? `<p class="set-item-sub">${esc(t("k_breach_meaning"))}</p>` : ""}
       </section>
       ${lists.filter((l) => l.kind === "sender").map(card).join("")}
       <button class="btn btn-outline btn-big" type="button" id="setRebuild">${esc(t("k_rebuild"))}</button>
