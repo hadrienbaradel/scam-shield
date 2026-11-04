@@ -167,7 +167,7 @@ export default async function mailRoutes(app) {
   app.post("/api/check/text", checkLimit, async (request, reply) => {
     const { from = "", fromName = "", subject = "", body = "", channel = "email" } = request.body || {};
     if (!String(body).trim() && !String(subject).trim()) return reply.code(400).send({ error: "Paste the message text first." });
-    const kind = ["email", "sms", "whatsapp", "social"].includes(channel) ? channel : "email";
+    const kind = ["email", "sms", "whatsapp", "social", "letter", "other"].includes(channel) ? channel : "email";
     const words = String(body).slice(0, 6000);
     const turns = kind === "email" ? null : splitTurns(words, { selfNames: [request.user.name] });
     const chat = turns && conversationInput(turns, { channel: "social" });
