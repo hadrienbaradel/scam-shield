@@ -33,7 +33,7 @@ Prudence needs adult children to find it, and an ad is the fastest way. Meta's m
 
 ## Demo path
 About 15 s for a recut, filmed on the console:
-1. Ads → New ideas, 3 ideas: three cards fill with Muse Image photos, each with its "Checked by Muse Spark" line (one shows a fix).
+1. Ads → New ideas, 3 ideas: three cards fill with Muse Image photos, each with its "Checked by Muse Spark" line (a "fixed …" line shows only when Muse Spark found something: in the Nov 4 live run all four photos passed the first check).
 2. Type "make the mother smile, warmer light" in one card's box: the photo and the headline change.
 3. Publish on Facebook: "In review · ad 1202…".
 4. Open its variant: heyprudence.com with the ad's headline.
@@ -52,6 +52,7 @@ About 15 s for a recut, filmed on the console:
 - `tests/ads-landing.test.js`: the variant's rendering and escaping, `/` unchanged, the route and its counts, early-access attribution.
 - `tests/ads-facebook.test.js`: the Marketing API calls in order (image upload, campaign once, ad set, creative, ad), budget and targeting, review states, pause and resume, missing keys, no token in an error.
 - `tests/ads-routes.test.js` (Postgres): admins only; versions and Undo; publishing once; the variant page escapes its text, 404s an unpublished code for visitors, counts visits but not robots, and attributes an early-access request.
+- Live run, Nov 4, real models on a local database: 3 ideas saved 41 to 56 s after the click, every photo passed its check, an edit by prompt in 38 s, Undo, the variant previewed at 1440 and 390 px, Publish naming the two missing Facebook keys; 4 Muse Image photos ($0.04). It found the words and the photo disagreeing ("Dad's email" over a mother), fixed in review round 2.
 - Manual: one real ad on the Hey Prudence ad account, its number in the log's Done line.
 
 ## Implementation pointers
