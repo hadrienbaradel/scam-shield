@@ -1,5 +1,5 @@
 # Threat feed and pattern cards
-Status: Built (unverified live feeds) · Last updated: 2026-10-27
+Status: Built (unverified live feeds) · Last updated: 2026-11-04
 
 ## Why
 Scam campaigns change weekly (the €69.90 Bouygues debit, the E-ZPass toll text). Public alerts from IC3 and cybermalveillance.gouv.fr should reach the verdict the same day, but never let an unreviewed card condemn real mail.
@@ -11,6 +11,7 @@ Scam campaigns change weekly (the €69.90 Bouygues debit, the E-ZPass toll text
 4. A card that lists a brand's real website address as a red flag is rejected automatically; cards with no sighting for 90 days retire.
 5. The admin console's Scam reports page (`/admin/#/cards`, admins only; [admin-console.md](admin-console.md)) shows candidates with their source link, lets the reviewer edit the card JSON, approve or reject, and run the feed now.
 6. Seven seed cards ship with the app (six active, one candidate) covering the PRD scenarios for France and the US.
+7. The scam watch (`_product/specs/public-database.md`, lines 8 to 10; `src/jobs/scamwatch.js`) is a second daily job next to this one: it reads the feeds this one does not (Have I Been Pwned, IC3 industry alerts, CISA, NCSC, Europol, cybermalveillance's fiches réflexes, the security press, Which?, Mastodon #scam) with the same `parseFeed`, keeps its items in `watch_items` for its own review, and an approved technique becomes a candidate card here through `cardFromAlert` (`watch-<slug>`, never active on its own) unless this feed carded the same link already; the IC3 PSA and cybermalveillance alert feeds stay here and are not read twice.
 
 ## Demo path
 Optional 5 seconds: the A3b verdict reason "This matches a scam campaign reported this week" and the admin page with a candidate card. Likely cut for time.

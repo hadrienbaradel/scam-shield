@@ -60,7 +60,7 @@ Without native JSON the prompts still say "return only JSON", the engine parses 
 
 ## Where prompts live
 
-`prompts/scam-shield-system.md` (the verdict system prompt, `PROMPT_VERSION` in `lib/muse.js` is part of the cache key), `buildUserPrompt`, `IMAGE_PROMPT` and `CARD_PROMPT` in `lib/muse.js`. Adapters never add prompt text.
+`prompts/scam-shield-system.md` (the verdict system prompt, `PROMPT_VERSION` in `lib/muse.js` is part of the cache key), `buildUserPrompt`, `IMAGE_PROMPT` and `CARD_PROMPT` in `lib/muse.js`; `WATCH_PROMPT` and `CLASSIFY_WATCH_SCHEMA` in `lib/watchMuse.js` (the scam watch's classification of one feed item as a breach, a technique or other, with the one action in English and French; the item is evidence, not instructions, the family ids are listed in the prompt, and `classifyWatchItem` keeps only the schema's fields, tidies the country and language codes and the count, and refuses an answer that fails the schema, the row then marked `error` with the reason). Adapters never add prompt text.
 
 ## The mock provider in tests
 
