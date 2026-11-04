@@ -69,7 +69,7 @@ function liveSource(status) {
   return {
     demo: false,
     async load() {
-      const [inbox, scam, people, devices, fresh, progress] = await Promise.all([
+      const [inbox, scam, people, devices, fresh, progress, checks] = await Promise.all([
         api("/api/inbox?box=inbox&fresh=1"),
         api("/api/inbox?box=scam").catch(() => ({ messages: [] })),
         api("/api/guardians").catch(() => ({ guardians: [] })),
@@ -79,6 +79,8 @@ function liveSource(status) {
         api("/api/status").catch(() => null),
         // The lessons finished, for the score's "Start a lesson" (null: not counted as done).
         api("/api/learn/progress").catch(() => null),
+        // The recent checks, for the score's "Try a voice message" (null: not counted as done).
+        api("/api/checks").catch(() => null),
       ]);
       const active = (people.guardians || []).filter((g) => g.status === "active");
       const moved = movedThisWeek(scam.messages);
@@ -87,6 +89,7 @@ function liveSource(status) {
         guardian: active[0] || null,
         guardians: people.guardians || [],
         progress,
+        checks: Array.isArray(checks?.checks) ? checks.checks : null,
         status: fresh?.user ? fresh : status,
         statusOk: Boolean(fresh?.user),
         devices: devices.devices || [],
@@ -265,7 +268,7 @@ function drawToday({ focus = true } = {}) {
     <div id="tdHome" class="v2 screen">
       ${demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : ""}
       <h1 class="screen-title">${esc(greeting())}</h1>
-      ${demo ? "" : renderScore(scoreOf({ status: S.status, devices: S.info.devices, guardians: S.info.guardians, progress: S.info.progress }))}
+      ${demo ? "" : renderScore(scoreOf({ status: S.status, devices: S.info.devices, guardians: S.info.guardians, progress: S.info.progress, checks: S.info.checks }))}
       ${problemBanner(S.problem)}
       ${topCard(n)}
       ${n === 0 && !demo ? choices() : ""}

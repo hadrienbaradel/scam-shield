@@ -1,8 +1,11 @@
 // The menu's tables (_product/specs/protection-menu.md): the six channels of
-// "What Prudence protects", the criteria of the protection score on Today,
-// the four tabs, and the senior's screens with the tab each one lights. One
-// table each, read by main.js (the header and the tab bar), views/today.js
-// and the Settings screen; tests/menu.test.js holds them to the spec. No DOM access at import time: the tests import this
+// "What Prudence protects"; the protection score on Today, its criteria (what
+// the senior can turn on today) and its pending list (what is on the way and
+// has no channel row yet, named on the strip's grey Coming soon line with
+// the Coming soon channels); the four tabs; and the senior's screens with the
+// tab each one lights. One table each, read by main.js (the header and the
+// tab bar), views/today.js and the Settings screen; tests/menu.test.js holds
+// them to the spec. No DOM access at import time: the tests import this
 // module under Node.
 
 import { t, ago } from "./i18n.js";
@@ -72,10 +75,16 @@ function textsRow(devices) {
     : { stateKey: "protect_texts_on_phone", on: true, verbKey: "protect_texts_change", href: "#/settings/phone" };
 }
 
+// Whether this server runs a "server" channel: its flag in /api/status is
+// true (a missing or non-boolean field is false). One test for the list's
+// row, the score's criterion and the strip's Coming soon line, so the three
+// always agree.
+const serverRuns = (c, status) => status?.[c.configuredBy] === true;
+
 // A channel the server runs (status "server"): its row, or null while this
 // server does not run it. The link opens in a new tab (httpsLink).
 function serverRow(c, status) {
-  if (status?.[c.configuredBy] !== true) return null;
+  if (!serverRuns(c, status)) return null;
   const link = httpsLink(status[c.linkBy]);
   return { stateKey: c.states[1], on: true, verbKey: link ? c.verbs[0] : null, href: link, external: Boolean(link) };
 }
@@ -144,23 +153,25 @@ export function renderProtects(rows, { heading = true } = {}) {
 // the strip offers them. Every new capability adds its row here when it
 // ships, next to its Settings row and its onboarding step (the settings and
 // onboarding rule, _product/docs/product-process.md): the strip is where the
-// senior and the demo see the product grow. A Coming soon channel never has
-// a row (the full score must always be reachable), and neither has voice:
-// there is nothing to set up, a voice message can be checked any time.
+// senior and the demo see the product grow. Every built channel has a row;
+// a "server" channel has one that counts only where the server runs it; a
+// Coming soon channel never has one (the full score must always be
+// reachable): it is named on the strip's Coming soon line instead (PENDING,
+// pendingOf, below).
 // A row: key; channel (the CHANNELS key it stands for, when it is one); name
 // and step (i18n keys: what it is, the words of the link that turns it on);
 // href (where that link goes, or a function of ctx for a server's address);
 // on(ctx); available(ctx) when the row counts only on some servers (no
 // available: it always counts). ctx: { status (/api/status), devices
-// (/api/devices), guardians (/api/guardians), progress (/api/learn/progress) },
-// any of them missing or null.
+// (/api/devices), guardians (/api/guardians), progress (/api/learn/progress),
+// checks (/api/checks's list) }, any of them missing or null.
 const serverCriterion = (key) => {
   const c = CHANNELS.find((ch) => ch.key === key);
   return {
     key, channel: key, name: `score_${key}`, step: `score_${key}_step`,
     // Counted only where this server runs it (the same flag as its row in
     // the list), and then on by itself: there is nothing to set up.
-    available: (ctx) => ctx.status?.[c.configuredBy] === true,
+    available: (ctx) => serverRuns(c, ctx.status),
     on: () => true,
     href: (ctx) => httpsLink(ctx.status?.[c.linkBy]),
   };
@@ -173,6 +184,12 @@ export const CRITERIA = Object.freeze([
   // A person who has not accepted the invitation yet cannot answer: not yet.
   { key: "people", name: "score_people", step: "score_people_step", href: "#/settings/people",
     on: (ctx) => Array.isArray(ctx.guardians) && ctx.guardians.some((g) => g?.status === "active") },
+  // One voice message checked: the voice route records its check with the
+  // channel "voice" (src/routes/mail.js, /api/check/voice; the message inside
+  // it says "voice_transcript", the check does not). /api/checks lists the
+  // 100 most recent checks of every kind; null: it could not be read, not on.
+  { key: "voice", channel: "voice", name: "score_voice", step: "score_voice_step", href: "#/check/voice",
+    on: (ctx) => Array.isArray(ctx.checks) && ctx.checks.some((c) => c?.channel === "voice") },
   // One lesson finished (lib/lessons.js summarize: done counts them).
   { key: "learn", name: "score_learn", step: "score_learn_step", href: "#/learn",
     on: (ctx) => Number(ctx.progress?.summary?.done) >= 1 },
@@ -185,10 +202,38 @@ export const CRITERIA = Object.freeze([
   serverCriterion("facebook"),
 ].map((c) => Object.freeze(c)));
 
-// The score for one senior, { on, total, next }: on of the total criteria
-// this server counts, and next, the first of them in order not on yet ({ key, step (its
-// words in the current language), href, external (true: another app or site,
-// opened in a new tab) }), or null at the full score.
+// What is on the way and has no channel row yet, named on the strip's grey
+// Coming soon line after the Coming soon channels, never counted. An item
+// enters this list only when _product/spec.md lists it as Planned, Partial
+// or an idea Vlad or Hadrien asked for, and leaves it the day its criterion
+// counts (protection-menu.md line 2b; the criterion rule is the settings and
+// onboarding rule of _product/docs/product-process.md). Today: Instagram
+// (spec.md, idea "Connect Instagram", Vlad) and voicemail read by itself
+// (spec.md, idea "Voicemail by itself"; line 2b names both). name: its i18n
+// key, like a channel's words on the line (score_pending_<key>).
+export const PENDING = Object.freeze([
+  { key: "instagram", name: "score_pending_instagram" },
+  { key: "voicemail", name: "score_pending_voicemail" },
+].map((p) => Object.freeze(p)));
+
+// The strip's Coming soon line for one senior, in order, the names in the
+// current language ([{ key, name }]): first the channels whose row is Coming
+// soon here (status "soon", or a "server" channel this server does not run:
+// once it runs it, it is a counted criterion and leaves the line by itself),
+// each under its short name score_pending_<key> ("WhatsApp", "Messenger",
+// "calls", not the row's "WhatsApp messages": the line is one short
+// sentence); then PENDING.
+export function pendingOf(ctx) {
+  const status = (ctx || {}).status;
+  const soon = CHANNELS.filter((ch) => ch.status === "soon" || (ch.status === "server" && !serverRuns(ch, status)));
+  return [...soon.map((ch) => ({ key: ch.key, name: t(`score_pending_${ch.key}`) })), ...PENDING.map((p) => ({ key: p.key, name: t(p.name) }))];
+}
+
+// The score for one senior, { on, total, next, pending }: on of the total
+// criteria this server counts; next, the first of them in order not on yet
+// ({ key, step (its words in the current language), href, external (true:
+// another app or site, opened in a new tab) }), or null at the full score;
+// pending, the Coming soon line's items (pendingOf), never counted.
 export function scoreOf(ctx) {
   const c = ctx || {};
   const counted = CRITERIA.filter((row) => !row.available || row.available(c));
@@ -198,6 +243,7 @@ export function scoreOf(ctx) {
     on: counted.filter((row) => row.on(c)).length,
     total: counted.length,
     next: first ? { key: first.key, step: t(first.step), href, external: /^https:/.test(href || "") } : null,
+    pending: pendingOf(c),
   };
 }
 
@@ -213,10 +259,13 @@ const GAUGE_ARC = (() => {
 // a navy-wash track with the count inside, decorative because the title
 // says the same in words; the title ("Protected: 3 of 5", at the full score
 // "All 5 protections on"); the one link to the next step, none at the full
-// score. The link's tap area is the whole strip (.score-step::after): a
-// finger anywhere on it gets the next step. Words, never a percentage, and
-// no colour of danger: a low score is an invitation (design.md).
-export function renderScore({ on, total, next }) {
+// score; under them, when something is pending, the grey line "Coming soon:
+// WhatsApp, Messenger, calls, ..." (it wraps like any sentence; the short
+// names keep it within two lines at Normal at 390 px).
+// The link's tap area is the whole strip (.score-step::after): a finger
+// anywhere on it gets the next step. Words, never a percentage, and no colour
+// of danger: a low score is an invitation (design.md).
+export function renderScore({ on, total, next, pending = [] }) {
   const full = on >= total;
   const count = `${on}/${total}`;
   const title = full ? t("score_full", { total }) : t("score_title", { on, total });
@@ -232,6 +281,8 @@ export function renderScore({ on, total, next }) {
   const link = !full && next?.href
     ? `<a class="score-step" href="${esc(next.href)}"${next.external ? ' target="_blank" rel="noopener"' : ""}>${label}</a>`
     : "";
+  const list = (Array.isArray(pending) ? pending : []).map((p) => String(p?.name || "").trim()).filter(Boolean);
+  const soon = list.length ? `<p class="score-soon">${esc(t("score_soon", { list: list.join(", ") }))}</p>` : "";
   return `<section class="score" aria-labelledby="scoreTitle">
       <svg class="score-gauge" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
         <path class="score-track" d="${GAUGE_ARC}"/>${bar}
@@ -241,6 +292,7 @@ export function renderScore({ on, total, next }) {
         <h2 id="scoreTitle" class="score-title">${esc(title)}</h2>
         ${link}
       </div>
+      ${soon}
     </section>`;
 }
 
