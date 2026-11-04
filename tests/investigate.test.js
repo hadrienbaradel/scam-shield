@@ -351,6 +351,14 @@ test("in French, every check and the answer are in French", async () => {
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
 });
 
+test("every order the context keeps is matched, not only the last five", async () => {
+  const orders = [{ merchant: "Etsy", carrier: "UPS", date: "2026-09-01" },
+    ...Array.from({ length: 7 }, (_, i) => ({ merchant: "Amazon", carrier: "Amazon Logistics", date: `2026-10-${String(10 + i).padStart(2, "0")}` }))];
+  mock.script(ask(["my_orders_and_carriers", { carrier: "UPS", shop: null }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message: { channel: "sms", body: "UPS: your parcel is on its way" }, personalContext: { ...LINDA, orders }, first: CAREFUL, deps: deps() });
+  assert.deepEqual([out.checks[0].found, out.checks[0].flag], ["You have a recent order from Etsy by UPS (2026-09-01)", "ok"], "the oldest of eight orders");
+});
+
 test("a company is found through its brand's aliases, a brand's real and proven address counts before it ever wrote to her, and no sender address means nothing to compare", async () => {
   const run = async (message, company) => {
     mock.script(ask(["my_providers", { company }]), answer("be_careful", [{ text: "x", check: 1 }]));
