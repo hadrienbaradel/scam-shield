@@ -1,5 +1,5 @@
 # What Prudence protects (the menu)
-Status: Partial (design agreed by Vlad 2026-11-04, build started the same night) · Raised by Vlad, 2026-11-04 (his phone screenshot of the menu) · Last updated: 2026-11-04
+Status: Partial (design agreed by Vlad 2026-11-04, every screen built the same night; Built after the VoiceOver pass, the reading check and Hadrien's look) · Raised by Vlad, 2026-11-04 (his phone screenshot of the menu) · Last updated: 2026-11-04
 
 ## Why
 On a phone the top of the app is a wall of links (Today, My email, Check something, Learn, My trusted people, Settings, Sign out) and it says nothing about what Prudence watches: only the email, while the product also checks texts, voice messages and pictures, and WhatsApp, Facebook and calls are on the way. A senior must see in one list what is protected, what needs one step from them, and what is coming, with no dead button anywhere. Design first (`_product/docs/design.md`): the brief and the current screens are in `_product/design/2026-11-04-redesign/`.
@@ -44,7 +44,8 @@ None by default: the video is at its cap. If a slot opens, 3 s of Today's "What 
 Building WhatsApp, Facebook or call protection (their own specs and ideas); the Send-to-Prudence back office (who answers, in how long: `second-opinion.md`); dark mode; a hamburger menu.
 
 ## Acceptance
-- Not started. When built: `tests/menu.test.js` (no database): the rows for a senior with and without a phone, the Coming soon table matching the Built statuses in `_product/spec.md` (a test reads the spec table), every `protect_*` key in EN and FR with no technical word; manual: the canvas frames rebuilt at Normal, Larger and Largest, no horizontal scroll, VoiceOver; `node scripts/docs-check.mjs` 0 errors.
+- Built 2026-11-04: `tests/menu.test.js` (no database: the channel order and statuses, the Coming soon rows against the Built statuses in `_product/spec.md` for the static channels and the server flags for WhatsApp and Messenger, the rows for a senior with and without a phone, every `protect_*` key in EN and FR with no technical word, English/French key parity over the whole dictionary), `tests/today-card.test.js`, `tests/check-view.test.js`, `tests/settings-view.test.js`; every canvas frame rebuilt headless at 390 px at Normal and Largest in EN and FR, no horizontal scroll (the PNGs: `_product/design/2026-11-04-redesign/build/`); `node scripts/docs-check.mjs` 0 errors.
+- Before Built: a VoiceOver pass on a phone, the reading check with one senior (design.md), Hadrien's look at the screens.
 
 ## Implementation pointers
 `public/js/main.js` renderChrome (the header button, the tab bar, the routes `#/messages`, `#/blocked`, `#/check/*`, `#/settings/*`), `public/js/protects.js` (the channel table: key, status Built or Coming soon, state and verb per senior), `public/js/views/today.js` (the cards and the list under the greeting), `public/js/views/check.js` and `public/js/views/settings.js` (new, replacing renderCheck and renderSettings in `pages.js`), `public/js/views/mail.js` (My messages and Blocked), `public/js/views/learn.js` (the home at zero), `public/js/i18n.js` (`protect_*`, `check_*`, `set_*`), `public/styles.css` (row cards, chips, the grey Coming soon row), `src/routes/*` unchanged.

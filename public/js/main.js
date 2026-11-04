@@ -6,7 +6,7 @@ import { t, setLang, getLang } from "./i18n.js";
 import { $, esc, focusHeading, icon, signOut } from "./ui.js";
 import { TABS, screenFor } from "./protects.js";
 import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
-import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
+import { renderLanding, renderOnboarding, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
 import { renderCheckScreen } from "./views/check.js";
 import { renderToday, onTodayEvent } from "./views/today.js";
 import { renderSettings as renderSettingsScreen, renderPeopleScreen, renderPhoneScreen, renderKnows, renderDid, renderDelete } from "./views/settings.js";

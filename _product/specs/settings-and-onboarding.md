@@ -1,5 +1,5 @@
 # Settings and onboarding (the welcome)
-Status: Planned · Raised by Vlad, 2026-10-31 · Last updated: 2026-10-31
+Status: Partial (the Settings screen built 2026-11-04 in the redesign round, `protection-menu.md`; the welcome flow still Planned) · Raised by Vlad, 2026-10-31 · Last updated: 2026-11-04
 
 ## Why
 A frightened 70-year-old must see in one place, in plain words, everything Prudence is connected to and knows, and change any of it with one button; and the first sign-in must set up the few things that make Prudence useful (the email, a trusted person, the letters) one question at a time. Today the welcome is four form-like steps and Settings is a long page of controls: neither says what is connected, and Sign out sits in the top bar. On video it is the way into "What Prudence knows about you" (0:27–0:57).
@@ -61,6 +61,7 @@ New backend capabilities, filed as Ideas in `_product/spec.md`: WhatsApp knowing
 - Manual, before Built: each canvas frame rebuilt at 390 × 844 at Normal, Larger and Largest, EN and FR, nothing cut, no horizontal scroll, the tab bar never over a button; keyboard only and VoiceOver; `/plan-design-review` on the canvas before the build and `/design-review` after (`_product/docs/design.md`); a reading check with one senior outside the team; `node scripts/docs-check.mjs` 0 errors; the lines that describe today's welcome and Settings move with it (`specs/senior-verdict-screen.md` 9, `specs/gmail-connection-and-scanning.md` 2, `specs/privacy-and-account.md` 4–5, `specs/life-context.md` 8).
 
 ## Implementation pointers
+- Built as `public/js/views/settings.js` (the screens: Settings, people, phone, what Prudence knows, what it did, delete; pure helpers tested in `tests/settings-view.test.js`) and `public/js/protects.js` (the channel rows) on 2026-11-04; the plan below named `public/js/setup.js`.
 - `public/js/setup.js` (new, no DOM): the one list of what Prudence is connected to or knows: each item's row (state words from `/api/status`, `/api/guardians`, `/api/devices`, `/api/context`, `/api/audit`), its welcome step if any, whether losing it brings the welcome back; Settings and the welcome both read it, so a new capability is one entry here.
 - `public/js/views/settings.js` (new; `renderSettings` leaves `public/js/views/pages.js`): the rows, `#/settings/knows`, `#/settings/history`, `#/settings/stop`, line 4's confirmation.
 - `public/js/views/welcome.js` (new; `renderOnboarding` leaves `pages.js`): the steps, their done states, Skip for now, Listen (`speak()` in `public/js/ui.js`).

@@ -1373,7 +1373,6 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .msg-line { font-size: var(--t19); line-height: 1.35; overflow-wrap: anywhere; }
 
 /* Interim: the old Settings page ends with Sign out (js/main.js withSignOut). */
-.settings-signout { margin-top: 6px; }
 
 /* --- redesign: today (today.js, card.js) --- */
 /* Today (frames 1a to 1d) and the shared verdict card with its "Still

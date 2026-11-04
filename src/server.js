@@ -80,6 +80,15 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
     if (!request.user && !/^Bearer\s/i.test(request.headers.authorization || "")) request.user = await loadUser(request);
   });
 
+  // Set before the route plugins load: `await app.register` finalises each
+  // child context at once, so a handler set after them would not reach their
+  // routes and a 500 would send Fastify's default body, raw error text included.
+  app.setErrorHandler((err, request, reply) => {
+    request.log.error(err);
+    const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+    if (status >= 500) reportError(err, request);
+    reply.code(status).send({ error: status === 500 ? "Something went wrong on our side. To be safe, do not click anything in the message." : err.message });
+  });
   await app.register(authRoutes);
   await app.register(accountRoutes);
   await app.register(mailRoutes);
@@ -92,12 +101,6 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(messengerRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
 
-  app.setErrorHandler((err, request, reply) => {
-    request.log.error(err);
-    const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
-    if (status >= 500) reportError(err, request);
-    reply.code(status).send({ error: status === 500 ? "Something went wrong on our side. To be safe, do not click anything in the message." : err.message });
-  });
   return app;
 }
 
