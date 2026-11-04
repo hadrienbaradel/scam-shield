@@ -115,6 +115,9 @@ test("cleanHref keeps the scheme, host and path; credentials, an address and a t
   assert.equal(cleanHref("https://a:b@evil.example/x"), "https://evil.example/x");
   assert.equal(cleanHref("https://evil.example/verify/linda@gmail.com"), "https://evil.example/verify/[someone]@gmail.com");
   assert.equal(cleanHref("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9e"), "https://evil.example/t/[token]");
+  assert.equal(cleanHref("https://evil.example/verify-linda@gmail.com-now"), "https://evil.example/[someone]@gmail.com-now", "an address inside a segment (a dash belongs to the local part, as in the body)");
+  assert.equal(cleanHref("https://evil.example/u/linda%40gmail.com/x"), "https://evil.example/u/[someone]@gmail.com/x", "a percent-encoded address");
+  assert.equal(cleanHref("https://evil.example/caf%C3%A9/menu%ZZ"), "https://evil.example/caf%C3%A9/menu%ZZ", "encoding that hides no address stays as written, bad encoding too");
   assert.equal(cleanHref("https://evil.example/s/aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRva2Vu"), "https://evil.example/s/[token]", "a base64 run");
   assert.equal(cleanHref("https://evil.example/fully-remote-integrated-marketing-manager-position/invite/REDACTED"),
     "https://evil.example/fully-remote-integrated-marketing-manager-position/invite/REDACTED", "words with dashes and a short id stay");
@@ -133,6 +136,9 @@ test("validateEntry refuses a link that redaction would change, or link text wit
   assert.ok(validateEntry(link("https://a:b@evil.example/x"), ctx).includes(LINK_ERROR), "credentials");
   assert.ok(validateEntry(link("https://evil.example/verify/linda@gmail.com"), ctx).includes(LINK_ERROR), "an address in the path");
   assert.ok(validateEntry(link("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9e"), ctx).includes(LINK_ERROR), "a token in the path");
+  assert.ok(validateEntry(link("https://evil.example/verify-linda@gmail.com-now"), ctx).includes(LINK_ERROR), "an address inside a segment");
+  assert.ok(validateEntry(link("https://evil.example/u/linda%40gmail.com"), ctx).includes(LINK_ERROR), "a percent-encoded address");
+  assert.deepEqual(validateEntry(link("https://evil.example/caf%C3%A9/menu"), ctx), [], "encoding that hides no address passes");
   assert.deepEqual(validateEntry(link("https://evil.example/verify/[someone]@gmail.com/t/[token]"), ctx), [], "the redacted form passes");
   assert.ok(validateEntry(link("https://chronopost-colis.test/pay", "reply to linda@gmail.com"), ctx).includes("link text carries personal data"));
   assert.deepEqual(validateEntry(link("https://chronopost-colis.test/pay", "reply to [someone]@gmail.com"), ctx), [], "the redacted form passes");
