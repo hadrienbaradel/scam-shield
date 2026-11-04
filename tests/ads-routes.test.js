@@ -458,6 +458,44 @@ test("the one campaign is created on the first publish, stored, and reused, even
   assert.deepEqual((await list()).ads.map((x) => x.external.campaignId), ["cmp-1", "cmp-1", "cmp-1"]);
 });
 
+test("a publish that made the campaign and then failed keeps that campaign: the next publish reuses it, no second one", opts, async () => {
+  const failing = fakeNetwork({
+    async publish() {
+      throw Object.assign(new Error("Facebook refused the ad at the creative step: (#100) the photo is too small"), { step: "creative", campaignId: "cmp-9", campaignCreated: true, leftovers: [] });
+    },
+  });
+  useDeps({ network: failing });
+  const [id] = await drafts(1);
+  await post(`/api/admin/ads/${id}/publish`);
+  await adsIdle();
+  const ad = await adOf(id);
+  assert.deepEqual([ad.status, ad.error], ["draft", "Facebook refused the ad at the creative step: (#100) the photo is too small"]);
+  assert.deepEqual(await many("SELECT network, external_id FROM ad_campaigns"), [{ network: "facebook", external_id: "cmp-9" }]);
+
+  const { network } = useDeps();
+  await post(`/api/admin/ads/${id}/publish`);
+  await adsIdle();
+  assert.equal(network.calls.publish[0].campaignId, "cmp-9", "the kept campaign");
+  assert.equal((await adOf(id)).external.campaignId, "cmp-9");
+  assert.equal((await one("SELECT count(*)::int AS n FROM ad_campaigns")).n, 1);
+
+  // A failure before the campaign existed stores nothing.
+  await pool.query("TRUNCATE ad_campaigns");
+  useDeps({ network: fakeNetwork({ async publish() { throw Object.assign(new Error("Facebook refused the photo"), { step: "image", campaignCreated: false }); } }) });
+  const [other] = await drafts(1);
+  await post(`/api/admin/ads/${other}/publish`);
+  await adsIdle();
+  assert.equal((await one("SELECT count(*)::int AS n FROM ad_campaigns")).n, 0);
+});
+
+test("the budget label is read from the network on every list (it changes once the ad account's currency is known)", opts, async () => {
+  let label = "5 a day · 7 days";
+  useDeps({ network: fakeNetwork({ settings: () => ({ budgetLabel: label }) }) });
+  assert.equal((await list()).network.budgetLabel, "5 a day · 7 days");
+  label = "€5 a day · 7 days";
+  assert.equal((await list()).network.budgetLabel, "€5 a day · 7 days");
+});
+
 test("Pause stops a live ad and Resume restarts it; Refresh reads Meta's review and reasons; a network failure changes nothing", opts, async () => {
   const { network } = useDeps();
   const id = await published();

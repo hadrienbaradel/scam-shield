@@ -300,6 +300,10 @@ export default async function adsRoutes(app, opts = {}) {
           });
           if (paused) await store.setRunning(ad.id, false);
         } catch (e) {
+          // The campaign was made before a later step failed: keep it, so the next publish reuses it.
+          if (e?.campaignCreated && e?.campaignId) {
+            await store.saveCampaign(net.name, String(e.campaignId)).catch((err) => request.log.error({ err }, "ad campaign not stored"));
+          }
           await store.publishFailed(ad.id, plainError(e, `${net.label} refused the ad.`));
         }
       }));
