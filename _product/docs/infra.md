@@ -48,7 +48,7 @@ Three jobs, each one a gate:
 
 - `node`: Node from `.nvmrc` with the npm cache, `npm ci`, then `npm audit --audit-level=high` (a high or critical advisory in any
   installed package fails the run; moderate and low ones are printed, not gated), the dev compose Postgres
-  (`docker compose -f .infra/dev/docker-compose.yml up -d --wait`, `PG_USER=postgres`), `make check` (master key not tracked, all
+  (`docker compose -f .infra/dev/docker-compose.yml up -d --wait`, `PG_USER=postgres`), `make check` (docs-check and the README numbers check, master key not tracked, all
   tests, line coverage >= 93%), `make score`, `coverage/lcov.info` as an artifact. Nov 4: no high or critical advisory; three
   moderate ones (`glob` and `minimatch` under `@fastify/static`), whose only offered fix is a downgrade to `@fastify/static` 6.
 - `secrets`: gitleaks 8.30.1 (`gitleaks/gitleaks-action`, the default rules plus `.gitleaks.toml`) on a checkout with the whole

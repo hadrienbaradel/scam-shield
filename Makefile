@@ -98,7 +98,7 @@ coverage: deps ## Tests with coverage: table on screen, coverage/lcov.info for t
 	@$(DOCTOR) testdb --quiet
 	@$(NPM) run coverage
 
-docs-check: ## Product docs in sync: spec links, statuses, keywords, indexes, CLAUDE.md links, stale references
+docs-check: ## Product docs in sync: spec links, statuses, keywords, indexes, CLAUDE.md links, stale references, conflict markers
 	@node scripts/docs-check.mjs
 
 lessons-check: ## Lesson files in data/lessons: the YAML format, EN/FR twins, demo cases (_product/specs/micro-learning.md)

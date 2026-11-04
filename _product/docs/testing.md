@@ -13,7 +13,7 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 | `make check` | What CI runs: `config/master.key` not tracked by git, Postgres required (no silent skip), every suite, line coverage at or above the threshold, then the README's coverage within one point of this run's. |
 | `make readme-numbers` | Re-measures the numbers at the top of `README.md` (tests, coverage, seed cases, Android tests, commits, CI runs) and its badges, from a green run. |
 | `make score` | The PRD pass criteria on the 37 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`), `make score-open` through Muse Spark Open, Meta's open weights, on Baseten (`BASETEN_API_KEY`; `_product/docs/llm.md`). |
-| `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice. Part of the definition of done. |
+| `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice, committed conflict markers. Part of the definition of done. |
 | `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, 1 to 3 lines per say, exactly three questions with one right answer, texts under 140 characters, `**bold**` only, EN/FR twins with the same steps, demo cases that exist. Part of `make check`. |
 
 ## Coverage threshold: 93% of lines, ratcheted
