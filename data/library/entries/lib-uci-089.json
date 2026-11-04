@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-089",
+  "family": "romance",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Sexy message from a woman asking for your fantasies",
+  "ask": "Reply by text at a premium charge of £1.50",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "cmon babe, make me horny, *turn* me on! Txt me your fantasy now babe -) Im hot, sticky and need you now. All replies cost £1.50. 2 cancel send STOP",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

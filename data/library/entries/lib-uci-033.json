@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-033",
+  "family": "marketplace",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Great polyphonic ringtones for all mobiles sent direct to you",
+  "ask": "Reply with POLY and title to 8007 costing 300p",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Gr8 Poly tones 4 ALL mobs direct 2u rply with POLY TITLE to 8007 eg POLY BREATHE1 Titles: CRAZYIN, SLEEPINGWITH, FINEST, YMCA :getzed.co.uk POBox365O4W45WQ 300p",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

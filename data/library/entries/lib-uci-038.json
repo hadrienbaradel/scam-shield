@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-038",
+  "family": "romance",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Cheap January sale for adult chat line",
+  "ask": "Call a premium-rate phone number",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "January Male Sale! Hot Gay chat now cheaper, call 08709222922. National rate from 1.5p/min cheap to 7.8p/min peak! To stop texts call 08712460324 (10p/min)",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-024",
+  "family": "job",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "mjzgroup",
+  "lure": "Earn money as a male gigolo for women",
+  "ask": "Reply ONCALL to the premium-rate number to join",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "GSOH? Good with SPAM the ladies?U could b a male gigolo? 2 join the uk's fastest growing mens club reply ONCALL. mjzgroup. 08714342399.2stop reply STOP. msg@£1.50rcvd",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

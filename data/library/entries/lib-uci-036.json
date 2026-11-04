@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-036",
+  "family": "renewal",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Says 12 pounds was taken by number 88066",
+  "ask": "Text HELP to the number",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "FROM 88066 LOST £12 HELP",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

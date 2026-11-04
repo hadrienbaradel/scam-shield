@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-043",
+  "family": "renewal",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Orange",
+  "lure": "Free upgrade to latest colour camera mobile with unlimited calls",
+  "ask": "Call the freefone number to claim the upgrade",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Had your mobile 11mths ? Update for FREE to Oranges latest colour camera mobiles & unlimited weekend calls. Call Mobile Upd8 on freefone 08000839402 or 2StopTx",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

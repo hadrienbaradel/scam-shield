@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-018",
+  "family": "utility",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Orange",
+  "lure": "Half-price Orange line rental for 12 months with 400 minutes",
+  "ask": "Call MobileUpd8 on 08000839402 to take the offer",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Update_Now - 12Mths Half Price Orange line rental: 400mins...Call MobileUpd8 on 08000839402 or call2optout=J5Q",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

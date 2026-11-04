@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-009",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Your £900 prize from yesterday is still awaiting collection",
+  "ask": "Call 09061702893 now to claim the prize",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "URGENT This is our 2nd attempt to contact U. Your £900 prize from YESTERDAY is still awaiting collection. To claim CALL NOW 09061702893. ACL03530150PM",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

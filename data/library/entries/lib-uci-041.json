@@ -1,0 +1,31 @@
+{
+  "id": "lib-uci-041",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "You have a voucher offer to claim this week",
+  "ask": "Go to the linked website on your PC to claim",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Dear Voucher Holder, To claim this weeks offer, at you PC please go to http://www.e-tlp.co.uk/expressoffer Ts&Cs apply. To stop texts, txt STOP to 80062",
+    "links": [
+      {
+        "text": null,
+        "href": "http://www.e-tlp.co.uk/expressoffer"
+      }
+    ]
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

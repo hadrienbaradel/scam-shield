@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-016",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "SavaMob",
+  "lure": "Claim £150 worth of discount vouchers today",
+  "ask": "Text YES to 85023 to claim the offer",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Today's Offer! Claim ur £150 worth of discount vouchers! Text YES to 85023 now! SavaMob, member offers mobile! T Cs 08717898035. £3.00 Sub. 16 . Unsub reply X",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

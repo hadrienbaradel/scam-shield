@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-048",
+  "family": "renewal",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Channel U",
+  "lure": "Your ordered ringtone will arrive within 24 hours",
+  "ask": "Check terms and conditions on Teletext page 750",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "You will recieve your tone within the next 24hrs. For Terms and conditions please see Channel U Teletext Pg 750",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

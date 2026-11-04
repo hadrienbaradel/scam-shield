@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-044",
+  "family": "renewal",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Auction update says leading bid is 151",
+  "ask": "Text OUT or call customer care to pause auction",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "The current leading bid is 151. To pause this auction send OUT. Customer Care: 08718726270",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

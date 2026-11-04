@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-002",
+  "family": "renewal",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "SPTV",
+  "lure": "Trivia question about hockey teams",
+  "ask": "Reply to answer the quiz or to stop messages",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "SMS. ac Sptv: The New Jersey Devils and the Detroit Red Wings play Ice Hockey. Correct or Incorrect? End? Reply END SPTV",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

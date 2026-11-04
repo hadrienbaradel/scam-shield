@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-045",
+  "family": "delivery",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "You have a message waiting for collection",
+  "ask": "Call the number provided to collect it",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "We currently have a message awaiting your collection. To collect your message just call 08718723815.",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-098",
+  "family": "account",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Unclear message fragment with no clear context",
+  "ask": "Text the word OK on mobile phone and send",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "accordingly. I repeat, just text the word ok on your mobile phone and send",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

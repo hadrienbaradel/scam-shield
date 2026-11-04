@@ -1,0 +1,26 @@
+{
+  "id": "lib-uci-035",
+  "family": "marketplace",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "1stchoice.co.uk",
+  "lure": "Place as many free requests as you wish",
+  "ask": "Call 08707808226 for more information",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Dont forget you can place as many FREE Requests with 1stchoice.co.uk as you wish. For more Information call 08707808226.",
+    "links": []
+  },
+  "first_seen": "2011-01-01",
+  "last_seen": "2011-01-01",
+  "source": {
+    "id": "uci-sms",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}
