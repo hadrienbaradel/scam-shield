@@ -1,7 +1,9 @@
 # Release: a pushed vX.Y.Z tag (make release VERSION=vX.Y.Z, _product/docs/git.md, Releases) becomes a
 # GitHub release with generated notes and the Android companion's debug APK, built as ci.yml builds it.
 # No tests here: make release only tags a commit whose CI run passed. The build runs with a read-only
-# token; only the publish job, which runs no project code, can write. Third-party actions are pinned.
+# token; only the publish job, which runs no project code, can write. As in ci.yml, GitHub's own actions
+# (actions/*) ride their major tag, third-party ones are pinned to a commit, and the build steps use the
+# same versions as CI's Android job (tests/release.test.js checks it: bump both files together).
 name: Release
 
 on:
@@ -17,20 +19,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      # v5, not v6: v6's cache is a proprietary component under Gradle's terms of use (as in ci.yml).
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Build the debug APK, named after the tag
         working-directory: android
         run: |
           chmod +x gradlew && ./gradlew --no-daemon assembleDebug
           mv app/build/outputs/apk/debug/*.apk "../prudence-${GITHUB_REF_NAME}-android-debug.apk"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-apk
           path: prudence-${{ github.ref_name }}-android-debug.apk
@@ -44,7 +47,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-apk
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2

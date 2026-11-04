@@ -65,7 +65,7 @@ weekly) has `open-pull-requests-limit: 0`, which turns version updates off so no
 judges look (Nov 5-8); security updates are not bound by it. Raise the limit after judging. Once the repo is public, Hadrien (admin;
 Vlad's account has push rights only) turns on CodeQL default setup, secret-scanning push protection, and Dependabot alerts with
 security updates. Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
-`.github/workflows/release.yml` runs on a pushed `v*` tag (`make release`): job `apk`, on a read-only token, builds as CI does (JDK 17, the Gradle cache, `./gradlew assembleDebug`); job `publish`, the only one that can write, publishes a GitHub release with generated notes and `prudence-<tag>-android-debug.apk`; its third-party actions are pinned to commit SHAs, the version in a comment (`_product/docs/git.md`, Releases).
+`.github/workflows/release.yml` runs on a pushed `v*` tag (`make release`): job `apk`, on a read-only token, builds as the `android` job does (JDK 17, the Gradle cache, `./gradlew assembleDebug`) with the same action versions and pins, which `tests/release.test.js` holds equal (a bump touches both files); job `publish`, the only one that can write, publishes a GitHub release with generated notes and `prudence-<tag>-android-debug.apk` through `softprops/action-gh-release`, pinned like the other third-party actions (`_product/docs/git.md`, Releases).
 
 ## Codespaces
 

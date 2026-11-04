@@ -47,11 +47,17 @@ test("third-party actions in the release workflow are pinned to a full commit SH
   }
 });
 
-test("the release APK is built with the same JDK and Gradle setup as CI's Android job", () => {
-  const ci = workflow("ci.yml").jobs.android;
-  const release = workflow("release.yml").jobs.apk;
-  assert.deepEqual(step(release.steps, "actions/setup-java@").with, step(ci.steps, "actions/setup-java@").with);
-  assert.ok(step(ci.steps, "gradle/actions/setup-gradle@") && step(release.steps, "gradle/actions/setup-gradle@"), "the Gradle cache");
+test("the release APK is built with the same actions, versions and JDK as CI's Android job", () => {
+  const ci = workflow("ci.yml").jobs.android.steps;
+  const apk = workflow("release.yml").jobs.apk.steps;
+  for (const { uses } of apk.filter((s) => s.uses)) {
+    const name = uses.split("@")[0];
+    const twin = ci.find((s) => s.uses?.split("@")[0] === name);
+    assert.ok(twin, `${name} is used by CI's Android job too`);
+    assert.equal(uses, twin.uses, `${name}: release.yml and ci.yml use the same version (bump both together)`);
+  }
+  assert.ok(step(apk, "gradle/actions/setup-gradle@"), "the Gradle cache");
+  assert.deepEqual(step(apk, "actions/setup-java@").with, step(ci, "actions/setup-java@").with);
 });
 
 test("make release refuses a malformed version before touching git or GitHub", async () => {
