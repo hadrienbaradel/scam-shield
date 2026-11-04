@@ -12,6 +12,7 @@ import { breaker } from "../lib/muse.js";
 import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
 import { registrationDate as registrationDate2 } from "../src/links/resolver.js";
+import { contextFor, liveCards, runCheck } from "../src/sync/checker.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
 
@@ -762,6 +763,19 @@ test("a look that cannot run answers 502 with one plain sentence, never the mode
   assert.equal(res.statusCode, 502);
   assert.deepEqual(res.json(), { error: "investigate_failed", message: "Prudence could not look closer right now. Please try again in a minute." });
   assert.ok(!res.body.includes("exploded"));
+});
+
+test("signed in: the look reads the person's context and the cards through the very helper the first check uses, so both see the same", withDb, async () => {
+  const user = await makeUser({ email: "linda.same@example.test" });
+  await pool.query("INSERT INTO contexts (user_id, data) VALUES ($1, $2)", [user.id, LINDA]);
+  const message = { channel: "email", from: "statements@chase.com", fromName: "Chase", subject: "Statement", body: "Your statement is ready.", links: [], auth: "spf=pass dkim=pass dmarc=pass" };
+  mock.script({ verdict: "safe", confidence: 0.9, headline: "Safe.", reasons: [{ text: "From Chase.", evidence: "sender" }], action: "do_nothing", action_text: "Nothing to do.",
+    real_company_says: null, impersonated_brand: null, scam_type: null, matched_pattern_ids: [], escalate_to_guardian: false, guardian_summary: null, language: "en" });
+  const viaCheck = await runCheck({ user, message });
+  const viaLook = await contextFor(user, messageFrom(message));
+  assert.deepEqual(viaLook.ctx, viaCheck.ctx, "the same context, earlier mail from the organisation included");
+  assert.deepEqual(viaLook.cards, await liveCards());
+  assert.equal(viaLook.ctx.userName, "Linda");
 });
 
 test("signed in: the look uses the check's own first verdict, the person's context, and stores nothing", withDb, async () => {

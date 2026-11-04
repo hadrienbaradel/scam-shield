@@ -10,8 +10,10 @@ import { withGuardians } from "../context/builder.js";
 import { inspectMessageLinks } from "../links/resolver.js";
 
 export async function loadContext(user) {
-  const row = await one("SELECT data FROM contexts WHERE user_id = $1", [user.id]);
-  const guardians = await many("SELECT * FROM guardianships WHERE senior_id = $1", [user.id]);
+  const [row, guardians] = await Promise.all([
+    one("SELECT data FROM contexts WHERE user_id = $1", [user.id]),
+    many("SELECT * FROM guardianships WHERE senior_id = $1", [user.id]),
+  ]);
   return withGuardians(row?.data || emptyContext(user.name || ""), guardians);
 }
 
@@ -43,12 +45,22 @@ export async function seenBeforeFor(userId, from, messageId = null) {
 export const needsLandingLook = (verdict, message, resolveLinks = false) =>
   !resolveLinks && verdict?.verdict === "be_careful" && (message.links || []).some((l) => /^https?:\/\//i.test(l.href || ""));
 
+// What a check reads about the person for one message: their context with the
+// earlier mail from the same organisation, and the live pattern cards, fetched
+// at once. runCheck and Look closer (src/routes/investigate.js) both read them
+// here, so a closer look's rules see what the first check's rules saw.
+export async function contextFor(user, message) {
+  const [base, seenBefore, cards] = await Promise.all([loadContext(user), seenBeforeFor(user.id, message.from, message.id || null), liveCards()]);
+  return { ctx: { ...base, seenBefore }, cards };
+}
+// The links' facts for one message (age, listings, and where they land when resolve is on), for both too.
+export const linkFactsFor = (message, ctx, { resolve = false } = {}) => inspectMessageLinks(message, ctx, { resolve });
+
 export async function runCheck({ user, message, threadHistory = [], resolveLinks = false }) {
   // (resolveLinks: follow every link, when the person asks)
-  const ctx = { ...(await loadContext(user)), seenBefore: await seenBeforeFor(user.id, message.from, message.id || null) };
-  const cards = await liveCards();
+  const { ctx, cards } = await contextFor(user, message);
   const judge = async (resolve) => {
-    const linkInspection = await inspectMessageLinks(message, ctx, { resolve });
+    const linkInspection = await linkFactsFor(message, ctx, { resolve });
     const verdict = await checkMessage({
       locale: user.locale || "en-US", message, personalContext: ctx, patternCards: cards,
       threadHistory, mockLinkInspection: linkInspection, linkInspection,

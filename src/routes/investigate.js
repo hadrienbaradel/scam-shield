@@ -19,8 +19,8 @@ import { requireUser } from "../auth.js";
 import { one } from "../db/pool.js";
 import { investigate } from "../../lib/investigate.js";
 import { toolsConfigured } from "../../lib/llm/index.js";
-import { loadContext, liveCards, needsLandingLook, seenBeforeFor } from "../sync/checker.js";
-import { inspectMessageLinks, registrationDate, resolveLink, urlhausHost, urlhausVerdict, urlhausState } from "../links/resolver.js";
+import { contextFor, linkFactsFor, needsLandingLook } from "../sync/checker.js";
+import { registrationDate, resolveLink, urlhausHost, urlhausVerdict, urlhausState } from "../links/resolver.js";
 import { linksFromText } from "../google/gmail.js";
 import { config } from "../config.js";
 import { demoExample, demoProfile, demoVerdict, DEMO_CARDS } from "./demo.js";
@@ -96,13 +96,14 @@ export default async function investigateRoutes(app) {
     if (!check) return reply.code(404).send({ error: "check_not_found", message: "Check this message first." });
     const message = messageFrom(provided);
     if (!message.body.trim() && !message.subject.trim()) return reply.code(400).send({ error: "message_required", message: "Check this message first." });
-    // The context and the link facts of the first check (runCheck in src/sync/checker.js):
-    // the links' age and listings, and where they land when the check looked.
-    const ctx = { ...(await loadContext(request.user)), seenBefore: await seenBeforeFor(request.user.id, message.from, null) };
-    const linkInspection = await inspectMessageLinks(message, ctx, { resolve: needsLandingLook(check.verdict, message) });
+    // The context, the cards and the link facts through the very helpers runCheck uses
+    // (src/sync/checker.js): the links' age and listings, and where they land when the
+    // first check looked (a Be careful verdict with links had its landing look).
+    const { ctx, cards } = await contextFor(request.user, message);
+    const linkInspection = await linkFactsFor(message, ctx, { resolve: needsLandingLook(check.verdict, message) });
     return look(request, reply, {
       message, threadHistory: historyFrom(threadHistory), linkInspection, locale: request.user.locale || "en-US",
-      personalContext: ctx, patternCards: await liveCards(), first: check.verdict, deps: investigateDeps(),
+      personalContext: ctx, patternCards: cards, first: check.verdict, deps: investigateDeps(),
     });
   });
 
