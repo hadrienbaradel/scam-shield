@@ -205,6 +205,27 @@ test("a landing page is clean only on the claimed brand's own site or the authen
   assert.deepEqual(readPage("asks for card details"), { title: "", password: false, card: true });
 });
 
+test("a link the server's inspection already followed for this look is never visited twice; one it did not follow is walked", async () => {
+  const opened = [];
+  const resolveLink = async (href) => { opened.push(href); return { final_url: "https://walked.example.net/", redirects: [], page_shows: null }; };
+  const message = { channel: "sms", body: "See https://bit.ly/k1 https://gone.example.org/ https://fresh.example.com/x",
+    links: [{ href: "https://bit.ly/k1" }, { href: "https://gone.example.org/" }, { href: "https://fresh.example.com/x" }] };
+  const linkInspection = {
+    "https://bit.ly/k1": { final_url: "https://landing.example.net/pay", redirects: ["https://landing.example.net/pay"], page_shows: 'Page titled "Pay", asks for card details' },
+    "https://gone.example.org/": { dns_status: "NXDOMAIN" },
+    "https://fresh.example.com/x": { domain_age_days: 400 },
+  };
+  mock.script(ask(["where_link_goes", { domain: "bit.ly" }], ["where_link_goes", { domain: "gone.example.org" }], ["where_link_goes", { domain: "fresh.example.com" }]),
+    answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, linkInspection, deps: deps({ resolveLink }) });
+  assert.deepEqual(out.checks.map((c) => c.found), [
+    'Where the link goes: landing.example.net (through 1 other address), a page titled "Pay" that asks for card details',
+    "The link to gone.example.org does not open: no website answers at that address",
+    "Where the link goes: walked.example.net",
+  ], "the server's facts in the usual words, never \"(example)\"");
+  assert.deepEqual(opened, ["https://fresh.example.com/x"], "only the link the inspection did not follow is walked");
+});
+
 test("a link that would unsubscribe is never opened, an unknown website is said plainly, and a page title is evidence that cannot close its block", async () => {
   const opened = [];
   const message = { channel: "email", from: "news@shop.example.org", subject: "News", body: "Hello",
