@@ -221,9 +221,10 @@ export function createMessengerChannel({
   }
 
   // One reply for a group of items: { text, lang, verdict? }. Texts are the
-  // other person's turns; a picture gives one turn, a chat's turns, or a
-  // profile's facts; a voice message gives its words. The last turn is
-  // judged, the earlier ones are its thread history.
+  // other person's turns; a picture gives one turn, a chat's turns, a
+  // profile's facts, or a list of conversations (an inbox, judged as its
+  // own message with its rows); a voice message gives its words. The last
+  // turn is judged, the earlier ones are its thread history.
   async function answer(items, lang = "en") {
     const W = () => wordsFor(lang);
     const readable = items.filter((i) => (i.type === "text" && i.text.trim()) || ((i.type === "image" || i.type === "audio") && i.media?.url));
@@ -244,7 +245,9 @@ export function createMessengerChannel({
         if (!IMAGE_TYPES.includes(mime)) continue;
         const read = await extractFromImage({ imageBase64: buffer.toString("base64"), mime });
         if (read.kind === "conversation" && read.turns?.length) turns.push(...read.turns);
-        else if (read.kind === "profile") {
+        else if (read.kind === "inbox" && read.isMessage) {
+          turns.push({ who: "them", name: read.message.fromName || "", text: read.message.body, links: read.message.links, inbox: read.message });
+        } else if (read.kind === "profile") {
           profile = { platform: read.platform || profile?.platform || null, facts: [...(profile?.facts || []), ...(read.profileFacts || [])].slice(0, 12) };
           profileMessage = read.message;
         } else if (read.isMessage && read.message?.body) {
@@ -265,8 +268,8 @@ export function createMessengerChannel({
     const words = [...turns.map((t) => t.text), ...(profile?.facts || [])].join("\n");
     lang = detectLanguage(words, "");
     const last = turns.at(-1);
-    const message = last
-      ? { channel: "messenger", from: "", fromName: last.who === "you" ? "You" : last.name || "", subject: "", body: last.text.slice(0, 6000), links: last.links || linksFromText(last.text), auth: "" }
+    const message = last?.inbox ? { ...last.inbox, channel: "messenger" }
+      : last ? { channel: "messenger", from: "", fromName: last.who === "you" ? "You" : last.name || "", subject: "", body: last.text.slice(0, 6000), links: last.links || linksFromText(last.text), auth: "" }
       : { ...profileMessage, channel: "messenger" };
     const threadHistory = turns.slice(0, -1).slice(-30).map((t) => ({ from: speakerOf(t), date: null, body: t.text }));
     const verdict = await judge({ message, threadHistory, socialProfile: profile?.facts.length ? profile : null, lang });

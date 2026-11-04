@@ -188,7 +188,10 @@ export default async function mailRoutes(app) {
     return { checkId: check.id, verdict, message: fullText ? { ...shown, body: fullText } : message, callBack: callBackFor(ctx, message) };
   });
 
-  // Screenshot or photo of a message: read by Muse Spark, never stored.
+  // Screenshot or photo of a message: read by Muse Spark, never stored. A
+  // list of conversations (an inbox) is judged as one message; its rows
+  // (threads) and the inbox mark stay out of the answer, which keeps its
+  // usual shape.
   app.post("/api/check/image", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     if (!museConfigured()) return reply.code(503).send({ error: "screenshots_need_muse", message: "Checking pictures needs Muse Spark. Paste the text instead." });
     const file = await request.file();
@@ -205,7 +208,8 @@ export default async function mailRoutes(app) {
     if (!isMessage || !message.body) return reply.code(422).send({ error: "no_message", message: "We could not find a message in this picture." });
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
-    return { checkId: check.id, verdict, message, callBack: callBackFor(ctx, message) };
+    const { inbox, threads, ...shown } = message;
+    return { checkId: check.id, verdict, message: shown, callBack: callBackFor(ctx, message) };
   });
 
   // A voice note or voicemail: the recording becomes words (Muse Voice

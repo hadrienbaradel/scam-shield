@@ -222,8 +222,8 @@ test("the rules stay tight: a bank's transfer fee, a friend's new sofa and Apple
 
 test("the system prompt forbids calling a photo fake and quotes only what the profile shows", async () => {
   const system = await systemPrompt();
-  assert.equal(PROMPT_VERSION, "v5-2026-11-04");
-  assert.match(system.split("\n")[0], /v5-2026-11-04/);
+  assert.equal(PROMPT_VERSION, "v6-2026-11-04");
+  assert.match(system.split("\n")[0], /v6-2026-11-04/);
   assert.match(system, /never call a photo fake, stolen or AI-made from how it looks/);
   assert.match(system, /never claim the person is a bot/);
   assert.match(system, /`<social_profile>`[^\n]*the facts the platform itself shows/);
