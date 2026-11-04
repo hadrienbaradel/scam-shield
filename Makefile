@@ -104,9 +104,10 @@ docs-check: ## Product docs in sync: spec links, statuses, keywords, indexes, CL
 lessons-check: ## Lesson files in data/lessons: the YAML format, EN/FR twins, demo cases (_product/specs/micro-learning.md)
 	@node scripts/lessons-check.mjs
 
-check: deps docs-check lessons-check ## What CI runs: docs in sync, lessons valid, master.key not in git, all tests, line coverage above the threshold (needs Postgres)
+check: deps docs-check lessons-check ## What CI runs: docs in sync, lessons valid, master.key not in git, all tests, line coverage above the threshold and within a point of the README's (needs Postgres)
 	@if git ls-files --error-unmatch config/master.key >/dev/null 2>&1; then echo "config/master.key is tracked by git: git rm --cached config/master.key, then make secrets-rotate (a committed key is leaked)"; exit 1; fi
 	@$(NPM) run check
+	@$(NODE) scripts/readme-numbers.mjs --check
 
 score: deps ## PRD pass criteria on the seed cases (detector only, no API key needed)
 	@$(NPM) run score
