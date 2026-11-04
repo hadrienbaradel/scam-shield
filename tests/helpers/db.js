@@ -18,6 +18,7 @@ export async function resetDb() {
   await pool.query("DELETE FROM pattern_cards");
   await pool.query("TRUNCATE watch_items");
   await pool.query("TRUNCATE suspect_contests");
+  await pool.query("TRUNCATE early_access_requests");
   await migrate();
 }
 
