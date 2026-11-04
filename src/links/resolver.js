@@ -20,12 +20,12 @@ import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { Agent, fetch as undiciFetch } from "undici";
 import { domainOf, sameOrSub, BRANDS, FREE_HOSTING_SUFFIXES } from "../../lib/brands.js";
+// Links that do something when opened (a one-click unsubscribe, a delete,
+// a cancellation, accepting an invitation) are never opened for a check.
+import { ACTION_LINK } from "../../lib/linkInspector.js";
 import { config } from "../config.js";
 
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "rb.gy", "cutt.ly", "is.gd", "ow.ly", "buff.ly", "shorturl.at", "tiny.cc"];
-// Links that do something when opened (a one-click unsubscribe, a delete,
-// a cancellation, accepting an invitation) are never opened for a check.
-const ACTION_LINK = /unsubscrib|opt[-_ ]?out|d[ée]sinscri|d[ée]sabonn|preferences|pr[ée]f[ée]rences|manage[-_ ]?(subscription|email)|delete|supprim|cancel|annul|r[ée]sili|one[-_ ]?click|approve|accept|decline|rsvp|confirm[-_ ]?unsub/i;
 const TWO_PART_SUFFIXES = ["co.uk", "com.br", "com.au", "co.jp", "gouv.fr", "gov.uk", "com.mx", "co.nz", "org.uk", "ac.uk"];
 const DAY = 86400000;
 
