@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
-import { investigate, decideAnswer, toolsFor, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
+import { investigate, decideAnswer, toolsFor, readPage, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
@@ -154,6 +154,29 @@ test("where a link lands is opened with the resolver's guard, never for a messag
   assert.deepEqual(opened, []);
   assert.equal(closed.refused, 1);
   assert.equal(closed.verdict, null);
+});
+
+test("a landing page is clean only on the claimed brand's own site or the authenticated sender's, never when it asks for a password or card, never on shared hosting", async () => {
+  const flagOf = async (message, landing, shows = 'Page titled "Welcome"') => {
+    mock.script(ask(["where_link_goes", { domain: hostOfLink(message) }]), answer("be_careful", [{ text: "x", check: 1 }]));
+    const out = await investigate({ message, personalContext: LINDA, first: CAREFUL,
+      deps: deps({ resolveLink: async () => ({ final_url: landing, redirects: [landing], page_shows: shows }) }) });
+    return out.checks[0].flag;
+  };
+  function hostOfLink(m) { return new URL(m.links[0].href).hostname; }
+  const sms = (body, href) => ({ channel: "sms", from: "+1 555 0101", body: `${body} ${href}`, links: [{ href }] });
+  assert.equal(await flagOf(sms("PayPal: see your activity", "https://bit.ly/pp1"), "https://www.paypal.com/myaccount"), "ok", "PayPal's own site");
+  assert.equal(await flagOf(sms("PayPal: see your activity", "https://bit.ly/pp2"), "https://www.paypal.com/signin", 'Page titled "Log in", asks for a password on a login form'), "warn",
+    "a password page is never clean, even on the real site");
+  assert.equal(await flagOf(sms("Google: your file is shared", "https://bit.ly/g1"), "https://sites.google.com/view/secure-docs"), "warn", "anyone can publish on sites.google.com");
+  assert.equal(await flagOf(sms("Microsoft: your mailbox is full", "https://bit.ly/m1"), "https://evil.s3.amazonaws.com/index.html"), "warn", "shared hosting");
+  assert.equal(await flagOf(sms("Your order", "https://bit.ly/o1"), "https://shop.example.org/order"), "warn", "another site than the link's");
+  assert.equal(await flagOf(sms("Your order", "https://shop.example.org/a"), "https://shop.example.org/b"), "unknown", "no brand claimed: not proof of anything");
+  const signed = { channel: "email", from: "news@shop.example.org", fromName: "Shop", auth: "spf=pass dkim=pass dmarc=pass", subject: "Order", body: "See https://bit.ly/s1", links: [{ href: "https://bit.ly/s1" }] };
+  assert.equal(await flagOf(signed, "https://www.shop.example.org/order"), "ok", "the authenticated sender's own site");
+  assert.deepEqual(readPage('Page titled "Pay ", now", "quick", asks for a password on a login form, asks for card details'),
+    { title: 'Pay ", now", "quick', password: true, card: true }, "a title holding quotes and commas is read whole");
+  assert.deepEqual(readPage("asks for card details"), { title: "", password: false, card: true });
 });
 
 test("a link that would unsubscribe is never opened, an unknown website is said plainly, and a page title is evidence that cannot close its block", async () => {
