@@ -296,6 +296,12 @@ test("at most 4 rounds with the model: a model that keeps asking leaves the card
   assert.equal(out.checks.length, 3, "the fourth round's calls are not run");
   assert.equal(mock.calls[3].messages.at(-1).content, "No more checks are possible. Answer now with the JSON object only.");
   assert.equal(mock.calls[3].tools, undefined, "the last round offers no tools: the answer is forced");
+  // A look without a verdict has one shape, whichever way it ended.
+  const shape = (o) => ({ verdict: o.verdict, confidence: o.confidence, headline: o.headline, action: o.action, what_to_do: o.what_to_do, reasons: o.reasons });
+  const empty = { verdict: null, confidence: null, headline: null, action: null, what_to_do: null, reasons: [] };
+  assert.deepEqual(shape(out), empty);
+  assert.deepEqual(shape(decideAnswer({ answer: null, checks: [], first: SCAM, fallback: { verdict: "scam" }, fr: false })), empty);
+  assert.deepEqual(shape(decideAnswer({ answer: answer("scam", [{ text: "x", check: 9 }]), checks: [], first: SCAM, fallback: { verdict: "scam" }, fr: false })), empty);
   assert.ok(mock.calls[2].tools.length > 0);
   // The forced answer, when the model gives it, stands.
   mock.reset();
