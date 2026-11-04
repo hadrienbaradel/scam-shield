@@ -1,0 +1,41 @@
+id: leaked-details
+order: 9
+title: They know your real details
+character: Mr. I-Know-Your-Number
+emoji: "🗂️"
+minutes: 1
+badge: Leak-proof
+rule: A message that quotes your real details proves nothing. They leaked; thieves buy them by the thousand.
+steps:
+  - say:
+      - Meet **Mr. I-Know-Your-Number**. He quotes your bank account, your birthday, the end of your card.
+      - He did not get them from your bank. He bought them from a data leak, with thousands of others.
+  - ask: An email quotes your real account number and asks you to dispute a charge through a link. What do you do?
+    choices:
+      - text: Click the link. They clearly have my file.
+        reply: That is what Mr. I-Know-Your-Number counts on. The number is real; the page behind the link is his.
+      - text: Check the charge in my bank's own app, or call the number on my card.
+        right: true
+        reply: Yes! If the charge is real, your bank knows about it. If not, there was nothing to dispute.
+      - text: Reply and ask them to prove who they are.
+        reply: He will send a logo and a name. Both are easy to fake. Check with your bank yourself.
+  - say:
+      - Where do leaks come from? Your phone company, a shop, your insurer. One breach, millions of files.
+      - The company writes to say sorry. Prudence can also look your email address up in the public lists.
+  - ask: Your phone company wrote last year that your details leaked. What does that change today?
+    choices:
+      - text: Nothing. It was last year.
+        reply: Leaked details are sold for years. A text that quotes your account number proves nothing anymore.
+      - text: A message that quotes my account number no longer proves it comes from them.
+        right: true
+        reply: Exactly. Tick that breach in Prudence, and the card will say so when a message quotes your number.
+  - say:
+      - "The rule: a real number in a message is **not proof**. Only the sender's real address and your own app are."
+      - Prudence says it on the card. "That bank number is real, but it leaked in the Bouygues breach."
+  - ask: Two messages arrive. Which one is more likely to be real?
+    choices:
+      - text: '"Your account ending in 1234 will be debited $69.90. Dispute it here", then a link.'
+        reply: A real number, a rush and a link. That is Mr. I-Know-Your-Number from head to toe.
+      - text: '"Your invoice is ready in your customer area", from the usual address, no link to pay.'
+        right: true
+        reply: Right! No rush, no link to pay, the address you know. Open your customer area yourself to read it.

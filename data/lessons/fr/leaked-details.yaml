@@ -1,0 +1,42 @@
+id: leaked-details
+order: 9
+title: Ils connaissent vos vraies données
+character: M. Je-Connais-Votre-Numéro
+emoji: "🗂️"
+minutes: 1
+badge: À l'épreuve des fuites
+rule: Un message qui cite vos vraies données ne prouve rien. Elles ont fuité ; les voleurs les achètent par milliers.
+demo_case: A3b
+steps:
+  - say:
+      - Voici **M. Je-Connais-Votre-Numéro**. Il cite votre compte, votre date de naissance, la fin de votre carte.
+      - Il ne les tient pas de votre banque. Il les a achetées dans une fuite de données, avec des milliers d'autres.
+  - ask: Un e-mail cite votre vrai numéro de compte et vous demande de contester un prélèvement via un lien. Que faites-vous ?
+    choices:
+      - text: Je clique sur le lien. Ils ont clairement mon dossier.
+        reply: C'est ce que M. Je-Connais-Votre-Numéro espère. Le numéro est vrai ; la page derrière le lien est à lui.
+      - text: Je vérifie le prélèvement dans l'appli de ma banque, ou j'appelle le numéro au dos de ma carte.
+        right: true
+        reply: Oui ! Si le prélèvement existe, votre banque le sait. Sinon, il n'y avait rien à contester.
+      - text: Je réponds et je leur demande de prouver qui ils sont.
+        reply: Il enverra un logo et un nom. Les deux se fabriquent en une minute. Vérifiez vous-même auprès de votre banque.
+  - say:
+      - D'où viennent les fuites ? Votre opérateur, un magasin, votre mutuelle. Un piratage, des millions de dossiers.
+      - L'entreprise écrit pour s'excuser. Prudence peut aussi chercher votre adresse e-mail dans les listes publiques.
+  - ask: Votre opérateur a écrit l'an dernier que vos données avaient fuité. Qu'est-ce que ça change aujourd'hui ?
+    choices:
+      - text: Rien. C'était l'an dernier.
+        reply: Les données fuitées se revendent pendant des années. Un SMS qui cite votre numéro de compte ne prouve plus rien.
+      - text: Un message qui cite mon numéro de compte ne prouve plus qu'il vient d'eux.
+        right: true
+        reply: Exactement. Cochez ce piratage dans Prudence, et la carte le dira quand un message citera votre numéro.
+  - say:
+      - "La règle : un vrai numéro dans un message n'est **pas une preuve**. Seules la vraie adresse d'envoi et votre appli le sont."
+      - "Prudence le dit sur la carte : « Ce numéro de compte est réel, mais il a fuité lors du piratage de Bouygues. »"
+  - ask: Deux messages arrivent. Lequel a le plus de chances d'être vrai ?
+    choices:
+      - text: "« Votre compte FR76…1234 sera prélevé de 69,90 €. Contestez ici », puis un lien."
+        reply: Un vrai numéro, de la pression et un lien. C'est M. Je-Connais-Votre-Numéro de la tête aux pieds.
+      - text: "« Votre facture est disponible dans votre espace client », depuis l'adresse habituelle, sans lien pour payer."
+        right: true
+        reply: Bravo ! Pas de pression, pas de lien pour payer, l'adresse que vous connaissez. Ouvrez votre espace client vous-même.

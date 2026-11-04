@@ -63,6 +63,7 @@ Claiming that lessons prevent scams: independent studies find awareness training
 - Progress in the account (7): tests in `tests/lessons.test.js` run against the test database and are skipped with a reason without Postgres, like the integration suite; account deletion leaves no progress row.
 - `make lessons-check` passes on every file under `data/lessons/`; `make check` stays at or above the coverage threshold; `node scripts/docs-check.mjs` reports zero errors.
 - Manual, before Built: the Learn tab and one lesson at phone width with text size Largest; keyboard-only and VoiceOver pass; a reading check by one person outside the team; the design artifact agreed before the build (`_product/docs/design.md`).
+- 2026-11-04: a ninth lesson, `leaked-details` ("They know your real details", Mr. I-Know-Your-Number), from `breach-exposure.md` line 8; its French twin opens the Bouygues debit notice (A3b).
 - Where it stands (2026-10-29): 40 tests in `tests/lessons.test.js`, `make lessons-check` 0 problems on 8 lessons, line coverage 91% (threshold 84), headless-browser pass at 390 px in EN and FR at Normal and Largest (focus on every heading, dock on the measured tab bar, reduced motion, late answers dropped), design agreed. Still open before Built: the reading check with one senior outside the team, VoiceOver on a real phone, Hadrien's call on the French tab label.
 
 ## Implementation pointers
