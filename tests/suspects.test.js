@@ -43,6 +43,7 @@ test("normalizeIndicator: a website from a pasted URL, an address lowercased, a 
     assert.ok(sameIndicator(normalizeIndicator(a), normalizeIndicator(b)), `${a} and ${b} are one number`);
   }
   assert.equal(phoneKey("+33612345678"), "612345678");
+  assert.equal(phoneKey(null), "");
   assert.equal(sameIndicator(normalizeIndicator("0612345678"), normalizeIndicator("0612345679")), false);
   assert.equal(sameIndicator(normalizeIndicator("0612345678"), normalizeIndicator("secure-chase-login.com")), false, "a kind never matches another");
   assert.equal(sameIndicator(null, normalizeIndicator("0612345678")), false);
@@ -99,6 +100,8 @@ test("lookupSuspect: the entries that used the indicator, reports and weight by 
   assert.equal(lookupSuspect(entries, "+1 555-013-0100", { now: NOW }).reports, 0, "another number");
   const old = lookupSuspect([entry("lib-old", { last_seen: daysAgo(400) }), entry("lib-mid", { last_seen: daysAgo(100) })], "secure-chase-login.com", { now: NOW });
   assert.deepEqual([old.reports, old.weight], [2, 0.75]);
+  const tie = lookupSuspect([entry("lib-t2", { country: undefined }), entry("lib-t1", { brand: undefined })], "secure-chase-login.com", { now: NOW });
+  assert.deepEqual(tie.entries.map((e) => [e.id, e.country, e.brand]), [["lib-t1", "US", null], ["lib-t2", null, "Chase"]], "the same last_seen: by id; a missing country or brand reads null");
   assert.deepEqual(lookupSuspect(entries, "nobody@nowhere-at-all.com", { now: NOW }),
     { indicator: { kind: "email", value: "nobody@nowhere-at-all.com" }, reports: 0, weight: 0, firstSeen: null, lastSeen: null, contested: false, removed: false, removedAt: null, entries: [] }, "nothing reported: an empty listing, never a verdict");
   assert.equal(lookupSuspect(entries, "chronopost-colis.test", { now: NOW }), null, "a reserved host is no indicator");
@@ -118,6 +121,11 @@ test("a contest marks the listing contested while open and removes it when uphel
   const removed = lookupSuspect(entries, "ALERTS@secure-chase-login.com", { now: NOW, contests: [upheld, { ...upheld, decided_at: "2026-11-01T10:00:00.000Z" }] });
   assert.deepEqual([removed.contested, removed.removed, removed.removedAt, removed.reports, removed.weight, removed.firstSeen, removed.lastSeen, removed.entries],
     [false, true, "2026-11-03T10:00:00.000Z", 0, 0, null, null, []], "removed: the latest decision's date, no count, no entries");
+  const undated = { ...upheld, decided_at: null };
+  for (const rows of [[undated, upheld], [upheld, undated]]) {
+    assert.equal(lookupSuspect(entries, "alerts@secure-chase-login.com", { now: NOW, contests: rows }).removedAt, "2026-11-03T10:00:00.000Z", "a decision without a date never hides the dated one");
+  }
+  assert.equal(lookupSuspect(entries, "alerts@secure-chase-login.com", { now: NOW, contests: [undated] }).removedAt, null);
   const dismissed = lookupSuspect(entries, "alerts@secure-chase-login.com", { now: NOW, contests: [{ ...open, status: "dismissed", decided_at: "2026-11-02T10:00:00.000Z" }] });
   assert.deepEqual([dismissed.contested, dismissed.removed, dismissed.reports], [false, false, 2]);
   const other = lookupSuspect(entries, "alerts@secure-chase-login.com", { now: NOW, contests: [{ ...open, indicator: "other@secure-chase-login.com" }, { ...open, indicator_kind: "domain", indicator: "secure-chase-login.com" }] });
@@ -246,6 +254,7 @@ test("the admin queue: admins only, open first with counts, a decision needs a s
     ["phone", "+15550177", "<b>Pat</b>", NOTICE.email, NOTICE.url, "<script>alert(1)</script> it is my own number, spoofed", true, "open"], "the reviewer reads the notice; stored as text, escaping is the page's job");
 
   assert.equal((await post(`/api/admin/db/contests/${first}/decide`, { status: "nope", decision: "x" }, adminHeaders)).statusCode, 400);
+  assert.match((await post(`/api/admin/db/contests/${first}/decide`, { decision: "x" }, adminHeaders)).json().error, /upheld or dismissed/, "no status");
   assert.match((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed" }, adminHeaders)).json().error, /decision text/);
   assert.equal((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed", decision: "x" }, seniorHeaders)).statusCode, 403);
   assert.deepEqual((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed", decision: "Two entries from August and September name this host with their dates; the listing stays." }, adminHeaders)).json(), { ok: true });
