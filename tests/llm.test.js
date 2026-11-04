@@ -445,12 +445,16 @@ test("tools: the model's turn and each tool answer go back in OpenAI's shape", a
   assert.deepEqual(toOpenAiMessages("", [{ role: "assistant", content: "hi", toolCalls: [] }]), [{ role: "assistant", content: "hi" }], "no calls, a plain turn");
 });
 
-test("tools: arguments that are not JSON throw one plain error naming the tool", async () => {
+test("tools: a call whose arguments are not a JSON object is marked invalid on its own, the other calls stand", async () => {
   process.env.META_MODEL_API_KEY = "test-key";
-  const broken = fakeFetch(ok(toolTurn([{ id: "c1", type: "function", function: { name: "website_age", arguments: '{"domain": "a.te' } }])));
-  await assert.rejects(createMetaProvider({ fetchImpl: broken.fetchImpl }).complete({ messages: [], tools: [TOOL] }),
-    /^Error: Muse Spark asked for the tool website_age with arguments that are not JSON$/);
-  assert.throws(() => parseToolCalls([{ id: "c", function: { name: "x", arguments: "[1]" } }]), /arguments that are not an object/);
+  const broken = fakeFetch(ok(toolTurn([{ id: "c1", type: "function", function: { name: "website_age", arguments: '{"domain": "a.te' } },
+    { id: "c2", type: "function", function: { name: "website_age", arguments: '{"domain":"b.test"}' } }])));
+  const out = await createMetaProvider({ fetchImpl: broken.fetchImpl }).complete({ messages: [], tools: [TOOL] });
+  assert.deepEqual(out.toolCalls, [{ id: "c1", name: "website_age", arguments: {}, invalid: "arguments that are not JSON" },
+    { id: "c2", name: "website_age", arguments: { domain: "b.test" } }]);
+  for (const raw of ["null", "[1]", "42"]) {
+    assert.deepEqual(parseToolCalls([{ id: "c", function: { name: "x", arguments: raw } }]), [{ id: "c", name: "x", arguments: {}, invalid: "arguments that are not an object" }], raw);
+  }
   assert.deepEqual(parseToolCalls([{ id: "c", function: { name: "x", arguments: { a: 1 } } }]), [{ id: "c", name: "x", arguments: { a: 1 } }], "an object stays an object");
   assert.deepEqual(parseToolCalls(undefined), []);
 });

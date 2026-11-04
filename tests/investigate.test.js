@@ -526,6 +526,17 @@ test("small words are right: 2 months at 60 days, 2 years at 730, every scam cou
   assert.equal(decideAnswer({ answer: answer("scam", [{ text: "x", check: " 1 " }]), checks: [{ n: 1, flag: "warn" }], first: SCAM, fallback, fr: false }).verdict, "scam");
 });
 
+test("one call with arguments the layer could not read is refused alone; the look goes on", async () => {
+  let tool = "";
+  mock.script({ toolCalls: [{ name: "website_age", arguments: {}, invalid: "arguments that are not JSON" }, { name: "scam_patterns", arguments: {} }] },
+    (req) => { tool = req.messages.filter((m) => m.role === "tool").map((m) => m.content).join("\n"); return answer("scam", [{ text: "x", check: 1 }]); });
+  const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  assert.equal(out.verdict, "scam");
+  assert.deepEqual(out.checks.map((c) => c.tool), ["scam_patterns"]);
+  assert.equal(out.refused, 1);
+  assert.match(tool, /arguments refused: arguments that are not JSON/);
+});
+
 test("a model that writes null as a word is read as giving no value (seen live on Nov 4)", async () => {
   mock.script(ask(["my_orders_and_carriers", { carrier: " USPS ", shop: "null" }], ["my_providers", { company: "None" }]), answer("scam", [{ text: "x", check: 1 }]));
   const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
