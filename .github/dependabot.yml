@@ -1,0 +1,16 @@
+# Dependabot: security updates only, for now. open-pull-requests-limit: 0 turns version updates off,
+# so no stream of version pull requests lands while the judges look (Nov 5-8); security updates are
+# not bound by it and open their pull requests once Dependabot alerts and security updates are on
+# (repository settings, admin). Raise the limit after judging. _product/docs/infra.md, CI.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
