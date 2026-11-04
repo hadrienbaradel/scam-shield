@@ -85,11 +85,13 @@ export function pasteRequest({ text = "", who = DEFAULT_WHO, where = DEFAULT_WHE
 export const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
 
 // What Look closer sends back: the check's id (its first verdict stays on the
-// server) and the message as the answer gave it; nothing without both.
+// server) and the message exactly as the check judged it (the answer's
+// `judged`: every field, never the display copy), with a chat's earlier turns;
+// nothing without both.
 export function lookCloserRequest(out) {
-  const m = out?.message;
+  const m = out?.judged?.message;
   if (!out?.checkId || !m || !String(m.body || m.subject || "").trim()) return null;
-  return { checkId: out.checkId, message: m };
+  return { checkId: out.checkId, message: m, threadHistory: Array.isArray(out.judged.threadHistory) ? out.judged.threadHistory : [] };
 }
 
 // What a failed check tells the senior. Never the server's own words (they

@@ -107,9 +107,8 @@ function liveSource(status) {
     keep: (item) => api(`/api/messages/${enc(item.id)}/put-back`, { method: "POST", body: {} }),
     undoKeep: (item) => api(`/api/messages/${enc(item.id)}/undo-keep`, { method: "POST", body: {} }),
     ask: (item, detail, opts) => api("/api/ask", { method: "POST", body: { checkId: detail.checkId, via: opts.via, includeText: opts.includeText } }),
-    // Look closer: the card already holds the message's words (for "Show me the message").
-    canLookCloser: (item, detail) => Boolean(detail.checkId && String(detail.message?.body || detail.message?.subject || "").trim()),
-    lookCloser: (item, detail) => api("/api/check/investigate", { method: "POST", body: { checkId: detail.checkId, message: detail.message } }),
+    // No Look closer here: the sync judged the Gmail thread too, which the page
+    // does not hold (_product/specs/investigate.md, Out of scope).
   };
 }
 

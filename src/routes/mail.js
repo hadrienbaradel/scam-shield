@@ -183,9 +183,11 @@ export default async function mailRoutes(app) {
     const { verdict, ctx } = await runCheck({ user: request.user, message, threadHistory: chat?.threadHistory || [] });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "pasted" });
     // The answer carries the whole conversation, so "Ask my trusted person"
-    // can share all of it (it is never stored).
+    // can share all of it (it is never stored). `judged` is the message
+    // exactly as it was judged, for "Look closer" (_product/specs/investigate.md).
     const { fullText, ...shown } = message;
-    return { checkId: check.id, verdict, message: fullText ? { ...shown, body: fullText } : message, callBack: callBackFor(ctx, message) };
+    return { checkId: check.id, verdict, message: fullText ? { ...shown, body: fullText } : message, callBack: callBackFor(ctx, message),
+      judged: { message, threadHistory: chat?.threadHistory || [] } };
   });
 
   // Screenshot or photo of a message: read by Muse Spark, never stored. A
@@ -209,7 +211,7 @@ export default async function mailRoutes(app) {
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
     const { inbox, threads, ...shown } = message;
-    return { checkId: check.id, verdict, message: shown, callBack: callBackFor(ctx, message) };
+    return { checkId: check.id, verdict, message: shown, callBack: callBackFor(ctx, message), judged: { message, threadHistory: [] } };
   });
 
   // A voice note or voicemail: the recording becomes words (Muse Voice
@@ -241,7 +243,7 @@ export default async function mailRoutes(app) {
     const message = { channel: "voice_transcript", from: caller, fromName: caller || "Voice message", subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "voice" });
-    return { checkId: check.id, verdict, message, transcript, callBack: callBackFor(ctx, message) };
+    return { checkId: check.id, verdict, message, transcript, callBack: callBackFor(ctx, message), judged: { message, threadHistory: [] } };
   });
 
   // An email file (.eml): downloaded from a webmail or forwarded as an
@@ -253,7 +255,7 @@ export default async function mailRoutes(app) {
     if (!message.from && !message.body) return reply.code(422).send({ error: "no_message", message: "We could not read an email in this file." });
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "email_file" });
-    return { checkId: check.id, verdict, message: { ...message, body: message.body.slice(0, 2000) } };
+    return { checkId: check.id, verdict, message: { ...message, body: message.body.slice(0, 2000) }, judged: { message, threadHistory: [] } };
   });
 
   // "Ask my trusted person". For Gmail messages the server fetches what to
