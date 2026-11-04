@@ -32,6 +32,7 @@ import demoRoutes from "./routes/demo.js";
 import investigateRoutes from "./routes/investigate.js";
 import dbRoutes from "./routes/db.js";
 import adminDbRoutes from "./routes/adminDb.js";
+import adsRoutes from "./routes/ads.js";
 import lessonRoutes from "./routes/lessons.js";
 import dbSuspectsRoutes from "./routes/dbSuspects.js";
 import whatsappRoutes from "./routes/whatsapp.js";
@@ -107,6 +108,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(investigateRoutes);
   await app.register(dbRoutes);
   await app.register(adminDbRoutes);
+  await app.register(adsRoutes);
   await app.register(lessonRoutes);
   await app.register(dbSuspectsRoutes);
   await app.register(whatsappRoutes);
