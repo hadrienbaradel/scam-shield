@@ -1,5 +1,5 @@
 # Facebook and Messenger: send it to Prudence
-Status: Planned · Raised by Vlad, 2026-11-04 (a stranger writing to him on Facebook right now) · Last updated: 2026-11-04
+Status: Partial (coded and tested, unverified on the live platform) · Raised by Vlad, 2026-11-04 (a stranger writing to him on Facebook right now) · Last updated: 2026-11-04
 
 ## Why
 Most social-media scams start on Facebook ($2.1B lost in 2025 to scams that began on social media, Facebook first, FTC 2026; `research/social-scams.md`), and the costliest of them, the romance and investment arc ("pig butchering"), opens with a stranger's friendly message that asks for nothing for weeks. No API reads a personal Facebook, Snapchat or TikTok inbox, so the senior shows Prudence the conversation: forward the messages, or a screenshot of the chat and of the profile, to the Prudence Page on Messenger, and the verdict comes back in the chat, judged on the whole conversation, with the stage it is at and what comes next. Second Meta surface (the Messenger Platform) carrying Muse Spark's verdict, after WhatsApp (`whatsapp-channel.md`), and Vlad's own live case is the demo.
