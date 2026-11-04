@@ -4,7 +4,7 @@
 // (2026-11-04 redesign).
 
 import { api } from "../api.js";
-import { t, ago, getLang, STRINGS } from "../i18n.js";
+import { t, ago, getLang, leakWords } from "../i18n.js";
 import { $, $$, esc, verdictCard, readAloud, toast, pill, busy } from "../ui.js";
 
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
@@ -93,9 +93,10 @@ const breachLookupState = (lookup) => {
   const when = ago(lookup.at);
   return lookup.found === 0 ? t("k_breach_looked_up_none", { when }) : lookup.found === 1 ? t("k_breach_looked_up_one", { when }) : t("k_breach_looked_up", { when, n: lookup.found });
 };
-// What each breach leaked, in the person's words ("bank account number", not "IBAN"), and what it means (line 8).
-const leakWord = (kind) => STRINGS[getLang()][`leak_${String(kind).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`] || kind;
-const breachChecks = (options, chosen) => options.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}${b.leaked?.length ? `<span class="small"> · ${esc(t("k_breach_leaked", { what: b.leaked.map(leakWord).join(", ") }))}</span>` : ""}</label>`).join("")
+// What each breach leaked, in the person's words ("bank account number", not "IBAN"), and what it means (line 8):
+// one .choice per breach, the mode step's shape, the name and what leaked under it, never beside it.
+const breachChecks = (options, chosen) => options.map((b) => `<label class="choice"><input type="checkbox" name="breach" value="${esc(b.id)}"${chosen.has(b.id) ? " checked" : ""}>
+    <span class="choice-text"><span class="choice-name">${esc(breachLabel(b))}</span>${b.leaked?.length ? `<span class="choice-sub">${esc(t("k_breach_leaked", { what: leakWords(b.leaked) }))}</span>` : ""}</span></label>`).join("")
   + (options.length ? `<p class="small">${t("k_breach_meaning")}</p>` : "");
 const breachLookupBlock = (lookup) => `<p class="small">${esc(breachLookupState(lookup))}</p><p class="small">${t("k_breach_lookup_sub")}</p>
   <button id="breachLookup" class="btn btn-light-dark btn-big" type="button">${lookup ? t("k_breach_lookup_again") : t("k_breach_lookup")}</button>`;
@@ -103,7 +104,7 @@ async function runBreachLookup(button) {
   return busy(button, async () => {
     try {
       const out = await api("/api/context/lookup-breaches", { method: "POST" });
-      toast(out.lookup.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
+      toast(out.lookup.found === 1 ? t("k_breach_found_one") : out.lookup.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
       return out;
     } catch (e) {
       toast(t(e.data?.error === "lookup_wait" ? "k_breach_lookup_wait" : "k_breach_lookup_failed"), "danger");

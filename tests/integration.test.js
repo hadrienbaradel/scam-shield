@@ -190,6 +190,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
   const h = { cookie: await sessionFor(user), origin: ORIGIN };
   const fresh = (await app.inject({ url: "/api/context", headers: h })).json();
   assert.equal(fresh.context.breachLookup, undefined, "nothing looked up before the tap");
+  assert.equal((await app.inject({ url: "/api/status", headers: h })).json().breachLookup, null, "the status says so too (the protection score reads it)");
   const realFetch = globalThis.fetch;
   let listCalls = 0;
   let listDown = false;
@@ -199,22 +200,25 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
       listCalls++;
       if (listDown) return new Response("", { status: 503 });
       assert.ok(u.endsWith("?email=lookup%40example.test"), u);
-      return new Response(JSON.stringify({ ExposedBreaches: { breaches_details: [{ breach: "BouyguesTelecom", domain: "bouyguestelecom.fr", xposed_date: "2025", xposed_data: "Email addresses;Names;Physical addresses" }] } }), { status: 200 });
+      return new Response(JSON.stringify({ ExposedBreaches: { breaches_details: [{ breach: "BouyguesTelecom", domain: "bouyguestelecom.fr", xposed_date: "2025", xposed_data: "Email addresses;Names;Physical addresses" }, { breach: "LeakyShop", domain: "leakyshop.example", xposed_date: "2023", xposed_data: "Email addresses;Names" }] } }), { status: 200 });
     }
-    if (u === "https://haveibeenpwned.com/api/v3/breaches") return new Response(JSON.stringify([{ Name: "BouyguesTelecom", Title: "Bouygues Telecom", Domain: "bouyguestelecom.fr", BreachDate: "2025-07-23", DataClasses: ["Bank account numbers", "Email addresses", "Names", "Physical addresses"] }]), { status: 200 });
+    if (u === "https://haveibeenpwned.com/api/v3/breaches") return new Response(JSON.stringify([{ Name: "BouyguesTelecom", Title: "Bouygues Telecom", Domain: "bouyguestelecom.fr", BreachDate: "2025-07-23", DataClasses: ["Bank account numbers", "Email addresses", "Names", "Physical addresses"] }, { Name: "LeakyShop", Title: "Leaky Shop", Domain: "leakyshop.example", BreachDate: "2023-03-01", DataClasses: ["Bank account numbers", "Email addresses", "Names"] }]), { status: 200 });
     return realFetch(url, init);
   };
   try {
     const tap = await app.inject({ method: "POST", url: "/api/context/lookup-breaches", headers: h });
     assert.equal(tap.statusCode, 200, tap.body);
     const { breaches, lookup } = tap.json();
-    assert.equal(lookup.found, 1);
+    assert.equal(lookup.found, 2);
     assert.equal(lookup.source, "xposedornot");
-    assert.deepEqual(breaches.map((b) => [b.id, b.source, b.date]), [["xon-BouyguesTelecom", "Bouygues Telecom", "2025"]]);
-    assert.ok(breaches[0].leaked.includes("IBAN"), "what leaked comes from the catalogue");
+    assert.deepEqual(breaches.map((b) => [b.id, b.source, b.date]), [["bouygues-2025", "Bouygues Telecom", "2025"], ["xon-LeakyShop", "Leaky Shop", "2023"]],
+      "a found breach that is one of the well-known ones is that one, once; the other keeps its looked-up id");
+    assert.ok(breaches[1].leaked.includes("IBAN"), "what leaked comes from the catalogue");
+    assert.ok(breaches[0].leaked.includes("BIC") && breaches[0].leaked.includes("email"), "the folded one keeps the list's kinds and adds the lookup's");
     const after = (await app.inject({ url: "/api/context", headers: h })).json();
-    assert.equal(after.context.breachLookup.found, 1);
-    assert.equal(after.context.breaches[0].id, "xon-BouyguesTelecom");
+    assert.equal(after.context.breachLookup.found, 2);
+    assert.deepEqual((await app.inject({ url: "/api/status", headers: h })).json().breachLookup, { at: lookup.at, found: 2 }, "the status carries when and how many, for the protection score");
+    assert.deepEqual(after.context.breaches.map((b) => b.id), ["bouygues-2025", "xon-LeakyShop"]);
     const events = (await app.inject({ url: "/api/audit", headers: h })).json().events;
     assert.ok(events.some((e) => e.event === "breach_lookup"), "the lookup is in What Prudence did");
     assert.ok(!JSON.stringify(events).includes("example.test"), "the audit holds no address");
@@ -224,9 +228,9 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     assert.equal(again.json().error, "lookup_wait");
     assert.equal(listCalls, 1, "a second tap within a minute asks nothing");
 
-    // Ticking the curated Bouygues keeps the looked-up one; unticking the looked-up one removes it.
-    const both = await app.inject({ method: "PUT", url: "/api/context/breaches", headers: h, payload: { ids: ["xon-BouyguesTelecom", "bouygues-2025"] } });
-    assert.deepEqual(both.json().breaches.map((b) => b.id), ["xon-BouyguesTelecom", "bouygues-2025"]);
+    // Ticking the well-known Bouygues keeps the looked-up shop; unticking the looked-up one removes it.
+    const both = await app.inject({ method: "PUT", url: "/api/context/breaches", headers: h, payload: { ids: ["xon-LeakyShop", "bouygues-2025"] } });
+    assert.deepEqual(both.json().breaches.map((b) => b.id), ["xon-LeakyShop", "bouygues-2025"]);
     const gone = await app.inject({ method: "PUT", url: "/api/context/breaches", headers: h, payload: { ids: ["bouygues-2025"] } });
     assert.deepEqual(gone.json().breaches.map((b) => b.id), ["bouygues-2025"], "an unticked looked-up breach goes");
 
@@ -235,7 +239,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     await syncUser(user.id, { client: gmail });
     const rescanned = (await one("SELECT data FROM contexts WHERE user_id = $1", [user.id])).data;
     assert.equal(listCalls, 2, "the rescan asked the list again");
-    assert.deepEqual(rescanned.breaches.map((b) => b.id), ["xon-BouyguesTelecom", "bouygues-2025"], "fresh lookup first, the ticked one kept");
+    assert.deepEqual(rescanned.breaches.map((b) => b.id), ["bouygues-2025", "xon-LeakyShop"], "fresh lookup first: the well-known twin once, the looked-up shop back");
     assert.ok(rescanned.breachLookup.at > lookup.at);
 
     // The trusted person sees nothing of it (specs/breach-exposure.md, line 9).
@@ -247,7 +251,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     const dash = await app.inject({ url: "/api/guardian/alerts", headers: { cookie: await sessionFor(guardian) } });
     assert.equal(dash.statusCode, 200);
     assert.equal(dash.json().protecting[0].name, "Linda");
-    assert.ok(!/breach|Bouygues|xon-|IBAN/i.test(dash.body), "the guardian's view carries none of the senior's breaches");
+    assert.ok(!/breach|Bouygues|Leaky|xon-|IBAN/i.test(dash.body), "the guardian's view carries none of the senior's breaches");
 
     // A senior who never tapped is never looked up, even on a rescan.
     const quiet = await makeUser({ email: "quiet@example.test", gmail: true });

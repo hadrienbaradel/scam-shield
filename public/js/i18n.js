@@ -113,7 +113,7 @@ export const STRINGS = {
     k_breach_lookup_sub: "Prudence sends your email address, and nothing else, to a public list of known data breaches. Nothing is sent until you tap.",
     k_breach_not_looked_up: "Not looked up yet.", k_breach_looked_up: "Looked up {when}: your address is in {n} known breaches.",
     k_breach_looked_up_one: "Looked up {when}: your address is in 1 known breach.", k_breach_looked_up_none: "Looked up {when}: no known breach has your address.",
-    k_breach_found: "Your address is in {n} known breaches. They are ticked below.", k_breach_found_none: "No known breach has your email address.",
+    k_breach_found: "Your address is in {n} known breaches. They are ticked below.", k_breach_found_one: "Your address is in 1 known breach. It is ticked below.", k_breach_found_none: "No known breach has your email address.",
     k_breach_lookup_wait: "Please wait a minute before looking up again.", k_breach_lookup_failed: "The breach list did not answer. Try again in a minute.",
     k_breach_leaked: "Leaked: {what}.", k_breach_meaning: "A message that quotes one of these is not proof it is genuine: thieves buy leaked details by the thousand.",
     leak_iban: "bank account number", leak_bic: "bank code", leak_address: "address", leak_name: "name", leak_phone: "phone number", leak_email: "email address",
@@ -194,6 +194,7 @@ export const STRINGS = {
     score_texts: "Your text messages", score_texts_step: "Add my phone",
     score_people: "A trusted person", score_people_step: "Add a trusted person",
     score_learn: "A first lesson", score_learn_step: "Start a lesson",
+    score_breaches: "Your leaked details", score_breaches_step: "Look up my email address",
     score_whatsapp: "WhatsApp messages", score_whatsapp_step: "Open WhatsApp",
     score_facebook: "Facebook and Messenger", score_facebook_step: "Open Messenger",
     // --- today (td_*) ---
@@ -437,7 +438,7 @@ export const STRINGS = {
     k_breach_lookup_sub: "Prudence envoie votre adresse e-mail, et rien d'autre, à une liste publique des piratages connus. Rien n'est envoyé avant que vous n'appuyiez.",
     k_breach_not_looked_up: "Pas encore cherché.", k_breach_looked_up: "Recherche faite {when} : votre adresse figure dans {n} piratages connus.",
     k_breach_looked_up_one: "Recherche faite {when} : votre adresse figure dans 1 piratage connu.", k_breach_looked_up_none: "Recherche faite {when} : aucun piratage connu ne contient votre adresse.",
-    k_breach_found: "Votre adresse figure dans {n} piratages connus. Ils sont cochés ci-dessous.", k_breach_found_none: "Aucun piratage connu ne contient votre adresse e-mail.",
+    k_breach_found: "Votre adresse figure dans {n} piratages connus. Ils sont cochés ci-dessous.", k_breach_found_one: "Votre adresse figure dans 1 piratage connu. Il est coché ci-dessous.", k_breach_found_none: "Aucun piratage connu ne contient votre adresse e-mail.",
     k_breach_lookup_wait: "Attendez une minute avant de chercher à nouveau.", k_breach_lookup_failed: "La liste des piratages n'a pas répondu. Réessayez dans une minute.",
     k_breach_leaked: "A fuité : {what}.", k_breach_meaning: "Un message qui cite l'une de ces données ne prouve rien : les voleurs achètent les données fuitées par milliers.",
     leak_iban: "numéro de compte bancaire", leak_bic: "code banque", leak_address: "adresse", leak_name: "nom", leak_phone: "numéro de téléphone", leak_email: "adresse e-mail",
@@ -504,6 +505,7 @@ export const STRINGS = {
     score_texts: "Vos messages texte", score_texts_step: "Ajouter mon téléphone",
     score_people: "Une personne de confiance", score_people_step: "Ajouter une personne de confiance",
     score_learn: "Une première leçon", score_learn_step: "Commencer une leçon",
+    score_breaches: "Vos données ayant fuité", score_breaches_step: "Chercher mon adresse e-mail",
     score_whatsapp: "Messages WhatsApp", score_whatsapp_step: "Ouvrir WhatsApp",
     score_facebook: "Facebook et Messenger", score_facebook_step: "Ouvrir Messenger",
     // --- today (td_*) ---
@@ -634,3 +636,8 @@ export function ago(iso) {
   if (min < 1440) return say("when_hour", Math.round(min / 60));
   return say("when_day", Math.round(min / 1440));
 }
+
+// What a data breach leaked, in the person's words and language ("bank
+// account number", not "IBAN": the leak_* strings), joined for one line;
+// a kind without a word is shown as it is (breach-exposure.md, line 8).
+export const leakWords = (kinds) => (kinds || []).map((k) => STRINGS[getLang()][`leak_${String(k).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`] || k).join(", ");

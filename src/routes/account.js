@@ -9,7 +9,7 @@ import { museConfigured, museModel, voiceConfigured } from "../../lib/muse.js";
 import { toolsConfigured } from "../../lib/llm/index.js";
 import { urlhausState } from "../links/resolver.js";
 import { subscribe } from "../notify/sse.js";
-import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp } from "../context/builder.js";
+import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp, mergeBreaches } from "../context/builder.js";
 import { loadContext } from "../sync/checker.js";
 import { clientFor, rebuildContext, syncUser } from "../sync/worker.js";
 import { revokeAndForget, tokenStatus } from "../google/tokens.js";
@@ -56,6 +56,14 @@ export default async function accountRoutes(app) {
     }
   });
 
+  // Whether her address was looked up in the breach list, and when: what the
+  // protection score's "breaches" criterion reads (protects.js CRITERIA,
+  // breach-exposure.md); { at, found }, or null before the first tap.
+  const breachLookupOf = async (userId) => {
+    const l = (await one("SELECT data->'breachLookup' AS lookup FROM contexts WHERE user_id = $1", [userId]))?.lookup;
+    return l?.at ? { at: l.at, found: Number(l.found) || 0 } : null;
+  };
+
   app.get("/api/status", async (request) => {
     const u = request.user;
     const gmail = u ? await one("SELECT sync_status, sync_error, last_sync_at, backfill_done, watch_expiration FROM gmail_state WHERE user_id = $1", [u.id]) : null;
@@ -80,6 +88,7 @@ export default async function accountRoutes(app) {
       gmail: gmail && { connected: tokens?.status === "ok", needsReconnect: tokens?.status === "reauth_needed", syncStatus: gmail.sync_status,
         lastSyncAt: gmail.last_sync_at, ready: gmail.backfill_done, push: Boolean(gmail.watch_expiration && gmail.watch_expiration > new Date()) },
       isGuardian: u ? Boolean(await one("SELECT 1 FROM guardianships WHERE guardian_id = $1 AND status = 'active' LIMIT 1", [u.id])) : false,
+      breachLookup: u ? await breachLookupOf(u.id) : null,
     };
   });
 
@@ -141,7 +150,8 @@ export default async function accountRoutes(app) {
       const ctx = row?.data || { userName: request.user.name, knownSenders: [], knownLinkDomains: [], providers: [], orders: [], breaches: [], trustedContacts: [], subscriptions: [] };
       // A looked-up breach stays only while it is ticked (specs/breach-exposure.md, line 3).
       const stillTicked = (ctx.breaches || []).filter((b) => lookedUp(b) && ids.has(b.id));
-      ctx.breaches = [...stillTicked, ...KNOWN_BREACHES.filter((b) => ids.has(b.id))];
+      // A well-known breach keeps its stored copy (the lookup may have added to what leaked), the list's entry otherwise.
+      ctx.breaches = [...stillTicked, ...KNOWN_BREACHES.filter((b) => ids.has(b.id)).map((k) => (ctx.breaches || []).find((b) => b.id === k.id) || k)];
       await q(`INSERT INTO contexts (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [request.user.id, ctx]);
       return { breaches: ctx.breaches };
     });
@@ -161,7 +171,7 @@ export default async function accountRoutes(app) {
       }
       const row = await one("SELECT data FROM contexts WHERE user_id = $1", [request.user.id]);
       const ctx = row?.data || { userName: request.user.name, knownSenders: [], knownLinkDomains: [], providers: [], orders: [], breaches: [], trustedContacts: [], subscriptions: [] };
-      ctx.breaches = [...result.breaches, ...(ctx.breaches || []).filter((b) => !lookedUp(b))];
+      ctx.breaches = mergeBreaches(result.breaches, ctx.breaches);
       ctx.breachLookup = { at: new Date().toISOString(), source: result.source, found: result.breaches.length };
       await q(`INSERT INTO contexts (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [request.user.id, ctx]);
       await audit(request.user.id, "breach_lookup", { found: result.breaches.length, source: result.source });

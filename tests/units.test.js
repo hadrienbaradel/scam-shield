@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { encrypt, decrypt, pkcePair, sha256 } from "../src/crypto.js";
 import { gmailClient, normalizeMessage, parseAuthResults, htmlToText } from "../src/google/gmail.js";
-import { extractOrder, buildContext, correspondents, withGuardians, forgetItem, lookupBreaches, lookedUp, leakedWords, resetBreachCatalogue } from "../src/context/builder.js";
+import { extractOrder, buildContext, correspondents, withGuardians, forgetItem, lookupBreaches, lookedUp, leakedWords, resetBreachCatalogue, mergeBreaches, curatedTwin, KNOWN_BREACHES } from "../src/context/builder.js";
 import { breachLeaking } from "../lib/context.js";
 import { decideAction, isProtectedSender } from "../src/sync/actions.js";
 import { isPrivateAddress, registrableDomain, resolveLink, describePage, domainAgeDays, inspectMessageLinks, urlhausHost, urlhausState } from "../src/links/resolver.js";
@@ -454,4 +454,25 @@ test("breach rule: a social security number, a date of birth or the end of a car
   assert.equal(breachText(detect({ ...scam("A parcel 1 55 03 75 123 456 78 is waiting for you."), personalContext: ctx([viamedis]) })), null, "digits alone, not announced as a social security number, are not one");
   assert.match(breachText(detect({ ...scam("Ihr Konto FR76 3000 3000 3000 3000 3000 1234 ... your old password is Linda1951."), personalContext: ctx([{ id: "old-password", source: "a website you used", date: "unknown", leaked: ["old password", "email"] }]) })),
     /^That old password is real/, "the old-password wording stands");
+});
+
+test("a breach the lookup found that is one of the well-known ones ticks that one, once", () => {
+  const found = [
+    { id: "xon-BouyguesTelecom", source: "Bouygues Telecom", date: "2025", leaked: ["email", "date of birth"] },
+    { id: "xon-Bouygues", source: "bouygues telecom", date: "2025-07-23", leaked: ["name", "phone"] },
+    { id: "xon-LeakyShop", source: "Leaky Shop", date: "2023", leaked: ["IBAN"] },
+    { id: "xon-LeakyShop", source: "Leaky Shop", date: "2023", leaked: ["old password"] },
+  ];
+  const known = (id) => KNOWN_BREACHES.find((k) => k.id === id);
+  const existing = [{ id: "xon-Old", source: "Old", date: "2020", leaked: [] }, known("bouygues-2025"), known("free-2024")];
+  const merged = mergeBreaches(found, existing);
+  assert.deepEqual(merged.map((b) => b.id), ["bouygues-2025", "xon-LeakyShop", "free-2024"], "the twin once, the looked-up shop, the hand-ticked one; the stale looked-up one goes");
+  assert.ok(merged[0].leaked.includes("IBAN"), "the well-known twin brings its own list of what leaked");
+  assert.deepEqual(merged[0].leaked, ["name", "address", "IBAN", "BIC", "email", "date of birth", "phone"], "and keeps every kind the lookup reported, from both entries that folded into it");
+  assert.deepEqual(merged[1].leaked, ["IBAN", "old password"], "two looked-up entries with one id merge their lists too");
+  assert.equal(breachLeaking({ breaches: merged }, "date of birth")?.id, "bouygues-2025", "a kind only the lookup reported still reaches the verdict");
+  assert.ok(Object.isFrozen(KNOWN_BREACHES[0]) || KNOWN_BREACHES[0].leaked.length === 4, "the list itself is untouched");
+  assert.equal(curatedTwin({ source: "Bouygues Telecom", date: "2018" }), null, "another year is another breach");
+  assert.equal(curatedTwin({ source: "a website you used", date: "unknown" }), null, "the old-password line is nobody's twin");
+  assert.deepEqual(mergeBreaches([], existing).map((b) => b.id), ["bouygues-2025", "free-2024"], "nothing found: the hand-ticked ones stay");
 });

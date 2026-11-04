@@ -176,6 +176,11 @@ export const CRITERIA = Object.freeze([
   // One lesson finished (lib/lessons.js summarize: done counts them).
   { key: "learn", name: "score_learn", step: "score_learn_step", href: "#/learn",
     on: (ctx) => Number(ctx.progress?.summary?.done) >= 1 },
+  // Her address looked up once in the breach list (breach-exposure.md; the
+  // status's breachLookup block). An address in no breach is an answer too,
+  // so a lookup that found nothing counts: the answer is what protects.
+  { key: "breaches", name: "score_breaches", step: "score_breaches_step", href: "#/settings/knows",
+    on: (ctx) => Boolean(ctx.status?.breachLookup?.at) },
   serverCriterion("whatsapp"),
   serverCriterion("facebook"),
 ].map((c) => Object.freeze(c)));
