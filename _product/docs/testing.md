@@ -12,13 +12,13 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 | `make coverage` | The same with a coverage table on screen and `coverage/lcov.info` for tools. |
 | `make check` | What CI runs: `config/master.key` not tracked by git, Postgres required (no silent skip), every suite, line coverage at or above the threshold, then the README's coverage within one point of this run's. |
 | `make readme-numbers` | Re-measures the numbers at the top of `README.md` (tests, coverage, seed cases, Android tests, commits, CI runs) and its badges, from a green run. |
-| `make score` | The PRD pass criteria on the 37 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`), `make score-open` through Muse Spark Open, Meta's open weights, on Baseten (`BASETEN_API_KEY`; `_product/docs/llm.md`). |
+| `make score` | The PRD pass criteria on the 40 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`), `make score-open` through Muse Spark Open, Meta's open weights, on Baseten (`BASETEN_API_KEY`; `_product/docs/llm.md`). |
 | `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice, committed conflict markers. Part of the definition of done. |
 | `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, 1 to 3 lines per say, exactly three questions with one right answer, texts under 140 characters, `**bold**` only, EN/FR twins with the same steps, demo cases that exist. Part of `make check`. |
 
-## Coverage threshold: 93% of lines, ratcheted
+## Coverage threshold: 94% of lines, ratcheted
 
-`make check` fails below 93% line coverage on `lib/` and `src/` (`--test-coverage-lines` in `package.json`; raised from 84 on Oct 30 at 93.98% measured). The rule is a ratchet: when coverage rises, raise the threshold to the new floor in the same commit; never lower it. A change that drops coverage adds tests, it does not touch the number.
+`make check` fails below 94% line coverage on `lib/` and `src/` (`--test-coverage-lines` in `package.json`; raised from 84 on Oct 30 at 93.98% measured, to 94 on Nov 4 at 95.13%). The rule is a ratchet: when coverage rises, raise the threshold to the new floor in the same commit; never lower it. A change that drops coverage adds tests, it does not touch the number.
 
 The README's numbers are measured, not typed: `make readme-numbers` (`scripts/readme-numbers.mjs`, tested in `tests/readmeNumbers.test.js`) writes them, and `make check`, so CI, fails with "run make readme-numbers" when the README's coverage (table or badge) and the run's `coverage/lcov.info` differ by more than one point. The same code measures a few tenths apart from run to run (Nov 4: 94.64% on CI, 94.77% to 94.86% on a fresh local test database, 94.71% on a migrated one, which skips `src/db/migrate.js`'s apply path); the point of tolerance absorbs that, and a fresh `TEST_DB_SUFFIX` comes closest to CI.
 

@@ -12,7 +12,7 @@
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "test:db-clean": "node --env-file-if-exists=.env --import ./lib/credentials.js src/db/testDatabase.js clean",
     "coverage": "mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
-    "check": "node scripts/doctor.mjs testdb --quiet --strict && mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-coverage-lines=93 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
+    "check": "node scripts/doctor.mjs testdb --quiet --strict && mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-include=\"src/**\" --test-coverage-lines=94 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.js\"",
     "doctor": "node scripts/doctor.mjs",
     "credentials": "node scripts/credentials.mjs",
     "score": "node --import ./lib/credentials.js scripts/score.mjs",
