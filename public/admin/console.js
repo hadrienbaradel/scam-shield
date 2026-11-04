@@ -8,6 +8,9 @@ import * as jobs from "./views/jobs.js";
 import * as users from "./views/users.js";
 import * as cards from "./views/cards.js";
 import * as outbox from "./views/outbox.js";
+import * as library from "./views/library.js";
+import * as contests from "./views/contests.js";
+import * as watch from "./views/watch.js";
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -178,6 +181,9 @@ const VIEWS = [
   { path: "users", label: "Users", view: users },
   { path: "cards", label: "Scam reports", view: cards },
   { path: "outbox", label: "Outbox", view: outbox },
+  { path: "library", label: "Library", view: library },
+  { path: "contests", label: "Contests", view: contests },
+  { path: "watch", label: "Scam watch", view: watch },
 ];
 const EVERY_MS = 30000;
 
