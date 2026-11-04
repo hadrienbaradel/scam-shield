@@ -94,7 +94,7 @@ function bodyFold(message, open, p) {
   const m = message;
   const shown = Boolean(open?.body);
   return `
-      <button id="${p}Body" class="btn btn-outline btn-big vcard-fold" type="button" aria-expanded="${shown}" aria-controls="${p}BodyBox"
+      <button id="${p}Body" class="btn-link vcard-fold" type="button" aria-expanded="${shown}" aria-controls="${p}BodyBox"
         data-show="${esc(t("v2_show"))}" data-hide="${esc(t("v2_hide"))}">${esc(shown ? t("v2_hide") : t("v2_show"))}</button>
       <div id="${p}BodyBox" class="vcard-body" ${shown ? "" : "hidden"}>
         ${m.audio ? `<audio controls preload="none" src="${esc(m.audio)}"></audio>` : ""}

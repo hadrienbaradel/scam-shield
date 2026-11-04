@@ -1386,3 +1386,79 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 
 /* Interim: the old Settings page ends with Sign out (js/main.js withSignOut). */
 .settings-signout { margin-top: 6px; }
+
+/* --- redesign: today (today.js, card.js) --- */
+/* Today (frames 1a to 1d) and the shared verdict card with its "Still
+   unsure?" row (frames 1l to 1n). Built on the shared components above
+   (.screen, .hero-card, .allclear, .row-card, .btn-choice.is-compact,
+   .btn-back, .btn-listen, .soon-button); only what they do not cover is here.
+
+   Today
+     .td-choices      "Check something yourself": the title and the three
+                      choices, 12px apart
+     .td-count        "2 of 3" between the back link and Listen, 19px bold grey
+   The verdict card (js/views/card.js), on .v2-card for the slide to throw
+     .vcard           white, 4px border in the verdict colour (.danger,
+                      .caution, .ok), 26px corners, 20px padding, 14px gaps
+     .vcard-word      the 60px .vcard-mark circle and the word, 36px
+     .vcard-headline  26px; .vcard-next 22px bold; .vcard-fact 22px in the
+                      verdict wash; .vcard-small 19px grey
+     .vcard-fold      "Show me the message", the underlined text button;
+                      .vcard-body the message, on the grey ground
+     .vcard-unsure    "Still unsure?": the title, Ask, Send it to Prudence,
+                      .vcard-note (19px grey); .vcard-doubt the folded button */
+
+.td-choices { display: flex; flex-direction: column; gap: 12px; }
+.td-choices .btn-choice { font-weight: 700; }
+.td-count { flex: none; color: var(--muted); font-size: var(--t19); font-weight: 700; white-space: nowrap; }
+.screen-head .btn-listen { margin-left: auto; }
+
+.v2-card.vcard {
+  gap: 14px;
+  padding: 20px;
+  border: 4px solid var(--line);
+  border-radius: 26px;
+  box-shadow: none;
+}
+.vcard p { margin: 0; }
+.vcard.danger { border-color: var(--scam); }
+.vcard.caution { border-color: var(--careful); }
+.vcard.ok { border-color: var(--safe); }
+.vcard-word {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--t36);
+  font-weight: 700;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.vcard.danger .vcard-word { color: var(--scam); }
+.vcard.caution .vcard-word { color: var(--careful); }
+.vcard.ok .vcard-word { color: var(--safe); }
+.vcard-mark { flex: none; width: 60px; height: 60px; display: grid; place-items: center; border-radius: 50%; }
+.vcard.danger .vcard-mark { background: var(--scam); color: var(--surface); }
+.vcard.caution .vcard-mark { background: var(--careful-wash); border: 3px solid var(--careful); color: var(--careful); }
+.vcard.ok .vcard-mark { background: var(--safe-wash); border: 3px solid var(--safe); color: var(--safe); }
+.vcard-headline { margin: 0; font-size: var(--t26); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.vcard-next { font-size: var(--t22); font-weight: 700; line-height: 1.4; }
+.vcard-fact { padding: 12px 14px; border-radius: 14px; background: var(--ground); font-size: var(--t22); line-height: 1.4; overflow-wrap: anywhere; }
+.vcard.danger .vcard-fact { background: var(--scam-wash); }
+.vcard.caution .vcard-fact { background: var(--careful-wash); }
+.vcard.ok .vcard-fact { background: var(--safe-wash); }
+.vcard-fact .v2-chip { font-size: var(--t19); }
+.vcard-small { color: var(--muted); font-size: var(--t19); line-height: 1.4; }
+.vcard .vcard-fold { align-self: flex-start; min-height: 64px; margin-top: -4px; padding: 0; font-size: var(--t19); }
+.vcard-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--ground); }
+.vcard-body audio { width: 100%; }
+.vcard-body .mail-meta { font-size: var(--t19); }
+.vcard-body .mail-body { margin: 0; font-size: var(--t19); }
+
+.vcard-unsure,
+.vcard-unsure-row { display: flex; flex-direction: column; gap: 12px; }
+.vcard-unsure-row[hidden] { display: none; }
+.vcard-unsure .btn-big { border-radius: 16px; }
+.vcard-unsure .btn-big svg { flex: none; }
+.vcard-note { margin: 0; color: var(--muted); font-size: var(--t19); line-height: 1.4; }
+.vcard-doubt { justify-content: space-between; text-align: left; }
