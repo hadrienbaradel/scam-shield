@@ -118,6 +118,7 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 - WhatsApp: every delivery must carry a valid `X-Hub-Signature-256` (HMAC with `WHATSAPP_APP_SECRET`); the webhook refuses everything until its keys are set, and the access token goes only to the Graph API and to media URLs on Meta's own host.
 - Admin routes need an address listed in `ADMIN_EMAILS`, and `/dev/outbox` and `/dev/signin` answer only on loopback outside production and refuse a request carrying a forwarding header (X-Forwarded-*, CF-Connecting-IP, X-Real-IP, Forwarded, Via) or a non-local Host (`src/localDev.js`), so a Cloudflare tunnel never exposes them.
 - "Delete my account" stops Gmail push, revokes Google's grant and deletes the user, which cascades to every per-person table. Copies of emails already sent to trusted people stay in `outbox` until its 7-day expiry (the table has no owner column), and the labels already in Gmail stay.
+- How to report a vulnerability, and these choices and known limitations in short for a reviewer: `SECURITY.md`.
 
 ## Secrets, infra and CI
 
