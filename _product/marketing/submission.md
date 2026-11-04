@@ -20,7 +20,7 @@ Vlad's sessions may land these during the day; each one changes a line below, so
 
 **Team:** Hadrien Baradel (product), Vlad Zloteanu (CTO)
 
-**Links:** video [YouTube link] · repo https://github.com/hadrienbaradel/scam-shield · live https://heyprudence.com (the app's landing page with the no-sign-in demo, live since Nov 4 midday; the video's end card, rendered that morning, names only the repo) · page https://hadrienbaradel.github.io/prudence-site/
+**Links:** video https://youtu.be/79AKp59kQmI · repo https://github.com/hadrienbaradel/scam-shield · live https://heyprudence.com (the app's landing page with the no-sign-in demo, live since Nov 4 midday, also on the video's end card) · page https://hadrienbaradel.github.io/prudence-site/
 
 **Description:**
 
@@ -63,7 +63,7 @@ Required fields are marked *. The rating questions are Hadrien's own opinion; th
 
 **Public GitHub Repository\*:** https://github.com/hadrienbaradel/scam-shield (only once it is public, after the tech team's review)
 
-**3-Minute Demo Video\*:** the YouTube link (unlisted or public; open it logged out before submitting).
+**3-Minute Demo Video\*:** https://youtu.be/79AKp59kQmI (unlisted, uploaded Nov 4 from `prudence-final-v2.mp4`; plays logged out and embeds, checked through YouTube's oEmbed)
 
 **Describe your use of Meta products to build the submitted project\*:**
 
@@ -105,7 +105,7 @@ Reliability seen from the client: from some networks we saw 10-second connection
 > So I built Prudence: it checks every email, text, voicemail and picture against your own life, and Meta's Muse Spark explains why in plain words.
 >
 > Built this week for the #MetaAIHackathon 👇
-> [video link]
+> https://youtu.be/79AKp59kQmI
 > @AIatMeta @cerebral_valley
 
 Reply to the post, as a thread:
