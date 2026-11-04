@@ -36,7 +36,10 @@ const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
 
 // trustProxy: TRUST_PROXY by default (src/config.js); tests pass their own.
 export async function buildApp({ logger = true, trustProxy = config.trustProxy } = {}) {
-  const app = Fastify({ logger, trustProxy, bodyLimit: 1024 * 1024 });
+  // forceCloseConnections: app.close() also ends the open /api/events streams;
+  // without it a phone or a tab left on the app holds the old process, and
+  // the watcher's restart (make server) waits on it with nothing on port 3000.
+  const app = Fastify({ logger, trustProxy, bodyLimit: 1024 * 1024, forceCloseConnections: true });
 
   await app.register(cookie);
   await app.register(helmet, {
