@@ -121,13 +121,20 @@ test("the contact card of Prudence exists only while its WhatsApp number receive
   assert.equal(prudenceCard({}), null);
 });
 
-test("Listen: the check is judged as a person speaking face to face, on the voice channels, and neither the audio nor the words are stored", db, async () => {
+// A verdict that repeats the person's words, as a real one can.
+const ECHO = { ...CAREFUL, reasons: [{ text: 'He says "two thousand, cash, today only": pressure to pay now.', evidence: "payment" }] };
+const cacheRows = async (userId) => (await one("SELECT count(*)::int AS n FROM llm_cache WHERE user_id = $1", [userId])).n;
+
+test("Listen: judged as a person speaking face to face; no audio or transcript stored, nothing in the model cache, the verdict kept like any check as a conversation", db, async () => {
   process.env.LLM_PROVIDER = "mock";
   const { user, cookie } = await senior("linda.glasses.listen@example.test");
-  mock.scriptTranscript(PITCH);
-  mock.script(CAREFUL);
-  const body = upload({ context: "conversation" });
-  const res = await app.inject({ method: "POST", url: "/api/check/voice", headers: { cookie, origin: ORIGIN, ...body.headers }, payload: body.payload });
+  const listen = async () => {
+    mock.scriptTranscript(PITCH);
+    mock.script(ECHO);
+    const body = upload({ context: "conversation" });
+    return app.inject({ method: "POST", url: "/api/check/voice", headers: { cookie, origin: ORIGIN, ...body.headers }, payload: body.payload });
+  };
+  const res = await listen();
   assert.equal(res.statusCode, 200, res.body);
   const out = res.json();
   assert.equal(out.transcript, PITCH);
@@ -138,20 +145,49 @@ test("Listen: the check is judged as a person speaking face to face, on the voic
   assert.match(sent, /voice_transcript/);
   const checks = await many("SELECT * FROM checks WHERE user_id = $1", [user.id]);
   assert.equal(checks.length, 1);
-  assert.equal(checks[0].channel, "voice", "recorded like any voice check");
-  assert.doesNotMatch(JSON.stringify(checks[0]), /shingles/i, "the words are not kept");
-  assert.equal(JSON.stringify(checks[0]).includes("RIFF"), false, "the audio is not kept");
+  assert.equal(checks[0].channel, "conversation", "a conversation, not a voice message");
+  const row = JSON.stringify(checks[0]);
+  assert.match(row, /two thousand, cash, today only/, "the verdict is kept and may repeat a few of the person's words (line 13)");
+  assert.doesNotMatch(row, /Your roof lost shingles/, "the transcript is not kept");
+  assert.equal(row.includes("RIFF"), false, "the audio is not kept");
+  assert.equal(await cacheRows(user.id), 0, "nothing in llm_cache");
+
+  // The same words again: the model is asked again, never answered from a cache.
+  const asked = mock.calls.length;
+  const again = await listen();
+  assert.equal(again.statusCode, 200, again.body);
+  assert.ok(mock.calls.length > asked, "asked again");
+  assert.doesNotMatch(again.json().verdict.source, /cached/);
+  assert.equal(await cacheRows(user.id), 0);
 });
 
-test("Listen in French: the name on the card is in her language", db, async () => {
+test("a voice message still uses the model cache, so the test above would see a cache row", db, async () => {
   process.env.LLM_PROVIDER = "mock";
-  const { cookie } = await senior("francoise.glasses.listen@example.test", "fr-FR");
-  mock.scriptTranscript("Votre toit a perdu des tuiles.");
-  mock.script({ ...CAREFUL, language: "fr" });
-  const body = upload({ context: "conversation" });
+  const { user, cookie } = await senior("linda.glasses.cachecontrast@example.test");
+  mock.scriptTranscript(`Grandma it's me, call me back ${Date.now()}.`);
+  mock.script(CAREFUL);
+  const body = upload({});
   const res = await app.inject({ method: "POST", url: "/api/check/voice", headers: { cookie, origin: ORIGIN, ...body.headers }, payload: body.payload });
   assert.equal(res.statusCode, 200, res.body);
-  assert.equal(res.json().message.fromName, "Personne qui vous parle en face");
+  assert.equal(await cacheRows(user.id), 1);
+  assert.equal((await one("SELECT channel FROM checks WHERE user_id = $1", [user.id])).channel, "voice");
+});
+
+test("Listen names the speaker in the page's language, and in the account's when the page does not say", db, async () => {
+  process.env.LLM_PROVIDER = "mock";
+  const name = async (locale, fields) => {
+    const { cookie } = await senior(`listen.${locale}.${fields.lang || "none"}@example.test`, locale);
+    mock.scriptTranscript("Votre toit a perdu des tuiles.");
+    mock.script({ ...CAREFUL, language: "fr" });
+    const body = upload({ context: "conversation", ...fields });
+    const res = await app.inject({ method: "POST", url: "/api/check/voice", headers: { cookie, origin: ORIGIN, ...body.headers }, payload: body.payload });
+    assert.equal(res.statusCode, 200, res.body);
+    return res.json().message.fromName;
+  };
+  assert.equal(await name("en-US", { lang: "fr" }), "Personne qui vous parle en face", "an English account on a page in French");
+  assert.equal(await name("fr-FR", { lang: "en" }), "Person speaking face to face", "a French account on a page in English");
+  assert.equal(await name("fr-FR", {}), "Personne qui vous parle en face", "no lang field: the account's");
+  assert.equal(await name("en-US", {}), "Person speaking face to face");
 });
 
 test("a voice message stays a voice message: only the exact context changes what the model is told", db, async () => {

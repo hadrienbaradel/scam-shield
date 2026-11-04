@@ -189,7 +189,8 @@ export const CRITERIA = Object.freeze([
     on: (ctx) => Array.isArray(ctx.guardians) && ctx.guardians.some((g) => g?.status === "active") },
   // One voice message checked: the voice route records its check with the
   // channel "voice" (src/routes/mail.js, /api/check/voice; the message inside
-  // it says "voice_transcript", the check does not). /api/checks lists the
+  // it says "voice_transcript", the check does not). A conversation heard on
+  // the glasses screen is recorded as "conversation" and does not count. /api/checks lists the
   // 100 most recent checks of every kind; null: it could not be read, not on.
   { key: "voice", channel: "voice", name: "score_voice", step: "score_voice_step", href: "#/check/voice",
     on: (ctx) => Array.isArray(ctx.checks) && ctx.checks.some((c) => c?.channel === "voice") },

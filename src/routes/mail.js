@@ -244,10 +244,15 @@ export default async function mailRoutes(app) {
     // live, face to face, not a voicemail. The page sends the field before the
     // file, the only fields request.file() sees.
     const faceToFace = file.fields?.context?.value === "conversation";
-    const fromName = faceToFace ? (String(request.user.locale || "").startsWith("fr") ? "Personne qui vous parle en face" : "Person speaking face to face") : caller || "Voice message";
+    // Named in the page's language (its "lang" field), else in the account's.
+    const lang = String(file.fields?.lang?.value || request.user.locale || "");
+    const fromName = faceToFace ? (lang.startsWith("fr") ? "Personne qui vous parle en face" : "Person speaking face to face") : caller || "Voice message";
     const message = { channel: "voice_transcript", from: faceToFace ? "" : caller, fromName, ...(faceToFace ? { setting: "face_to_face" } : {}), subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
-    const { verdict, ctx } = await runCheck({ user: request.user, message });
-    const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "voice" });
+    // A conversation's answer can repeat the person's words: it skips the
+    // model cache, and its check says "conversation", which the score's
+    // "voice message" criterion does not count (line 13).
+    const { verdict, ctx } = await runCheck({ user: request.user, message, cache: !faceToFace });
+    const check = await recordCheck({ userId: request.user.id, message, verdict, channel: faceToFace ? "conversation" : "voice" });
     return { checkId: check.id, verdict, message, transcript, callBack: callBackFor(ctx, message), judged: { message, threadHistory: [] } };
   });
 

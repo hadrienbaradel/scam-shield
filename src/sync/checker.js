@@ -56,15 +56,17 @@ export async function contextFor(user, message) {
 // The links' facts for one message (age, listings, and where they land when resolve is on), for both too.
 export const linkFactsFor = (message, ctx, { resolve = false } = {}) => inspectMessageLinks(message, ctx, { resolve });
 
-export async function runCheck({ user, message, threadHistory = [], resolveLinks = false }) {
-  // (resolveLinks: follow every link, when the person asks)
+export async function runCheck({ user, message, threadHistory = [], resolveLinks = false, cache = true }) {
+  // (resolveLinks: follow every link, when the person asks; cache: false for a
+  // conversation heard face to face, whose answer can repeat the other
+  // person's words and is not kept in llm_cache: check-glasses.md, line 13)
   const { ctx, cards } = await contextFor(user, message);
   const judge = async (resolve) => {
     const linkInspection = await linkFactsFor(message, ctx, { resolve });
     const verdict = await checkMessage({
       locale: user.locale || "en-US", message, personalContext: ctx, patternCards: cards,
       threadHistory, mockLinkInspection: linkInspection, linkInspection,
-    }, { cache: llmCacheFor(user.id) });
+    }, { cache: cache ? llmCacheFor(user.id) : null });
     return { verdict, linkInspection };
   };
   let out = await judge(resolveLinks);

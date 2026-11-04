@@ -11,6 +11,7 @@ import { CRITERIA, SCREENS, glassesChoice, glassesRow, handsFreeWays, hasGlasses
 import { ICON_NAMES } from "../public/js/ui.js";
 import { LISTEN_SECONDS, MIN_SECONDS, createListener, createRing, createSession, encodeWav, isBluetoothMic, micProblem, phoneMicId, pickPhoneMic, resample } from "../public/js/listen.js";
 import { glassesDrawing, handsFreeHtml, spokenAnswer, sayHere, hush, lookJob } from "../public/js/views/glasses.js";
+import { askPreviewHtml } from "../public/js/views/mail.js";
 
 const withGlasses = (glasses) => ({ user: { glasses } });
 const inFrench = (fn) => {
@@ -685,4 +686,22 @@ test("Look's answer stops when she leaves the screen, and when a new photo is se
     hush();
     assert.equal(sp.listening(), 0);
   } finally { sp.restore(); }
+});
+
+test("a conversation heard on the glasses screen does not count as a voice message checked", () => {
+  const voice = (checks) => scoreOf({ status: null, devices: [], guardians: [], progress: null, checks }).on;
+  assert.equal(voice([{ id: "c1", channel: "conversation", verdict_value: "be_careful" }]), 0);
+  assert.equal(voice([{ id: "c2", channel: "voice", verdict_value: "be_careful" }]), 1);
+});
+
+test("Ask from a Listen verdict shows the speaker without empty brackets; an address keeps its brackets", () => {
+  const v = { headline: "Be careful: cash today.", reasons: [{ text: "Pressure to pay <now>." }] };
+  const face = askPreviewHtml({ fromName: "Person speaking face to face", from: "", subject: "" }, v);
+  assert.match(face, /<p class="mail-meta">Person speaking face to face<\/p>/);
+  assert.doesNotMatch(face, /&lt;&gt;|&lt;\s*&gt;/, "no empty brackets");
+  assert.match(face, /Pressure to pay &lt;now&gt;\./, "escaped");
+  const mail = askPreviewHtml({ fromName: "Chase", from: "alerts@chase.test", subject: "Your card" }, v);
+  assert.match(mail, /Chase &lt;alerts@chase\.test&gt;/);
+  assert.match(mail, /<strong>Your card<\/strong>/);
+  assert.doesNotMatch(askPreviewHtml({}, v), /mail-meta/, "nobody to name: no line");
 });

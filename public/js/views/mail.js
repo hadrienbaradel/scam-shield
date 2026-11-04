@@ -155,6 +155,17 @@ async function act(id, path, done) {
   if (state.current === id) await openMessage(id, { keepFocus: true });
 }
 
+// What the trusted person will see: who sent it ("Name <address>", or the
+// name alone when there is no address: a person heard face to face), the
+// subject, the headline and the reasons. Every value escaped.
+export function askPreviewHtml(message = {}, verdict = {}) {
+  const m = message || {};
+  const v = verdict || {};
+  const who = `${esc(m.fromName || "")}${m.from ? ` &lt;${esc(m.from)}&gt;` : ""}`;
+  return `<div class="shared-card">${who.trim() ? `<p class="mail-meta">${who}</p>` : ""}${m.subject ? `<p><strong>${esc(m.subject)}</strong></p>` : ""}
+        <p>${esc(v.headline)}</p><ul>${(v.reasons || []).map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul></div>`;
+}
+
 // Shared with "Check something": preview exactly what will be shared.
 export async function openAsk({ checkId, verdict, message, target, provided = false }) {
   const { guardians } = await api("/api/guardians");
@@ -165,8 +176,7 @@ export async function openAsk({ checkId, verdict, message, target, provided = fa
       <h3>${t("ask_title")}</h3>
       <fieldset><legend>${t("ask_to")}</legend>${active.map((g) => `<label class="check"><input type="checkbox" name="g" value="${esc(g.id)}" checked> ${esc(g.name)}${g.relation ? ` (${esc(g.relation)})` : ""}</label>`).join("")}</fieldset>
       <p>${t("ask_preview")}</p>
-      <div class="shared-card"><p class="mail-meta">${esc(message.fromName)} &lt;${esc(message.from)}&gt;</p>${message.subject ? `<p><strong>${esc(message.subject)}</strong></p>` : ""}
-        <p>${esc(verdict.headline)}</p><ul>${(verdict.reasons || []).map((r) => `<li>${esc(r.text)}</li>`).join("")}</ul></div>
+      ${askPreviewHtml(message, verdict)}
       <label class="check"><input type="checkbox" id="includeText"> ${t("ask_include_text")}</label>
       <button id="sendAsk" class="btn btn-gold btn-big" type="button">${esc(t("ask_send", { names: active.map((g) => g.name).join(", ") }))}</button>
     </div>`;
