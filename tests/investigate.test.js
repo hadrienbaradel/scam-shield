@@ -308,9 +308,14 @@ test("a closer look never lowers a Scam; it may confirm or raise a verdict; Be c
   assert.equal(decideAnswer({ answer: say("be_careful"), checks: ok2, first: SAFE, fallback, fr: false }).verdict, "be_careful", "raised");
   assert.equal(decideAnswer({ answer: say("safe"), checks: ok2, first: CAREFUL, fallback, fr: false }).verdict, "safe", "two clean checks");
   assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "ok" }], first: CAREFUL, fallback, fr: false }).none, "would_lower", "one check is not enough");
-  assert.equal(decideAnswer({ answer: say("safe"), checks: [...ok2, { n: 3, flag: "unknown" }], first: CAREFUL, fallback, fr: false }).none, "would_lower", "nothing left unknown");
-  assert.equal(decideAnswer({ answer: say("safe"), checks: [...ok2, { n: 3, flag: "warn" }], first: CAREFUL, fallback, fr: false }).none, "would_lower");
-  assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "warn" }, { n: 2, flag: "ok" }], first: null, fallback, fr: false }).none, "would_lower", "no first verdict counts as Be careful");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [...ok2, { n: 3, flag: "unknown" }], first: CAREFUL, fallback, fr: false }).none, "not_clean", "nothing left unknown");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [...ok2, { n: 3, flag: "warn" }], first: CAREFUL, fallback, fr: false }).none, "not_clean");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: ok2, first: null, fallback, fr: false }).verdict, "safe", "no first verdict counts as Be careful");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "ok" }], first: null, fallback, fr: false }).none, "would_lower");
+  // A Safe first verdict is confirmed only on clean checks too.
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "ok" }], first: SAFE, fallback, fr: false }).verdict, "safe", "confirmed on one clean check");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "ok" }, { n: 2, flag: "warn" }], first: SAFE, fallback, fr: false }).none, "not_clean", "never Safe under a warning line");
+  assert.equal(decideAnswer({ answer: say("safe"), checks: [{ n: 1, flag: "unknown" }], first: SAFE, fallback, fr: false }).none, "not_clean");
   assert.equal(decideAnswer({ answer: say("safe"), checks: ok2, first: CAREFUL, fallback: { ...fallback, verdict: "scam" }, fr: false }).none, "guardrail", "the rules' Scam is never cleared");
   assert.equal(decideAnswer({ answer: say("scam"), checks: ok2, first: SCAM, fallback, fr: true }).none, "language", "a French person gets French or nothing");
   assert.equal(decideAnswer({ answer: { ...say("scam"), confidence: 7 }, checks: ok2, first: SCAM, fallback, fr: false }).none, "invalid");
