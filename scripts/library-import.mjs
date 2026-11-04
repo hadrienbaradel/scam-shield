@@ -70,10 +70,17 @@ export async function downloadCorpus(corpus, { dir = join(RUNTIME, corpus.id), l
 }
 
 // -------------------------------------------------------------- import ---
-// Returns { written, skipped: { unclassified, invalid }, byFamily, calls }.
+// Returns { written, skipped: { unclassified, invalid, failed }, byFamily, calls }.
 // `classify` is the model (default Muse Spark through classifyExample);
 // `family` replaces it; `file` is the corpus file (default: downloaded).
-export async function importCorpus({ source, limit = 100, seed = 1, dry = false, family = null, file = null, dir = LIBRARY_DIR, classify = null, log = console.log }) {
+// A call that fails (a timeout, a 5xx) is tried ATTEMPTS times with a
+// pause; a sample still unanswered is skipped and counted as failed, and
+// MAX_FAILED such samples in a row stop the run: the model is not
+// answering, and what was written stays for the next run to continue.
+const ATTEMPTS = 3;
+const MAX_FAILED = 5;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export async function importCorpus({ source, limit = 100, seed = 1, dry = false, family = null, file = null, dir = LIBRARY_DIR, classify = null, pauseMs = 3000, log = console.log }) {
   const corpus = CORPORA[source];
   if (!corpus) throw new Error(`unknown source ${source}: one of ${Object.keys(CORPORA).join(", ")}`);
   const { families, sources, entries } = await loadLibraryFiles(dir);
@@ -92,22 +99,25 @@ export async function importCorpus({ source, limit = 100, seed = 1, dry = false,
   log(`${source}: ${rows.length} rows, ${candidates.length} spam samples not yet in the library; importing up to ${limit}${dry ? " (dry run)" : ""}`);
 
   let calls = 0;
+  // The classification, or null when the model did not answer after ATTEMPTS tries.
   const classifyOne = async (sample) => {
     if (family) return { family, brand: null, lure: "", ask: "" };
     const message = messageFromSample(sample);
-    for (let attempt = 1; ; attempt++) {
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       calls++;
       try { return await model({ channel: "sms", message, families }); } catch (e) {
-        if (attempt >= 2) throw e;
-        log(`  retrying after: ${e.message}`);
+        log(`  ${attempt < ATTEMPTS ? "retrying" : "giving up"} after: ${e.message}`);
+        if (attempt < ATTEMPTS) await sleep(pauseMs * attempt);
       }
     }
+    return null;
   };
 
   let n = nextNumber(entries.map((e) => e.id), corpus.prefix);
   const written = [];
-  const skipped = { unclassified: 0, invalid: 0 };
+  const skipped = { unclassified: 0, invalid: 0, failed: 0 };
   const byFamily = {};
+  let failedInARow = 0;
   await mkdir(join(dir, "entries"), { recursive: true });
   // Four at a time, never more than are still needed: no call is spent past the limit.
   for (let i = 0; i < candidates.length && written.length < limit;) {
@@ -116,6 +126,12 @@ export async function importCorpus({ source, limit = 100, seed = 1, dry = false,
     const results = await Promise.all(batch.map(classifyOne));
     for (const [j, sample] of batch.entries()) {
       const classification = results[j];
+      if (!classification) {
+        skipped.failed++;
+        if (++failedInARow >= MAX_FAILED) throw new Error(`${museLabel()} is not answering: ${MAX_FAILED} samples in a row failed after ${ATTEMPTS} tries each; ${written.length} entries ${dry ? "would have been " : ""}written, run again to continue`);
+        continue;
+      }
+      failedInARow = 0;
       if (!classification.family) { skipped.unclassified++; log(`  skipped, no family: ${sample.body.slice(0, 70)}`); continue; }
       const entry = entryFromSample(sample, { id: sampleId(corpus.prefix, n), source: sourceRow, classification, firstSeen: corpus.seen });
       const errors = validateEntry(entry, { families, sources });
@@ -129,7 +145,7 @@ export async function importCorpus({ source, limit = 100, seed = 1, dry = false,
   }
   const ids = written.length ? ` (${written[0].id} to ${written.at(-1).id})` : "";
   const who = family ? `no model, --family ${family}` : classify ? "a stand-in classifier" : `${museLabel()} (${museModel()})`;
-  log(`${source}: ${written.length} entries ${dry ? "would be " : ""}written${ids}, ${skipped.unclassified} without a family, ${skipped.invalid} invalid, ${calls} calls to ${who}`);
+  log(`${source}: ${written.length} entries ${dry ? "would be " : ""}written${ids}, ${skipped.unclassified} without a family, ${skipped.invalid} invalid, ${skipped.failed} unanswered, ${calls} calls to ${who}`);
   log(`  by family: ${Object.entries(byFamily).sort((a, b) => b[1] - a[1]).map(([f, c]) => `${f} ${c}`).join(", ") || "none"}`);
   return { written, skipped, byFamily, calls };
 }

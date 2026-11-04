@@ -170,18 +170,41 @@ test("importCorpus reads a corpus file, classifies, writes numbered entries and 
     assert.deepEqual(bad.written, []);
     assert.equal(bad.skipped.invalid, 2, "the two samples left, both refused by validateEntry");
     assert.ok(lines.some((l) => /lure/.test(l)), "the reason is printed");
-    // A model that fails once is retried; one that fails twice stops the run.
+    // A model that fails once is retried after a pause; a sample unanswered three times is skipped, the run goes on.
     let n = 0;
     const flaky = async (...a) => { n++; if (n === 1) throw new Error("down"); return classify(...a); };
-    const retried = await importCorpus({ source: "uci-sms", file, dir, limit: 1, classify: flaky, log, dry: true });
+    const retried = await importCorpus({ source: "uci-sms", file, dir, limit: 1, classify: flaky, log, dry: true, pauseMs: 0 });
     assert.equal(retried.written.length, 1);
     assert.equal(retried.calls, 2, "the failed call counts");
-    await assert.rejects(importCorpus({ source: "uci-sms", file, dir, limit: 1, classify: async () => { throw new Error("down"); }, log, dry: true }), /down/);
+    const down = await importCorpus({ source: "uci-sms", file, dir, limit: 10, classify: async () => { throw new Error("down"); }, log, dry: true, pauseMs: 0 });
+    assert.deepEqual([down.written.length, down.skipped.failed, down.calls], [0, 2, 6], "two samples, three tries each, none written");
+    assert.ok(lines.some((l) => /giving up after: down/.test(l)));
     await assert.rejects(importCorpus({ source: "nope", file, dir, log }), /unknown source nope/);
     await mkdir(join(dir, "nosource"));
     await writeFile(join(dir, "nosource", "families.json"), JSON.stringify(families));
     await writeFile(join(dir, "nosource", "sources.json"), JSON.stringify(sources.filter((s) => s.id !== "mishra-soni")));
     await assert.rejects(importCorpus({ source: "mishra-soni", file, dir: join(dir, "nosource"), log }), /no mishra-soni row in .*sources\.json/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("importCorpus stops when five samples in a row get no answer, keeping what was written", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "library-import-"));
+  try {
+    await mkdir(join(dir, "entries"), { recursive: true });
+    const { families, sources } = await refs();
+    await writeFile(join(dir, "families.json"), JSON.stringify(families));
+    await writeFile(join(dir, "sources.json"), JSON.stringify(sources));
+    const file = join(dir, "corpus.txt");
+    // Eight different texts: bodyHash ignores digits, so the words must differ.
+    const words = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel"];
+    await writeFile(file, words.map((w) => `spam\tSample ${w} of a scam text that is long enough to keep, call 09061701461`).join("\n"));
+    let n = 0;
+    // The first sample is answered, then nothing is.
+    const classify = async () => { if (n++ === 0) return { family: "prize", brand: null, lure: "You won", ask: "Call" }; throw new Error("timeout"); };
+    await assert.rejects(importCorpus({ source: "uci-sms", file, dir, limit: 8, classify, pauseMs: 0, log: () => {} }), /not answering: 5 samples in a row .* 1 entries written, run again/);
+    assert.deepEqual(await readdir(join(dir, "entries")), ["lib-uci-001.json"], "the one answered stays on disk");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
