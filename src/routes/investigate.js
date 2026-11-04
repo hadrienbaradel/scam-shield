@@ -69,10 +69,21 @@ export function messageFrom(input) {
     ...(["bank", "company", "known"].includes(m.claimedSender) ? { claimedSender: m.claimedSender } : {}),
   };
 }
-// A chat's earlier turns, as /api/check/text judged them.
-export const historyFrom = (input) => (Array.isArray(input) ? input.slice(-30) : [])
-  .filter((t) => t && typeof t === "object")
-  .map((t) => ({ from: clip(t.from, 200), date: clip(t.date, 40), body: clip(t.body, 1000) }));
+// A chat's earlier turns, as /api/check/text judged them: every turn, in order,
+// the whole conversation bounded at 6000 characters as that route bounds the
+// pasted chat (the first turns are where an opener sits: lib/detector.js).
+export function historyFrom(input) {
+  const turns = [];
+  let room = 6000;
+  for (const t of Array.isArray(input) ? input.slice(0, 1000) : []) {
+    if (room <= 0) break;
+    if (!t || typeof t !== "object") continue;
+    const body = clip(t.body, room);
+    room -= body.length;
+    turns.push({ from: clip(t.from, 200), date: t.date ? clip(t.date, 40) : null, body });
+  }
+  return turns;
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const demoLooks = new Map(); // example id -> the look running or kept for it (a promise)

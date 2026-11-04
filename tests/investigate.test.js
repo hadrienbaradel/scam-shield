@@ -10,6 +10,7 @@ import { readFile } from "node:fs/promises";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
 import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
+import { detect } from "../lib/detector.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
 import { registrationDate as registrationDate2 } from "../src/links/resolver.js";
 import { contextFor, liveCards, runCheck } from "../src/sync/checker.js";
@@ -652,7 +653,7 @@ test("the page's message keeps every field the rules read (attachments, hidden t
   assert.deepEqual([full.inbox, full.threads], [true, [{ name: "Ann", preview: "Hi", date: "Mon", section: "requests" }]]);
   assert.deepEqual([full.claimedBrand, full.claimedContact], ["PayPal", "Ethan Miller"]);
   assert.deepEqual(full.links.map((l) => l.href), ["https://x.example.com/a"], "links found in the whole chat");
-  assert.deepEqual(historyFrom([{ from: "Daniel", date: "", body: "hi", extra: 1 }, "junk"]), [{ from: "Daniel", date: "", body: "hi" }]);
+  assert.deepEqual(historyFrom([{ from: "Daniel", date: "", body: "hi", extra: 1 }, "junk"]), [{ from: "Daniel", date: null, body: "hi" }]);
   // A blank chat text is no chat text: the link pasted in the body is still read.
   const blank = messageFrom({ body: "Pay at https://pay.example.com/x", fullText: "   ", hiddenText: " \n ", claimedBrand: "" });
   assert.deepEqual(blank.links.map((l) => l.href), ["https://pay.example.com/x"]);
@@ -667,6 +668,27 @@ test("a body full of links costs nothing: at most 200 read, 40 kept, duplicates 
   assert.equal(m.links.length, 40);
   assert.equal(new Set(m.links.map((l) => l.href)).size, 40);
   assert.equal(messageFrom({ body: "x", links: [{ href: "https://a.example.com" }, { href: "https://a.example.com" }, { href: "ftp://b.example.com" }] }).links.length, 1);
+});
+
+test("a long pasted chat keeps every earlier turn, so the look's rules read the opener the first check read", async () => {
+  // 35 earlier turns: a stranger's wrong-number opener first, chit-chat, then a gift-card ask.
+  const turns = [{ from: "Jessica", date: null, body: "Hi, is this Mary? It's Jessica, we met at the garden club last week." }];
+  for (let i = 0; i < 34; i++) turns.push(i % 2 ? { from: "Jessica", date: null, body: `Lovely weather today, number ${i}.` } : { from: "you", date: null, body: `Yes it is, ${i}.` });
+  const message = { channel: "social", from: "", fromName: "Jessica", subject: "", body: "Could you buy me two Apple gift cards today? I will pay you back.", links: [], auth: "" };
+  const kept = historyFrom(turns);
+  assert.equal(kept.length, 35, "every turn the check judged");
+  const firstRules = detect({ locale: "en-US", message, personalContext: LINDA, patternCards: CARDS, threadHistory: turns });
+  const cutRules = detect({ locale: "en-US", message, personalContext: LINDA, patternCards: CARDS, threadHistory: turns.slice(-30) });
+  assert.notEqual(cutRules._signals.length, firstRules._signals.length, "the old cut lost a finding: the scenario is real");
+  mock.script(answer("scam", [{ text: "x", check: 1 }]));
+  await investigate({ message, threadHistory: kept, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  const evidence = JSON.parse(mock.calls.at(-1).messages[0].content.match(/<detector_evidence>(.*)<\/detector_evidence>/)[1]);
+  assert.equal(evidence.preliminary_verdict, firstRules.verdict);
+  assert.equal(evidence.findings.length, firstRules._signals.length, "the same findings as the first check's rules");
+  assert.equal(JSON.parse(mock.calls.at(-1).messages[0].content.match(/<thread_history>(.*)<\/thread_history>/)[1]).length, 35, "and the model sees every turn");
+  // Bounded as the text route bounds the chat: 6000 characters in all.
+  const huge = historyFrom(Array.from({ length: 50 }, (_, i) => ({ from: "them", body: "x".repeat(200) + i })));
+  assert.equal(huge.reduce((n, t) => n + t.body.length, 0), 6000);
 });
 
 test("the look's rules see what the first check's rules saw: an .html attachment, hidden orders to the AI, the links' facts, the thread", async () => {
