@@ -822,45 +822,33 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------ learn -- */
-/* The Learn tab (_product/specs/micro-learning.md, design canvas "Prudence
-   Learn tab"): one step per screen, the same column, header and docked
+/* The Learn tab (_product/specs/micro-learning.md; the 2026-11-04 canvas,
+   frames 1o and 1p): one step per screen, the same column, header and docked
    Next button as Today. Stars are drawn in SVG (navy outline, gold fill,
-   always next to words): gold is never text on white. */
+   always next to words or with a label): gold is never text on white. The
+   home's progress card and badge circles are in "redesign: learn" at the
+   end of this file. */
 
-.learn-hello { display: flex; flex-direction: column; gap: 0.3rem; }
-.learn-lead { color: var(--muted); font-size: 1.1rem; }
+.learn-hello { display: flex; flex-direction: column; gap: 4px; }
+.learn-lead { color: var(--muted); }
 
-.learn-progress { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.3rem; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; }
-.learn-progress-line { color: var(--navy); font-size: 1.1rem; font-weight: 700; line-height: 1.4; }
+.learn-progress { display: flex; flex-direction: column; gap: 14px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; }
+.learn-progress-line { min-width: 0; }
 .learn-progress-line span { white-space: nowrap; }
-.learn-badges-box { display: flex; flex-direction: column; gap: 0.5rem; }
-.learn-badges-box h2 { margin: 0; color: var(--muted); font-size: 1rem; }
-.learn-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-.learn-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  max-width: 100%;
-  padding: 0.35rem 0.85rem 0.35rem 0.6rem;
-  background: var(--gold-wash);
-  border: 2px solid var(--gold);
-  border-radius: 999px;
-  color: var(--navy-deep);
-  font-weight: 700;
-  line-height: 1.3;
-}
-.learn-badge-emoji { font-size: 1.25rem; line-height: 1; }
+.learn-badges-box { display: flex; flex-direction: column; gap: 8px; }
 
-.learn-group { display: flex; flex-direction: column; gap: 0.75rem; }
-.learn-group h2 { margin: 0; font-size: 1.2rem; }
-.learn-list { display: flex; flex-direction: column; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.learn-group { display: flex; flex-direction: column; gap: 16px; }
+.learn-group .section-title { margin-top: 4px; }
+.learn-list { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
 
-/* A lesson is one whole-card link. */
+/* A lesson is one whole-card link: a row (2px line, 18px corners), the
+   first one to try the big card (4px navy, 26px corners, the shadow). */
 .learn-lesson {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 1rem;
+  gap: 14px;
+  min-height: 64px;
+  padding: 16px;
   background: var(--surface);
   border: 2px solid var(--line);
   border-radius: 18px;
@@ -868,21 +856,21 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   text-decoration: none;
 }
 .learn-lesson:hover { border-color: var(--navy); }
-.learn-lesson-top { display: flex; align-items: center; gap: 0.9rem; }
-.learn-lesson-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.learn-lesson-title { font-size: 1.15rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
-.learn-emoji { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--navy-wash); font-size: 1.5rem; line-height: 1; }
-.learn-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; color: var(--muted); }
-.learn-cue { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--navy); font-weight: 700; }
-.learn-lesson.is-next { flex-direction: column; align-items: stretch; gap: 0.9rem; padding: 1.2rem; border-width: 4px; border-radius: 26px; box-shadow: 0 10px 28px rgba(15, 29, 47, 0.16); }
-.learn-lesson.is-next .learn-emoji { width: 64px; height: 64px; font-size: 2rem; }
-.learn-lesson.is-next .learn-lesson-title { font-size: 1.3rem; }
-.learn-start { display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 64px; padding: 0.6rem 1.2rem; border-radius: 18px; background: var(--gold); color: var(--navy-deep); font-size: 1.15rem; font-weight: 700; }
+.learn-lesson-top { display: flex; align-items: center; gap: 14px; }
+.learn-lesson-body { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 0; }
+.learn-lesson-title { font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.learn-emoji { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--navy-wash); font-size: 24px; line-height: 1; }
+.learn-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: var(--t19); line-height: 1.3; }
+.learn-cue { display: inline-flex; align-items: center; gap: 4px; color: var(--navy); font-weight: 700; }
+.learn-lesson.is-next { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px; border: 4px solid var(--navy); border-radius: 26px; box-shadow: 0 10px 28px rgba(15, 29, 47, 0.16); }
+.learn-lesson.is-next .learn-lesson-body { gap: 4px; }
+.learn-lesson.is-next .learn-emoji { width: 64px; height: 64px; font-size: 32px; }
+.learn-lesson.is-next .learn-lesson-title { font-size: var(--t26); line-height: 1.2; }
+.learn-start { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border-radius: 16px; background: var(--gold); color: var(--navy-deep); font-size: var(--t22); font-weight: 700; line-height: 1.2; }
 .learn-lesson.is-next:hover .learn-start { background: var(--gold-hover); }
 .learn-lesson.is-done { align-items: flex-start; }
-.learn-lesson.is-done .learn-lesson-body { gap: 0.35rem; }
-.learn-stars { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; }
-.learn-star-row { display: inline-flex; gap: 0.15rem; }
+.learn-stars { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: var(--t19); line-height: 1.3; }
+.learn-star-row { display: inline-flex; flex: none; gap: 3px; }
 .learn-done { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0 0.55rem 0 0.4rem; border-radius: 999px; background: var(--safe-wash); color: var(--safe-ink); font-weight: 700; }
 .learn-done svg { color: var(--safe); }
 
@@ -890,27 +878,27 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-star-icon.is-on { fill: var(--gold); }
 
 /* "Question 1 of 3" and the three stars of the lesson. */
-.learn-stepper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.6rem; margin-top: -0.5rem; }
-.learn-step-label { color: var(--navy); font-weight: 700; }
-.learn-step-stars { display: inline-flex; gap: 0.3rem; }
-.learn-star { display: grid; place-items: center; width: 32px; height: 34px; }
+.learn-stepper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.learn-step-label { color: var(--navy); font-size: var(--t22); font-weight: 700; line-height: 1.25; }
+.learn-step-stars { display: inline-flex; gap: 8px; }
+.learn-star { display: grid; place-items: center; width: 34px; height: 38px; }
 .learn-star.is-current { box-shadow: inset 0 -3px 0 var(--gold); }
 .learn-star.is-new .learn-star-icon { filter: drop-shadow(0 0 5px rgba(233, 168, 32, 0.75)); animation: learn-pop 0.6s ease-out both; }
 @keyframes learn-pop { 0% { transform: scale(0.3); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
 /* Say: Prudence's lines as speech bubbles. */
-.learn-lesson-head { display: flex; align-items: center; gap: 0.8rem; }
-.learn-lesson-head h1 { margin: 0; font-size: 1.3rem; line-height: 1.25; }
-.learn-lesson-head .learn-emoji { width: 56px; height: 56px; background: var(--surface); border: 2px solid var(--line); font-size: 1.75rem; }
-.learn-say { display: flex; flex-direction: column; gap: 0.6rem; }
-.learn-speaker { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.95rem; font-weight: 700; }
-.learn-mark { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: var(--navy-deep); font-size: 1rem; font-weight: 700; }
-.learn-line { padding: 0.8rem 1.1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; font-size: 1.1rem; line-height: 1.45; overflow-wrap: anywhere; }
+.learn-lesson-head { display: flex; align-items: center; gap: 14px; }
+.learn-lesson-head h1 { margin: 0; font-size: var(--t26); line-height: 1.25; overflow-wrap: anywhere; }
+.learn-lesson-head .learn-emoji { width: 56px; height: 56px; background: var(--surface); border: 2px solid var(--line); font-size: 28px; }
+.learn-say { display: flex; flex-direction: column; gap: 10px; }
+.learn-speaker { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: var(--t19); font-weight: 700; }
+.learn-mark { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: var(--navy-deep); }
+.learn-line { padding: 14px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; font-size: var(--t22); line-height: 1.45; overflow-wrap: anywhere; }
 .learn-speaker + .learn-line,
 .learn-reply { border-top-left-radius: 6px; }
 
 /* Ask: the question is the heading; the answers stack, full width, and wrap. */
-.learn-question { margin: 0; font-size: 1.3rem; line-height: 1.25; }
+.learn-question { margin: 0; font-size: var(--t26); line-height: 1.25; overflow-wrap: anywhere; }
 .learn-choices { display: flex; flex-direction: column; gap: 0.75rem; }
 .learn-choice {
   display: flex;
@@ -922,7 +910,7 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   background: var(--surface);
   border-color: var(--navy);
   color: var(--navy);
-  font-size: 1.1rem;
+  font-size: var(--t22);
   line-height: 1.35;
   text-align: left;
 }
@@ -962,7 +950,7 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-rule h2 { display: flex; align-items: center; gap: 0.4rem; margin: 0; color: var(--gold); font-size: 1rem; line-height: 1.2; }
 .learn-rule-text { font-size: 1.3rem; font-weight: 700; line-height: 1.3; }
 .learn-end-actions { display: flex; flex-direction: column; gap: 0.75rem; }
-.learn-end-actions .v2-link { display: inline-flex; align-items: center; }
+.learn-end-actions .btn-link { align-self: center; }
 
 /* "Try it on a real one": the example message, then the real verdict. */
 .learn-real-note { color: var(--muted); }
@@ -1466,3 +1454,35 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .vcard-unsure .btn-big svg { flex: none; }
 .vcard-note { margin: 0; color: var(--muted); font-size: var(--t19); line-height: 1.4; }
 .vcard-doubt { justify-content: space-between; text-align: left; }
+
+/* --- redesign: learn (learn.js) --- */
+/* Frame 1o, the Learn home: the progress card (the 34px star beside "Your
+   first star is one minute away" or the progress line, 22px bold navy), the
+   badge row (one 48px circle per lesson: grey and faded until earned, then
+   in colour on the navy wash) and the line under it (19px grey). Frame 1p:
+   the lesson screens sit 8px under the header, 14px between blocks. */
+.learn-progress-head { display: flex; align-items: center; gap: 12px; color: var(--navy); font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.learn-progress-head > svg { flex: none; }
+.learn-badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.learn-badge-dot {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--soon);
+  font-size: 24px;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+.learn-badge-dot.is-earned { background: var(--navy-wash); filter: none; opacity: 1; }
+.learn-badge-line { color: var(--muted); font-size: var(--t19); line-height: 1.35; }
+.learn-star-row.is-big { gap: 6px; }
+.learn-minutes { white-space: nowrap; }
+.learn-start > svg,
+.learn-cue > svg { flex: none; }
+/* Read by a screen reader, not shown (an earned badge's name). */
+.learn-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.learn.learn-run { gap: 14px; margin-top: -12px; }

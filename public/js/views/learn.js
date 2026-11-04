@@ -1,6 +1,6 @@
-// Learn (_product/specs/micro-learning.md, design canvas "Prudence Learn
-// tab"): one-minute lessons, one step per screen like Today's one card at a
-// time. Prudence says a few lines, asks a question with big answer buttons,
+// Learn (_product/specs/micro-learning.md; the 2026-11-04 redesign canvas,
+// frames 1o and 1p, _product/specs/protection-menu.md line 7): one-minute
+// lessons, one step per screen like Today's one card at a time. Prudence says a few lines, asks a question with big answer buttons,
 // cheers a right answer (a star, confetti) and explains a wrong one without
 // blame; the lesson ends with the rule to remember. Lessons come from
 // GET /api/lessons; progress is kept in the account when signed in and on
@@ -8,7 +8,7 @@
 
 import { api } from "../api.js";
 import { t, getLang } from "../i18n.js";
-import { $, esc, verdictCard, readAloud, speak, toast, focusHeading } from "../ui.js";
+import { $, esc, verdictCard, readAloud, speak, toast, focusHeading, icon } from "../ui.js";
 
 let L = null; // the screen state: root, mode, lessons, progress, summary, the lesson running
 const enc = encodeURIComponent;
@@ -165,7 +165,7 @@ export async function renderLearn(root, status, { demo = false } = {}) {
 
 function drawFailed() {
   paint(`<div class="v2 learn"><p class="banner danger" role="alert">${t("learn_load_failed")}</p>
-    <button id="learnRetry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`, { focus: false });
+    <button id="learnRetry" class="btn btn-navy btn-big" type="button">${t("retry")}</button></div>`, { focus: false });
   $("#learnRetry", L.root).addEventListener("click", () => renderLearn(L.root, L.status, { demo: L.demo }));
 }
 
@@ -173,66 +173,93 @@ const isDone = (id) => L.progress.lessons[id]?.done === true;
 const starsOf = (id) => (Number.isInteger(L.progress.lessons[id]?.stars) ? L.progress.lessons[id].stars : 0);
 
 // Stars are drawn, never typed (the font has no ★, and gold text on white
-// fails contrast): a navy outline, a gold fill when earned, always beside words.
-const STAR = '<path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"/>';
-const star = (size, on, width = 2) => `<svg class="learn-star-icon${on ? " is-on" : ""}" width="${size}" height="${size}" viewBox="0 0 24 24" stroke-width="${width}" stroke-linejoin="round" aria-hidden="true">${STAR}</svg>`;
+// fails contrast): the shared star outline (ui.js), navy, filled white or
+// gold by .learn-star-icon (styles.css), always beside words or with a label.
+const star = (size, on, width = 2) => icon("star", size, width).replace("<svg ", `<svg class="learn-star-icon${on ? " is-on" : ""}" `);
 const starRow = (n, total, size, width) => Array.from({ length: total }, (_, i) => star(size, i < n, width)).join("");
+// A lesson's stars as one picture a screen reader names: "No stars yet", "2 of 3 stars".
+const starsLabel = (n, total) => (n > 0 ? plural(n, "learn_of", { n, total }) : t("learn_no_stars"));
+const starGroup = (n, total, size, cls) =>
+  `<span class="${cls}" role="img" aria-label="${esc(starsLabel(n, total))}">${starRow(n, total, size)}</span>`;
 
 // ------------------------------------------------------------------- home
+// Frame 1o: the game shows from zero (protection-menu.md line 7). Before the
+// first lesson the card reads "Your first star is one minute away" over every
+// badge still to earn, in grey; after it, the progress line over the badges,
+// the earned ones in colour. A zero is never shown ("0 stars" is left out).
 function drawHome() {
-  const s = L.summary;
-  const parts = [plural(s.done, "learn_lessons", { done: s.done, total: s.total }), plural(s.stars, "learn_stars", { n: s.stars }),
-    ...(s.days >= 2 ? [t("learn_days", { n: s.days })] : [])];
-  const badges = L.progress.badges.map((id) => L.lessons.find((l) => l.id === id)).filter(Boolean);
   const todo = L.lessons.filter((l) => !isDone(l.id));
   const done = L.lessons.filter((l) => isDone(l.id));
   paint(`
-    <div class="v2 learn">
+    <div class="screen is-snug learn">
       <div class="learn-hello">
-        <h1 class="v2-hello">${t("learn_title")}</h1>
-        <p class="learn-lead">${t("learn_lead")}</p>
+        <h1 class="screen-title">${t("learn_title")}</h1>
+        <p class="screen-lead learn-lead">${t("learn_lead")}</p>
       </div>
-      <section class="learn-progress" aria-label="${esc(t("learn_progress_label"))}">
-        <p class="learn-progress-line">${parts.map((p) => `<span>${esc(p)}</span>`).join("&nbsp;· ")}</p>
-        ${badges.length ? `
-          <div class="learn-badges-box">
-            <h2>${t("learn_badges")}</h2>
-            <ul class="learn-badges">${badges.map((l) => `<li class="learn-badge"><span class="learn-badge-emoji" aria-hidden="true">${esc(l.emoji)}</span>${rich(l.badge)}</li>`).join("")}</ul>
-          </div>` : ""}
-      </section>
+      ${progressCard()}
       ${todo.length ? `
         <section class="learn-group" aria-labelledby="learnToTry">
-          <h2 id="learnToTry">${t("learn_to_try")}</h2>
+          <h2 id="learnToTry" class="section-title">${t("learn_to_try")}</h2>
           <ul class="learn-list">${todo.map((l, i) => lessonCard(l, i === 0 ? "next" : "todo")).join("")}</ul>
         </section>` : ""}
       ${done.length ? `
         <section class="learn-group" aria-labelledby="learnDone">
-          <h2 id="learnDone">${t("learn_done_title")}</h2>
+          <h2 id="learnDone" class="section-title">${t("learn_done_title")}</h2>
           <ul class="learn-list">${done.map((l) => lessonCard(l, "done")).join("")}</ul>
         </section>` : ""}
     </div>`);
 }
 
-// One whole-card link per lesson: the first one not done is bigger, with a
-// gold Start bar; a done one shows its best stars and can be played again.
+// The progress card. A screen reader hears the line, then "Your badges" and
+// the names of the earned ones; the grey circles are only pictures, the line
+// under them says how many are left.
+function progressCard() {
+  const s = L.summary;
+  const zero = !(s.done > 0);
+  const earned = new Set(L.progress.badges);
+  const mine = L.lessons.filter((l) => earned.has(l.id));
+  const left = L.lessons.length - mine.length;
+  const head = zero ? esc(t("lh_first_star"))
+    : [plural(s.done, "learn_lessons", { done: s.done, total: s.total }),
+      ...(s.stars > 0 ? [plural(s.stars, "learn_stars", { n: s.stars })] : []),
+      ...(s.days >= 2 ? [t("learn_days", { n: s.days })] : [])].map((p) => `<span>${esc(p)}</span>`).join("&nbsp;· ");
+  const line = zero ? t("lh_badges_to_earn", { n: L.lessons.length }) : left > 0 ? plural(left, "lh_badges_left", { n: left }) : "";
+  const badge = (l) => (earned.has(l.id)
+    ? `<li class="learn-badge-dot is-earned"><span aria-hidden="true">${esc(l.emoji)}</span><span class="learn-sr">${rich(l.badge)}</span></li>`
+    : `<li class="learn-badge-dot" aria-hidden="true">${esc(l.emoji)}</li>`);
+  return `
+    <section class="learn-progress" aria-label="${esc(t("learn_progress_label"))}">
+      <p class="learn-progress-head">${star(34, s.stars > 0)}<span class="learn-progress-line">${head}</span></p>
+      <div class="learn-badges-box">
+        <ul class="learn-badge-row"${mine.length ? ` aria-label="${esc(t("learn_badges"))}"` : ' aria-hidden="true"'}>${L.lessons.map(badge).join("")}</ul>
+        ${line ? `<p class="learn-badge-line">${esc(line)}</p>` : ""}
+      </div>
+    </section>`;
+}
+
+// One whole-card link per lesson, each with its three drawn stars. The first
+// one not done is the big card with the gold Start; the others are rows with
+// a "Start ›" cue; a done one shows its best stars and can be played again.
 function lessonCard(l, kind) {
   const href = `${base()}/${enc(l.id)}`;
-  const emoji = () => `<span class="learn-emoji" aria-hidden="true">${esc(l.emoji)}</span>`;
-  const minutes = esc(plural(l.minutes, "learn_minutes", { n: l.minutes }));
-  if (kind === "next") {
-    return `<li><a class="learn-lesson is-next" href="${href}">
-      <span class="learn-lesson-top">${emoji()}<span class="learn-lesson-body"><span class="learn-lesson-title">${rich(l.title)}</span><span class="learn-meta">${minutes}</span></span></span>
-      <span class="learn-start">${t("learn_start")} ${icon("next", 26)}</span></a></li>`;
-  }
-  if (kind === "todo") {
-    return `<li><a class="learn-lesson" href="${href}">${emoji()}<span class="learn-lesson-body"><span class="learn-lesson-title">${rich(l.title)}</span>
-      <span class="learn-meta">${minutes}<span aria-hidden="true">·</span><span class="learn-cue">${t("learn_start")} ${icon("next", 20)}</span></span></span></a></li>`;
-  }
+  const emoji = `<span class="learn-emoji" aria-hidden="true">${esc(l.emoji)}</span>`;
+  const title = `<span class="learn-lesson-title">${rich(l.title)}</span>`;
+  const minutes = `<span class="learn-minutes">${esc(plural(l.minutes, "learn_minutes", { n: l.minutes }))}</span>`;
   const n = starsOf(l.id);
   const total = l.steps.filter(isAsk).length; // one star per question
-  return `<li><a class="learn-lesson is-done" href="${href}">${emoji()}<span class="learn-lesson-body"><span class="learn-lesson-title">${rich(l.title)}</span>
-    <span class="learn-stars"><span class="learn-star-row">${starRow(n, total, 24)}</span><span>${esc(plural(n, "learn_of", { n, total }))}</span></span>
-    <span class="learn-meta"><span class="learn-done">${icon("check", 20, 2.4)}${t("learn_done_chip")}</span><span class="learn-cue">${icon("replay", 20)}${t("learn_again")}</span></span></span></a></li>`;
+  if (kind === "next") {
+    return `<li><a class="learn-lesson is-next" href="${href}">
+      <span class="learn-lesson-top">${emoji}<span class="learn-lesson-body">${title}${minutes}</span></span>
+      ${starGroup(n, total, 30, "learn-star-row is-big")}
+      <span class="learn-start">${t("learn_start")}${icon("chevron-right", 26, 2.5)}</span></a></li>`;
+  }
+  if (kind === "todo") {
+    return `<li><a class="learn-lesson" href="${href}">${emoji}<span class="learn-lesson-body">${title}
+      <span class="learn-meta">${starGroup(n, total, 24, "learn-star-row")}${minutes}<span class="learn-cue">${t("learn_start")}${icon("chevron-right", 20, 2.5)}</span></span></span></a></li>`;
+  }
+  return `<li><a class="learn-lesson is-done" href="${href}">${emoji}<span class="learn-lesson-body">${title}
+    <span class="learn-stars"><span class="learn-star-row">${starRow(n, total, 24)}</span><span>${esc(starsLabel(n, total))}</span></span>
+    <span class="learn-meta"><span class="learn-done">${icon("check", 20, 2.5)}${t("learn_done_chip")}</span><span class="learn-cue">${drawn("replay", 20)}${t("learn_again")}</span></span></span></a></li>`;
 }
 
 // ---------------------------------------------------------------- a lesson
@@ -246,11 +273,13 @@ function startLesson(lesson) {
 // The question the person is on (a say step counts toward the next one).
 const questionAt = () => Math.min(L.run.lesson.steps.slice(0, L.run.step).filter(isAsk).length, L.run.total - 1);
 
+// Frame 1p: "‹ Learn" and the round "Listen" on one row (the shared
+// .btn-back and .btn-listen); the rest of the lesson is as it was.
 function header() {
   const listen = "speechSynthesis" in window
-    ? `<button id="learnRead" class="v2-read" type="button" aria-label="${esc(t("v2_read"))}">${icon("speaker", 24)} <span aria-hidden="true">${t("v2_read_short")}</span></button>` : "";
-  return `<header class="v2-head">
-      <a class="v2-back" href="${base()}" aria-label="${esc(t("learn_back"))}">${icon("back", 24)} ${t("learn_tab")}</a>${listen}
+    ? `<button id="learnRead" class="btn-listen" type="button" aria-label="${esc(t("v2_read"))}">${icon("speaker", 26)}<span aria-hidden="true">${t("v2_read_short")}</span></button>` : "";
+  return `<header class="screen-head learn-head">
+      <a class="btn-back" href="${base()}" aria-label="${esc(t("learn_back"))}">${icon("chevron-left", 28, 2.5)}${t("learn_tab")}</a>${listen}
     </header>`;
 }
 // onRead: what Listen does on this screen.
@@ -266,11 +295,11 @@ function stepper(q, fresh = -1) {
   return `<div class="learn-stepper">
       <p class="learn-step-label">${esc(t("learn_question", { i: q + 1, n: total }))}</p>
       <span class="learn-step-stars" role="img" aria-label="${esc(label)}">${Array.from({ length: total }, (_, i) =>
-    `<span class="learn-star${answers[i] ? " is-on" : ""}${i === q ? " is-current" : ""}${i === fresh ? " is-new" : ""}">${star(24, answers[i])}</span>`).join("")}</span>
+    `<span class="learn-star${answers[i] ? " is-on" : ""}${i === q ? " is-current" : ""}${i === fresh ? " is-new" : ""}">${star(28, answers[i])}</span>`).join("")}</span>
     </div>`;
 }
 
-const nextButton = () => `<div class="v2-actions learn-dock"><button id="learnNext" class="btn btn-gold v2-big" type="button">${t("learn_next")} ${icon("next", 26)}</button></div>`;
+const nextButton = () => `<div class="v2-actions learn-dock"><button id="learnNext" class="btn btn-gold btn-big" type="button">${t("learn_next")}${icon("chevron-right", 26, 2.5)}</button></div>`;
 function bindNext() {
   $("#learnNext", L.root).addEventListener("click", () => { L.run.step += 1; drawStep(); });
 }
@@ -285,12 +314,12 @@ function drawSay(step) {
   const { lesson } = L.run;
   const lines = Array.isArray(step.say) ? step.say : [];
   paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
       ${stepper(questionAt())}
       <div class="learn-lesson-head"><span class="learn-emoji" aria-hidden="true">${esc(lesson.emoji)}</span><h1>${rich(lesson.title)}</h1></div>
       <div class="learn-say">
-        <p class="learn-speaker"><span class="learn-mark" aria-hidden="true">✓</span>Prudence</p>
+        <p class="learn-speaker"><span class="learn-mark" aria-hidden="true">${icon("check", 18, 3.2)}</span>Prudence</p>
         ${lines.map((line) => `<p class="learn-line">${rich(line)}</p>`).join("")}
       </div>
       ${nextButton()}
@@ -302,12 +331,12 @@ function drawSay(step) {
 function drawAsk(step) {
   const q = questionAt();
   paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
       ${stepper(q)}
       <h1 class="learn-question">${rich(step.ask)}</h1>
       <div class="learn-choices" role="group" aria-label="${esc(t("learn_choose"))}">
-        ${step.choices.map((c, i) => `<button class="btn learn-choice" type="button" data-choice="${i}">${icon("circle", 26)}<span>${rich(c.text)}</span></button>`).join("")}
+        ${step.choices.map((c, i) => `<button class="btn learn-choice" type="button" data-choice="${i}">${drawn("circle", 26)}<span>${rich(c.text)}</span></button>`).join("")}
       </div>
     </div>`);
   bindHeader(say([step.ask, ...step.choices.map((c) => c.text)]));
@@ -328,7 +357,7 @@ function drawResult(step, q, choice) {
   const right = step.choices.find((c) => c.right === true) || choice;
   const perfect = ok && L.run.answers.filter(Boolean).length === L.run.total;
   paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
       ${stepper(q, ok ? q : -1)}
       ${ok ? `
@@ -342,7 +371,7 @@ function drawResult(step, q, choice) {
         ${confetti(perfect)}` : `
         <section class="learn-result is-wrong" role="status">
           <div class="learn-result-head">
-            <span class="learn-result-dot" aria-hidden="true">${icon("bulb", 30)}</span>
+            <span class="learn-result-dot" aria-hidden="true">${drawn("bulb", 30)}</span>
             <h1>${t("learn_wrong")}</h1>
           </div>
           <div class="learn-pick">
@@ -351,7 +380,7 @@ function drawResult(step, q, choice) {
             <p class="learn-pick-reply">${rich(choice.reply)}</p>
           </div>
           <div class="learn-pick is-right">
-            <p class="learn-pick-label">${icon("check", 24, 2.6)}${t("learn_right_answer")}</p>
+            <p class="learn-pick-label">${icon("check", 24, 2.5)}${t("learn_right_answer")}</p>
             <p class="learn-pick-text">${rich(right.text)}</p>
           </div>
         </section>`}
@@ -399,7 +428,7 @@ function nextLesson(id) {
 // "Next lesson" replaces the finished lesson in the history, so Back goes
 // to the Learn home rather than into the lesson just finished.
 function nextLessonLink(next) {
-  return next ? `<a id="learnNextLesson" class="btn btn-navy v2-big" href="${base()}/${enc(next.id)}">${t("learn_next_lesson")} ${icon("next", 26)}</a>` : "";
+  return next ? `<a id="learnNextLesson" class="btn btn-navy btn-big" href="${base()}/${enc(next.id)}">${t("learn_next_lesson")}${icon("chevron-right", 26, 2.5)}</a>` : "";
 }
 function bindNextLesson() {
   $("#learnNextLesson", L.root)?.addEventListener("click", (e) => { e.preventDefault(); location.replace(e.currentTarget.getAttribute("href")); });
@@ -413,7 +442,7 @@ function drawEnd() {
   const next = nextLesson(lesson.id);
   const of = plural(stars, "learn_of", { n: stars, total: run.total });
   paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
       <section class="learn-end">
         <h1>${t("learn_finished")}</h1>
@@ -425,13 +454,13 @@ function drawEnd() {
           </div>` : ""}
       </section>
       <section class="learn-rule" aria-labelledby="learnRuleTitle">
-        <h2 id="learnRuleTitle">${icon("bulb", 24)} ${t("learn_rule")}</h2>
+        <h2 id="learnRuleTitle">${drawn("bulb", 24)} ${t("learn_rule")}</h2>
         <p class="learn-rule-text">${rich(lesson.rule)}</p>
       </section>
       <div class="learn-end-actions">
-        ${lesson.demo_case ? `<button id="learnReal" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${t("learn_try_real")}</button>` : ""}
+        ${lesson.demo_case ? `<button id="learnReal" class="btn btn-gold btn-big" type="button">${icon("chat", 26)} ${t("learn_try_real")}</button>` : ""}
         ${nextLessonLink(next)}
-        <a class="v2-link" href="${base()}">${t("learn_back")}</a>
+        <a class="btn-link" href="${base()}">${t("learn_back")}</a>
       </div>
     </div>`);
   bindHeader(say([t("learn_finished"), of, ...(firstTime ? [t("learn_new_badge"), lesson.badge] : []), t("learn_rule"), lesson.rule]));
@@ -445,9 +474,9 @@ async function drawReal() {
   const { lesson } = L.run;
   const next = nextLesson(lesson.id);
   const n = paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
-      <h1 class="v2-hello">${t("learn_try_real")}</h1>
+      <h1 class="screen-title">${t("learn_try_real")}</h1>
       <p class="v2-wait">${t("checking")} ${t("please_wait")}</p>
     </div>`);
   $("#learnRead", L.root)?.remove();
@@ -459,9 +488,9 @@ async function drawReal() {
     ]);
   } catch {
     if (stale(n)) return;
-    paint(`<div class="v2 learn">${header()}<h1 class="v2-hello">${t("learn_try_real")}</h1>
+    paint(`<div class="v2 learn learn-run">${header()}<h1 class="screen-title">${t("learn_try_real")}</h1>
       <p class="banner danger" role="alert">${t("check_failed")} ${t("check_failed_tip")}</p>
-      <button id="learnRetry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`);
+      <button id="learnRetry" class="btn btn-navy btn-big" type="button">${t("retry")}</button></div>`);
     $("#learnRead", L.root)?.remove();
     $("#learnRetry", L.root).addEventListener("click", drawReal);
     return;
@@ -472,13 +501,13 @@ async function drawReal() {
   const body = String(msg?.body || "");
   const long = body.length > 160; // a long message sits behind a button, the verdict in front
   paint(`
-    <div class="v2 learn">
+    <div class="v2 learn learn-run">
       ${header()}
-      <h1 class="v2-hello">${t("learn_try_real")}</h1>
+      <h1 class="screen-title">${t("learn_try_real")}</h1>
       <p class="learn-real-note">${t("learn_real_note")}</p>
       ${msg ? `
         <article class="learn-real-msg">
-          <p class="learn-real-from">${icon("message", 22)} ${esc(msg.fromName || msg.from || "")}</p>
+          <p class="learn-real-from">${icon("chat", 22)} ${esc(msg.fromName || msg.from || "")}</p>
           ${msg.subject ? `<p class="learn-real-subject">${esc(msg.subject)}</p>` : ""}
           ${long ? `
             <button id="learnShow" class="btn btn-light-dark" type="button" aria-expanded="false" aria-controls="learnBody">${t("v2_show")}</button>
@@ -487,10 +516,10 @@ async function drawReal() {
       ${judged ? verdictCard(v) : `
         <div class="v2-card caution"><p class="v2-badge">${t("checking")}</p>
           <p class="v2-headline">${t("v2_unknown_title")}</p><p class="v2-fact">${t("v2_unknown_note")}</p></div>
-        <button id="learnRetry" class="btn btn-navy v2-big" type="button">${t("retry")}</button>`}
+        <button id="learnRetry" class="btn btn-navy btn-big" type="button">${t("retry")}</button>`}
       <div class="learn-end-actions">
         ${nextLessonLink(next)}
-        <a class="v2-link" href="${base()}">${t("learn_back")}</a>
+        <a class="btn-link" href="${base()}">${t("learn_back")}</a>
       </div>
     </div>`);
   if (judged) bindHeader(() => readAloud(v));
@@ -505,15 +534,13 @@ async function drawReal() {
   bindNextLesson();
 }
 
-// Inline stroke icons (no emoji, no icon font); decorative, hidden from screen readers.
+// The three shapes the shared set (icon() in ui.js) has not got: the answer
+// circle, the bulb of the rule and Play again. Same stroke style, decorative.
 const PATHS = {
-  back: '<path d="M15 18l-6-6 6-6"/>', next: '<path d="M9 6l6 6-6 6"/>',
-  speaker: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', circle: '<circle cx="12" cy="12" r="8.5"/>',
+  circle: '<circle cx="12" cy="12" r="8.5"/>',
   bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
   replay: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/>',
-  message: '<path d="M4 5h16v11H8l-4 4z"/>',
 };
-function icon(name, size = 24, width = 2) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || ""}</svg>`;
+function drawn(name, size = 24, width = 2) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${PATHS[name] || ""}</svg>`;
 }

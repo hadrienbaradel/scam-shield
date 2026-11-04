@@ -217,6 +217,8 @@ export const STRINGS = {
     // time."), learn_to_try, learn_minutes_one ("1 minute"), learn_start,
     // learn_no_stars, learn_question, learn_next, learn_back.
     lh_first_star: "Your first star is one minute away", lh_badges_to_earn: "{n} badges to earn, one per lesson",
+    // Under the badges once one is earned (no zero: the line goes when all are).
+    lh_badges_left: "{n} badges still to earn", lh_badges_left_one: "{n} badge still to earn",
     // --- settings (set_*) ---
     // Also read: settings_title, v2_tab_people ("My people"), mode_move,
     // mode_move_sub, mode_label, mode_label_sub (the two radio cards), size_q,
@@ -430,6 +432,7 @@ export const STRINGS = {
     ck_back_today: "Revenir à Aujourd'hui", ck_doubt: "J'ai encore un doute",
     // --- learn (lh_*) ---
     lh_first_star: "Votre première étoile est à une minute", lh_badges_to_earn: "{n} badges à gagner, un par leçon",
+    lh_badges_left: "Encore {n} badges à gagner", lh_badges_left_one: "Encore {n} badge à gagner",
     // --- settings (set_*) ---
     set_person: "{name}, votre {relation}", set_person_plain: "{name}, votre personne de confiance",
     set_people_none: "Personne pour l'instant", set_people_add: "Ajouter quelqu'un", set_change: "Changer",
