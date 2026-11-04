@@ -11,6 +11,7 @@ import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
 import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
+import { registrationDate as registrationDate2 } from "../src/links/resolver.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
 
@@ -555,6 +556,31 @@ test("a link written with a trailing dot is the same website and is opened; a TL
   const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ resolveLink }) });
   assert.deepEqual(opened, ["https://shop.example.org./pay", "https://tls.example.org/x"]);
   assert.deepEqual(out.checks.map((c) => c.found), ["Where the link goes: shop.example.org", "The link to tls.example.org could not be opened just now"]);
+});
+
+test("a lookup that loses the race against its cap is cancelled, and a cancelled registry lookup is never kept for the day", async () => {
+  let aborted = false;
+  const registrationDate = (d, { signal }) => new Promise((resolve, reject) => {
+    signal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error("aborted"), { name: "AbortError" })); });
+  });
+  mock.script(ask(["website_age", { domain: "pay.example.com" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const message = { channel: "sms", body: "Pay https://pay.example.com/x", links: [{ href: "https://pay.example.com/x" }] };
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ registrationDate, limits: { lookupMs: 20 } }) });
+  assert.equal(out.checks[0].found, "The public registry did not answer in time about example.com");
+  assert.equal(aborted, true, "the losing lookup was told to stop");
+  // The real lookup: an aborted signal reaches the fetch, and the empty answer is not cached.
+  let calls = 0;
+  const rdapFetch = async (url, { signal }) => {
+    calls++;
+    if (signal?.aborted) throw Object.assign(new Error("aborted"), { name: "AbortError" });
+    if (url.includes("data.iana.org")) return new Response(JSON.stringify({ services: [[["com"], ["https://rdap.example/"]]] }), { status: 200 });
+    return new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: "2020-01-02T00:00:00Z" }] }), { status: 200 });
+  };
+  const ac = new AbortController();
+  ac.abort();
+  assert.equal(await registrationDate2("cancel-me-example.com", { fetchImpl: rdapFetch, signal: ac.signal }), null);
+  assert.equal((await registrationDate2("cancel-me-example.com", { fetchImpl: rdapFetch })).toISOString().slice(0, 10), "2020-01-02", "asked again: nothing was cached");
+  assert.ok(calls >= 3);
 });
 
 test("one call with arguments the layer could not read is refused alone; the look goes on", async () => {

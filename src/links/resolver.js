@@ -92,10 +92,13 @@ async function assertPublicHost(url) {
 // Registration date straight from the domain's registry, found through
 // IANA's RDAP bootstrap file (RFC 9224). No third-party proxy.
 const UA = { "user-agent": "ScamShield/1.0 (domain age check)" };
+// Each lookup's own timeout, cut short by the caller's signal when there is one
+// (Look closer cancels a lookup that loses the race against its cap).
+const within = (ms, signal) => (signal ? AbortSignal.any([AbortSignal.timeout(ms), signal]) : AbortSignal.timeout(ms));
 let bootstrap = { at: 0, services: null };
-async function rdapBase(tld, fetchImpl) {
+async function rdapBase(tld, fetchImpl, signal) {
   if (!bootstrap.services || bootstrap.at < Date.now() - DAY) {
-    const res = await fetchImpl("https://data.iana.org/rdap/dns.json", { headers: UA, signal: AbortSignal.timeout(5000) });
+    const res = await fetchImpl("https://data.iana.org/rdap/dns.json", { headers: UA, signal: within(5000, signal) });
     if (!res.ok) throw new Error(`IANA bootstrap ${res.status}`);
     bootstrap = { at: Date.now(), services: (await res.json()).services || [] };
   }
@@ -111,17 +114,17 @@ export async function domainAgeDays(domain, { fetchImpl = fetch, asOf = Date.now
   return reg ? Math.max(0, Math.floor((new Date(asOf).getTime() - reg.getTime()) / DAY)) : null;
 }
 
-export async function registrationDate(domain, { fetchImpl = fetch } = {}) {
+export async function registrationDate(domain, { fetchImpl = fetch, signal } = {}) {
   const d = registrableDomain(domain);
   if (!d || !d.includes(".") || d.endsWith(".test") || isIP(d) || FREE_HOSTING_SUFFIXES.some((x) => `.${d}`.endsWith(x))) return null;
   const hit = ageCache.get(d);
   if (hit && hit.at > Date.now() - DAY) return hit.reg;
   let reg = null;
   try {
-    const base = await rdapBase(d.split(".").pop(), fetchImpl);
+    const base = await rdapBase(d.split(".").pop(), fetchImpl, signal);
     if (base) {
       const res = await fetchImpl(`${base}domain/${encodeURIComponent(d)}`, {
-        headers: { ...UA, accept: "application/rdap+json" }, signal: AbortSignal.timeout(4000), redirect: "follow",
+        headers: { ...UA, accept: "application/rdap+json" }, signal: within(4000, signal), redirect: "follow",
       });
       if (res.ok) {
         const data = await res.json();
@@ -130,18 +133,21 @@ export async function registrationDate(domain, { fetchImpl = fetch } = {}) {
       }
     }
   } catch { reg = null; }
+  // A lookup the caller cancelled says nothing about the domain: never kept for the day.
+  if (signal?.aborted) return null;
   ageCache.set(d, { reg, at: Date.now() });
   return reg;
 }
 
 // ------------------------------------------------------- redirect chain ---
-export async function resolveLink(url, { maxHops = 5, timeoutMs = 5000, fetchImpl = pinnedFetch, checkHost = assertPublicHost } = {}) {
+export async function resolveLink(url, { maxHops = 5, timeoutMs = 5000, fetchImpl = pinnedFetch, checkHost = assertPublicHost, signal } = {}) {
   const redirects = [];
   let current = url;
   for (let hop = 0; hop <= maxHops; hop++) {
+    if (signal?.aborted) throw Object.assign(new Error("link check cancelled"), { name: "AbortError" });
     await checkHost(current);
     const res = await fetchImpl(current, {
-      method: "GET", redirect: "manual", signal: AbortSignal.timeout(timeoutMs),
+      method: "GET", redirect: "manual", signal: within(timeoutMs, signal),
       headers: { "user-agent": "Mozilla/5.0 (compatible; ScamShieldLinkCheck/1.0)", accept: "text/html,*/*;q=0.5" },
     });
     const location = res.headers.get("location");
@@ -206,7 +212,7 @@ export const urlhausState = { off: null };
 
 // What URLhaus knows about a host: null when unknown (no key, refused,
 // timed out, too many lookups this minute), { listed: false } or the listing.
-export async function urlhausHost(host, { key = config.abusechKey, fetchImpl = fetch, perMinute = 60 } = {}) {
+export async function urlhausHost(host, { key = config.abusechKey, fetchImpl = fetch, perMinute = 60, signal } = {}) {
   const h = String(host || "").toLowerCase();
   if (!key || urlhausState.off || !h.includes(".") || h.endsWith(".test") || (isIP(h) && isPrivateAddress(h))) return null;
   const hit = urlhausCache.get(h);
@@ -217,7 +223,7 @@ export async function urlhausHost(host, { key = config.abusechKey, fetchImpl = f
   let data = null;
   try {
     const res = await fetchImpl(URLHAUS_HOST, {
-      method: "POST", body: new URLSearchParams({ host: h }), signal: AbortSignal.timeout(4000),
+      method: "POST", body: new URLSearchParams({ host: h }), signal: within(4000, signal),
       headers: { "user-agent": "ScamShield/1.0 (link check, abuse.ch fair use)", "Auth-Key": key, "content-type": "application/x-www-form-urlencoded" },
     });
     const j = await res.json().catch(() => ({}));
