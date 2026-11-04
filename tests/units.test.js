@@ -265,6 +265,9 @@ test("threat feed: parses RSS and Atom", () => {
   const atom = `<feed><entry><title>Faux SMS Ameli</title><link href="https://www.cybermalveillance.gouv.fr/a"/><summary>Carte Vitale</summary><updated>2026-10-21T00:00:00Z</updated></entry></feed>`;
   assert.deepEqual(parseFeed(rss).map((i) => [i.title, i.url, i.summary]), [["Scammers Impersonating USPS", "https://www.ic3.gov/PSA/2026/1", "Text messages claiming a package is on hold."]]);
   assert.equal(parseFeed(atom)[0].url, "https://www.cybermalveillance.gouv.fr/a");
+  // Europol's feed dates its items with Dublin Core (dc:date), as RSS 1.0 does.
+  const rdf = `<rdf:RDF><item><title>Operation against call centres</title><link>https://www.europol.europa.eu/n/1</link><dc:date>2026-11-01T10:00:00Z</dc:date></item></rdf:RDF>`;
+  assert.equal(parseFeed(rdf)[0].published, "2026-11-01T10:00:00Z");
 });
 
 test("eml: a downloaded email parses into the same shape as Gmail sync", async () => {

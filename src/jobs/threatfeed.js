@@ -26,7 +26,7 @@ export function parseFeed(xml = "") {
     title: htmlToText(field(b, "title")),
     url: field(b, "link") || b.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || field(b, "guid"),
     summary: htmlToText(field(b, "description") || field(b, "summary") || field(b, "content")).slice(0, 4000),
-    published: field(b, "pubDate") || field(b, "published") || field(b, "updated"),
+    published: field(b, "pubDate") || field(b, "published") || field(b, "updated") || field(b, "dc:date"),
   })).filter((i) => i.title && /^https?:\/\//.test(i.url));
 }
 
