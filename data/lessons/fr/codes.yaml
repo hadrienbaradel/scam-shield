@@ -9,35 +9,64 @@ rule: Un code reçu est une clé. Ne le donnez jamais à quelqu'un qui vous appe
 demo_case: A2
 steps:
   - say:
-      - Voici **Monsieur Lisez-moi-le-code**. Très poli. Il ne veut que six petits chiffres.
-      - « Je vous envoie un code par SMS. Lisez-le-moi, c'est pour protéger votre compte. »
-  - ask: Un code arrive par SMS, et quelqu'un au téléphone vous demande de le lui lire. Que faites-vous ?
+      - Samedi, 11 h. Vous lisez le journal.
+      - Quelque part, **Monsieur Lisez-moi-le-code** taille son crayon. Prêt pour six petits chiffres.
+      - Le téléphone sonne.
+  - from: character
+    as: Votre banque
+    say:
+      - Bonjour ! Ici votre banque. Je vous envoie un code par SMS. Lisez-le-moi, c'est pour protéger votre compte.
+  - ask: Un code arrive par SMS. Que faites-vous ?
     choices:
       - text: Je le lis. Ce ne sont que six chiffres.
-        reply: Ces six chiffres peuvent lui ouvrir votre compte. Beaucoup de gens prudents en ont lu un. Le piège est bien rodé.
+        reply: Quatre, huit, deux... Merci ! Je note tout. Votre compte vous remercie. Enfin, moi.
+        tell: Ces six chiffres peuvent lui ouvrir votre compte. Un code, c'est pour vos yeux seulement.
       - text: Je le garde pour moi et je raccroche.
         right: true
-        reply: Oui ! La porte reste fermée. Monsieur Lisez-moi-le-code reste avec son téléphone, et rien d'autre.
+        reply: Raccroché ? Mon crayon était prêt ! Vous savez combien de temps je l'ai taillé ?
+        tell: La porte reste fermée. Un code est une clé, et elle reste chez vous.
       - text: Je lui demande pourquoi il en a besoin.
-        reply: Il a toujours une belle raison toute prête. Aucune ne suffit. Un code, c'est pour vous et personne d'autre.
-  - say:
-      - Un code, c'est une **clé**. Il ouvre votre compte en banque, votre messagerie ou votre WhatsApp.
-      - "Regardez le SMS qui l'apporte. Il dit souvent : **ne le communiquez à personne**. Même votre banque le dit !"
-  - ask: Le SMS de votre code dit « Ne le communiquez à personne ». À qui pouvez-vous le lire ?
+        reply: Pour vous protéger, voyons ! J'ai toujours une belle raison. J'en ai toute une liste.
+        tell: Il a toujours une raison toute prête. Aucune ne suffit pour avoir votre code.
+  - from: you
+    say:
+      - "Je relis le SMS. Il dit : **ne communiquez ce code à personne**. Même ma banque le dit."
+  - from: character
+    as: Votre banque
+    say:
+      - On a été coupés ! C'est moi, votre banque. Vous pouvez bien lire le code à votre propre banque ?
+  - ask: Et maintenant ?
     choices:
-      - text: Seulement à ma banque, si elle m'appelle.
-        reply: Celui qui appelle dit seulement être votre banque. Une vraie banque qui vous appelle ne demande jamais le code envoyé.
-      - text: À personne. Même pas à quelqu'un qui dit être ma banque.
+      - text: Je le lis. Il dit être ma banque.
+        reply: Oui ! Votre banque. Moi. C'est pareil. Lentement, s'il vous plaît, mon crayon est prêt.
+        tell: N'importe qui peut se dire votre banque. Une vraie banque n'appelle jamais pour demander un code.
+      - text: Je lui demande de prouver qu'il est ma banque.
+        reply: Facile ! Je connais votre nom et celui de votre banque. Voilà, preuve faite ! Le code, maintenant.
+        tell: Connaître votre nom ne prouve rien. Une vraie banque n'appelle jamais pour demander un code.
+      - text: Je le garde. Même ma banque n'aura pas mon code.
         right: true
-        reply: Exactement. Votre banque a déjà votre argent. Elle n'a pas besoin de votre code en plus.
+        reply: Même pas votre propre banque ? J'ai pourtant dit s'il vous plaît. Deux fois.
+        tell: Votre banque a déjà votre argent. Elle n'a pas besoin de votre code en plus.
   - say:
-      - "La règle : un code est une clé. **Ne le donnez jamais** à quelqu'un qui vous appelle ou vous écrit."
-      - Le Crédit Agricole ne vous demande jamais vos codes par e-mail ou SMS.
-      - Et une vraie banque ne vous appelle jamais pour en demander un.
-  - ask: Deux SMS arrivent. Auquel pouvez-vous faire confiance ?
+      - Dimanche. Un SMS d'un numéro inconnu.
+  - from: character
+    as: 01 99 00 12 34
+    say:
+      - Mamie, je t'ai envoyé mon code WhatsApp par erreur. Tu peux me le renvoyer ? Celui à 6 chiffres.
+  - ask: Et là ?
     choices:
-      - text: « Mamie, je t'ai envoyé mon code par erreur. Tu peux me le renvoyer ? »
-        reply: C'est Monsieur Lisez-moi-le-code déguisé en petit-fils. Ce code lui ouvrirait votre WhatsApp.
-      - text: "« Votre code : 482913. Ne le communiquez à personne. Nous ne vous le demanderons jamais. »"
+      - text: Je le renvoie. C'est mon petit-fils, après tout.
+        reply: Merci, Mamie ! Ton WhatsApp est à moi. Et toutes tes conversations avec.
+        tell: Ce code ouvre votre WhatsApp. Un code que vous n'avez pas demandé reste avec vous.
+      - text: Je le garde. J'appelle mon petit-fils moi-même.
         right: true
-        reply: Oui ! Un vrai code arrive avec un conseil, le garder. Servez-vous-en seulement si vous l'avez demandé vous-même.
+        reply: Tu appelles le vrai ? Mais mon costume de petit-fils était tout neuf !
+        tell: "Un code que vous n'avez pas demandé est un signal : quelqu'un essaie peut-être d'entrer."
+      - text: Je lui demande de m'appeler d'abord, pour vérifier.
+        reply: Appeler ? Impossible, j'ai une extinction de voix. Juste le code, Mamie. Vite.
+        tell: Il trouvera toujours une raison de ne pas appeler. Un code non demandé reste avec vous.
+  - from: you
+    say:
+      - J'appelle mon petit-fils. Il est au foot. Il n'a envoyé aucun code.
+  - say:
+      - Monsieur Lisez-moi-le-code range son crayon. Toujours pointu. Pas un chiffre noté.

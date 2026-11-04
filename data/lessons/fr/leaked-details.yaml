@@ -9,34 +9,62 @@ rule: Un message qui cite vos vraies données ne prouve rien. Elles ont fuité ;
 demo_case: A3b
 steps:
   - say:
-      - Voici **M. Je-Connais-Votre-Numéro**. Il cite votre compte, votre date de naissance, la fin de votre carte.
-      - Il ne les tient pas de votre banque. Il les a achetées dans une fuite de données, avec des milliers d'autres.
-  - ask: Un e-mail cite votre vrai numéro de compte et vous demande de contester un prélèvement via un lien. Que faites-vous ?
+      - Mercredi, 9 heures. Un e-mail arrive, et il connaît votre vrai numéro de compte.
+      - Au loin, M. Je-Connais-Votre-Numéro lit vos données sur une liste froissée, achetée en gros. Vous êtes la page 4312.
+  - from: character
+    as: Bouygues Telecom
+    say:
+      - Un prélèvement de **69,90 €** sera effectué sur votre compte FR76…1234 pour votre abonnement Classplus Pro.
+      - Vous avez 7 jours pour le contester, avec le lien ci-dessous.
+  - ask: Que faites-vous ?
     choices:
-      - text: Je clique sur le lien. Ils ont clairement mon dossier.
-        reply: C'est ce que M. Je-Connais-Votre-Numéro espère. Le numéro est vrai ; la page derrière le lien est à lui.
-      - text: Je vérifie le prélèvement dans l'appli de ma banque, ou j'appelle le numéro au dos de ma carte.
+      - text: Je clique sur le lien. Ils ont mon vrai numéro de compte.
+        reply: "Page 4312, compte 1234 : exact ! Tapez maintenant vos codes de banque en ligne, pour contester."
+        tell: Votre numéro a fuité avec des milliers d'autres. La page derrière le lien est à lui, pas à votre banque.
+      - text: Je regarde le prélèvement dans l'appli de ma banque.
         right: true
-        reply: Oui ! Si le prélèvement existe, votre banque le sait. Sinon, il n'y avait rien à contester.
-      - text: Je réponds et je leur demande de prouver qui ils sont.
-        reply: Il enverra un logo et un nom. Les deux se fabriquent en une minute. Vérifiez vous-même auprès de votre banque.
+        reply: Votre propre appli ? Mais j'ai récité votre numéro à la perfection ! Page 4312, ligne un !
+        tell: Si le prélèvement est réel, votre banque le sait, et vous le contestez chez elle. Jamais par son lien.
+      - text: Je réponds pour qu'ils prouvent qui ils sont.
+        reply: "Une preuve ? Votre date de naissance : le 2 mai… non, ça, c'est la page 4311. Hum. Le 9 mai. Voilà."
+        tell: "De vraies données ne prouvent rien : les voleurs les achètent par milliers. Vérifiez dans l'appli de votre banque."
   - say:
-      - D'où viennent les fuites ? Votre opérateur, un magasin, votre mutuelle. Un piratage, des millions de dossiers.
-      - L'entreprise écrit pour s'excuser. Prudence peut aussi chercher votre adresse e-mail dans les listes publiques.
-  - ask: Votre opérateur a écrit l'an dernier que vos données avaient fuité. Qu'est-ce que ça change aujourd'hui ?
+      - Une heure plus tard, le téléphone sonne. L'homme dit être votre conseiller bancaire.
+  - from: character
+    as: Votre banque
+    say:
+      - J'ai votre date de naissance, votre adresse et les quatre derniers chiffres de votre carte.
+      - Pour bloquer le prélèvement, dictez-moi le code que vous allez recevoir par SMS.
+  - ask: Et maintenant ?
     choices:
-      - text: Rien. C'était l'an dernier.
-        reply: Les données fuitées se revendent pendant des années. Un SMS qui cite votre numéro de compte ne prouve plus rien.
-      - text: Un message qui cite mon numéro de compte ne prouve plus qu'il vient d'eux.
+      - text: Je raccroche et j'appelle le numéro au dos de ma carte.
         right: true
-        reply: Exactement. Cochez ce piratage dans Prudence, et la carte le dira quand un message citera votre numéro.
+        reply: Raccroché ? J'avais toute votre page ! La date, l'adresse… Où est passée la page 4312 ?
+        tell: Le numéro au dos de votre carte mène à votre vraie banque. Qu'il connaisse vos données ne prouve rien.
+      - text: Je lui lis le code. Il connaît déjà tout le reste.
+        reply: "Merci ! Ce code valide un virement de votre compte vers le mien. Page 4312 : terminée."
+        tell: "Il cite ce qui a fuité pour obtenir ce qui manque : votre code. Raccrochez et appelez le numéro au dos de votre carte."
+      - text: Je lui demande son nom et son agence, pour vérifier.
+        reply: Bien sûr ! Michel Durand, agence du centre-ville. Très facile à vérifier. Le code, maintenant ?
+        tell: Un nom et une agence s'inventent en une seconde. Raccrochez et appelez le numéro au dos de votre carte.
+  - from: you
+    say:
+      - Ma banque dit qu'il n'y a aucun prélèvement et aucun problème. Mais comment savait-il tout ça ?
+  - ask: Et ensuite ?
+    choices:
+      - text: Je demande à ma banque qui a donné mes données.
+        reply: Votre banque ? Je n'y mets jamais les pieds. J'achète mes pages dans les fuites, par paquets de dix mille.
+        tell: Des données comme les vôtres fuitent quand une entreprise est piratée. Prudence peut chercher lesquelles.
+      - text: Rien. Personne ne peut rien contre une fuite.
+        reply: Parfait. Votre page reste sur ma liste, comme neuve, pendant des années.
+        tell: Les données fuitées se revendent pendant des années. Savoir lesquelles ont fuité, c'est ne plus s'y laisser prendre.
+      - text: Je cherche mon adresse e-mail dans Prudence.
+        right: true
+        reply: "Vous avez cherché ? Alors vous connaissez mon secret : je ne vous connais pas. J'ai acheté votre page au kilo."
+        tell: Prudence montre les piratages connus qui contiennent votre adresse e-mail, et ce qui a fuité.
+  - from: you
+    say:
+      - "La voilà : la fuite de Bouygues Telecom, en 2025. C'est donc là que mes données sont parties."
   - say:
-      - "La règle : un vrai numéro dans un message n'est **pas une preuve**. Seules la vraie adresse d'envoi et votre appli le sont."
-      - "Prudence le dit sur la carte : « Ce numéro de compte est réel, mais il a fuité lors du piratage de Bouygues. »"
-  - ask: Deux messages arrivent. Lequel a le plus de chances d'être vrai ?
-    choices:
-      - text: "« Votre compte FR76…1234 sera prélevé de 69,90 €. Contestez ici », puis un lien."
-        reply: Un vrai numéro, de la pression et un lien. C'est M. Je-Connais-Votre-Numéro de la tête aux pieds.
-      - text: "« Votre facture est disponible dans votre espace client », depuis l'adresse habituelle, sans lien pour payer."
-        right: true
-        reply: Bravo ! Pas de pression, pas de lien pour payer, l'adresse que vous connaissez. Ouvrez votre espace client vous-même.
+      - M. Je-Connais-Votre-Numéro fait tomber sa liste froissée, et les pages s'envolent partout.
+      - La vôtre ne lui sert plus à rien.

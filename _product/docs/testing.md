@@ -14,7 +14,7 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 | `make readme-numbers` | Re-measures the numbers at the top of `README.md` (tests, coverage, seed cases, Android tests, commits, CI runs) and its badges, from a green run. |
 | `make score` | The PRD pass criteria on the 40 seed cases (A set 100%, no false Scam on the C set) with the detector alone; `make score-muse` sends them through Muse Spark (paid, answers cached in `.runtime/eval/`), `make score-open` through Muse Spark Open, Meta's open weights, on Baseten (`BASETEN_API_KEY`; `_product/docs/llm.md`). |
 | `node scripts/docs-check.mjs` | Spec links, statuses, `Keywords:` lines, indexes, stale advice, committed conflict markers. Part of the definition of done. |
-| `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, 1 to 3 lines per say, exactly three questions with one right answer, texts under 140 characters, `**bold**` only, EN/FR twins with the same steps, demo cases that exist. Part of `make check`. |
+| `make lessons-check` | Every lesson file under `data/lessons/` against the format of `_product/specs/micro-learning.md`: required fields, a story that starts and ends with a say, at most two says in a row and the character's own text at least once, 1 to 3 lines per say from the narrator, the character or you (the borrowed name under 40 characters), exactly three questions with one right answer and a tell on every other choice, texts under 140 characters, `**bold**` only, EN/FR twins that play the same (steps, speakers, right choices), demo cases that exist. Part of `make check`. |
 
 ## Coverage threshold: 94% of lines, ratcheted
 

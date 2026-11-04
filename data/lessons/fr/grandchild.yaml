@@ -9,34 +9,61 @@ rule: Si un proche demande de l'argent en urgence, rappelez-le au numéro que vo
 demo_case: B1
 steps:
   - say:
-      - Voici le **Petit-fils en détresse**. Toujours un malheur, toujours loin, toujours pressé.
-      - « Mamie, c'est moi, j'ai changé de numéro. J'ai eu un accident, envoie 2000 € **tout de suite**. »
-  - ask: Votre « petit-fils » écrit d'un nouveau numéro et demande de l'argent tout de suite. Que faites-vous ?
+      - Dimanche, 18 h. La soupe mijote.
+      - Quelque part, le **Petit-fils en détresse** ouvre son carnet de malheurs. Lequel, aujourd'hui ?
+      - Votre téléphone vibre. Un numéro inconnu.
+  - from: character
+    as: 01 99 00 12 34
+    say:
+      - Mamie, c'est moi ! J'ai changé de numéro. J'ai eu un **accident**. Tu peux m'envoyer **300 €** aujourd'hui ?
+  - ask: Que faites-vous ?
     choices:
-      - text: J'envoie l'argent. C'est la famille.
-        reply: Votre grand cœur, c'est tout ce qu'il espère. Beaucoup de grands-parents aimants ont été trompés ainsi.
+      - text: J'envoie l'argent. C'est la famille, il a besoin d'aide.
+        reply: Merci, Mamie ! Tu es ma mamie préférée. De toutes celles à qui j'écris aujourd'hui.
+        tell: "Un nouveau numéro, un malheur, de l'argent tout de suite : ce sont ses indices. Appelez avant d'envoyer."
+      - text: Je lui demande le nom du chien, pour vérifier.
+        reply: Le chien ! Euh... Médor ? Le chien va très bien. Pas le temps pour le chien, Mamie.
+        tell: Il peut esquiver une question, ou deviner juste. Un appel au numéro que vous avez déjà règle tout.
       - text: J'appelle mon petit-fils au numéro que j'ai déjà.
         right: true
-        reply: Oui ! Votre vrai petit-fils décroche, sain et sauf, et très surpris. Le Petit-fils en détresse reste en détresse.
-      - text: Je lui écris une question que lui seul connaît.
-        reply: Bonne idée, mais il peut esquiver ou deviner. Le plus sûr reste d'appeler le numéro que vous avez déjà.
+        reply: L'ancien numéro ? Oh non. C'est celui où le vrai répond.
+        tell: Le numéro que vous avez déjà mène à votre vrai petit-fils. Un nouveau numéro ne prouve rien.
   - say:
-      - "Ses indices ne changent jamais : un **nouveau numéro**, un **malheur**, de l'argent **tout de suite**, et un secret."
-      - Le secret est là pour que personne ne vérifie son histoire. Un appel à la famille suffit à le briser.
-  - ask: "Il ajoute : « N'en parle pas à papa. » Qu'est-ce que cela vous dit ?"
+      - Son numéro habituel sonne dans le vide. Il doit être au travail. Vous laissez un message.
+  - from: character
+    as: 01 99 00 12 34
+    say:
+      - Mamie, vite ! En plus, on m'a **volé mon portefeuille**. Mon avocat envoie quelqu'un chercher l'argent chez toi.
+  - ask: Et maintenant ?
     choices:
-      - text: Il a honte. Je dois garder son secret.
-        reply: C'est ce qu'il espère vous faire croire. Le secret est là pour que personne ne vérifie son histoire.
-      - text: C'est une ruse pour que personne ne vérifie. J'appelle la famille.
+      - text: Je prépare l'argent pour le coursier.
+        reply: Parfait ! Une enveloppe suffira. Mon coursier est très poli. Il s'essuie même les pieds.
+        tell: Un vrai avocat ou un vrai policier n'envoie jamais quelqu'un chercher de l'argent chez vous.
+      - text: Je ne donne d'argent à personne à ma porte.
         right: true
-        reply: Exactement. Un appel à la famille, et son histoire tombe à l'eau.
+        reply: Pas d'enveloppe ? Mais j'avais réservé mon coursier pour tout l'après-midi !
+        tell: L'argent remis à domicile, c'est sa ruse. Aucun vrai avocat n'envoie quelqu'un le chercher.
+      - text: Je demande le nom et le numéro de l'avocat.
+        reply: Bien sûr ! Maître Martin, avocat. Son numéro ? Celui-ci, justement. Quel hasard.
+        tell: Un nom et un numéro s'inventent en une seconde. Aucun vrai avocat n'envoie chercher de l'argent.
+  - from: you
+    say:
+      - Personne ne vient chercher d'argent chez moi. Ni aujourd'hui, ni jamais.
+  - from: character
+    as: 01 99 00 12 34
+    say:
+      - Mamie ? Tu es là ? Surtout, **n'en parle pas à papa**. Et là, je suis **à l'hôpital**. C'est compliqué.
+  - ask: Et là ?
+    choices:
+      - text: Je garde son secret. Il a l'air d'avoir honte.
+        reply: Oui ! Notre petit secret. Papa pose beaucoup trop de questions.
+        tell: Le secret est là pour que personne ne vérifie son histoire. Un appel à la famille le brise.
+      - text: J'appelle son père tout de suite.
+        right: true
+        reply: Pas papa ! Papa sait toujours où est tout le monde. TOUJOURS.
+        tell: Un appel à la famille, et son histoire tombe à l'eau.
   - say:
-      - "La règle : **rappelez la personne** au numéro que vous avez déjà. Jamais au nouveau."
-      - Un vrai avocat ou un vrai policier n'envoie jamais quelqu'un chercher de l'argent chez vous.
-  - ask: Deux messages arrivent. Lequel vient vraiment de votre petit-fils ?
-    choices:
-      - text: "D'un nouveau numéro : « Mamie, j'ai eu un accident. Envoie de l'argent et n'en parle pas à papa. »"
-        reply: Encore le Petit-fils en détresse, déguisé. Nouveau numéro, malheur, secret. Tous ses indices préférés.
-      - text: "De son numéro habituel : « À dimanche, Mamie ! J'apporte le dessert. »"
-        right: true
-        reply: Oui ! Son numéro habituel, et ni argent, ni urgence, ni secret. C'est bien lui. Bon dessert !
+      - Son père décroche. Votre petit-fils est au travail, en ville, avec son numéro de toujours.
+  - say:
+      - Le Petit-fils en détresse referme son carnet de malheurs. Trois malheurs, zéro euro.
+      - Votre soupe est prête.

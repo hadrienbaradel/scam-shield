@@ -8,34 +8,64 @@ badge: Pro du bouton Fermer
 rule: N'appelez jamais un numéro affiché dans une fenêtre d'alerte. Fermez-la, ou éteignez l'ordinateur.
 steps:
   - say:
-      - "Voici la **Fenêtre qui hurle**. Elle surgit sur votre écran et crie : « VIRUS ! APPELEZ MICROSOFT ! »"
-      - Elle sonne, elle clignote, elle vous supplie de ne pas la fermer. Quel spectacle, pour une simple fenêtre !
-  - ask: Une fenêtre dit que votre ordinateur est infecté et affiche un numéro à appeler. Que faites-vous ?
+      - Jeudi après-midi. Un café, les infos sur l'ordinateur.
+      - Soudain, l'écran devient rouge et l'ordinateur se met à biper.
+  - from: character
+    as: Sécurité Microsoft
+    say:
+      - "**ALERTE DE SÉCURITÉ MICROSOFT !** Votre ordinateur est infecté. Appelez le 01 99 00 12 34. NE FERMEZ PAS CETTE FENÊTRE !"
+      - BIP ! BIP ! BIIIP ! Hum. Pardon. Je hurle sur les gens depuis le petit-déjeuner.
+  - ask: Que faites-vous ?
     choices:
       - text: J'appelle le numéro. C'est écrit Microsoft.
-        reply: Ce numéro sonne chez les escrocs, pas chez Microsoft. Beaucoup de gens prudents ont appelé, puis payé pour ne rien réparer.
-      - text: Je ferme la fenêtre, ou j'éteins l'ordinateur.
+        reply: OUI ! Dring ! Mon ami répond « Microsoft », prend la main sur votre ordinateur et facture 299 € pour ne rien réparer.
+        tell: Microsoft ne met jamais de numéro de téléphone dans une alerte. Ce numéro sonne chez ceux qui ont créé la fenêtre.
+      - text: Je ferme la fenêtre.
         right: true
-        reply: Oui ! Enfin le silence. La Fenêtre qui hurle n'était qu'une page web, et la voilà partie.
-      - text: Je clique sur la fenêtre pour en savoir plus.
-        reply: Cliquer peut l'agrandir à tout l'écran, ou ouvrir d'autres fenêtres. Fermez-la, ou éteignez l'ordinateur.
+        reply: Pas la petite croix ! J'ai bipé ! J'ai HURLÉ ! Je… kof, kof. Il me faut un verre d'eau.
+        tell: Ce n'était qu'une page web déguisée en alerte. La fermer ne présente aucun risque.
+      - text: Je clique dans la fenêtre pour en savoir plus.
+        reply: Entrez, entrez ! Un clic, et je prends TOUT l'écran. Je suis bien plus grande que j'en ai l'air.
+        tell: Un clic donne plus de place à une fenêtre qui fait peur. Fermez-la, et n'appelez personne.
   - say:
-      - Ce n'est qu'une **page web**, déguisée en alerte effrayante.
-      - Microsoft ne surveille pas votre écran pour vous appeler chaque fois que votre ordinateur éternue.
-  - ask: Une alerte bruyante sur votre écran donne un numéro de téléphone. Qui se cache derrière ?
+      - Dix minutes plus tard, sur une autre page, la revoilà. En plein écran, et sans croix.
+  - from: character
+    as: Sécurité Microsoft
+    say:
+      - Kof. Me REVOILÀ ! Éteignez l'ordinateur et vous perdez TOUTES vos photos ! Appelez le 01 99 00 12 34 !
+  - ask: Et maintenant ?
     choices:
-      - text: Microsoft, qui veut m'aider.
-        reply: Microsoft répare en silence, sans numéro de téléphone. Ce numéro, c'est la signature de la Fenêtre qui hurle.
-      - text: Des escrocs. Le numéro de téléphone, c'est le piège.
+      - text: J'appelle, juste cette fois, pour sauver mes photos.
+        reply: Vos photos, oui ! Mon ami entre dans votre ordinateur, fait semblant de les sauver et facture 299 €.
+        tell: La menace sert à vous faire appeler. Éteindre l'ordinateur n'abîme pas vos photos.
+      - text: Je clique sur le bouton Annuler de la fenêtre.
+        reply: Ha ! Tous les boutons ici sont à moi. Annuler me fait juste biper plus fort. Kof.
+        tell: Chaque bouton dans la fenêtre appartient à la fenêtre. Le bouton marche-arrêt de l'ordinateur, non.
+      - text: Je garde le doigt sur le bouton marche-arrêt.
         right: true
-        reply: Exactement ! Pas d'appel, pas de piège. La Fenêtre qui hurle ne peut rien si vous n'appelez pas.
+        reply: Pas le bouton marche-arrêt ! Personne ne m'entend hurler sur un ordinateur éteint. Kof.
+        tell: Un appui long sur le bouton marche-arrêt éteint l'ordinateur, et aucune page web ne peut l'en empêcher.
   - say:
-      - "La règle : **n'appelez jamais** un numéro affiché dans une fenêtre. Fermez-la, ou éteignez l'ordinateur."
-      - Microsoft ne met jamais de numéro de téléphone dans une alerte de sécurité.
-  - ask: Deux messages apparaissent sur votre écran. Lequel est une vraie alerte ?
+      - Samedi matin, le téléphone sonne. La voix au bout du fil est très, très enrouée.
+  - from: character
+    as: Support Microsoft
+    say:
+      - Kof. Bonjour, ici Microsoft. Votre ordinateur nous envoie des erreurs. Laissez-moi m'y connecter pour le réparer.
+  - ask: Et ensuite ?
     choices:
-      - text: « VIRUS DÉTECTÉ ! Appelez le 01 99 00 12 34 tout de suite. N'éteignez pas votre ordinateur. »
-        reply: Encore la Fenêtre qui hurle. Une vraie alerte ne vous donne jamais de numéro à appeler.
-      - text: "« Sécurité Windows : une menace a été trouvée et supprimée. Aucune action n'est nécessaire. »"
+      - text: Je raccroche. Microsoft n'appelle pas comme ça.
         right: true
-        reply: Oui ! Une vraie alerte reste calme. Pas de numéro, pas de cris, rien à payer.
+        reply: Clic ? Vous m'avez raccroché au nez ? Trois essais, pas un appel. Et je n'ai plus de voix du tout.
+        tell: Microsoft n'appelle jamais sans que vous l'ayez demandé. Raccrocher est toujours permis.
+      - text: Je le laisse se connecter. Mon ordinateur a fait des siennes cette semaine.
+        reply: Ah oui ? Quelle chance ! De mon bureau, je vois votre écran, vos fichiers, votre banque. Kof.
+        tell: Ne laissez jamais quelqu'un qui vous appelle prendre la main sur votre ordinateur.
+      - text: Je lui demande d'abord son matricule.
+        reply: Bien sûr ! Matricule 1-2-3-4-5. Très officiel. Maintenant, laissez-moi entrer. Kof.
+        tell: "Au téléphone, on peut inventer n'importe quel matricule. Raccrochez : Microsoft n'appelle pas pour réparer."
+  - from: you
+    say:
+      - Je raccroche et je finis mon café.
+  - say:
+      - La Fenêtre qui hurle a une extinction de voix, et personne n'a appelé son numéro.
+      - Elle est au lit, avec un grog.

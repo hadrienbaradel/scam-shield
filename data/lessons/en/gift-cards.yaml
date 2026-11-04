@@ -9,34 +9,63 @@ rule: Nobody official is ever paid in gift cards. Anyone who asks for them is a 
 demo_case: B7
 steps:
   - say:
-      - Meet **Mr. Gift Card**. He dresses up as the IRS, the power company, even a friend in trouble.
-      - '"You owe $900 in taxes. Pay today with **gift cards**, or the police will come to your door."'
-  - ask: A caller says you owe taxes and must pay today with gift cards. What do you do?
+      - Monday, 10 in the morning. The coffee is ready, and the phone rings.
+  - from: character
+    as: Your power company
+    say:
+      - This is your power company. Your bill is late. Pay **$480** by noon, or we cut the power.
+      - We only take **gift cards** today. Scratch the silver strip for me and read me the numbers. I never have a coin.
+  - ask: What do you do?
     choices:
-      - text: Buy the cards quickly, to avoid trouble.
-        reply: Fear is his favorite tool, and many careful people have bought the cards. No tax office takes them.
-      - text: Hang up. Taxes are never paid with gift cards.
+      - text: Buy just one card, to be safe.
+        reply: One card! Splendid. Then one for the late fee. Then one for the fee on the late fee.
+        tell: No power company takes gift cards. Not one card, not ever.
+      - text: Ask if I can pay by check instead.
+        reply: A check? Checks can be stopped. Gift cards cannot. That is why I adore them.
+        tell: Only a scammer insists on gift cards. Hang up.
+      - text: Hang up, then call the number on my power bill.
         right: true
-        reply: Yes! The tax office does not take supermarket gift cards, however carefully you scratch them.
-      - text: Ask if I can pay half now and half later.
-        reply: He will gladly take half, then ask for the rest. A real tax office never takes gift cards at all.
+        reply: The number on your bill? That rings the REAL power company. They have never heard of me.
+        tell: Your own bill gives you the real number. No power company, bank or tax office takes gift cards.
   - say:
-      - Why gift cards? Once he has **the numbers on the back**, the money is gone and very hard to get back.
-      - 'He even tells you what to say at the store: "They are presents for my grandchildren."'
-  - ask: At the store, the cashier asks who all these gift cards are for. What do you say?
+      - Wednesday, an email arrives with your friend Mark's name on it.
+  - from: character
+    as: Mark
+    say:
+      - I am in Madrid and my wallet was stolen! Can you buy 4 gift cards of $200 and send me the codes?
+      - And please, do not tell anyone.
+  - ask: What now?
     choices:
-      - text: Presents, just as the caller told me to say.
-        reply: That little fib protects him, not you. Many cashiers know this trick. Let them help you.
-      - text: The truth. The cashier may know this trick.
+      - text: Send them. Mark would do the same for me.
+        reply: Thank you, thank you! Just send a photo of the backs. Ah, those lovely silver strips.
+        tell: Anyone who asks for gift cards is a scammer, even with a friend's name. Call Mark on the number you have.
+      - text: Call Mark on the number I already have.
         right: true
-        reply: Exactly! Many cashiers have met Mr. Gift Card before. One honest word, and his plan falls apart.
+        reply: You called the REAL Mark? He is at home in his slippers, nowhere near Madrid.
+        tell: The number you already have reaches the real Mark. Whoever wants gift cards is someone else.
+      - text: Reply to the email to ask if he is all right.
+        reply: I am fine, just in a hurry! The cards, please. And a coin, if you have one.
+        tell: A reply goes to whoever wrote the email. Call Mark on the number you already have.
   - say:
-      - 'The rule: **nobody official is ever paid in gift cards.** Anyone who asks for them is a scammer.'
-      - The IRS never threatens arrest by email or asks for gift cards.
-  - ask: Two messages arrive. Which one is a real bill?
+      - Friday, your neighbor Rosa knocks, her phone on speaker. She is off to buy gift cards before noon.
+  - from: character
+    as: Power company
+    say:
+      - Hurry, Rosa! Gift cards by noon, or the lights go out! And bring a coin. I never have one.
+  - ask: And now?
     choices:
-      - text: '"IRS: you owe $900. Pay today with gift cards and read us the numbers on the back."'
-        reply: Mr. Gift Card again, in his IRS costume. No real office asks for gift cards, or for the numbers on the back.
-      - text: '"Your power bill of $84 is due Nov. 20. Pay as usual, by check or on our website."'
+      - text: Tell her to hang up. Nobody official is paid in gift cards.
         right: true
-        reply: Yes! A normal bill, a normal date, a normal way to pay. Not a gift card in sight.
+        reply: You TOLD her? Now she will tell the whole street. My week is ruined.
+        tell: One sentence can save a neighbor $480. Nobody official is ever paid in gift cards.
+      - text: Offer to drive her to the store. It is nearly noon.
+        reply: How kind! Drive fast. I will keep her on the line all the way there.
+        tell: No power company takes gift cards. The kind thing is to tell Rosa so.
+      - text: Say nothing. It is her business.
+        reply: Perfect. Her business is my business now.
+        tell: "Speaking up is not meddling. Tell her: nobody official is ever paid in gift cards."
+  - from: you
+    say:
+      - Rosa, call the number on your bill. Then come in for coffee.
+  - say:
+      - Mr. Gift Card goes home with empty pockets. No cards, no codes, and still no coin.

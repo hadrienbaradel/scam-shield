@@ -877,7 +877,7 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-star-icon { flex: none; fill: var(--surface); stroke: var(--navy); }
 .learn-star-icon.is-on { fill: var(--gold); }
 
-/* "Question 1 of 3" and the three stars of the lesson. */
+/* "Choice 1 of 3" and the three stars of the lesson. */
 .learn-stepper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
 .learn-step-label { color: var(--navy); font-size: var(--t22); font-weight: 700; line-height: 1.25; }
 .learn-step-stars { display: inline-flex; gap: 8px; }
@@ -886,7 +886,7 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-star.is-new .learn-star-icon { filter: drop-shadow(0 0 5px rgba(233, 168, 32, 0.75)); animation: learn-pop 0.6s ease-out both; }
 @keyframes learn-pop { 0% { transform: scale(0.3); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
-/* Say: Prudence's lines as speech bubbles. */
+/* Say, the narrator: Prudence's lines under her mark, as before the stories. */
 .learn-lesson-head { display: flex; align-items: center; gap: 14px; }
 .learn-lesson-head h1 { margin: 0; font-size: var(--t26); line-height: 1.25; overflow-wrap: anywhere; }
 .learn-lesson-head .learn-emoji { width: 56px; height: 56px; background: var(--surface); border: 2px solid var(--line); font-size: 28px; }
@@ -894,10 +894,26 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-speaker { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: var(--t19); font-weight: 700; }
 .learn-mark { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: var(--navy-deep); }
 .learn-line { padding: 14px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; font-size: var(--t22); line-height: 1.45; overflow-wrap: anywhere; }
-.learn-speaker + .learn-line,
-.learn-reply { border-top-left-radius: 6px; }
+.learn-speaker + .learn-line { border-top-left-radius: 6px; }
 
-/* Ask: the question is the heading; the answers stack, full width, and wrap. */
+/* Say, the character and the person (the spec's Design, "Story screens"):
+   texts as on a phone, one bubble per line. The character's are grey on the
+   left under the name he borrows, the lesson's emoji his avatar; the
+   person's own are navy on the right under "You". */
+.learn-msg { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.learn-msg.is-you { align-items: flex-end; }
+.learn-msg-name { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: var(--t19); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.learn-msg-name > span { min-width: 0; }
+.learn-avatar { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); border: 2px solid var(--line); font-size: 22px; line-height: 1; }
+.learn-bubble { max-width: 88%; padding: 14px 18px; border-radius: 22px; background: var(--line); color: var(--ink); font-size: var(--t22); line-height: 1.45; overflow-wrap: anywhere; }
+.learn-msg-name + .learn-bubble { border-top-left-radius: 6px; }
+.learn-msg.is-you .learn-bubble { background: var(--navy); color: var(--surface); }
+.learn-msg.is-you .learn-msg-name + .learn-bubble { border-top-left-radius: 22px; border-top-right-radius: 6px; }
+
+/* Ask: the say that leads to the question sits on top, drawn as on its own
+   screen and a little apart; the question is the heading; the answers
+   stack, full width, and wrap. */
+.learn-ask-say { margin-bottom: 8px; }
 .learn-question { margin: 0; font-size: var(--t26); line-height: 1.25; overflow-wrap: anywhere; }
 .learn-choices { display: flex; flex-direction: column; gap: 0.75rem; }
 .learn-choice {
@@ -917,23 +933,30 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .learn-choice:hover { background: var(--navy-wash); }
 .learn-choice svg { flex: none; }
 .learn-choice span { min-width: 0; overflow-wrap: anywhere; }
+/* A choice already tried, when Rewind brings the question back: grey with
+   "Tried" in words under it, nothing on tap (aria-disabled: still reached by
+   the keyboard and read by a screen reader); never red. */
+.learn-choice.is-tried,
+.learn-choice.is-tried:hover { background: var(--soon); border-color: var(--field); color: var(--muted); cursor: default; }
+.learn-choice-words { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.learn-tried { padding: 0 12px; border: 2px solid var(--field); border-radius: 999px; background: var(--surface); font-size: var(--t19); line-height: 1.5; white-space: nowrap; }
 
-/* The answer: a cheer, or a warm line and the trick; never red on the
-   person's own choice. */
-.learn-result { display: flex; flex-direction: column; gap: 0.75rem; }
+/* After a choice: the cheer when it was right (the star the first time),
+   what the person chose in a plain box (never red), the character's answer
+   in his bubble and the narrator's tell, a plain line under it. A wrong
+   choice has no verdict: the plain box is the screen's heading (an h1) and
+   Rewind its one button. */
+.learn-result { display: flex; flex-direction: column; gap: 14px; }
 .learn-result-head { display: flex; align-items: center; gap: 0.8rem; }
-.learn-result-head h1 { margin: 0; font-size: 1.2rem; line-height: 1.25; }
-.learn-result.is-right .learn-result-head h1 { color: var(--navy); font-size: 1.45rem; line-height: 1.2; }
+.learn-result-head h1 { margin: 0; color: var(--navy); font-size: var(--t26); line-height: 1.2; }
 .learn-result-words { display: flex; flex-direction: column; gap: 0.1rem; }
-.learn-result-dot { flex: none; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: var(--navy-wash); border: 3px solid var(--navy); color: var(--navy); }
-.learn-result.is-right .learn-result-dot { background: var(--gold-wash); border-color: var(--gold); }
-.learn-pick { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.75rem 1rem; background: var(--surface); border: 2px solid var(--line); border-radius: 16px; }
-.learn-pick-label { display: flex; align-items: center; gap: 0.35rem; color: var(--muted); font-weight: 700; }
-.learn-pick-text { font-size: 1.1rem; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
-.v2 .learn-pick-reply { margin-top: 0.45rem; padding-top: 0.55rem; border-top: 1px solid var(--line); font-size: 1.1rem; line-height: 1.45; }
-.learn-pick.is-right { background: var(--safe-wash); border: 3px solid var(--safe); color: var(--safe-ink); }
-.learn-pick.is-right .learn-pick-label { color: var(--safe-ink); }
-.learn-pick.is-right svg { color: var(--safe); }
+.learn-result-dot { flex: none; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: var(--gold-wash); border: 3px solid var(--gold); color: var(--navy); }
+.learn-pick { display: flex; flex-direction: column; gap: 0.2rem; margin: 0; padding: 0.75rem 1rem; background: var(--surface); border: 2px solid var(--line); border-radius: 16px; font-size: var(--t19); line-height: 1.35; }
+.learn-pick-label { color: var(--muted); font-weight: 700; }
+.learn-pick-text { font-size: var(--t22); font-weight: 700; overflow-wrap: anywhere; }
+.learn-tell { display: flex; align-items: flex-start; gap: 10px; font-size: var(--t22); line-height: 1.45; overflow-wrap: anywhere; }
+.learn-tell > svg { flex: none; margin-top: calc((1.45em - 26px) / 2); color: var(--navy); }
+.learn-tell > span { min-width: 0; }
 .learn-dock { grid-template-columns: minmax(0, 1fr); }
 
 /* The end of a lesson: the stars, the badge the first time, the rule. */

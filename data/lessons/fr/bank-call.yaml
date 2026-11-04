@@ -9,35 +9,56 @@ rule: Si « votre banque » appelle pour une fraude, raccrochez et appelez le nu
 demo_case: A6
 steps:
   - say:
-      - Voici la **Banque qui a oublié votre nom**. Votre nom, elle l'a oublié. Votre épargne, pas du tout.
-      - "Elle écrit : « Paiement suspect de 700 € ! » Puis son « service antifraude » vous appelle pour vous sauver."
-  - ask: "Le « service antifraude » dit : « Virez votre argent sur un **compte sécurisé**. » Que faites-vous ?"
+      - Jeudi, 14 h 30. Vous écrivez une carte d'anniversaire.
+      - Dans une arrière-boutique, la **Banque qui a oublié votre nom** s'éclaircit la voix. Elle dit « Cher client » à tout le monde.
+      - Votre téléphone vibre.
+  - from: character
+    as: Société Générale
+    say:
+      - Opération suspecte de **700 €** sur votre carte. Si ce n'est pas vous, appelez le 01 99 00 12 34.
+  - ask: Que faites-vous ?
     choices:
-      - text: Je vire l'argent vite, avant le voleur.
-        reply: Beaucoup de gens prudents s'y sont laissé prendre. Le « compte sécurisé » appartient au voleur lui-même.
-      - text: Je raccroche et j'appelle le numéro au dos de ma carte.
+      - text: J'appelle vite le numéro du SMS.
+        reply: Allô ! Service antifraude, cher client. Quelle chance que vous appeliez. Votre numéro de carte ?
+        tell: Le numéro d'un SMS mène à celui qui l'a écrit. Votre banque, c'est le numéro au dos de votre carte.
+      - text: Je n'appelle pas. Je verrai avec ma banque moi-même.
         right: true
-        reply: Oui ! Votre vraie banque répond, et votre argent ne bouge pas. La Banque qui a oublié votre nom n'entend que la tonalité.
-      - text: Je demande son nom et son matricule.
-        reply: Vous auriez un joli nom et un matricule, tout inventés. Raccrochez et appelez vous-même votre banque.
+        reply: Pas d'appel ? Moi qui l'avais si bien écrit. Bon. J'appelle, moi. Tout le monde décroche.
+        tell: C'est vous qui choisissez comment joindre votre banque, pas lui.
   - say:
-      - Le service antifraude qui vous appelle pour vous protéger de la fraude, **c'est la fraude**.
-      - Il peut même faire afficher le nom de votre banque sur votre téléphone. C'est facile à truquer.
-  - ask: Votre téléphone affiche « Société Générale » quand il sonne. Pouvez-vous faire confiance à l'appel ?
+      - Deux minutes plus tard, le téléphone sonne. L'écran affiche **Société Générale**.
+  - from: character
+    as: Société Générale
+    say:
+      - Cher client ! Ici le service antifraude. Des voleurs sont sur votre compte. Virez votre épargne sur un **compte sécurisé**.
+  - ask: Et maintenant ?
     choices:
-      - text: Oui, c'est écrit Société Générale sur l'écran.
-        reply: N'importe qui peut faire afficher « Société Générale ». La Banque qui a oublié votre nom le fait toute la journée.
-      - text: Pas forcément. Je raccroche et j'appelle le numéro de ma carte.
+      - text: Je vire l'argent vite, avant les voleurs.
+        reply: Oui ! Le compte sécurisé est très sûr. J'en ai la seule clé.
+        tell: Le compte sécurisé est le sien. Une vraie banque ne demande jamais de déplacer votre argent pour le protéger.
+      - text: Je lui demande son nom et son matricule.
+        reply: Monsieur Martin. Matricule 1-2-3-4. Très officiel. Bon, cher client, votre épargne.
+        tell: Un nom et un matricule s'inventent en une seconde. Une vraie banque ne fait jamais déplacer votre argent.
+      - text: Je dis au revoir et je raccroche.
         right: true
-        reply: Exactement. L'écran peut mentir, pas le numéro au dos de votre carte. C'est vous qui appelez, vous savez qui répond.
+        reply: Raccroché ? Au SERVICE ANTIFRAUDE ? J'avais tout un discours, cher client.
+        tell: Le service antifraude qui vous appelle pour vous protéger de la fraude, c'est la fraude.
+  - from: you
+    say:
+      - Clic. Maintenant, je veux parler à ma vraie banque.
+  - ask: Quel numéro appelez-vous ?
+    choices:
+      - text: Le numéro au dos de ma carte.
+        right: true
+        reply: La carte. Le seul numéro que je ne peux pas toucher. Au revoir, cher client.
+        tell: "Le numéro au dos de votre carte mène à votre vraie banque. C'est vous qui appelez : vous savez qui répond."
+      - text: Celui qui vient d'appeler. C'était écrit Société Générale.
+        reply: Rebonjour, cher client ! C'est moi qui ai fait afficher ce nom. Malin, non ?
+        tell: Un nom sur l'écran se truque facilement. Rappeler ce numéro, c'est retomber sur lui.
+      - text: Un numéro trouvé en cherchant sur Internet.
+        reply: Internet ! J'y ai payé une annonce. Mon numéro est tout en haut.
+        tell: Un numéro trouvé en ligne peut être faux, lui aussi. Celui au dos de votre carte est sûr.
   - say:
-      - "La règle : **raccrochez**, puis appelez vous-même le numéro au dos de votre carte."
-      - Société Générale ne vous demandera jamais vos codes par e-mail.
-      - Et aucune vraie banque ne vous demande de déplacer votre argent pour le protéger.
-  - ask: Deux SMS arrivent. Lequel vient vraiment de votre banque ?
-    choices:
-      - text: "« Alerte fraude : virez votre épargne sur un compte sécurisé aujourd'hui. »"
-        reply: C'est encore la Banque qui a oublié votre nom. Une vraie banque ne vous demande jamais de déplacer votre argent.
-      - text: « Paiement de 120 € effectué. Si ce n'est pas vous, appelez le numéro au dos de votre carte. »
-        right: true
-        reply: Oui ! Pas de lien, pas de course, pas de « compte sécurisé ». Il vous renvoie vers le numéro que vous connaissez.
+      - Votre vraie banque répond. Aucune opération de 700 €. Votre épargne n'a pas bougé.
+  - say:
+      - La Banque qui a oublié votre nom compose le numéro suivant. « Cher client ? » Clic.

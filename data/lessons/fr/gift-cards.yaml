@@ -8,35 +8,64 @@ badge: Incollable sur les cartes cadeaux
 rule: Aucun organisme officiel ne se fait payer en cartes cadeaux ou en coupons. Qui vous en demande est un escroc.
 steps:
   - say:
-      - Voici **Monsieur Carte Cadeau**. Il se déguise en gendarme, en huissier, et même en ami dans le pétrin.
-      - « Vous avez une amende impayée de 135 €. Réglez-la aujourd'hui en **coupons PCS**, sinon les gendarmes passeront. »
-  - ask: On vous dit de payer une amende aujourd'hui, en coupons PCS ou en cartes cadeaux. Que faites-vous ?
+      - Lundi, 10 heures. Le café vient de passer, et le téléphone sonne.
+  - from: character
+    as: Centre des impôts
+    say:
+      - Ici le centre des impôts. Vous devez **480 €**. Payez avant midi, sinon l'huissier passe cet après-midi.
+      - Aujourd'hui, nous ne prenons que les **cartes cadeaux**.
+      - Grattez la bande argentée pour moi et lisez-moi les codes. Je n'ai jamais de pièce.
+  - ask: Que faites-vous ?
     choices:
-      - text: J'achète vite les coupons, pour éviter les ennuis.
-        reply: La peur, c'est son outil préféré, et beaucoup de gens prudents ont acheté les coupons. Aucune amende ne se paie ainsi.
-      - text: Je raccroche. Une amende ne se paie jamais en coupons.
+      - text: J'achète une seule carte, pour être tranquille.
+        reply: Une carte ! Parfait. Puis une pour la majoration. Puis une pour la majoration de la majoration.
+        tell: Les impôts ne se paient jamais en cartes cadeaux. Pas une carte, jamais.
+      - text: Je demande à payer par virement.
+        reply: Un virement ? Ça laisse des traces. Une carte cadeau, aucune. C'est pour ça que je les adore.
+        tell: Seul un escroc exige des cartes cadeaux. Raccrochez.
+      - text: Je raccroche et j'appelle le numéro de mon avis d'imposition.
         right: true
-        reply: Oui ! Les gendarmes ne prennent pas les cartes cadeaux, même joliment emballées. Monsieur Carte Cadeau repart bredouille.
-      - text: Je demande à payer la moitié maintenant.
-        reply: Il prendra volontiers la moitié, puis réclamera le reste. Aucun service public n'accepte de coupons.
+        reply: Le numéro de votre avis ? Ça sonne chez les VRAIS impôts. Ils n'ont jamais entendu parler de moi.
+        tell: Votre avis d'imposition donne le vrai numéro. Aucun service public ne se fait payer en cartes cadeaux.
   - say:
-      - Pourquoi des coupons ? Dès qu'il a **le code au dos**, l'argent est parti, et presque impossible à récupérer.
-      - "Il vous dit même quoi répondre au bureau de tabac : « C'est un cadeau pour mes petits-enfants. »"
-  - ask: Au bureau de tabac, on vous demande pour qui sont tous ces coupons. Que répondez-vous ?
+      - Mercredi, un e-mail arrive au nom de votre ami Gérard.
+  - from: character
+    as: Gérard
+    say:
+      - Je suis à Madrid, on m'a volé mon portefeuille ! Tu peux m'acheter 4 cartes cadeaux de 200 € et m'envoyer les codes ?
+      - Et surtout, n'en parle à personne.
+  - ask: Et maintenant ?
     choices:
-      - text: Un cadeau, comme on me l'a conseillé.
-        reply: Ce petit mensonge le protège, lui, pas vous. Beaucoup de buralistes connaissent ce piège. Laissez-les vous aider.
-      - text: La vérité. Le buraliste connaît peut-être ce piège.
+      - text: Je les envoie. Gérard ferait pareil pour moi.
+        reply: Merci, merci ! Envoie juste une photo du dos des cartes. Ah, ces jolies bandes argentées…
+        tell: Qui demande des cartes cadeaux est un escroc, même sous le nom d'un ami. Appelez Gérard au numéro que vous avez.
+      - text: J'appelle Gérard au numéro que j'ai déjà.
         right: true
-        reply: Exactement ! Beaucoup de buralistes ont déjà croisé Monsieur Carte Cadeau. Un mot honnête, et son plan tombe à l'eau.
+        reply: Vous avez appelé le VRAI Gérard ? Il est chez lui, en pantoufles, bien loin de Madrid.
+        tell: Le numéro que vous avez déjà mène au vrai Gérard. Celui qui veut des cartes cadeaux est quelqu'un d'autre.
+      - text: Je réponds à l'e-mail pour savoir s'il va bien.
+        reply: Je vais bien, juste pressé ! Les cartes, s'il te plaît. Et une pièce, si tu en as une.
+        tell: Une réponse part chez celui qui a écrit l'e-mail. Appelez Gérard au numéro que vous avez déjà.
   - say:
-      - "La règle : **aucun organisme officiel ne se fait payer en cartes cadeaux** ni en coupons."
-      - Les amendes ne se paient jamais en scannant un QR code sur l'avis papier.
-      - Ni en coupons, bien sûr. Une vraie amende, vous pouvez la vérifier vous-même sur antai.gouv.fr.
-  - ask: Deux messages parlent d'une amende. Lequel est le vrai ?
+      - Vendredi, votre voisine Josiane sonne, téléphone sur haut-parleur. Elle part acheter des cartes cadeaux avant midi.
+  - from: character
+    as: Centre des impôts
+    say:
+      - Vite, Josiane ! Les cartes cadeaux avant midi, ou l'huissier passe ! Et apportez une pièce, je n'en ai jamais.
+  - ask: Et vous ?
     choices:
-      - text: "« Gendarmerie : amende de 135 € à régler aujourd'hui en coupons PCS. Lisez-nous le code au dos. »"
-        reply: Encore Monsieur Carte Cadeau, en uniforme cette fois. Aucun gendarme ne demande de coupons, ni le code au dos.
-      - text: « Un avis de contravention a été émis. Consultez-le vous-même sur antai.gouv.fr avec le numéro de l'avis papier. »
+      - text: "Je lui dis de raccrocher : aucun organisme officiel ne prend de cartes cadeaux."
         right: true
-        reply: Oui ! Il vous envoie vérifier vous-même, sur le vrai site, avec votre avis papier. Pas un coupon en vue.
+        reply: Vous le lui avez DIT ? Elle va le répéter à tout le quartier. Ma semaine est fichue.
+        tell: Une phrase peut faire économiser 480 € à une voisine. Aucun organisme officiel ne prend de cartes cadeaux.
+      - text: Je propose de l'emmener au bureau de tabac. Il est presque midi.
+        reply: Comme c'est gentil ! Roulez vite. Je la garde au téléphone tout le trajet.
+        tell: Les impôts ne prennent pas de cartes cadeaux. Le plus gentil, c'est de le dire à Josiane.
+      - text: Je ne dis rien. Ça ne me regarde pas.
+        reply: Parfait. Ses affaires sont mes affaires, maintenant.
+        tell: "Parler, ce n'est pas se mêler de tout. Dites-lui : aucun organisme officiel ne prend de cartes cadeaux."
+  - from: you
+    say:
+      - Josiane, appelez le numéro de votre avis d'imposition. Puis entrez prendre un café.
+  - say:
+      - Monsieur Carte Cadeau repart les poches vides. Pas une carte, pas un code, et toujours pas de pièce.

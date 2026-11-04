@@ -9,34 +9,62 @@ rule: Ne payez jamais de frais de livraison depuis un lien dans un SMS. Passez p
 demo_case: A4
 steps:
   - say:
-      - Voici **Monsieur Petits Frais**. Il ne demande jamais grand-chose. Juste 1,99 € pour libérer un colis.
-      - Il compte sur une seule pensée. « Ce n'est que deux euros. »
-  - ask: Un SMS dit que votre colis est bloqué tant que vous n'avez pas payé 1,99 €. Que faites-vous ?
+      - Mardi, 7 h 40. Le café passe.
+      - Au loin, **Monsieur Petits Frais** secoue sa tirelire. Encore vide. Il prend son téléphone.
+      - Votre téléphone vibre.
+  - from: character
+    as: Chronopost
+    say:
+      - "Votre colis est en attente à notre dépôt. Des frais de **1,99 €** sont à régler. Payez ici : chronopost-suivi.example"
+  - ask: Que faites-vous ?
     choices:
       - text: Je paie. Ce n'est que 1,99 €.
-        reply: C'est exactement ce qu'espère Monsieur Petits Frais. Les frais sont un appât ; la page garde votre carte.
-      - text: Je vérifie sur le site ou l'appli officielle du transporteur.
+        reply: Merveilleux ! Maintenant, votre numéro de carte, la date et les trois petits chiffres au dos. Pour 1,99 €. Promis.
+        tell: Des frais de 1,99 € qui demandent toute votre carte, ce ne sont pas des frais. C'est votre carte.
+      - text: Je réponds pour demander si c'est vraiment Chronopost.
+        reply: Vraiment Chronopost ? Bien sûr ! C'est écrit tout en haut. Je l'ai tapé moi-même.
+        tell: N'importe qui peut écrire Chronopost en haut d'un SMS, et il dira toujours oui. Demandez au transporteur, pas à lui.
+      - text: Je regarde moi-même dans l'appli Chronopost.
         right: true
-        reply: Oui ! Votre colis est là où il a toujours été. Monsieur Petits Frais repart les mains vides.
-  - say:
-      - Son vrai butin, ce n'est pas 1,99 €. C'est **votre numéro de carte**.
-      - Une fois qu'il l'a, les petits frais deviennent de gros débits. Pas si petit, finalement.
-  - ask: Le SMS dit venir de Chronopost. Comment en être sûr ?
+        reply: Oh non. Pas l'appli. Personne ne regarde l'appli. Bon. BON.
+        tell: Aller vous-même voir le transporteur ne coûte rien et prouve tout.
+  - from: you
+    say:
+      - Je regarde dans l'appli Chronopost. Aucun colis en attente. Rien à payer.
+  - from: character
+    as: Chronopost
+    say:
+      - "DERNIER AVIS : payez **aujourd'hui** ou votre colis retourne à l'expéditeur. chronopost-suivi.example"
+  - ask: Et maintenant ?
     choices:
-      - text: C'est écrit Chronopost, donc c'est Chronopost.
-        reply: N'importe qui peut écrire Chronopost. Monsieur Petits Frais l'écrit toute la journée. Un nom dans un SMS ne prouve rien.
-      - text: Le SMS ne suffit pas. Je vérifie moi-même auprès de Chronopost.
+      - text: Je réponds STOP pour que ça s'arrête.
+        reply: STOP ? Charmant. Maintenant, je sais que votre numéro marche. Je vous réécris demain.
+        tell: Une réponse, même STOP, lui confirme que votre numéro marche. Laissez ses SMS sans réponse.
+      - text: Je n'y touche pas. J'ai déjà vérifié.
         right: true
-        reply: Exactement. Un nom dans un SMS ne prouve rien ; aller vous-même chez Chronopost prouve tout.
+        reply: Ignoré ? J'avais écrit DERNIER AVIS en majuscules. Les majuscules marchent toujours. D'habitude.
+        tell: Un vrai transporteur laisse un avis de passage et repasse. Demander une nouvelle livraison ne coûte rien.
+      - text: Je touche le lien, juste pour voir.
+        reply: Juste pour voir ! Entrez, entrez. Ma page ressemble trait pour trait à Chronopost. J'ai copié chaque bouton.
+        tell: Un coup d'œil ouvre sa page, et sa page demande votre carte. Passez par l'appli du transporteur.
   - say:
-      - Il adore presser, aussi. « Payez **aujourd'hui** ou votre colis repart. »
-      - Un vrai transporteur laisse un avis de passage et repasse. Demander une nouvelle livraison ne coûte rien.
-  - ask: Vous attendez un vrai colis. Quelle est la façon la plus sûre de le suivre ?
+      - "Jeudi. Cette fois, vous attendez vraiment un colis : une nouvelle cafetière."
+  - from: character
+    as: Chronopost
+    say:
+      - "Nous n'avons pas pu livrer votre colis. Payez **1,99 €** pour une nouvelle livraison : chronopost-suivi.example"
+  - ask: Et là ?
     choices:
-      - text: Toucher le lien du SMS, juste pour voir.
-        reply: Même un coup d'œil ouvre sa page, et il sait parler. Allez plutôt sur l'appli ou le site du transporteur.
-      - text: Prendre le numéro de suivi donné par la boutique, sur le site du transporteur.
+      - text: Je vérifie avec le numéro de suivi envoyé par la boutique.
         right: true
-        reply: Parfait. C'est vous qui allez vers eux, donc Monsieur Petits Frais n'obtient rien. Pas même 1,99 €.
-      - text: Répondre au SMS pour demander si c'est vrai.
-        reply: Il dira oui, bien sûr ! Une réponse lui confirme aussi que votre numéro marche. Demandez au transporteur, pas à lui.
+        reply: Le numéro de suivi de la boutique ? La seule chose que je ne sais pas imiter. Les boutiques gâchent tout.
+        tell: Le numéro de suivi de la boutique, sur le site du transporteur, montre où est vraiment votre colis.
+      - text: Je paie. Cette fois, c'est sûrement ma cafetière.
+        reply: Votre cafetière ! Oui ! Je la connais très bien, votre cafetière. Superbe. Votre carte, s'il vous plaît.
+        tell: Il ne sait rien de votre cafetière. Il envoie le même SMS à tout le monde.
+  - from: you
+    say:
+      - Je tape le numéro de suivi de la boutique sur le site de Chronopost. Ma cafetière arrive vendredi. Sans frais.
+  - say:
+      - Monsieur Petits Frais secoue sa tirelire une dernière fois. Pas un bruit.
+      - La tirelire reste vide.

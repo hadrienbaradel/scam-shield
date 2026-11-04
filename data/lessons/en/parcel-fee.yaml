@@ -9,34 +9,62 @@ rule: Never pay a delivery fee from a link in a text. Go to the carrier's own we
 demo_case: D1
 steps:
   - say:
-      - Meet **Mr. Tiny Fee**. He never asks for much. Just $1.99 to release a parcel.
-      - He counts on one thought. "It is only two dollars."
-  - ask: A text says your package is on hold until you pay $1.99. What do you do?
+      - Tuesday, 7:40 in the morning. The kettle is on.
+      - Far away, **Mr. Tiny Fee** shakes his coin jar. Empty again. He picks up his phone.
+      - Your phone buzzes.
+  - from: character
+    as: USPS
+    say:
+      - "Your parcel is on hold at our depot. A small fee of **$1.99** is due. Pay here: usps-redelivery.example"
+  - ask: What do you do?
     choices:
       - text: Pay it. It is only $1.99.
-        reply: That is exactly what Mr. Tiny Fee hopes. The fee is bait; the page keeps your card.
-      - text: Check on the carrier's own website or app.
+        reply: Wonderful! Now your card number, the date and the three little digits on the back. For $1.99. Promise.
+        tell: A $1.99 fee that needs your whole card is not a fee. It is your card.
+      - text: Reply and ask if it is really USPS.
+        reply: Really USPS? Of course! It says USPS right at the top. I typed it there myself.
+        tell: Anyone can type USPS at the top of a text, and he will always say yes. Ask the carrier, not him.
+      - text: Look it up myself in the USPS app.
         right: true
-        reply: Yes! Your parcel is where it always was. Mr. Tiny Fee goes home empty-handed.
-  - say:
-      - His real prize is not the $1.99. It is **your card number**.
-      - Once he has it, the tiny fee grows into big charges. Not so tiny after all.
-  - ask: The text says it comes from USPS. How can you be sure?
+        reply: Oh no. Not the app. Nobody checks the app. Fine. FINE.
+        tell: Going to the carrier yourself costs nothing and proves everything.
+  - from: you
+    say:
+      - I look it up in the USPS app. No parcel on hold. Nothing to pay.
+  - from: character
+    as: USPS
+    say:
+      - "LAST CHANCE: pay **today** or your parcel goes back to the sender. usps-redelivery.example"
+  - ask: What now?
     choices:
-      - text: It says USPS, so it is USPS.
-        reply: Anyone can type USPS. Mr. Tiny Fee types it all day long. A name in a text proves nothing.
-      - text: I cannot tell from the text. I check with USPS myself.
+      - text: Reply STOP, so the texts stop.
+        reply: STOP? How lovely. Now I know your number works. I will write again tomorrow.
+        tell: Any reply, even STOP, tells him your number works. Leave his texts unanswered.
+      - text: Ignore it. I already checked.
         right: true
-        reply: Exactly. A name in a text proves nothing; going to USPS yourself proves everything.
+        reply: Ignored? I wrote LAST CHANCE in capital letters. Capital letters always work. Usually.
+        tell: A real carrier leaves a notice and tries again. A new delivery is free.
+      - text: Tap the link, just to look.
+        reply: Just a look! Come in, come in. My page looks exactly like USPS. I copied every button.
+        tell: One look opens his page, and his page asks for your card. Go to the carrier's own app.
   - say:
-      - He loves a rush, too. "Pay **today** or your parcel goes back."
-      - A real carrier leaves a notice and tries again. Asking for a new delivery is free.
-  - ask: You are waiting for a real parcel. What is the safest way to check on it?
+      - "Thursday. This time you really are waiting for a parcel: a new teapot."
+  - from: character
+    as: USPS
+    say:
+      - "We could not deliver your parcel. Pay **$1.99** to book a new delivery: usps-redelivery.example"
+  - ask: And now?
     choices:
-      - text: Tap the link in the text, just to look.
-        reply: Even a quick look opens his page, and he is a smooth talker. Go to the carrier's own app or website.
-      - text: Use the tracking number from the shop, on the carrier's own website.
+      - text: Check with the tracking number the shop sent me.
         right: true
-        reply: Perfect. You go to them, so Mr. Tiny Fee gets nothing. Not even $1.99.
-      - text: Reply to the text and ask if it is real.
-        reply: He will say yes, of course! A reply also tells him your number works. Ask the carrier, not him.
+        reply: The tracking number from the shop? The one thing I cannot fake. Shops ruin everything.
+        tell: The shop's tracking number, on the carrier's own website, shows where your parcel really is.
+      - text: Pay. This time it really must be my teapot.
+        reply: Your teapot! Yes! I know all about your teapot. Lovely teapot. Card number, please.
+        tell: He knows nothing about your teapot. He sends the same text to everyone.
+  - from: you
+    say:
+      - I enter the shop's tracking number on the USPS website. My teapot comes Friday. No fee.
+  - say:
+      - Mr. Tiny Fee shakes his coin jar one more time. Not a rattle.
+      - The coin jar stays empty.

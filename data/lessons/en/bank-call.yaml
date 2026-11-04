@@ -9,34 +9,56 @@ rule: When "your bank" calls about fraud, hang up and call the number on the bac
 demo_case: D4
 steps:
   - say:
-      - Meet the **Bank That Forgot Your Name**. It forgot your name, yes. Your savings, not at all.
-      - 'It texts: "Fraud alert! Did you send $1,250?" Then its "fraud team" calls to save the day.'
-  - ask: 'The "fraud team" says: "Move your money to a **safe account** to protect it." What do you do?'
+      - Thursday, 2:30 in the afternoon. You are writing a birthday card.
+      - In a back room far away, the **Bank That Forgot Your Name** clears its throat. It calls everyone Dear Customer.
+      - Your phone buzzes.
+  - from: character
+    as: Chase
+    say:
+      - "Chase fraud alert: did you send **$1,250**? Reply NO to stop it."
+  - ask: What do you do?
     choices:
-      - text: Move it fast, before the thief does.
-        reply: Many careful people have been fooled this way. The "safe account" belongs to the thief himself.
-      - text: Hang up and call the number on the back of my card.
+      - text: Reply NO, so they stop the payment.
+        reply: NO! Lovely. Now I know this number answers. I will call you myself, Dear Customer.
+        tell: A reply tells him your number works, and his call comes next. Leave the text alone.
+      - text: Leave it. I will check with my bank myself.
         right: true
-        reply: Yes! Your real bank answers, and your money stays put. The Bank That Forgot Your Name gets a dial tone.
-      - text: Ask the caller for a name and an employee number.
-        reply: You would get a lovely name and a number, all made up. Hang up and call your bank yourself.
+        reply: No reply? I wrote it so nicely. Fine. I will call. Everyone answers a call.
+        tell: Not replying tells him nothing. You choose how to reach your bank, not him.
   - say:
-      - The fraud team that calls to protect you from fraud **is the fraud**.
-      - It can even make your bank's name show on your phone. That part is easy to fake.
-  - ask: Your phone shows "Chase" when it rings. Can you trust the call?
+      - Two minutes later, the phone rings. The screen says **Chase**.
+  - from: character
+    as: Chase
+    say:
+      - Dear Customer! Fraud team here. Thieves are in your account. Move your savings to a **safe account**, now.
+  - ask: What now?
     choices:
-      - text: Yes. It says Chase right there on the screen.
-        reply: Anyone can make a phone show "Chase". The Bank That Forgot Your Name does it all day long.
-      - text: Not by itself. I hang up and call the number on my card.
+      - text: Move it fast, before the thieves do.
+        reply: Yes! The safe account is very safe. I am the only one with the key.
+        tell: The safe account belongs to him. A real bank never asks you to move money to protect it.
+      - text: Ask for his name and employee number.
+        reply: Brian. Employee number 1-2-3-4. Very real. Now, Dear Customer, your savings.
+        tell: A name and a number are easy to make up. A real bank never asks you to move your money.
+      - text: Say goodbye and hang up.
         right: true
-        reply: Exactly. The screen can lie; the number on your card cannot. You call, so you know who answers.
+        reply: You hung up? On the FRAUD TEAM? I had a whole speech, Dear Customer.
+        tell: The fraud team that calls to protect you from fraud is the fraud.
+  - from: you
+    say:
+      - Click. Now I want to talk to my real bank.
+  - ask: Which number do you call?
+    choices:
+      - text: The number on the back of my card.
+        right: true
+        reply: The card. The one number I cannot touch. Goodbye, Dear Customer.
+        tell: The number on your card goes to your real bank. You call, so you know who answers.
+      - text: The one that just called. It said Chase.
+        reply: Hello again, Dear Customer! I made your phone say Chase. Clever, no?
+        tell: A name on the screen is easy to fake. Calling it back reaches him again.
+      - text: One I find by searching the internet.
+        reply: The internet! I paid for an ad there. My number sits right at the top.
+        tell: A number found online can be a fake one too. The number on your card is the sure one.
   - say:
-      - 'The rule: **hang up**, then call the number on the back of your card yourself.'
-      - Chase never asks you to move money to protect it.
-  - ask: Two texts arrive. Which one really comes from your bank?
-    choices:
-      - text: '"Fraud alert: move your savings to a safe account today."'
-        reply: That is the Bank That Forgot Your Name again. A real bank never asks you to move your money.
-      - text: '"A payment of $120 was made. If this was not you, call the number on your card."'
-        right: true
-        reply: Right! No link, no rush, no "safe account". It sends you to the number you already trust.
+      - Your real bank answers. No payment of $1,250. Your savings are right where you left them.
+  - say:
+      - The Bank That Forgot Your Name tries the next number. Dear Customer? Click.

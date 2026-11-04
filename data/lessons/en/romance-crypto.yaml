@@ -9,35 +9,65 @@ rule: Someone you have never met who talks about money is not a friend. Send the
 demo_case: B12
 steps:
   - say:
-      - Meet the **Friend Who Never Video-Calls**. Weeks of sweet messages. Always kind, always there.
-      - 'But his camera is always broken. And one day, he talks about **money**: a crypto tip, or an emergency.'
-  - ask: After weeks of kind messages, he asks you to invest $2,000 in crypto with him. What do you do?
+      - "Sunday evening. For six weeks, James has written every day: good morning, good night, photos of the sea."
+      - His messages are warm. It is nice to be thought of.
+  - from: character
+    as: James
+    say:
+      - My dear, my camera is broken again. The salt air on this oil rig. No video call tonight.
+      - But I have news! My crypto doubles every month. Put in **$2,000** with me, and we build our future together.
+  - ask: What do you do?
     choices:
-      - text: Send it. He has been so kind to me.
-        reply: His kindness was the bait, and he is very good at it. This trick has fooled many careful, loving people.
-      - text: Send nothing, and talk to someone I trust.
+      - text: Send $200 first, to see if it grows.
+        reply: Lovely! Watch it grow on my website. It always grows on my website. Now, the other $1,800?
+        tell: His website shows whatever numbers he types. Money that doubles every month is a story.
+      - text: Ask for a video call before anything else.
+        reply: A video call? Alas, my camera. The salt air, the seagulls, the storm. It is always something.
+        tell: "His excuse is the answer: six weeks, never one video call, and now money. Send nothing."
+      - text: Send nothing. I have never met him, and he is talking money.
         right: true
-        reply: Yes! Your heart stays open and your wallet stays shut. He will have to find another story.
-      - text: Ask him for a video call first.
-        reply: A fair test, but he will dodge it or fake it. The money talk is the real clue. Send nothing.
+        reply: Nothing? Not even a little? But my camera... I mean, my heart. My heart is broken.
+        tell: Someone you have never met who talks about money is not a friend. Your heart can stay open.
+  - from: you
+    say:
+      - "I write back: I do not send money to someone I have never met."
+  - from: character
+    as: James
+    say:
+      - I thought you loved me. I am on my way to you, but stuck at customs. One fee of **$900**, and I am yours.
+  - ask: What now?
+    choices:
+      - text: Stay kind, and still send nothing.
+        right: true
+        reply: Kind, and careful too? That is the worst sort of person for me.
+        tell: You can be warm and still say no. Kindness never needs money.
+      - text: Pay it. Then at last we can meet.
+        reply: Wonderful! Then comes the ticket fee. Then the hotel fee. I am always one fee away from you.
+        tell: There is always one more fee. Someone who truly wants to meet you does not need your money.
+      - text: Send half, to show that I care.
+        reply: Half is a lovely start! I will ask for the other half on Thursday.
+        tell: Half a fee is still money to a stranger. You can care without paying.
   - say:
-      - 'His clues: he never meets you, never turns on his camera, and sooner or later talks about **money**.'
-      - He often asks you to keep your talks **secret**. That way, no one who loves you can see the trick.
-  - ask: '"Your family would not understand us. Keep this between us." What does that tell you?'
+      - A few days later, he tries something new.
+  - from: character
+    as: James
+    say:
+      - Your family would not understand us. Let us keep this **between us**, my dear.
+  - ask: And then?
     choices:
-      - text: He is shy about our love.
-        reply: That is how he wants it to feel. The secret is there so no one who loves you can warn you.
-      - text: He wants no one to warn me. Time to tell my family.
+      - text: Keep it to myself. It is my private life.
+        reply: Yes! Just you and me. And nobody to tell you what I really am.
+        tell: The secret keeps away the people who could warn you. Tell someone you trust.
+      - text: Tell my family all about James.
         right: true
-        reply: Exactly. The people who love you are his worst enemy. One talk with them, and the spell breaks.
+        reply: Your FAMILY? They will want to see my face. Nobody sees my face.
+        tell: The people who love you are his worst enemy. One talk with them, and the trick falls apart.
+      - text: Ask him why it must be a secret.
+        reply: Because your family would see through me in a second. I mean... because I love you.
+        tell: A stranger who wants to be hidden from your family is hiding something. Tell someone you trust.
+  - from: you
+    say:
+      - I call my family. We have lunch on Tuesday, and I tell them everything.
   - say:
-      - 'The rule: someone you have **never met** who talks about money is **not a friend**.'
-      - A real friend never asks you for crypto, or to keep secrets from your family.
-      - Already sent money? You are far from alone. Tell your family and call your bank.
-  - ask: Two messages arrive. Which one is from a real friend?
-    choices:
-      - text: '"My dear, invest $2,000 in crypto with me, and we will build our future together."'
-        reply: That is the Friend Who Never Video-Calls. Sweet words, then money. A real friend does not turn love into an investment.
-      - text: '"Lovely lunch on Tuesday! Same café next month? Love, Mary."'
-        right: true
-        reply: Yes! Someone you have really met, a real lunch, and not a word about money. That is a friend.
+      - The Friend Who Never Video-Calls goes back to his oil rig. His camera is still broken, and so is his plan.
+      - Ever sent money to someone like him? Many people have. Tell your family and call your bank.

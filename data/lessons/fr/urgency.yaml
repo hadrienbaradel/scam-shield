@@ -9,34 +9,65 @@ rule: Quand un message dit « vite », ralentissez. Une vraie banque vous laisse
 demo_case: A2
 steps:
   - say:
-      - Voici le **Monstre de l'Urgence**. Il n'a qu'un seul tour. Il vous fait courir.
-      - « Agissez dans les **10 minutes** ou votre compte sera fermé ! » Il le dit à tout le monde.
-  - ask: Un message dit que votre compte sera fermé dans 10 minutes si vous n'appelez pas. Que faites-vous ?
+      - Mercredi, 10 h 15. Vous arrosez les géraniums du balcon.
+      - À l'autre bout du monde, le **Monstre de l'Urgence** regarde sa montre. Elle avance. Elle a toujours avancé.
+      - Votre téléphone vibre.
+  - from: character
+    as: Votre banque
+    say:
+      - Votre compte sera **BLOQUÉ** dans **10 minutes**. Appelez **vite** le 01 99 00 12 34.
+  - ask: Que faites-vous ?
     choices:
-      - text: J'appelle tout de suite. Dix minutes, c'est court !
-        reply: C'est la course qu'il voulait. Une vraie banque ne ferme pas un compte en 10 minutes. Vous avez le temps.
-      - text: Je respire, et j'appelle le numéro au dos de ma carte.
+      - text: J'appelle vite le numéro du SMS.
+        reply: Allô ! Ici votre banque. Vraiment votre banque. Votre numéro de compte, vite, vite !
+        tell: Le numéro d'un SMS pressé mène à lui. Une vraie banque ne bloque pas un compte en dix minutes.
+      - text: Je réponds pour demander plus de temps.
+        reply: Plus de temps ? Bon. Cinq minutes. Quelle générosité. Maintenant, APPELEZ.
+        tell: Son délai est inventé, et le délai en plus aussi. Ne négociez pas avec lui.
+      - text: Je pose le téléphone et je finis d'arroser.
         right: true
-        reply: Oui ! Le monstre rétrécit dès que vous ralentissez. Votre vraie banque vous dira la vérité.
-      - text: Je réponds au message pour demander plus de temps.
-        reply: Il vous accordera peut-être cinq minutes de plus. Quelle générosité ! Mieux vaut l'ignorer et appeler votre banque.
-  - say:
-      - Pourquoi tant de hâte ? Une personne pressée ne prend pas le temps de **vérifier**.
-      - Et vérifier, c'est la seule chose à laquelle le Monstre de l'Urgence ne survit pas.
-  - ask: Qui vous laisse quelques minutes pour agir, par SMS ou par e-mail ?
-    choices:
-      - text: Ma banque, quand c'est grave.
-        reply: Votre banque peut vous prévenir, mais elle ne vous donne jamais quelques minutes. Seul le monstre est aussi pressé.
-      - text: Surtout les escrocs. Les vraies banques et administrations laissent du temps.
-        right: true
-        reply: Exactement ! Les vrais délais laissent le temps de réfléchir. Dix minutes, c'est un délai de monstre.
-  - say:
-      - 'Ses mots préférés : **maintenant**, **aujourd''hui**, **immédiatement**, **dernière chance**.'
-      - Quand vous les voyez, c'est à votre tour d'aller doucement.
-  - ask: 'Le message dit : « N''en parlez à personne, il n''y a pas le temps. » Que faites-vous ?'
+        reply: Finir d'arroser ? Vos GÉRANIUMS ? J'ai dit dix minutes ! Ma montre dit neuf. Huit !
+        tell: Une vraie banque ne bloque pas votre compte en dix minutes. Vous avez le temps de vérifier.
+  - from: you
+    say:
+      - Je pose le téléphone. Les géraniums d'abord.
+  - from: character
+    as: Votre banque
+    say:
+      - "DERNIER AVERTISSEMENT : plus que **2 minutes** ! N'en parlez à personne. Pas le temps !"
+  - ask: Et maintenant ?
     choices:
       - text: Je garde ça pour moi et je fais vite.
-        reply: Ce secret ne protège que lui. Un mot à une personne de confiance rompt le charme.
-      - text: J'en parle à une personne de confiance avant de faire quoi que ce soit.
+        reply: Oui ! Rien que vous, moi et ma montre. Tic-tac, tic-tac.
+        tell: Ce secret ne protège que lui. Un mot à une personne de confiance ralentit tout.
+      - text: Je montre le SMS à une personne de confiance.
         right: true
-        reply: Parfait. Un deuxième avis, c'est le pire cauchemar du monstre. Il retourne sous le lit.
+        reply: Pas un deuxième avis ! Les deuxièmes avis lisent tout deux fois. Je déteste ça.
+        tell: Un deuxième regard, c'est la seule chose qu'il ne peut pas presser.
+      - text: J'appelle le numéro, au cas où.
+        reply: Au cas où ! Mes mots préférés, après « vite ». Allô, allô ?
+        tell: Son numéro mène à lui, pas à votre banque. Les vrais délais laissent le temps de réfléchir.
+  - say:
+      - Votre voisine le lit deux fois. Les deux minutes passent. Puis une heure. Rien n'est bloqué.
+  - from: character
+    as: Votre banque
+    say:
+      - Délai dépassé ! Mais pour vous, une **dernière chance**. Appelez vite !
+  - ask: Et là ?
+    choices:
+      - text: J'appelle le numéro au dos de ma carte.
+        right: true
+        reply: Pas la carte ! Ce numéro-là mène à votre vraie banque. Et elle n'est jamais pressée, elle.
+        tell: Le numéro au dos de votre carte mène à votre vraie banque. Elle vous laisse tout le temps.
+      - text: Je rappelle son numéro. Cette fois, c'est peut-être vrai.
+        reply: C'est toujours vrai ! J'ai une dernière chance toutes les heures. Allô, allô ?
+        tell: Un délai qui passe et qui revient n'a jamais été vrai. Les vraies banques laissent du temps.
+      - text: Je lui réponds de me laisser tranquille.
+        reply: Une réponse ! Donc vous êtes là. Je reviens demain, avec un tout nouveau délai.
+        tell: Toute réponse lui confirme que votre numéro marche. Ne répondez pas, appelez votre banque.
+  - from: you
+    say:
+      - J'appelle le numéro au dos de ma carte. Mon compte va très bien. Il n'a jamais été bloqué.
+  - say:
+      - Le Monstre de l'Urgence tapote sa montre. Elle indique vendredi. Nous sommes mercredi.
+      - Les géraniums ont eu leur eau. Votre argent n'a pas bougé.

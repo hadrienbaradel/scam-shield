@@ -9,34 +9,65 @@ rule: When a message says hurry, slow down. A real bank always gives you time to
 demo_case: D3
 steps:
   - say:
-      - Meet the **Urgency Monster**. He has only one trick. He makes you hurry.
-      - '"Act in the next **10 minutes** or your account is closed!" He says it to everyone.'
-  - ask: A message says your account closes in 10 minutes unless you call now. What do you do?
+      - Wednesday, 10:15 in the morning. A fresh cup of coffee.
+      - Across the world, the **Urgency Monster** checks his watch. It runs fast. It always has.
+      - Your phone buzzes.
+  - from: character
+    as: Your bank
+    say:
+      - Your account will be **CLOSED** in **10 minutes**. Call 1-555-0142 **now** to stop it.
+  - ask: What do you do?
     choices:
-      - text: Call right away. Ten minutes is not long!
-        reply: That is the rush he wanted. A real bank does not close your account in 10 minutes. You have time.
-      - text: Stop, breathe, and call the number on the back of my card.
+      - text: Call the number in the text, quickly.
+        reply: Hello, your bank here! Truly your bank. Your account number, please. Quick, quick!
+        tell: The number in a rushed text leads to him. A real bank does not close an account in ten minutes.
+      - text: Reply and ask for more time.
+        reply: More time? Fine. Five more minutes. How generous I am. Now CALL.
+        tell: His deadline is made up, and so is the extra time. Do not bargain with him.
+      - text: Put the phone down and finish my coffee.
         right: true
-        reply: Yes! The monster shrinks the moment you slow down. Your real bank will tell you the truth.
-      - text: Answer the message and ask for more time.
-        reply: He might grant you five more minutes. How generous! Better to ignore him and call your bank yourself.
+        reply: Finish your COFFEE? I said ten minutes! My watch says nine. Eight! Why are you so calm?
+        tell: A real bank does not close your account in ten minutes. You have time to check.
+  - from: you
+    say:
+      - I put the phone down. Coffee first.
+  - from: character
+    as: Your bank
+    say:
+      - "FINAL WARNING: **2 minutes** left! Tell no one. There is no time!"
+  - ask: What now?
+    choices:
+      - text: Keep it to myself and hurry.
+        reply: Yes! Just you, me and my watch. Tick tock, tick tock.
+        tell: That secret only protects him. One word with someone you trust slows everything down.
+      - text: Show the text to someone I trust.
+        right: true
+        reply: Not a second opinion! Second opinions read things twice. I hate reading twice.
+        tell: A second pair of eyes is the one thing he cannot rush.
+      - text: Call the number, just in case.
+        reply: Just in case! My favorite words, after hurry. Hello, hello?
+        tell: His number leads to him, not to your bank. Real deadlines leave you time to think.
   - say:
-      - Why the hurry? A person in a rush does not stop to **check**.
-      - And checking is the one thing the Urgency Monster cannot survive.
-  - ask: Who gives you only minutes to act, by text or email?
+      - Your neighbor reads it twice. The two minutes pass. Then an hour. Nothing closes.
+  - from: character
+    as: Your bank
+    say:
+      - You missed the deadline! But for you, **one last chance**. Call now!
+  - ask: And now?
     choices:
-      - text: My bank, when something is serious.
-        reply: Your bank may warn you, but it never gives you minutes to act. Only the monster is in such a hurry.
-      - text: Mostly scammers. Real banks and offices give you time.
+      - text: Call the number on the back of my card.
         right: true
-        reply: Right! Real deadlines come with time to think. Ten minutes is a monster's deadline.
+        reply: Not the card! That number reaches your real bank. And your real bank is never in a hurry.
+        tell: The number on your card reaches your real bank, and it gives you all the time you need.
+      - text: Call his number. Maybe this time it is real.
+        reply: It is always real! I have a last chance every hour. Hello, hello?
+        tell: A deadline that passes and comes back was never real. Real banks and offices give you time.
+      - text: Reply and tell him to leave me alone.
+        reply: A reply! So you are there. I will be back tomorrow, with a brand new deadline.
+        tell: Any reply tells him your number works. Leave it unanswered and call your bank yourself.
+  - from: you
+    say:
+      - I call the number on my card. My account is open. It always was.
   - say:
-      - 'His favorite words: **now**, **today**, **immediately**, **last chance**.'
-      - When you see them, it is your turn to go slow.
-  - ask: 'The message says: "Do not tell anyone, there is no time." What is the best move?'
-    choices:
-      - text: Keep it to myself and act fast.
-        reply: That secret only protects him. One word with someone you trust breaks the spell.
-      - text: Tell someone I trust before doing anything.
-        right: true
-        reply: Perfect. A second opinion is the monster's worst nightmare. Back under the bed he goes.
+      - The Urgency Monster taps his watch. It says Friday. It is still Wednesday.
+      - You have all the time in the world.

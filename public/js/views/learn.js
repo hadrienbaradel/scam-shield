@@ -1,10 +1,16 @@
 // Learn (_product/specs/micro-learning.md; the 2026-11-04 redesign canvas,
-// frames 1o and 1p, _product/specs/protection-menu.md line 7): one-minute
-// lessons, one step per screen like Today's one card at a time. Prudence says a few lines, asks a question with big answer buttons,
-// cheers a right answer (a star, confetti) and explains a wrong one without
-// blame; the lesson ends with the rule to remember. Lessons come from
-// GET /api/lessons; progress is kept in the account when signed in and on
-// this device in the demo (#/demo/learn).
+// frames 1o and 1p, _product/specs/protection-menu.md line 7; the spec's
+// "Story screens"): one-minute lessons told as stories, one step per screen
+// like Today's one card at a time. Prudence narrates, the character's texts
+// land in a bubble under the name he borrows, the person's own lines sit on
+// the right; three times the story stops on "What do you do?", with the
+// text it answers on the same screen. After each choice the character
+// answers in his own voice and the narrator names the tell. A right choice
+// earns a cheer and confetti (a star when it is the first try); a wrong one
+// plays out, then Rewind brings the same choice back with the tried answer
+// greyed. The lesson ends with the rule to remember.
+// Lessons come from GET /api/lessons; progress is kept in the account when
+// signed in and on this device in the demo (#/demo/learn).
 
 import { api } from "../api.js";
 import { t, getLang } from "../i18n.js";
@@ -29,6 +35,7 @@ const pad = (n) => String(n).padStart(2, "0");
 const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const base = () => (L.demo ? "#/demo/learn" : "#/learn");
 const isAsk = (step) => Boolean(step) && Object.hasOwn(step, "ask");
+const isSay = (step) => Boolean(step) && Object.hasOwn(step, "say");
 
 // ------------------------------------------------------------ progress rules
 // Mirrored from lib/lessons.js, the source of truth (emptyProgress,
@@ -263,15 +270,25 @@ function lessonCard(l, kind) {
 }
 
 // ---------------------------------------------------------------- a lesson
-// The lesson state stays in memory while it runs; progress is written once,
-// on the end screen. Leaving in the middle loses nothing that was saved.
+// A lesson is a story the person is inside (micro-learning.md, Behavior 3
+// and 4), one step per screen, except that a say right before an ask shares
+// the ask's screen, so the decision always has its text in view. Its state
+// stays in memory while it runs; progress is written once, on the end
+// screen, so leaving in the middle loses nothing that was saved.
+//   answers[q]  whether the first choice on question q was the right one:
+//               its star (stars count first tries, 0 to 3)
+//   tried[q]    the choices tried on question q, greyed and marked "Tried"
+//               when Rewind brings the question back
 function startLesson(lesson) {
-  L.run = { lesson, step: 0, answers: [], total: lesson.steps.filter(isAsk).length, saved: null };
+  L.run = { lesson, step: 0, answers: [], tried: [], total: lesson.steps.filter(isAsk).length, saved: null };
   drawStep();
 }
 
 // The question the person is on (a say step counts toward the next one).
 const questionAt = () => Math.min(L.run.lesson.steps.slice(0, L.run.step).filter(isAsk).length, L.run.total - 1);
+// A tap landing within a moment of a screen appearing is the second half of
+// a double tap on the last screen's button: dropped.
+const tooSoon = () => performance.now() - paintedAt < 400;
 
 // Frame 1p: "‹ Learn" and the round "Listen" on one row (the shared
 // .btn-back and .btn-listen); the rest of the lesson is as it was.
@@ -286,7 +303,7 @@ function header() {
 const bindHeader = (onRead) => $("#learnRead", L.root)?.addEventListener("click", onRead);
 const say = (parts) => () => speak(spoken(parts), L.lang);
 
-// "Question 1 of 3" and three stars: earned ones filled, the current one
+// "Choice 1 of 3" and three stars: earned ones filled, the current one
 // underlined in gold, the one just earned popping in.
 function stepper(q, fresh = -1) {
   const { answers, total } = L.run;
@@ -299,96 +316,150 @@ function stepper(q, fresh = -1) {
     </div>`;
 }
 
-const nextButton = () => `<div class="v2-actions learn-dock"><button id="learnNext" class="btn btn-gold btn-big" type="button">${t("learn_next")}${icon("chevron-right", 26, 2.5)}</button></div>`;
+// The one button of a lesson screen, docked above the tabs: Next, or Rewind
+// after a wrong choice (the ⏪ drawn, the font has no such glyph).
+const dockButton = (id, label) => `<div class="v2-actions learn-dock"><button id="${id}" class="btn btn-gold btn-big" type="button">${label}</button></div>`;
+const nextButton = () => dockButton("learnNext", `${t("learn_next")}${icon("chevron-right", 26, 2.5)}`);
+const rewindButton = () => dockButton("learnRewind", `${drawn("rewind", 26)}${t("learn_rewind")}`);
 function bindNext() {
-  $("#learnNext", L.root).addEventListener("click", () => { L.run.step += 1; drawStep(); });
+  $("#learnNext", L.root).addEventListener("click", () => {
+    if (tooSoon()) return;
+    L.run.step += 1;
+    drawStep();
+  });
 }
 
+// A say right before an ask is not a screen of its own: the run steps over
+// it to the ask, which draws it on top. Next and Rewind both come through
+// here, so the step stays on the ask and the stepper counts asks as before.
 function drawStep() {
-  const step = L.run.lesson.steps[L.run.step];
+  const { steps } = L.run.lesson;
+  if (isSay(steps[L.run.step]) && isAsk(steps[L.run.step + 1])) L.run.step += 1;
+  const step = steps[L.run.step];
   if (!step) return drawEnd();
   return isAsk(step) ? drawAsk(step) : drawSay(step);
 }
 
+// Who says a say step: the narrator (also when from is missing), the
+// character, or the person ("you").
+const speakerOf = (step) => (step?.from === "character" || step?.from === "you" ? step.from : "narrator");
+// The name on the character's bubble: the one he borrows ("USPS") when the
+// step gives one, his own otherwise. He answers a choice in his own name.
+const nameOf = (step) => (speakerOf(step) === "character" && step.as ? step.as : L.run.lesson.character);
+// Listen reads a bubble with its speaker first: "USPS says: ...", "You say: ...".
+const saidBy = (who, name) => (who === "you" ? t("learn_you_say") : t("learn_says", { name: plain(name).trim() }));
+
+// The narrator: Prudence's lines under her mark, as before the stories.
+function narratorLines(lines) {
+  return `<div class="learn-say">
+      <p class="learn-speaker"><span class="learn-mark" aria-hidden="true">${icon("check", 18, 3.2)}</span>Prudence</p>
+      ${lines.map((line) => `<p class="learn-line">${rich(line)}</p>`).join("")}
+    </div>`;
+}
+// A text in the story, one bubble per line like texts on a phone: the
+// character's on the left under his name, the lesson's emoji as his avatar
+// (decorative); the person's own on the right under "You".
+function bubbles(who, name, lines) {
+  const you = who === "you";
+  const head = you ? esc(t("learn_you"))
+    : `<span class="learn-avatar" aria-hidden="true">${esc(L.run.lesson.emoji)}</span><span>${rich(name)}</span>`;
+  return `<div class="learn-msg ${you ? "is-you" : "is-character"}">
+      <p class="learn-msg-name">${head}</p>
+      ${lines.map((line) => `<p class="learn-bubble">${rich(line)}</p>`).join("")}
+    </div>`;
+}
+
+// A say as it shows, on its own screen or on top of the ask it leads to,
+// and what Listen reads of it (a bubble starts with its speaker).
+const linesOf = (step) => (Array.isArray(step.say) ? step.say : []);
+function sayBlock(step) {
+  const who = speakerOf(step);
+  return who === "narrator" ? narratorLines(linesOf(step)) : bubbles(who, nameOf(step), linesOf(step));
+}
+const sayHeard = (step) => (speakerOf(step) === "narrator" ? linesOf(step) : [saidBy(speakerOf(step), nameOf(step)), ...linesOf(step)]);
+
 function drawSay(step) {
   const { lesson } = L.run;
-  const lines = Array.isArray(step.say) ? step.say : [];
   paint(`
     <div class="v2 learn learn-run">
       ${header()}
       ${stepper(questionAt())}
       <div class="learn-lesson-head"><span class="learn-emoji" aria-hidden="true">${esc(lesson.emoji)}</span><h1>${rich(lesson.title)}</h1></div>
-      <div class="learn-say">
-        <p class="learn-speaker"><span class="learn-mark" aria-hidden="true">${icon("check", 18, 3.2)}</span>Prudence</p>
-        ${lines.map((line) => `<p class="learn-line">${rich(line)}</p>`).join("")}
-      </div>
+      ${sayBlock(step)}
       ${nextButton()}
     </div>`);
-  bindHeader(say(lines));
+  bindHeader(say(sayHeard(step)));
   bindNext();
 }
 
+// "What do you do?" and two to four big buttons, under the say that leads to
+// it (drawn as on its own screen; Rewind brings it back too). The question
+// stays the heading that takes the focus, described by that text so a screen
+// reader hears what it answers. Back after a Rewind, the answers tried stay
+// in their place, grey and marked "Tried" in words (and aria-disabled, so a
+// screen reader says it too); a tap on one does nothing.
 function drawAsk(step) {
   const q = questionAt();
+  const before = L.run.lesson.steps[L.run.step - 1];
+  const lead = isSay(before) ? before : null; // the say right before shares this screen
+  const tried = L.run.tried[q] || [];
+  const button = (c, i) => (tried.includes(i)
+    ? `<button class="btn learn-choice is-tried" type="button" data-choice="${i}" aria-disabled="true">${drawn("circle", 26)}<span class="learn-choice-words"><span>${rich(c.text)}</span> <span class="learn-tried">${esc(t("learn_tried"))}</span></span></button>`
+    : `<button class="btn learn-choice" type="button" data-choice="${i}">${drawn("circle", 26)}<span>${rich(c.text)}</span></button>`);
   paint(`
     <div class="v2 learn learn-run">
       ${header()}
       ${stepper(q)}
-      <h1 class="learn-question">${rich(step.ask)}</h1>
+      ${lead ? `<div id="learnAskSay" class="learn-ask-say">${sayBlock(lead)}</div>` : ""}
+      <h1 class="learn-question"${lead ? ' aria-describedby="learnAskSay"' : ""}>${rich(step.ask)}</h1>
       <div class="learn-choices" role="group" aria-label="${esc(t("learn_choose"))}">
-        ${step.choices.map((c, i) => `<button class="btn learn-choice" type="button" data-choice="${i}">${drawn("circle", 26)}<span>${rich(c.text)}</span></button>`).join("")}
+        ${step.choices.map(button).join("")}
       </div>
     </div>`);
-  bindHeader(say([step.ask, ...step.choices.map((c) => c.text)]));
+  bindHeader(say([...(lead ? sayHeard(lead) : []), step.ask, ...step.choices.flatMap((c, i) => (tried.includes(i) ? [c.text, t("learn_tried")] : [c.text]))]));
   L.root.querySelectorAll(".learn-choice").forEach((b) => b.addEventListener("click", () => {
-    // One answer per question; a tap landing within a moment of the screen
-    // appearing is the second half of a double tap on the last screen's Next.
-    if (L.run.answers[q] !== undefined || performance.now() - paintedAt < 400) return;
-    const choice = step.choices[Number(b.dataset.choice)];
-    L.run.answers[q] = choice.right === true;
-    drawResult(step, q, choice);
+    if (b.getAttribute("aria-disabled") === "true" || tooSoon()) return;
+    const i = Number(b.dataset.choice);
+    const choice = step.choices[i];
+    const right = choice.right === true;
+    if (L.run.answers[q] === undefined) L.run.answers[q] = right; // the first choice on a question decides its star
+    if (!right) L.run.tried[q] = [...tried, i];
+    drawResult(q, choice);
   }));
 }
 
-// Right: a cheer, a star and confetti. Wrong: a warm line, what they chose
-// and why it fails (never in red), then the right answer. No second try.
-function drawResult(step, q, choice) {
-  const ok = choice.right === true;
-  const right = step.choices.find((c) => c.right === true) || choice;
-  const perfect = ok && L.run.answers.filter(Boolean).length === L.run.total;
+// After a choice (Behavior 4): what the person chose in a plain box, never
+// red; the character's answer in his own voice; the narrator's tell, one
+// plain line under it. Right: the cheer, confetti, the star when it was the
+// first try, and Next. Wrong: no verdict and no right answer shown; the box
+// is the screen's heading, and Rewind brings the same choice back.
+function drawResult(q, choice) {
+  const { lesson, answers, total } = L.run;
+  const right = choice.right === true;
+  const earned = right && answers[q] === true; // right the first time: the star is earned now
+  const perfect = earned && answers.filter(Boolean).length === total;
+  const box = right ? "div" : "h1";
   paint(`
     <div class="v2 learn learn-run">
       ${header()}
-      ${stepper(q, ok ? q : -1)}
-      ${ok ? `
-        <section class="learn-result is-right" role="status">
+      ${stepper(q, earned ? q : -1)}
+      <section class="learn-result" role="status">
+        ${right ? `
           <div class="learn-result-head">
-            <span class="learn-result-dot" aria-hidden="true">${star(30, true)}</span>
-            <div class="learn-result-words"><h1>${t("learn_right")}</h1><p class="learn-result-sub">${t("learn_right_star")}</p></div>
-          </div>
-          <p class="learn-line learn-reply">${rich(choice.reply)}</p>
-        </section>
-        ${confetti(perfect)}` : `
-        <section class="learn-result is-wrong" role="status">
-          <div class="learn-result-head">
-            <span class="learn-result-dot" aria-hidden="true">${drawn("bulb", 30)}</span>
-            <h1>${t("learn_wrong")}</h1>
-          </div>
-          <div class="learn-pick">
-            <p class="learn-pick-label">${t("learn_your_answer")}</p>
-            <p class="learn-pick-text">${rich(choice.text)}</p>
-            <p class="learn-pick-reply">${rich(choice.reply)}</p>
-          </div>
-          <div class="learn-pick is-right">
-            <p class="learn-pick-label">${icon("check", 24, 2.5)}${t("learn_right_answer")}</p>
-            <p class="learn-pick-text">${rich(right.text)}</p>
-          </div>
-        </section>`}
-      ${nextButton()}
+            <span class="learn-result-dot" aria-hidden="true">${earned ? star(30, true) : icon("check", 30, 3)}</span>
+            <div class="learn-result-words"><h1>${t("learn_right")}</h1>${earned ? `<p class="learn-result-sub">${t("learn_right_star")}</p>` : ""}</div>
+          </div>` : ""}
+        <${box} class="learn-pick"><span class="learn-pick-label">${t("learn_your_answer")}<span class="learn-sr">:</span></span> <span class="learn-pick-text">${rich(choice.text)}</span></${box}>
+        ${choice.reply ? bubbles("character", lesson.character, [choice.reply]) : ""}
+        ${choice.tell ? `<p class="learn-tell">${drawn("bulb", 26)}<span>${rich(choice.tell)}</span></p>` : ""}
+      </section>
+      ${right ? `${confetti(perfect)}${nextButton()}` : rewindButton()}
     </div>`);
-  bindHeader(ok ? say([t("learn_right"), t("learn_right_star"), choice.reply])
-    : say([t("learn_wrong"), t("learn_your_answer"), choice.text, choice.reply, t("learn_right_answer"), right.text]));
-  bindNext();
+  const story = [t("learn_your_answer"), choice.text,
+    ...(choice.reply ? [saidBy("character", lesson.character), choice.reply] : []), ...(choice.tell ? [choice.tell] : [])];
+  bindHeader(say(right ? [t("learn_right"), ...(earned ? [t("learn_right_star")] : []), ...story] : story));
+  if (right) bindNext();
+  else $("#learnRewind", L.root).addEventListener("click", () => { if (!tooSoon()) drawStep(); });
 }
 
 // CSS-only confetti that falls once (about 1.2 s), hidden from screen
@@ -534,12 +605,14 @@ async function drawReal() {
   bindNextLesson();
 }
 
-// The three shapes the shared set (icon() in ui.js) has not got: the answer
-// circle, the bulb of the rule and Play again. Same stroke style, decorative.
+// The four shapes the shared set (icon() in ui.js) has not got: the answer
+// circle, the bulb of the tell and the rule, Play again, and Rewind (⏪, two
+// filled triangles: the font has no such glyph). Same stroke style, decorative.
 const PATHS = {
   circle: '<circle cx="12" cy="12" r="8.5"/>',
   bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
   replay: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/>',
+  rewind: '<path d="M11.5 6.5 4 12l7.5 5.5z" fill="currentColor"/><path d="M20.5 6.5 13 12l7.5 5.5z" fill="currentColor"/>',
 };
 function drawn(name, size = 24, width = 2) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${PATHS[name] || ""}</svg>`;

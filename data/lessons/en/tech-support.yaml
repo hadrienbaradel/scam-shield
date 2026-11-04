@@ -9,34 +9,64 @@ rule: Never call a number shown in a pop-up window. Close it, or turn the comput
 demo_case: D6
 steps:
   - say:
-      - 'Meet the **Pop-up That Screams**. It jumps onto your screen and yells: "VIRUS! CALL MICROSOFT NOW!"'
-      - It beeps, it flashes, it begs you not to close it. Quite a show for a little window.
-  - ask: A window says your computer is infected and shows a number to call. What do you do?
+      - Thursday afternoon. A cup of tea, the news on the computer.
+      - Then the screen turns red, and the computer starts to beep.
+  - from: character
+    as: Microsoft Security
+    say:
+      - "**MICROSOFT SECURITY WARNING!** Your computer is infected. Call Microsoft at 1-555-0166. DO NOT CLOSE THIS WINDOW!"
+      - BEEP! BEEP! BEEEP! Ahem. Excuse me. I have been screaming at people since breakfast.
+  - ask: What do you do?
     choices:
       - text: Call the number. It says Microsoft.
-        reply: That number rings the scammers, not Microsoft. Many careful people have called it, then paid to fix nothing.
-      - text: Close the window, or turn the computer off.
+        reply: YES! Ring ring! My friend answers as Microsoft, takes over your computer and charges $299 to fix nothing.
+        tell: Microsoft never puts a phone number in a warning. That number rings the people who made the pop-up.
+      - text: Close the window.
         right: true
-        reply: Yes! Silence at last. The Pop-up That Screams was only a web page, and now it is gone.
-      - text: Click on the window to read more.
-        reply: Clicking can make it fill the screen, or open more windows. Close it, or turn the computer off.
+        reply: Not the little X! I beeped! I SCREAMED! I... cough, cough. I need a glass of water.
+        tell: It was only a web page dressed up as a warning. Closing it is always safe.
+      - text: Click inside the window to read more.
+        reply: Come in, come in! One click and I fill the WHOLE screen. I am much bigger than I look.
+        tell: A click gives a scary window more room. Close it, and call no one.
   - say:
-      - It is only a **web page**, dressed up as a scary warning.
-      - Microsoft does not watch your screen and phone you each time your computer sneezes.
-  - ask: A loud warning on your screen gives a phone number. Who is behind it?
+      - Ten minutes later, on another page, it is back. It fills the whole screen, and there is no X.
+  - from: character
+    as: Microsoft Security
+    say:
+      - Cough. I am BACK! Turn off the computer and you lose ALL your photos! Call 1-555-0166!
+  - ask: What now?
     choices:
-      - text: Microsoft, trying to help me.
-        reply: Microsoft fixes things quietly, with no phone number. That number is the Pop-up's signature.
-      - text: Scammers. The phone number is the trap.
+      - text: Call, just this once, to save my photos.
+        reply: Your photos, yes! My friend gets into your computer, pretends to save them and charges $299.
+        tell: The threat is there to make you call. Turning the computer off does not harm your photos.
+      - text: Click the Cancel button in the window.
+        reply: Ha! Every button in here is mine. Cancel just makes me beep louder. Cough.
+        tell: Every button inside the window belongs to the pop-up. The power button on the computer does not.
+      - text: Hold down the power button.
         right: true
-        reply: Right! No call, no trick. The Pop-up That Screams cannot reach you if you do not call.
+        reply: Not the power button! Nobody hears me scream at a computer that is off. Croak.
+        tell: Holding the power button turns the computer off, and no web page can stop it.
   - say:
-      - 'The rule: **never call a number** from a pop-up. Close the window, or turn the computer off.'
-      - Microsoft never puts a phone number in a security warning.
-  - ask: Two messages appear on your screen. Which one is a real warning?
+      - Saturday morning, the phone rings. The voice on the line is very, very hoarse.
+  - from: character
+    as: Microsoft Support
+    say:
+      - Croak. Hello, Microsoft here. Your computer is sending us errors. Let me connect to it and fix it.
+  - ask: And now?
     choices:
-      - text: '"VIRUS FOUND! Call 1-555-0166 now. Do not turn off your computer."'
-        reply: The Pop-up That Screams again. A real warning never gives you a number to call.
-      - text: '"Windows Security: a threat was found and removed. No action is needed."'
+      - text: Hang up. Microsoft does not call like this.
         right: true
-        reply: Yes! A real warning is calm. No phone number, no shouting, nothing to pay.
+        reply: Click? You hung up on me? Three tries, and not one call. Now I have no voice left at all.
+        tell: Microsoft does not call people out of the blue. Hanging up is always allowed.
+      - text: Let him connect. My computer did act up this week.
+        reply: It did? What luck! From my desk I can see your screen, your files, your bank. Croak.
+        tell: Never let a caller take over your computer. Microsoft does not phone people to fix theirs.
+      - text: Ask for his employee number first.
+        reply: Of course! It is 1-2-3-4-5. Very official. Now let me in. Croak.
+        tell: "A caller can make up any number he likes. Hang up: Microsoft does not phone people about computers."
+  - from: you
+    say:
+      - I put the phone down and finish my tea.
+  - say:
+      - The Pop-up That Screams has no voice left, and nobody called its number.
+      - It is in bed with hot honey and lemon.

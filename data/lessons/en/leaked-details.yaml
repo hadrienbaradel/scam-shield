@@ -8,34 +8,62 @@ badge: Leak-proof
 rule: A message that quotes your real details proves nothing. They leaked; thieves buy them by the thousand.
 steps:
   - say:
-      - Meet **Mr. I-Know-Your-Number**. He quotes your bank account, your birthday, the end of your card.
-      - He did not get them from your bank. He bought them from a data leak, with thousands of others.
-  - ask: An email quotes your real account number and asks you to dispute a charge through a link. What do you do?
+      - Wednesday, 9 in the morning. An email arrives, and it knows your real bank account number.
+      - Far away, Mr. I-Know-Your-Number reads your details off a crumpled list. You are page 4,312.
+  - from: character
+    as: Your phone company
+    say:
+      - Your bank account ending in **1234** will be debited **$69.90** today for a new plan.
+      - Not you? Tap the link below to dispute it.
+  - ask: What do you do?
     choices:
-      - text: Click the link. They clearly have my file.
-        reply: That is what Mr. I-Know-Your-Number counts on. The number is real; the page behind the link is his.
-      - text: Check the charge in my bank's own app, or call the number on my card.
+      - text: Tap the link. They have my real account number.
+        reply: "Page 4,312, account 1234: correct! Now type your online banking password, to dispute."
+        tell: Your number leaked with thousands of others. The page behind the link is his, not your bank's.
+      - text: Look for the charge in my bank's own app.
         right: true
-        reply: Yes! If the charge is real, your bank knows about it. If not, there was nothing to dispute.
+        reply: Your own app? But I recited your number perfectly! Page 4,312, line one!
+        tell: If the charge is real, your bank knows, and you dispute it there. Never through his link.
       - text: Reply and ask them to prove who they are.
-        reply: He will send a logo and a name. Both are easy to fake. Check with your bank yourself.
+        reply: Proof? Your birthday is May 2nd... no, that is page 4,311. Ahem. May 9th. There.
+        tell: "Real details prove nothing: thieves buy them by the thousand. Check in your bank's own app."
   - say:
-      - Where do leaks come from? Your phone company, a shop, your insurer. One breach, millions of files.
-      - The company writes to say sorry. Prudence can also look your email address up in the public lists.
-  - ask: Your phone company wrote last year that your details leaked. What does that change today?
+      - An hour later, the phone rings. The caller says he is from your bank.
+  - from: character
+    as: Your bank
+    say:
+      - I have your birthday, your address and the last four digits of your card.
+      - Read me the rest of the card number, to confirm it is you.
+  - ask: What now?
     choices:
-      - text: Nothing. It was last year.
-        reply: Leaked details are sold for years. A text that quotes your account number proves nothing anymore.
-      - text: A message that quotes my account number no longer proves it comes from them.
+      - text: Hang up and call the number on the back of my card.
         right: true
-        reply: Exactly. Tick that breach in Prudence, and the card will say so when a message quotes your number.
+        reply: Hung up? I had your whole page ready! Birthday, address... Where did page 4,312 go?
+        tell: The number on your card reaches your real bank. Knowing your details proves nothing.
+      - text: Read it to him. He already knows the end.
+        reply: Thank you! Page 4,312 is complete now. A complete page sells for twice as much.
+        tell: He quotes the end of your card to get the rest. Hang up and call the number on the back of your card.
+      - text: Ask for his name and branch, to check.
+        reply: Certainly! Bob Smith, Main Street branch. Very easy to check. Now, the card number?
+        tell: A name and a branch take one second to make up. Hang up and call the number on your card.
+  - from: you
+    say:
+      - My bank says there is no charge and no problem. So how did he know all that?
+  - ask: And then?
+    choices:
+      - text: Ask my bank who gave my details away.
+        reply: Your bank? I never go near banks. I buy my pages from leaks, ten thousand at a time.
+        tell: Details like yours leak when a company is hacked. Prudence can look up which leaks hold your email address.
+      - text: Nothing. Nobody can do anything about a leak.
+        reply: Lovely. Your page stays on my list, good as new, for years.
+        tell: Leaked details are sold for years. Once you know which ones leaked, a message quoting them cannot fool you.
+      - text: Look up my email address in Prudence.
+        right: true
+        reply: You looked it up? Now you know my secret. I never knew you. I bought your page in a pack.
+        tell: Prudence shows which known leaks hold your email address, and what leaked in each.
+  - from: you
+    say:
+      - "There it is: my phone company's leak, last year. So that is where my details went."
   - say:
-      - "The rule: a real number in a message is **not proof**. Only the sender's real address and your own app are."
-      - Prudence says it on the card. "That bank number is real, but it leaked in the Bouygues breach."
-  - ask: Two messages arrive. Which one is more likely to be real?
-    choices:
-      - text: '"Your account ending in 1234 will be debited $69.90. Dispute it here", then a link.'
-        reply: A real number, a rush and a link. That is Mr. I-Know-Your-Number from head to toe.
-      - text: '"Your invoice is ready in your customer area", from the usual address, no link to pay.'
-        right: true
-        reply: Right! No rush, no link to pay, the address you know. Open your customer area yourself to read it.
+      - Mr. I-Know-Your-Number drops his crumpled list, and the pages fly everywhere.
+      - Yours is no use to him now.

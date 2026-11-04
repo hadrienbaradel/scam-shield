@@ -1,14 +1,16 @@
 // Micro-learning (_product/specs/micro-learning.md): the lesson files and
-// their format, the EN/FR twins, make lessons-check, the progress rules
-// (stars, badges, days in a row), GET /api/lessons, and the signed-in
-// progress in Postgres (those tests skip without it, like integration.test.js).
+// their format (a story the person is inside: who says each line, three
+// choices with the character's reply and the narrator's tell), the EN/FR
+// twins, make lessons-check, the progress rules (stars, badges, days in a
+// row), GET /api/lessons, and the signed-in progress in Postgres (those tests
+// skip without it, like integration.test.js).
 import "./helpers/env.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 import {
   applyLessonResult, CASES_FILE, emptyProgress, LANGS, loadLessons, resultProblem, summarize, twinProblems, utcDay, validateLesson,
 } from "../lib/lessons.js";
@@ -31,10 +33,12 @@ before(async () => {
 });
 after(async () => { await app?.close(); await pool.end(); });
 
-// A valid lesson; each test breaks one thing in a copy.
+// A valid lesson, a story that starts and ends with a say, three questions
+// whose second choice is the right one, a tell on every choice, the
+// character's own text last; each test breaks one thing in a copy.
 const ask = (question, n = 2) => ({
   ask: question,
-  choices: Array.from({ length: n }, (_, i) => ({ text: `Choice ${i + 1}`, reply: `Reply ${i + 1}`, ...(i === 1 ? { right: true } : {}) })),
+  choices: Array.from({ length: n }, (_, i) => ({ text: `Choice ${i + 1}`, reply: `Reply ${i + 1}`, tell: `Tell ${i + 1}`, ...(i === 1 ? { right: true } : {}) })),
 });
 const lesson = (over = {}) => ({
   id: "parcel-fee", order: 1, title: "The $1.99 parcel trap", character: "Mr. Tiny Fee", emoji: "📦", minutes: 1,
@@ -45,6 +49,7 @@ const lesson = (over = {}) => ({
     { say: ["His real prize is **your card number**."] },
     ask("The text says it comes from USPS. How can you be sure?"),
     ask("What is the safest way to check on a parcel?", 3),
+    { from: "character", as: "USPS", say: ["Fine. FINE. Keep your **$1.99**."] },
   ],
   ...over,
 });
@@ -53,6 +58,71 @@ const broken = (mutate) => {
   mutate(doc);
   return validateLesson(doc, { lang: "en", caseIds: EN });
 };
+// The problems of a French twin of lesson(), changed by mutate, against the English one.
+const frenchTwin = (mutate) => {
+  const doc = structuredClone(lesson());
+  mutate(doc);
+  return twinProblems([lesson()], [doc]).map((p) => p.problem);
+};
+const NO_CHARACTER = "steps: no say from the character; at least one needs from: character (the scam is shown, not described)";
+
+// The sample lesson of the spec's format section (_product/specs/micro-learning.md,
+// "Lesson file format (YAML)"), copied verbatim: change the two together.
+const SAMPLE = `id: parcel-fee                  # [a-z0-9-], the file name, the same in en/ and fr/
+order: 1                        # position on the Learn home, 1 or more, unique in a language, equal in the two languages
+title: The $1.99 parcel trap
+character: Mr. Tiny Fee         # the scam character of this lesson; he speaks in the first person
+emoji: "📦"                     # one emoji, decorative (aria-hidden); the avatar on his bubbles
+minutes: 1
+badge: Parcel-fee spotter       # earned the first time the lesson is finished
+rule: Never pay a delivery fee from a link in a text. Go to the carrier's own website or app.
+demo_case: D1                   # optional: an id from testcases/cases.json whose locale matches the lesson's language
+steps:                          # the story, one step per screen; it starts and ends with a say
+  - say:                        # the narrator (from: narrator is the default): 1 to 3 lines, **bold** the only markup, under 140 characters
+      - Tuesday, 7:40 in the morning. Your phone buzzes.
+  - from: character             # a text from the character, shown as a message bubble
+    as: USPS                    # optional, only with from: character; the name he borrows, shown on the bubble
+    say:                        # a line with a colon and a space in it goes in quotes, or YAML reads it as a field
+      - "Your parcel is waiting at our depot. A small fee of **$1.99** is due. Pay here: usps-fee.example"
+  - ask: What do you do?        # exactly three asks per lesson
+    choices:                    # 2 to 4 choices, exactly one with right: true
+      - text: Pay it. It is only $1.99.
+        reply: Wonderful! Now just your card number, the date and the three little digits on the back. For $1.99. Promise.
+        tell: A $1.99 fee that needs your whole card is not a fee. It is your card.
+      - text: Open the carrier's own app and look.
+        right: true
+        reply: Oh no. Not the app. Nobody checks the app. Fine. FINE.
+        tell: Your parcel is where it always was. Going to the carrier yourself costs nothing and proves everything.
+  - from: you                   # what the person says or does, on the right of the screen
+    say:
+      - I will look it up myself, thank you.
+  - from: character
+    as: USPS
+    say:
+      - FINAL NOTICE. Pay **today** or your parcel goes back to the sender.
+  - ask: And now?
+    choices:
+      - text: Tap the link, just to look.
+        reply: Just a look! Come in, come in. Mind the step.
+        tell: His page is built to make you type. A look is how it starts.
+      - text: Use the tracking number from the shop, on the carrier's own website.
+        right: true
+        reply: The tracking number. From the shop. Who taught you that?
+        tell: You went to them, so he gets nothing. Not even $1.99.
+  - say:
+      - The text says USPS. His texts always say USPS. Or FedEx. Or "Parcel Service".
+  - ask: How do you know it is really USPS?
+    choices:
+      - text: It says USPS, so it is USPS.
+        reply: It does say USPS. I typed it myself. Lovely font, no?
+        tell: Anyone can type a name into a text. A name proves nothing.
+      - text: I cannot tell from the text, so I ask USPS myself.
+        right: true
+        reply: Ask them? That is cheating. I am filing a complaint.
+        tell: You cannot tell from the text, and you do not have to. You ask the carrier.
+  - say:
+      - Mr. Tiny Fee walks home. The coin jar stays empty.
+`;
 const EITHER = "a step is either say (1 to 3 lines) or ask (a question with choices)";
 
 // A checkout in a temp directory: { "data/lessons/en/x.yaml": object or text, ... }.
@@ -107,9 +177,9 @@ test("a lesson says how many minutes it takes, as a whole number", () => {
   assert.deepEqual(broken((d) => { d.minutes = 2; }), []);
 });
 
-test("a lesson asks exactly three questions, with lines and questions in any order", () => {
-  assert.deepEqual(broken((d) => { d.steps.pop(); }), ["steps: exactly 3 ask steps (questions), found 2"]);
-  assert.deepEqual(broken((d) => { d.steps.push(ask("One more?")); }), ["steps: exactly 3 ask steps (questions), found 4"]);
+test("a lesson asks exactly three questions, anywhere between the story's first and last lines", () => {
+  assert.deepEqual(broken((d) => { d.steps.splice(3, 1); }), ["steps: exactly 3 ask steps (questions), found 2"]);
+  assert.deepEqual(broken((d) => { d.steps.splice(1, 0, ask("One more?")); }), ["steps: exactly 3 ask steps (questions), found 4"]);
   assert.deepEqual(broken((d) => { d.steps = []; }), ["steps: must be a list of steps, found an empty list"]);
   assert.deepEqual(broken((d) => { d.steps = "say hello"; }), ['steps: must be a list of steps, found "say hello"']);
   assert.deepEqual(broken((d) => { d.steps.reverse(); }), []);
@@ -125,7 +195,7 @@ test("Prudence says one to three short lines at a time", () => {
 
 test("a question offers two to four big answers, exactly one of them right", () => {
   assert.deepEqual(broken((d) => { d.steps[1].choices.splice(0, 1); }), ["steps[1].choices: 2 to 4 choices, found 1"]);
-  assert.deepEqual(broken((d) => { d.steps[1].choices.push(...[1, 2, 3].map((i) => ({ text: `More ${i}`, reply: "No." }))); }),
+  assert.deepEqual(broken((d) => { d.steps[1].choices.push(...[1, 2, 3].map((i) => ({ text: `More ${i}`, reply: "No.", tell: "No." }))); }),
     ["steps[1].choices: 2 to 4 choices, found 5"]);
   assert.deepEqual(broken((d) => { delete d.steps[3].choices[1].right; }), ["steps[3].choices: exactly one choice must have right: true, found 0"]);
   assert.deepEqual(broken((d) => { d.steps[1].choices[0].right = true; }), ["steps[1].choices: exactly one choice must have right: true, found 2"]);
@@ -139,7 +209,7 @@ test("every answer gets its reply, right or wrong, so the explanation always com
   assert.deepEqual(broken((d) => { delete d.steps[1].choices[0].reply; }), ["steps[1].choices[0].reply: missing"]);
   assert.deepEqual(broken((d) => { delete d.steps[1].choices[0].text; }), ["steps[1].choices[0].text: missing"]);
   assert.deepEqual(broken((d) => { d.steps[1].choices[0] = "Pay it"; }),
-    ['steps[1].choices[0]: a choice has text, reply and maybe right: true, found "Pay it"']);
+    ['steps[1].choices[0]: a choice has text, reply, tell and maybe right: true, found "Pay it"']);
 });
 
 test("a step is either lines to say or a question, never both or neither", () => {
@@ -205,13 +275,81 @@ test("a lesson that names a demo case names a real message in its own language",
 test("a typo in a field name is caught, never silently ignored", () => {
   assert.deepEqual(validateLesson(lesson({ "demo-case": "D1" }), { lang: "en", caseIds: EN }),
     ["demo-case: unknown field; expected id, order, title, character, emoji, minutes, badge, rule, steps, demo_case"]);
-  assert.deepEqual(broken((d) => { d.steps[1].choices[0].rigth = true; }), ["steps[1].choices[0].rigth: unknown field; expected text, reply, right"]);
-  assert.deepEqual(broken((d) => { d.steps[0].choices = []; }), ["steps[0].choices: unknown field; expected say"]);
+  assert.deepEqual(broken((d) => { d.steps[1].choices[0].rigth = true; }), ["steps[1].choices[0].rigth: unknown field; expected text, right, reply, tell"]);
+  assert.deepEqual(broken((d) => { d.steps[0].choices = []; }), ["steps[0].choices: unknown field; expected from, as, say"]);
   assert.deepEqual(broken((d) => { d.steps[1].hint = "Look closely."; }), ["steps[1].hint: unknown field; expected ask, choices"]);
 });
 
 test("a file that is not a lesson at all is refused in plain words", () => {
   for (const doc of [null, [], "hello", 3]) assert.match(validateLesson(doc)[0], /^not a lesson: expected the fields id, order, title, character/, String(doc));
+});
+
+// ---------------------------------------------------------------- the lesson is a story (Behavior 3, 4, 9)
+
+test("the sample lesson of the spec's format section passes every rule", () => {
+  assert.deepEqual(validateLesson(parse(SAMPLE), { lang: "en", caseIds: EN }), []);
+});
+
+test("the story starts and ends with a say: the scene first, the scammer leaving last", () => {
+  assert.deepEqual(broken((d) => { d.steps.shift(); }), ["steps[0]: the story starts with a say (the scene), found an ask"]);
+  assert.deepEqual(broken((d) => { d.steps.push(...d.steps.splice(3, 1)); }), ["steps[5]: the story ends with a say (the scammer leaves), found an ask"]);
+});
+
+test("never more than two says in a row: between the questions the story moves, it never lectures", () => {
+  assert.deepEqual(broken((d) => { d.steps.splice(1, 0, { from: "you", say: ["Who is this?"] }); }), [], "two in a row are fine");
+  assert.deepEqual(broken((d) => { d.steps.splice(2, 0, { say: ["One."] }, { from: "you", say: ["Two."] }); }),
+    ["steps[2] to steps[4]: 3 says in a row; 2 at most, so the story never turns into a lecture"]);
+  assert.deepEqual(broken((d) => { d.steps.push({ say: ["A."] }, { say: ["B."] }, { say: ["C."] }); }),
+    ["steps[5] to steps[8]: 4 says in a row; 2 at most, so the story never turns into a lecture"], "a long run is one problem, at the end too");
+});
+
+test("at least one say comes from the character: the scam is shown, not described", () => {
+  assert.deepEqual(broken((d) => { delete d.steps[5].from; delete d.steps[5].as; }), [NO_CHARACTER]);
+  assert.deepEqual(broken((d) => { d.steps[5].from = "narrator"; delete d.steps[5].as; }), [NO_CHARACTER]);
+  assert.deepEqual(broken((d) => { d.steps[0].from = "character"; }), [], "any say may be his, and he may speak more than once");
+});
+
+test("a say comes from the narrator, the character or you, and only a say has a speaker", () => {
+  for (const from of ["narrator", "character", "you"]) assert.deepEqual(broken((d) => { d.steps[2].from = from; }), [], from);
+  assert.deepEqual(broken((d) => { d.steps[2].from = "USPS"; }), ['steps[2].from: must be narrator, character or you, found "USPS"']);
+  for (const bad of ["Narrator", "", null, 3, ["you"]]) {
+    assert.match(broken((d) => { d.steps[2].from = bad; }).join("\n"), /^steps\[2\]\.from: must be narrator, character or you, found /, String(bad));
+  }
+  assert.deepEqual(broken((d) => { d.steps[1].from = "character"; }), ["steps[1].from: unknown field; expected ask, choices"], "a question has no speaker");
+  assert.deepEqual(broken((d) => { d.steps[5].says = ["Hi"]; }), ["steps[5].says: unknown field; expected from, as, say"]);
+});
+
+test("the name the character borrows goes only on his texts and stays under 40 characters", () => {
+  assert.deepEqual(broken((d) => { d.steps[5].as = "Your bank"; }), []);
+  assert.deepEqual(broken((d) => { delete d.steps[5].as; }), [], "he may text under no name at all");
+  assert.deepEqual(broken((d) => { d.steps[5].as = "U".repeat(39); }), []);
+  assert.deepEqual(broken((d) => { d.steps[5].as = "U".repeat(40); }), ["steps[5].as: 40 characters, keep it under 40"]);
+  assert.deepEqual(broken((d) => { d.steps[5].as = null; }), ["steps[5].as: empty; write the name he borrows or remove the line"]);
+  assert.deepEqual(broken((d) => { d.steps[5].as = 7; }), ["steps[5].as: must be text, found the number 7"]);
+  assert.match(broken((d) => { d.steps[5].as = "<b>USPS</b>"; }).join("\n"), /^steps\[5\]\.as: no < or > \(HTML is not allowed\)/);
+  for (const from of [undefined, "narrator", "you"]) {
+    assert.deepEqual(broken((d) => { if (from) d.steps[0].from = from; d.steps[0].as = "USPS"; }),
+      ["steps[0].as: only a text from the character carries a borrowed name; add from: character or remove as"], String(from));
+  }
+  assert.deepEqual(broken((d) => { d.steps[5].from = "the character"; }), ['steps[5].from: must be narrator, character or you, found "the character"', NO_CHARACTER],
+    "a wrong from is the problem to fix; the name waits for it");
+});
+
+test("every choice that is not right has a tell, the narrator's plain line; the right one may go without", () => {
+  const missing = (at) => `${at}.tell: missing; a choice that is not right needs the narrator's plain line`;
+  assert.deepEqual(broken((d) => { delete d.steps[1].choices[0].tell; }), [missing("steps[1].choices[0]")]);
+  assert.deepEqual(broken((d) => { d.steps[4].choices[2].right = false; d.steps[4].choices[2].tell = ""; }), [missing("steps[4].choices[2]")]);
+  assert.deepEqual(broken((d) => { delete d.steps[1].choices[1].tell; }), [], "the right one may go without");
+  assert.deepEqual(broken((d) => { d.steps[1].choices[1].tell = null; }), ["steps[1].choices[1].tell: empty; write the narrator's plain line or remove the line"]);
+  assert.deepEqual(broken((d) => { d.steps[4].choices[2].tell = "t".repeat(140); }), ["steps[4].choices[2].tell: 140 characters, keep it under 140"]);
+  assert.deepEqual(broken((d) => { d.steps[1].choices[1].tell = "t".repeat(140); }), ["steps[1].choices[1].tell: 140 characters, keep it under 140"],
+    "the right one's tell, when there, follows the same rules");
+  assert.deepEqual(broken((d) => { d.steps[1].choices[0].tell = "A *lone* star"; }), ["steps[1].choices[0].tell: a lone * is not allowed; bold is written **like this**"]);
+  assert.deepEqual(broken((d) => { d.steps[1].choices[0].tell = ["A list"]; }), ["steps[1].choices[0].tell: must be text, found a list of 1"]);
+  assert.deepEqual(broken((d) => { d.steps[1].choices[1].right = "yes"; delete d.steps[1].choices[1].tell; }), [
+    'steps[1].choices[1].right: must be true or false, found "yes"',
+    "steps[1].choices: exactly one choice must have right: true, found 0",
+  ], "a right that is neither true nor false is fixed before its tell is asked for");
 });
 
 // ---------------------------------------------------------------- English and French twins (Behavior 8)
@@ -225,10 +363,10 @@ test("every English lesson has its French twin, and every French one its English
 });
 
 test("the twins tell the same lesson: the same place in the list, the same steps in the same order, the same number of answers", () => {
-  const fr = (mutate) => { const d = structuredClone(lesson()); mutate(d); return twinProblems([lesson()], [d]).map((p) => p.problem); };
+  const fr = frenchTwin;
   assert.deepEqual(twinProblems([lesson()], [lesson({ order: 2 })]), [{ id: "parcel-fee", lang: "fr", problem: "differs from en/parcel-fee.yaml: order 2 here, 1 in English" }]);
   assert.deepEqual(fr((d) => { d.steps[0].say.push("Une ligne de plus."); }), [], "a translation may take more or fewer lines");
-  assert.deepEqual(fr((d) => { d.steps.pop(); }), ["differs from en/parcel-fee.yaml: 4 steps here, 5 in English"]);
+  assert.deepEqual(fr((d) => { d.steps.pop(); }), ["differs from en/parcel-fee.yaml: 5 steps here, 6 in English"]);
   assert.deepEqual(fr((d) => { [d.steps[0], d.steps[1]] = [d.steps[1], d.steps[0]]; }), [
     "differs from en/parcel-fee.yaml: steps[0] is ask here, say in English",
     "differs from en/parcel-fee.yaml: steps[1] is say here, ask in English",
@@ -238,6 +376,19 @@ test("the twins tell the same lesson: the same place in the list, the same steps
     "differs from en/parcel-fee.yaml: steps[1] has 0 choices here, 2 in English",
     "differs from en/parcel-fee.yaml: steps[2] is not a step here, say in English",
   ]);
+});
+
+test("the twins play the same: the same speaker on each say and the right choice at the same place", () => {
+  const differs = (what) => [`differs from en/parcel-fee.yaml: ${what}`];
+  assert.deepEqual(frenchTwin((d) => { d.steps[5].as = "Chronopost"; d.steps[1].choices[0].tell = "Autre chose."; delete d.steps[1].choices[1].tell; }), [],
+    "the borrowed name and the tells are translated");
+  assert.deepEqual(frenchTwin((d) => { d.steps[0].from = "narrator"; }), [], "a say with no from is the narrator's");
+  assert.deepEqual(frenchTwin((d) => { d.steps[2].from = "you"; }), differs("steps[2] is from: you here, from: narrator in English"));
+  assert.deepEqual(frenchTwin((d) => { delete d.steps[5].from; delete d.steps[5].as; }), differs("steps[5] is from: narrator here, from: character in English"));
+  assert.deepEqual(frenchTwin((d) => { d.steps[1].choices.reverse(); }), differs("steps[1] has right: true on choices[0] here, on choices[1] in English"));
+  assert.deepEqual(frenchTwin((d) => { d.steps[4].choices[1].right = false; d.steps[4].choices[2].right = true; }),
+    differs("steps[4] has right: true on choices[2] here, on choices[1] in English"));
+  assert.deepEqual(frenchTwin((d) => { delete d.steps[3].choices[1].right; }), differs("steps[3] has right: true on no choice here, on choices[1] in English"));
 });
 
 // ---------------------------------------------------------------- loading the files (Behavior 8)
@@ -290,6 +441,28 @@ test("a lesson file is named after its id, and the lessons come in their order, 
   }
 });
 
+test("every say the app gets names its speaker, the narrator when the file does not say", () => {
+  const spoken = lesson().steps.map((s) => ("say" in s ? { from: "narrator", ...s } : s));
+  const root = checkout({
+    "testcases/cases.json": CASES,
+    "data/lessons/en/parcel-fee.yaml": lesson(),
+    "data/lessons/fr/parcel-fee.yaml": lesson({ steps: spoken }),
+  });
+  try {
+    const { lessons, problems } = load(root);
+    assert.deepEqual(problems, []);
+    for (const lang of LANGS) {
+      const [served] = lessons[lang];
+      assert.deepEqual(served.steps.filter((s) => "say" in s).map((s) => s.from), ["narrator", "narrator", "character"], lang);
+      assert.equal(served.steps[5].as, "USPS", lang);
+      assert.deepEqual(served.steps[4].choices.map((c) => c.tell), ["Tell 1", "Tell 2", "Tell 3"], lang);
+      assert.deepEqual(served, lesson({ steps: spoken }), `${lang}: nothing else is added or changed`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a missing lessons folder or demo cases file is reported, never a crash", () => {
   const root = checkout({ "data/lessons/en/parcel-fee.yaml": lesson({ demo_case: "D1" }) });
   try {
@@ -300,6 +473,19 @@ test("a missing lessons folder or demo cases file is reported, never a crash", (
       ["data/lessons/fr", "could not read the fr lessons folder"],
       ["nowhere.json", "could not read the demo cases"],
     ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a lesson file that cannot be read is reported with its name, never a crash", { skip: process.getuid?.() === 0 ? "root reads any file" : false }, () => {
+  const root = checkout({ "testcases/cases.json": CASES, "data/lessons/en/parcel-fee.yaml": lesson(), "data/lessons/fr/parcel-fee.yaml": lesson() });
+  chmodSync(join(root, "data/lessons/fr/parcel-fee.yaml"), 0o000);
+  try {
+    const { lessons, problems } = load(root);
+    assert.deepEqual(lessons, { en: [], fr: [] }, "the English twin is left out with it");
+    assert.deepEqual(problems.map((p) => relative(root, p.file)), ["data/lessons/fr/parcel-fee.yaml"]);
+    assert.match(problems[0].problem, /^could not read the file: EACCES/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -321,7 +507,7 @@ test("make lessons-check fails on a broken file and names it, and passes on the 
     assert.equal(out.text, [
       "lessons-check: 0 lessons in EN and FR, 2 problems",
       "data/lessons/en/urgency.yaml: minutes: must be a whole number, 1 or more, found the number 0",
-      "data/lessons/fr/parcel-fee.yaml: differs from en/parcel-fee.yaml: 4 steps here, 5 in English",
+      "data/lessons/fr/parcel-fee.yaml: differs from en/parcel-fee.yaml: 5 steps here, 6 in English",
       "",
     ].join("\n"));
   } finally {
@@ -459,6 +645,18 @@ test("the lessons open without signing in, in English or French, and any other l
   assert.deepEqual(fr, SHIPPED.fr);
   assert.equal(fr.find((l) => l.id === "parcel-fee").character, "Monsieur Petits Frais");
   for (const query of ["", "?lang=de", "?lang=FR-fr"]) assert.deepEqual((await app.inject({ url: `/api/lessons${query}` })).json().lessons, SHIPPED.en, query);
+});
+
+test("GET /api/lessons gives the app who says each line, the name the character borrows and the narrator's tells", async () => {
+  for (const lang of LANGS) {
+    const { lessons } = (await app.inject({ url: `/api/lessons?lang=${lang}` })).json();
+    assert.ok(lessons.length, `${lang}: lessons are served`);
+    const says = lessons.flatMap((l) => l.steps.filter((s) => "say" in s));
+    assert.ok(says.every((s) => ["narrator", "character", "you"].includes(s.from)), `${lang}: every say names its speaker`);
+    assert.ok(says.some((s) => s.from === "character" && typeof s.as === "string"), `${lang}: the character texts under a borrowed name`);
+    const notRight = lessons.flatMap((l) => l.steps.filter((s) => "ask" in s).flatMap((s) => s.choices.filter((c) => c.right !== true)));
+    assert.ok(notRight.length && notRight.every((c) => typeof c.tell === "string"), `${lang}: a tell on every choice that is not right`);
+  }
 });
 
 test("progress is kept only for a signed-in person", async () => {

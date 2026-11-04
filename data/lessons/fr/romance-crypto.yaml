@@ -8,35 +8,65 @@ badge: Grand cœur, porte-monnaie fermé
 rule: Quelqu'un que vous n'avez jamais rencontré et qui parle d'argent n'est pas un ami. Ne lui envoyez rien.
 steps:
   - say:
-      - Voici l'**Ami qui n'allume jamais sa caméra**. Des semaines de messages tendres. Toujours gentil, toujours là.
-      - "Mais sa caméra est toujours en panne. Et un jour, il parle d'**argent** : un placement en cryptomonnaie, ou une urgence."
-  - ask: Après des semaines de messages tendres, il vous propose de placer 2000 € en cryptomonnaie avec lui. Que faites-vous ?
+      - "Dimanche soir. Depuis six semaines, Antoine vous écrit chaque jour : bonjour, bonne nuit, photos de la mer."
+      - Ses messages sont tendres. Ça fait du bien, qu'on pense à vous.
+  - from: character
+    as: Antoine
+    say:
+      - Mon cœur, ma caméra est encore en panne. L'air salin de la plateforme pétrolière. Pas d'appel vidéo ce soir.
+      - Mais j'ai une nouvelle ! Ma cryptomonnaie double chaque mois. Place **2000 €** avec moi, et construisons notre avenir.
+  - ask: Que faites-vous ?
     choices:
-      - text: J'envoie l'argent. Il a été si gentil.
-        reply: Sa gentillesse était l'appât, et il est très doué. Ce piège a trompé beaucoup de gens prudents et aimants.
-      - text: Je n'envoie rien, et j'en parle à quelqu'un de confiance.
-        right: true
-        reply: Oui ! Votre cœur reste ouvert et votre porte-monnaie fermé. Il devra trouver une autre histoire.
+      - text: J'envoie d'abord 200 €, pour voir si ça grossit.
+        reply: Parfait ! Regarde-les grossir sur mon site. Ça grossit toujours, sur mon site. Et les 1800 € qui restent ?
+        tell: Son site affiche les chiffres qu'il tape lui-même. De l'argent qui double chaque mois, c'est une histoire.
       - text: Je lui demande d'abord un appel vidéo.
-        reply: Bonne idée, mais il trouvera une excuse, ou une fausse vidéo. Le vrai indice, c'est l'argent. N'envoyez rien.
-  - say:
-      - "Ses indices : il ne vous rencontre jamais, n'allume jamais sa caméra, et finit toujours par parler d'**argent**."
-      - Souvent, il vous demande de garder vos échanges **secrets**. Ainsi, personne qui vous aime ne voit le piège.
-  - ask: "Il écrit : « Ta famille ne nous comprendrait pas. Gardons ça entre nous. » Qu'est-ce que cela vous dit ?"
-    choices:
-      - text: Il est discret sur notre amour.
-        reply: C'est ce qu'il veut vous faire croire. Le secret est là pour que personne qui vous aime ne puisse vous prévenir.
-      - text: Il veut que personne ne me prévienne. J'en parle à ma famille.
+        reply: Un appel vidéo ? Hélas, ma caméra. L'air salin, les mouettes, la tempête. Il y a toujours quelque chose.
+        tell: "Son excuse est la réponse : six semaines, jamais un appel vidéo, et maintenant de l'argent. N'envoyez rien."
+      - text: Je n'envoie rien. Je ne l'ai jamais rencontré, et il parle d'argent.
         right: true
-        reply: Exactement. Ceux qui vous aiment sont ses pires ennemis. Une discussion avec eux, et le charme est rompu.
-  - say:
-      - "La règle : quelqu'un que vous n'avez **jamais rencontré** et qui parle d'argent n'est **pas un ami**."
-      - Un vrai ami ne vous demande jamais de cryptomonnaie, ni de cacher quoi que ce soit à votre famille.
-      - Déjà envoyé de l'argent ? Vous n'y êtes pour rien. Parlez-en à vos proches et appelez votre banque.
-  - ask: Deux messages arrivent. Lequel vient d'une personne de confiance ?
+        reply: Rien ? Pas même un peu ? Mais ma caméra… enfin, mon cœur. Mon cœur est brisé.
+        tell: Quelqu'un que vous n'avez jamais rencontré et qui parle d'argent n'est pas un ami. Votre cœur peut rester ouvert.
+  - from: you
+    say:
+      - "Je lui réponds : je n'envoie pas d'argent à quelqu'un que je n'ai jamais rencontré."
+  - from: character
+    as: Antoine
+    say:
+      - Je croyais que tu m'aimais. Je suis en route vers toi, bloqué à la douane. Encore **900 €** de frais, et je suis à toi.
+  - ask: Et maintenant ?
     choices:
-      - text: « Mon cœur, place 2000 € en cryptomonnaie avec moi, et nous construirons notre avenir. »
-        reply: C'est l'Ami qui n'allume jamais sa caméra. Des mots doux, puis de l'argent. Un vrai ami ne fait pas de l'amour un placement.
-      - text: « Quel bon déjeuner mardi ! Même café le mois prochain ? Bises, Monique. »
+      - text: Je reste aimable, et je n'envoie toujours rien.
         right: true
-        reply: Oui ! Quelqu'un que vous avez vraiment vu, un vrai déjeuner, et pas un mot d'argent. Ça, c'est une vraie amie.
+        reply: Aimable, et en plus sur tes gardes ? C'est ce que je déteste le plus.
+        tell: On peut rester tendre et dire non. La gentillesse n'a jamais besoin d'argent.
+      - text: Je paie. Nous pourrons enfin nous voir.
+        reply: Merveilleux ! Ensuite, il y aura le billet. Puis l'hôtel. Il me manque toujours un dernier petit frais.
+        tell: Il y a toujours un dernier frais. Quelqu'un qui veut vraiment vous voir n'a pas besoin de votre argent.
+      - text: J'envoie la moitié, pour lui montrer que je tiens à lui.
+        reply: La moitié, c'est un bon début ! Je demanderai l'autre moitié jeudi.
+        tell: La moitié des frais, c'est encore de l'argent pour un inconnu. On peut tenir à quelqu'un sans payer.
+  - say:
+      - Quelques jours plus tard, il essaie autre chose.
+  - from: character
+    as: Antoine
+    say:
+      - Ta famille ne nous comprendrait pas. Gardons ça **entre nous**, mon cœur.
+  - ask: Et ensuite ?
+    choices:
+      - text: Je garde ça pour moi. C'est ma vie privée.
+        reply: Oui ! Rien que toi et moi. Et personne pour te dire qui je suis vraiment.
+        tell: Le secret éloigne ceux qui pourraient vous prévenir. Parlez-en à quelqu'un de confiance.
+      - text: Je raconte tout à ma famille.
+        right: true
+        reply: Ta FAMILLE ? Ils vont vouloir voir mon visage. Personne ne voit mon visage.
+        tell: Ceux qui vous aiment sont ses pires ennemis. Une discussion avec eux, et le piège tombe.
+      - text: Je lui demande pourquoi ce doit être un secret.
+        reply: Parce que ta famille me démasquerait en une seconde. Euh… parce que je t'aime.
+        tell: Un inconnu qui veut être caché à votre famille cache quelque chose. Parlez-en à quelqu'un de confiance.
+  - from: you
+    say:
+      - J'appelle ma famille. On déjeune ensemble mardi, et je raconte tout.
+  - say:
+      - L'Ami qui n'allume jamais sa caméra retourne sur sa plateforme. Sa caméra est toujours en panne. Son plan aussi.
+      - Déjà envoyé de l'argent à quelqu'un comme lui ? Beaucoup l'ont fait. Parlez-en à vos proches et à votre banque.
