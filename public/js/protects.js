@@ -9,11 +9,17 @@ import { t, ago } from "./i18n.js";
 import { esc, icon } from "./ui.js";
 
 // --------------------------------------------------------------- channels --
-// Ordered as the list shows them. status: "built" or "soon". A channel leaves
-// "soon" only when its feature is Built in _product/spec.md (the test reads the
-// spec table; the app never reads the spec at run time). name, states and
-// verbs are the i18n keys a row of this channel can show (protect_* in
-// i18n.js); icon is a name for icon() in ui.js.
+// Ordered as the list shows them. status:
+// - "built": always drawn with its state and verb;
+// - "soon": the grey Coming soon row. It leaves "soon" only when its feature
+//   is Built in _product/spec.md (tests/menu.test.js reads the spec table; the
+//   app never reads the spec at run time);
+// - "server": on only when /api/status says this server runs it (the boolean
+//   named by configuredBy, the link to open named by linkBy), Coming soon
+//   otherwise. Facebook and Messenger: the Prudence Page exists only where
+//   its keys are set (_product/specs/facebook-messenger.md).
+// name, states and verbs are the i18n keys a row of this channel can show
+// (protect_* in i18n.js); icon is a name for icon() in ui.js.
 export const CHANNELS = Object.freeze([
   { key: "email", status: "built", icon: "mail", name: "protect_email",
     states: ["protect_email_on", "protect_email_checked", "protect_email_first", "protect_email_retry", "protect_email_lost", "protect_email_off"],
@@ -22,7 +28,8 @@ export const CHANNELS = Object.freeze([
     states: ["protect_texts_on", "protect_texts_on_phone", "protect_texts_none"], verbs: ["protect_texts_change", "protect_texts_add"] },
   { key: "voice", status: "built", icon: "mic", name: "protect_voice", states: ["protect_voice_state"], verbs: ["protect_voice_verb"] },
   { key: "whatsapp", status: "soon", icon: "whatsapp", name: "protect_whatsapp", states: ["protect_whatsapp_line"], verbs: [] },
-  { key: "facebook", status: "soon", icon: "messenger", name: "protect_facebook", states: ["protect_facebook_line"], verbs: [] },
+  { key: "facebook", status: "server", configuredBy: "messengerConfigured", linkBy: "messengerLink", icon: "messenger", name: "protect_facebook",
+    states: ["protect_facebook_line", "protect_facebook_on"], verbs: ["protect_facebook_verb"] },
   { key: "calls", status: "soon", icon: "phone", name: "protect_calls", states: ["protect_calls_line"], verbs: [] },
 ].map((c) => Object.freeze(c)));
 
@@ -55,24 +62,38 @@ function textsRow(devices) {
     : { stateKey: "protect_texts_on_phone", on: true, verbKey: "protect_texts_change", href: "#/settings/phone" };
 }
 
+// A channel the server runs (status "server"): its row, or null while this
+// server does not run it. The link opens in a new tab (Messenger's m.me
+// address); anything but an https address gives no button rather than a
+// strange one.
+function serverRow(c, status) {
+  if (status?.[c.configuredBy] !== true) return null;
+  const link = String(status[c.linkBy] || "");
+  const ok = /^https:\/\/[^\s"'<>]+$/.test(link);
+  return { stateKey: c.states[1], on: true, verbKey: ok ? c.verbs[0] : null, href: ok ? link : null, external: ok };
+}
+
 // The rows to draw for one senior, in CHANNELS order, in the current
 // language. status: the /api/status payload; devices: the list from
 // /api/devices (missing or empty: no phone paired yet); a guardians list
 // (/api/guardians) may be passed too, no row reads it today. Each row:
 // { key, soon, icon, name, state, on (true: the green check before the
-// state), verb, href, verbKey, label }; a soon row has no verb and no href,
-// and label is what a screen reader announces for it.
+// state), verb, href, external (true: opens another app or site in a new
+// tab), verbKey, label }; a soon row has no verb and no href, and label is
+// what a screen reader announces for it.
 export function protectRows(status, { devices } = {}) {
   return CHANNELS.map((c) => {
     const name = t(c.name);
-    if (c.status === "soon") {
+    const fromServer = c.status === "server" ? serverRow(c, status) : null;
+    if (c.status === "soon" || (c.status === "server" && !fromServer)) {
       return { key: c.key, soon: true, icon: c.icon, name, state: t(c.states[0]), on: false, verb: null, href: null, verbKey: null,
         label: t("protect_soon_label", { name }) };
     }
-    const r = c.key === "email" ? emailRow(status?.gmail)
+    const r = fromServer || (c.key === "email" ? emailRow(status?.gmail)
       : c.key === "texts" ? textsRow(devices)
-      : { stateKey: "protect_voice_state", on: false, verbKey: "protect_voice_verb", href: "#/check/voice" };
-    return { key: c.key, soon: false, icon: c.icon, name, state: t(r.stateKey, r.vars), on: r.on, verb: t(r.verbKey), href: r.href, verbKey: r.verbKey, label: name };
+      : { stateKey: "protect_voice_state", on: false, verbKey: "protect_voice_verb", href: "#/check/voice" });
+    return { key: c.key, soon: false, icon: c.icon, name, state: t(r.stateKey, r.vars), on: r.on, verb: r.verbKey ? t(r.verbKey) : null,
+      href: r.href, external: Boolean(r.external), verbKey: r.verbKey, label: name };
   });
 }
 
@@ -101,7 +122,7 @@ export function renderProtects(rows, { heading = true } = {}) {
             <span class="row-state">${r.on ? icon("check-circle", 20, 2.5) : ""}<span>${esc(r.state)}</span></span>
           </div>
         </div>
-        <a class="btn btn-outline" href="${esc(r.href)}">${esc(r.verb)}</a>
+        ${r.href ? `<a class="btn btn-outline" href="${esc(r.href)}"${r.external ? ' target="_blank" rel="noopener"' : ""}>${esc(r.verb)}</a>` : ""}
       </div>`;
   return `<section class="protects"${heading ? ' aria-labelledby="protectsTitle"' : ` aria-label="${title}"`}>
       ${heading ? `<h2 id="protectsTitle" class="section-title">${title}</h2>` : ""}

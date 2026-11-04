@@ -168,6 +168,7 @@ export const STRINGS = {
     protect_voice: "Voice messages", protect_voice_state: "Send one any time", protect_voice_verb: "Check a voice message",
     protect_whatsapp: "WhatsApp messages", protect_whatsapp_line: "Forward a message to Prudence and the answer comes back in the chat",
     protect_facebook: "Facebook and Messenger", protect_facebook_line: "A message or a Marketplace chat that feels wrong",
+    protect_facebook_on: "Send any message to Prudence on Messenger", protect_facebook_verb: "Open Messenger",
     protect_calls: "Your phone calls", protect_calls_line: "A warning before you call back a number from a scam message",
     protect_soon: "Coming soon", protect_soon_label: "{name}, coming soon, no action",
     // --- today (td_*) ---
@@ -392,6 +393,7 @@ export const STRINGS = {
     protect_voice: "Messages vocaux", protect_voice_state: "Envoyez-en un quand vous voulez", protect_voice_verb: "Vérifier un message vocal",
     protect_whatsapp: "Messages WhatsApp", protect_whatsapp_line: "Transférez un message à Prudence et la réponse revient dans la discussion",
     protect_facebook: "Facebook et Messenger", protect_facebook_line: "Un message ou une discussion Marketplace qui semble louche",
+    protect_facebook_on: "Envoyez n'importe quel message à Prudence sur Messenger", protect_facebook_verb: "Ouvrir Messenger",
     protect_calls: "Vos appels téléphoniques", protect_calls_line: "Un avertissement avant de rappeler un numéro venu d'un message frauduleux",
     protect_soon: "Bientôt", protect_soon_label: "{name}, bientôt, aucune action",
     // --- today (td_*) ---

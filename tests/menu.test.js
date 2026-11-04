@@ -15,13 +15,15 @@ const linda = { gmail: { connected: true, needsReconnect: false, syncStatus: "ok
 const phone = { id: "d1", name: "Linda's phone", created_at: minutesAgo(9000), last_seen_at: minutesAgo(5) };
 const byKey = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
 
-test("the channels come in the spec's order, email, texts and voice built, the other three coming soon", () => {
+test("the channels come in the spec's order: email, texts and voice built, Messenger from the server, WhatsApp and calls coming soon", () => {
   assert.deepEqual(CHANNELS.map((c) => c.key), ["email", "texts", "voice", "whatsapp", "facebook", "calls"]);
-  assert.deepEqual(CHANNELS.map((c) => c.status), ["built", "built", "built", "soon", "soon", "soon"]);
+  assert.deepEqual(CHANNELS.map((c) => c.status), ["built", "built", "built", "soon", "server", "soon"]);
   for (const c of CHANNELS) {
     assert.ok(ICON_NAMES.includes(c.icon), `${c.key}: icon "${c.icon}" exists in ui.js`);
-    assert.equal(c.status === "soon", c.verbs.length === 0, `${c.key}: a Coming soon row has no verb, a built row has one`);
+    assert.equal(c.status === "soon", c.verbs.length === 0, `${c.key}: a Coming soon row has no verb, the others have one`);
   }
+  const fb = CHANNELS.find((c) => c.key === "facebook");
+  assert.deepEqual([fb.configuredBy, fb.linkBy], ["messengerConfigured", "messengerLink"], "the /api/status fields that turn Messenger on");
 });
 
 // The Features table of _product/spec.md: | Feature | Status | One-line spec | Details |.
@@ -38,22 +40,26 @@ function featureRows() {
   return rows;
 }
 
-// Which Features row decides each channel. A channel whose row is missing is
-// Coming soon (Facebook and Messenger, phone calls: ideas only on Nov 4).
+// Which Features row decides each static channel. A channel whose row is
+// missing is Coming soon (phone calls: an idea only on Nov 4).
 const FEATURE_ROW = {
   email: /^Gmail connection and scanning$/,
   texts: /^Android SMS companion$/,
   voice: /^Check something else \(text, picture, voice note, \.eml\)$/,
   whatsapp: /^WhatsApp\b/, // "WhatsApp: forward it to Prudence"
-  facebook: /^(Facebook|Messenger)\b/i,
   calls: /^(Your )?phone calls?\b|^Calls?\b|^Call protection\b/i,
 };
 
-test("a channel is Coming soon exactly when its feature is not Built in _product/spec.md", () => {
+// Facebook and Messenger is not held to the spec table: whether it is on is
+// read from the server (/api/status messengerConfigured), because the
+// Prudence Page only exists where its keys are set; the next test covers it.
+test("a static channel is Coming soon exactly when its feature is not Built in _product/spec.md", () => {
   const rows = featureRows();
   assert.ok(rows.length > 10, "the Features table was read");
-  assert.deepEqual(Object.keys(FEATURE_ROW).sort(), CHANNELS.map((c) => c.key).sort(), "every channel has its row rule");
-  for (const c of CHANNELS) {
+  const fixed = CHANNELS.filter((c) => c.status !== "server");
+  assert.deepEqual(fixed.map((c) => c.key), ["email", "texts", "voice", "whatsapp", "calls"]);
+  assert.deepEqual(Object.keys(FEATURE_ROW).sort(), fixed.map((c) => c.key).sort(), "every static channel has its row rule");
+  for (const c of fixed) {
     const found = rows.filter((r) => FEATURE_ROW[c.key].test(r.name));
     assert.ok(found.length <= 1, `${c.key}: at most one Features row (${found.map((r) => r.name).join(", ")})`);
     const built = Boolean(found[0] && /^Built\b/.test(found[0].status));
@@ -108,13 +114,32 @@ test("Linda without a phone: her email is on, her texts need the app, voice is o
   assert.equal(r.texts.on, false);
   assert.deepEqual([r.texts.verb, r.texts.href], ["Add my phone", "#/settings/phone"]);
   assert.deepEqual([r.voice.state, r.voice.verb, r.voice.href], ["Send one any time", "Check a voice message", "#/check/voice"]);
-  for (const k of ["whatsapp", "facebook", "calls"]) {
+  for (const k of ["whatsapp", "facebook", "calls"]) { // facebook: no messengerConfigured in Linda's status
     assert.equal(r[k].soon, true);
     assert.equal(r[k].verb, null, `${k}: no verb`);
     assert.equal(r[k].href, null, `${k}: nowhere to go`);
     assert.match(r[k].label, /coming soon, no action$/, `${k}: announced as coming soon, no action`);
   }
   assert.deepEqual(protectRows(linda, { devices: [] }), rows, "an empty phone list is no phone");
+});
+
+test("Messenger is on only when the server says so, and its button opens Messenger in a new tab", () => {
+  const link = "https://m.me/prudence.example";
+  for (const st of [linda, { ...linda, messengerConfigured: false, messengerLink: link }, { ...linda, messengerConfigured: "true", messengerLink: link }]) {
+    const fb = byKey(protectRows(st)).facebook;
+    assert.deepEqual([fb.soon, fb.verb, fb.href], [true, null, null], "absent, false or not a boolean: Coming soon");
+    assert.equal(fb.label, "Facebook and Messenger, coming soon, no action");
+  }
+  const on = byKey(protectRows({ ...linda, messengerConfigured: true, messengerLink: link })).facebook;
+  assert.deepEqual([on.soon, on.on, on.state, on.verb, on.href, on.external],
+    [false, true, "Send any message to Prudence on Messenger", "Open Messenger", link, true]);
+  const html = renderProtects(protectRows({ ...linda, messengerConfigured: true, messengerLink: link }));
+  assert.match(html, /<a class="btn btn-outline" href="https:\/\/m\.me\/prudence\.example" target="_blank" rel="noopener">Open Messenger<\/a>/);
+  assert.equal((html.match(/class="row-card row-soon"/g) || []).length, 2, "WhatsApp and calls stay Coming soon");
+  for (const bad of ["javascript:alert(1)", "http://m.me/x", "", undefined]) {
+    const r = byKey(protectRows({ ...linda, messengerConfigured: true, messengerLink: bad })).facebook;
+    assert.deepEqual([r.on, r.verb, r.href], [true, null, null], `${String(bad)}: on, but no button to a strange address`);
+  }
 });
 
 test("Linda with her phone paired: the texts row names it and offers Change", () => {
