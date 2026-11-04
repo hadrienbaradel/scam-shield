@@ -16,6 +16,7 @@ export async function resetDb() {
   await pool.query(`TRUNCATE users, google_tokens, gmail_state, contexts, checks, guardianships, alerts, feed_items, devices,
                     sessions, oauth_states, audit_log, outbox, job_runs, lesson_progress CASCADE`);
   await pool.query("DELETE FROM pattern_cards");
+  await pool.query("TRUNCATE watch_items");
   await migrate();
 }
 
