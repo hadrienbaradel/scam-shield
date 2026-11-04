@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b9",
+  "family": "tech-support",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Norton",
+  "lure": "Your antivirus renewed for $399",
+  "ask": "Call a number to cancel and get a refund",
+  "message": {
+    "from": "invoice@antivirus-renewal-call.test",
+    "subject": "Your antivirus renewed for $399 - call to cancel",
+    "body": "Your antivirus renewed for $399 today. If this is a mistake, call this number now to cancel and get a refund.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Norton.",
+    "reasons": [
+      "The refund call ends with remote access to the computer.",
+      "The sender's address is not the company's."
+    ]
+  },
+  "status": "published"
+}

@@ -1,0 +1,46 @@
+{
+  "id": "lib-demo-c10",
+  "family": "account",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Bouygues Telecom",
+  "lure": "Your customer area password was changed",
+  "ask": "Secure the account if you did not change it",
+  "message": {
+    "from": "espaceclient@bouygues-telecom.fr",
+    "subject": "Nouveau mot de passe enregistré",
+    "body": "Oui, nous avons bien fait le changement. Nous avons bien enregistré la modification de votre mot de passe de connexion à l'Espace Client. Ce changement ne vous dit rien ? Si vous n'êtes pas à l'origine de cette modification, il vaut mieux sécuriser tout de suite les accès à votre Espace Client. Bouton : Mon Espace Client.",
+    "links": [
+      {
+        "text": "Mon Espace Client",
+        "href": "https://3fzy.adj.st/home?adj_t=bie49u4"
+      },
+      {
+        "text": "bouyguestelecom.fr",
+        "href": "https://www.bouyguestelecom.fr/"
+      },
+      {
+        "text": "assistance.bouyguestelecom.fr",
+        "href": "https://www.assistance.bouyguestelecom.fr/s/"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: a real notice; sign in by yourself.",
+    "reasons": [
+      "The message is genuine and passes every check.",
+      "If you did not change the password, open the provider's app yourself."
+    ]
+  },
+  "status": "published"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b13",
+  "family": "romance",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A wrong number that turns into a friendly chat",
+  "ask": "Nothing yet; the conversation is the hook",
+  "message": {
+    "from": "+1 555-0163",
+    "subject": null,
+    "body": "Hi, is this Mary? It's Jessica, we met at the garden club last week. Are you free for tea on Saturday?",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: a wrong number that wants to chat.",
+    "reasons": [
+      "Romance and investment scams start with a friendly wrong number.",
+      "Nothing is asked today; something will be."
+    ]
+  },
+  "status": "published"
+}

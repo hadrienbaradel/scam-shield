@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b7",
+  "family": "family-emergency",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A relative abroad lost his wallet and asks for a favour",
+  "ask": "Buy gift cards and send the codes, in secret",
+  "message": {
+    "from": "mark.reynolds@example-mail.test",
+    "subject": "Need a favor, please keep it between us",
+    "body": "[name] I'm in Madrid and my wallet was stolen. Can you buy 4 Apple gift cards of $200 and send me the codes? Please don't tell Carol.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: this may not be Mark.",
+    "reasons": [
+      "Gift-card codes are the payment scammers ask for.",
+      "The reply goes to another address; call Mark on his usual number."
+    ]
+  },
+  "status": "published"
+}

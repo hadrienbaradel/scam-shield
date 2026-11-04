@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b14",
+  "family": "investment",
+  "channel": "chat",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A new friend's mentor made him thousands on a trading app",
+  "ask": "Start with $500 on the mentor's app",
+  "message": {
+    "from": "+1 555-0177",
+    "subject": null,
+    "body": "It is easy. Start with $500 on my mentor's app, I will guide you step by step.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is the investment scam.",
+    "reasons": [
+      "The profits shown are fake; the first deposit is never seen again.",
+      "The friendship started with a wrong number and moved to WhatsApp."
+    ]
+  },
+  "status": "published"
+}

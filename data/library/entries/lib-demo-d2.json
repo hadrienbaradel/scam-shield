@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-d2",
+  "family": "toll-fine",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": "E-ZPass",
+  "lure": "An unpaid toll with a big late fee if not paid today",
+  "ask": "Pay on a look-alike payment page",
+  "message": {
+    "from": "+1 555-0188",
+    "subject": null,
+    "body": "E-ZPass: unpaid toll of $4.50. Pay today to avoid a $50 late fee: https://ezpass-pay.test/toll",
+    "links": [
+      {
+        "text": "https://ezpass-pay.test/toll",
+        "href": "https://ezpass-pay.test/toll"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not E-ZPass.",
+    "reasons": [
+      "The link is not on the toll agency's website.",
+      "A small amount and a large late fee is the toll scam."
+    ]
+  },
+  "status": "published"
+}

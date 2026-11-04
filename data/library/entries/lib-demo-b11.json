@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b11",
+  "family": "recovery",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A law firm can recover the money you lost",
+  "ask": "Wire an $850 fee first",
+  "message": {
+    "from": "claims@recovery-law-fees.test",
+    "subject": "We can recover your lost money",
+    "body": "Our law firm can recover money you lost to scams. Pay an upfront fee of $850 today by wire transfer and we will start your case immediately.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "Nobody recovers money for a fee paid first.",
+    "reasons": [
+      "The fee is the scam, a second time.",
+      "The sender's address is not a law firm's."
+    ]
+  },
+  "status": "published"
+}

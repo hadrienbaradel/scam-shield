@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-d6",
+  "family": "tech-support",
+  "channel": "web",
+  "country": "US",
+  "language": "en",
+  "brand": "Microsoft",
+  "lure": "A security warning says the computer is infected",
+  "ask": "Call a support number shown in the pop-up",
+  "message": {
+    "from": null,
+    "subject": "Screenshot of a browser pop-up",
+    "body": "Screenshot text: MICROSOFT SECURITY WARNING. Your computer is infected. Call Microsoft support now at 1-555-0166. Do not close this window.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Microsoft.",
+    "reasons": [
+      "Microsoft never shows a phone number in a warning.",
+      "Close the window; nothing is infected."
+    ]
+  },
+  "status": "published"
+}

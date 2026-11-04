@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-a1",
+  "family": "utility",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Bouygues Telecom",
+  "lure": "Your new phone bill is ready",
+  "ask": "Open the bill or contest a debit on a link that is not the provider's",
+  "message": {
+    "from": "service@contestation-bouygues.test",
+    "subject": "Votre facture Bouygues est disponible",
+    "body": "Madame, votre nouvelle facture est disponible. Pour la consulter ou contester un prélèvement, cliquez ici : [bouyguestelecom.fr](https://contestation-bouygues.test/facture). Merci de votre confiance.",
+    "links": [
+      {
+        "text": "bouyguestelecom.fr",
+        "href": "https://contestation-bouygues.test/facture"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Bouygues Telecom.",
+    "reasons": [
+      "The link goes to contestation-bouygues.test, not bouyguestelecom.fr.",
+      "The real bills come from factures@bouyguestelecom.fr."
+    ]
+  },
+  "status": "published"
+}

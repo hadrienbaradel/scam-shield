@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-b8",
+  "family": "health",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Ameli",
+  "lure": "Renew your health card now",
+  "ask": "Pay a 1.99 euro fee on a link",
+  "message": {
+    "from": "renouvellement@ameli-carte-vitale.test",
+    "subject": "Renouvelez votre carte Vitale, [name]",
+    "body": "Madame [name], domiciliée à Lyon, renouvelez votre carte Vitale dès maintenant. Des frais de 1,99 € sont demandés : [ameli.fr](https://ameli-carte-vitale.test/payer)",
+    "links": [
+      {
+        "text": "ameli.fr",
+        "href": "https://ameli-carte-vitale.test/payer"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Ameli.",
+    "reasons": [
+      "The health card is renewed for free, never by a link.",
+      "The link is not on ameli.fr."
+    ]
+  },
+  "status": "published"
+}

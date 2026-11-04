@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-c9",
+  "family": "toll-fine",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "ANTAI",
+  "lure": "A traffic fine was issued for your vehicle",
+  "ask": "Look it up yourself on the agency's website with the paper notice",
+  "message": {
+    "from": "avis@antai.gouv.fr",
+    "subject": "Avis de contravention",
+    "body": "Madame, un avis de contravention a été émis pour votre véhicule. Consultez-le vous-même sur antai.gouv.fr avec le numéro d'avis figurant sur le document papier.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: a real notice; check it yourself.",
+    "reasons": [
+      "The message is genuine and sends you to antai.gouv.fr by yourself.",
+      "Pay a fine only on the agency's own website."
+    ]
+  },
+  "status": "published"
+}

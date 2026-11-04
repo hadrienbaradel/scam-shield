@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-d4",
+  "family": "bank",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": "Chase",
+  "lure": "A fraud alert about a payment you did not make",
+  "ask": "Reply, then move your money to protect it",
+  "message": {
+    "from": "+1 555-0177",
+    "subject": null,
+    "body": "Chase fraud alert: did you send $1,250? Reply NO to stop it. Then send money to yourself to protect your account.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Chase.",
+    "reasons": [
+      "Chase never asks you to move money to protect it.",
+      "The number is not the bank's."
+    ]
+  },
+  "status": "published"
+}

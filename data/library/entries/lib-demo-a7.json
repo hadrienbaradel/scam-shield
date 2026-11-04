@@ -1,0 +1,42 @@
+{
+  "id": "lib-demo-a7",
+  "family": "bank",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Société Générale",
+  "lure": "A new message in your bank's secure mailbox",
+  "ask": "Sign in through a link that passes by a free website builder",
+  "message": {
+    "from": "noreply@certdata.com.br",
+    "subject": "[name], nouveau message dans votre messagerie",
+    "body": "SG - Messagerie securisee\n\nBonjour [name],\n\nVous avez 1 message non lu dans votre messagerie securisee SG depuis le 05/10/2026.\n\nPour le consulter, connectez-vous a votre espace client :\nhttps://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/\n\nCet e-mail vous a ete envoye automatiquement par votre banque.\nPour votre securite, ne communiquez jamais vos identifiants par e-mail.",
+    "links": [
+      {
+        "text": "Accéder à ma messagerie SG",
+        "href": "https://u46337456.ct.sendgrid.net/ls/click?upn=REDACTED"
+      },
+      {
+        "text": "https://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/",
+        "href": "https://medium.com/m/global-identity-2?redirectUrl=https://soginfosnotif.bolt.host/"
+      }
+    ]
+  },
+  "first_seen": "2026-10-05",
+  "last_seen": "2026-10-05",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not SG.",
+    "reasons": [
+      "The sender is a Brazilian business mailbox, not the bank.",
+      "The link passes through medium.com to a free website builder."
+    ]
+  },
+  "status": "published"
+}

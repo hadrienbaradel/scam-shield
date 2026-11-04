@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-d5",
+  "family": "government",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "IRS",
+  "lure": "A federal agent says your savings are at risk",
+  "ask": "Move your money to a Bitcoin ATM and tell nobody",
+  "message": {
+    "from": "agent@ftc-secure-case.test",
+    "subject": "Urgent: protect your savings today",
+    "body": "I am a federal agent. Your savings are at risk. Do not tell your bank. Move your money today to a Bitcoin ATM to protect it. Keep this secret.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "No agent asks this.",
+    "reasons": [
+      "No government agency moves savings to Bitcoin.",
+      "Secrecy and urgency are the marks of a scam."
+    ]
+  },
+  "status": "published"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-a3b",
+  "family": "utility",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Bouygues Telecom",
+  "lure": "A 69.90 euro debit for a subscription you never took",
+  "ask": "Contest the debit on a page that asks for your online banking codes",
+  "message": {
+    "from": "service@contestation-bouygues.test",
+    "subject": "Avis de prélèvement de 69,90 €",
+    "body": "Madame, un prélèvement de 69,90 € sera effectué sur votre compte [bank account number] pour votre abonnement Classplus Pro. Vous disposez de 7 jours ouvrés pour le contester : [Contester ce prélèvement](https://contestation-prelevement.test/fr)",
+    "links": [
+      {
+        "text": "Contester ce prélèvement",
+        "href": "https://contestation-prelevement.test/fr"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Bouygues Telecom, and the account number proves nothing.",
+    "reasons": [
+      "The link goes to a copied bank page, not to the bank.",
+      "The account number quoted leaked in a data breach; a scammer can know it."
+    ]
+  },
+  "status": "published"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-a4",
+  "family": "delivery",
+  "channel": "sms",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Chronopost",
+  "lure": "A parcel is waiting for you",
+  "ask": "Pay a small redelivery fee on a link",
+  "message": {
+    "from": "+33 7 55 01 99",
+    "subject": null,
+    "body": "Chronopost : votre colis est en attente. Payez 1,99 € de frais pour le reprogrammer : https://chronopost-suivi.test/payer",
+    "links": [
+      {
+        "text": "https://chronopost-suivi.test/payer",
+        "href": "https://chronopost-suivi.test/payer"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Chronopost.",
+    "reasons": [
+      "Chronopost never asks for a fee by text message.",
+      "The link is not on chronopost.fr."
+    ]
+  },
+  "status": "published"
+}

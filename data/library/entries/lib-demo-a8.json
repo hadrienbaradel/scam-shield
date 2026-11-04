@@ -1,0 +1,42 @@
+{
+  "id": "lib-demo-a8",
+  "family": "job",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Adecco",
+  "lure": "A recruiter matched your profile to a remote job",
+  "ask": "Apply and book a call on a link that borrows the agency's name",
+  "message": {
+    "from": "messaging-service@post.xero.com",
+    "subject": "Fully Remote Integrated Marketing Manager Position (Your Profile Matched)",
+    "body": "Hi [name],\n\nI've been going through candidate profiles for a few open positions, and your marketing background stood out enough that I wanted to reach out directly rather than send a generic job post.\n\nThis role comes with real influence over campaign budgets, platform mix, and performance strategy — not just execution and reporting.\n\nApply here: https://calendar.adecco-hrjobs.com/invite/REDACTED\n\nThe application includes a quick step to select a time for an intro call, so that's taken care of in the same process.\n\nLet me know if you'd like more details — happy to share.\n\nBest,\nFranz | Adecco\nAdecco Recruiting Team\n\nThis email was sent to [name] via https://go.xero.com",
+    "links": [
+      {
+        "text": "https://calendar.adecco-hrjobs.com/invite/REDACTED",
+        "href": "https://calendar.adecco-hrjobs.com/invite/REDACTED"
+      },
+      {
+        "text": "https://go.xero.com",
+        "href": "https://go.xero.com"
+      }
+    ]
+  },
+  "first_seen": "2026-08-31",
+  "last_seen": "2026-08-31",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Adecco.",
+    "reasons": [
+      "The reply address and the link borrow the name Adecco on other domains.",
+      "Sent through an invoicing service, so it passes the mail checks."
+    ]
+  },
+  "status": "published"
+}

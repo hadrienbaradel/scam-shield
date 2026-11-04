@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-d1",
+  "family": "delivery",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": "USPS",
+  "lure": "Your package is on hold",
+  "ask": "Pay a $1.99 redelivery fee on a link",
+  "message": {
+    "from": "+1 555-0199",
+    "subject": null,
+    "body": "USPS: your package is on hold. Pay a $1.99 redelivery fee today: https://usps-hold.test/pay",
+    "links": [
+      {
+        "text": "https://usps-hold.test/pay",
+        "href": "https://usps-hold.test/pay"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not USPS.",
+    "reasons": [
+      "USPS never asks for a fee by text message.",
+      "The link is not on usps.com."
+    ]
+  },
+  "status": "published"
+}

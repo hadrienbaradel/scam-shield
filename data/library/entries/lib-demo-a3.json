@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-a3",
+  "family": "utility",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Bouygues Telecom",
+  "lure": "Your October Bbox bill is available",
+  "ask": "Sign in to a copied customer area to see the bill",
+  "message": {
+    "from": "facturation@bbox-notifications.test",
+    "subject": "Votre facture Bbox du mois d'octobre",
+    "body": "Madame, votre facture Bbox de 29,99 € est disponible dans votre espace client : [Voir ma facture](https://bbox-notifications.test/espace-client). Bouygues Telecom vous remercie.",
+    "links": [
+      {
+        "text": "Voir ma facture",
+        "href": "https://bbox-notifications.test/espace-client"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Bouygues Telecom.",
+    "reasons": [
+      "The link goes to bbox-notifications.test, a copy of the customer area.",
+      "The sender's address fails every check."
+    ]
+  },
+  "status": "published"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-d8",
+  "family": "bank",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Chase",
+  "lure": "An unusual sign-in to your bank account",
+  "ask": "Verify your identity within 24 hours on a copied sign-in page",
+  "message": {
+    "from": "alerts@chase-account-review.test",
+    "subject": "Unusual sign-in to your Chase account",
+    "body": "Dear Customer, we noticed a sign-in to your Chase account from a new device in Columbus, Ohio. If this was not you, verify your identity within 24 hours to avoid a hold on your card: [chase.com](https://chase-account-review.test/verify). Thank you for banking with Chase.",
+    "links": [
+      {
+        "text": "chase.com",
+        "href": "https://chase-account-review.test/verify"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Chase.",
+    "reasons": [
+      "The link goes to chase-account-review.test, not chase.com.",
+      "The page asks for the card number and the online banking password."
+    ]
+  },
+  "status": "published"
+}

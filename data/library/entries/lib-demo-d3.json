@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-d3",
+  "family": "government",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Social Security",
+  "lure": "Your Social Security benefits are suspended",
+  "ask": "Call a number now and verify your identity",
+  "message": {
+    "from": "alerts@ssa-benefits-update.test",
+    "subject": "Your benefits are suspended - call now",
+    "body": "Your Social Security benefits are suspended effective immediately. Call this number now to restore them and verify your identity.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Social Security.",
+    "reasons": [
+      "Social Security never suspends benefits by email.",
+      "The sender's address is not ssa.gov."
+    ]
+  },
+  "status": "published"
+}

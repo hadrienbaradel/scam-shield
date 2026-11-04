@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b10",
+  "family": "account",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A grandchild sent you a verification code by mistake",
+  "ask": "Send back the six-digit code you just received",
+  "message": {
+    "from": "+1 555-0155",
+    "subject": null,
+    "body": "Hi Grandma, sorry, I sent you my WhatsApp verification code by mistake. Can you send it back to me please? It's the 6-digit code you just received.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "Do not send the code.",
+    "reasons": [
+      "The code opens your WhatsApp account to whoever gets it.",
+      "The number is not your grandchild's."
+    ]
+  },
+  "status": "published"
+}

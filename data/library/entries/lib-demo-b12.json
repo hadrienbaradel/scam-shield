@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b12",
+  "family": "romance",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A loving friend needs a small help",
+  "ask": "Invest $2,000 in crypto together",
+  "message": {
+    "from": "james@example-mail.test",
+    "subject": "A small help, my dear",
+    "body": "My dear, I need a small help. Invest $2,000 in crypto with me and we will build our future together.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: love that asks for money.",
+    "reasons": [
+      "The messages built affection and secrecy before the ask.",
+      "A crypto investment with a friend met online is the romance scam."
+    ]
+  },
+  "status": "published"
+}

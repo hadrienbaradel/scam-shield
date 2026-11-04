@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-a2",
+  "family": "bank",
+  "channel": "email",
+  "country": "FR",
+  "language": "fr",
+  "brand": "Société Générale",
+  "lure": "Unusual activity, your account will be blocked",
+  "ask": "Confirm your bank codes on a copied sign-in page",
+  "message": {
+    "from": "alertes@sg-securite-verification.test",
+    "subject": "Sécurisez votre compte dès maintenant",
+    "body": "Madame, une activité inhabituelle a été détectée. Confirmez vos codes pour sécuriser votre compte : [societegenerale.fr](https://sg-verification.test/login). Sans action de votre part, votre compte sera bloqué.",
+    "links": [
+      {
+        "text": "societegenerale.fr",
+        "href": "https://sg-verification.test/login"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not your bank.",
+    "reasons": [
+      "The link is not on societegenerale.fr.",
+      "A bank never asks for your codes by email."
+    ]
+  },
+  "status": "published"
+}

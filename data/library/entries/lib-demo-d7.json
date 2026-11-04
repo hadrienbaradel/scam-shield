@@ -1,0 +1,38 @@
+{
+  "id": "lib-demo-d7",
+  "family": "renewal",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Amazon",
+  "lure": "Your Prime renewal failed",
+  "ask": "Update the payment information on a link",
+  "message": {
+    "from": "billing@amazon-renewal-pay.test",
+    "subject": "Your Prime renewal of $139 failed",
+    "body": "Your Amazon Prime renewal of $139 failed. Update your payment information now: [amazon.com](https://amazon-renewal-pay.test/pay)",
+    "links": [
+      {
+        "text": "amazon.com",
+        "href": "https://amazon-renewal-pay.test/pay"
+      }
+    ]
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is not Amazon.",
+    "reasons": [
+      "The link goes to amazon-renewal-pay.test, not amazon.com.",
+      "The sender's address fails every check."
+    ]
+  },
+  "status": "published"
+}

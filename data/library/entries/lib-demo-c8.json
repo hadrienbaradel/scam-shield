@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-c8",
+  "family": "bank",
+  "channel": "email",
+  "country": "US",
+  "language": "en",
+  "brand": "Chase",
+  "lure": "A new device connected to your bank account",
+  "ask": "Call the number on the back of your card if it was not you",
+  "message": {
+    "from": "statements@chase.com",
+    "subject": "Security alert: new device connected",
+    "body": "A new device connected to your Chase account. If this was not you, call the number on the back of your card.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: a real alert, so call your bank yourself.",
+    "reasons": [
+      "The message is genuine and asks for nothing on a link.",
+      "Use the number on your card, never a number in a message."
+    ]
+  },
+  "status": "published"
+}

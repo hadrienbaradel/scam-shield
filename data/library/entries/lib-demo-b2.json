@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b2",
+  "family": "new-number",
+  "channel": "sms",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A grandchild changed his number",
+  "ask": "Send $300 today, explanation later",
+  "message": {
+    "from": "+1 555-0161",
+    "subject": null,
+    "body": "Hi Grandma, it's Ethan. I changed my number, this is my new one. Can you send $300 today? I'll explain later.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: this may not be Ethan.",
+    "reasons": [
+      "A new number that asks for money at once is the family scam.",
+      "Call Ethan on his usual number first."
+    ]
+  },
+  "status": "published"
+}

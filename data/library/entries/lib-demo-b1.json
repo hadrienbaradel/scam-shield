@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b1",
+  "family": "family-emergency",
+  "channel": "voice",
+  "country": "FR",
+  "language": "fr",
+  "brand": null,
+  "lure": "A grandchild had an accident and needs money now",
+  "ask": "Send 2,000 euros at once and keep it secret",
+  "message": {
+    "from": "+33 7 55 01 77",
+    "subject": "Message vocal WhatsApp (transcription)",
+    "body": "Mamie, j'ai eu un accident, envoie 2 000 € tout de suite, n'en parle pas à papa. C'est urgent, garde ça secret.",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "scam",
+    "headline": "This is probably not Hadrien.",
+    "reasons": [
+      "The call comes from an unknown number.",
+      "Urgency and secrecy are the marks of a scam; call him back on his usual number."
+    ]
+  },
+  "status": "published"
+}
