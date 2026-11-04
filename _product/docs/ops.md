@@ -4,7 +4,7 @@ Keywords: deploy, server, ovh, meikit, ops, backup, restore, tailscale, magicdns
 
 Production is one machine: Vlad's OVH dedicated server `meikit`, set up and redeployed by `make deploy` from a laptop
 (Ansible, `.infra/prod/ansible/`). It runs the app and Postgres in Docker Compose (`.infra/prod/docker-compose.yml`), plus
-cloudflared for heyprudence.com once the tunnel token is set. Laptops reach it over Tailscale at 100.127.78.127
+cloudflared for heyprudence.com (the tunnel token is set since Nov 4). Laptops reach it over Tailscale at 100.127.78.127
 (`meikit.tail2c017.ts.net` where MagicDNS is on); the host to deploy to is in `.infra/prod/ansible/inventory.ini`
 (gitignored; its public address stays out of the repository). Docker, compose and CI basics: `_product/docs/infra.md`;
 keys: `_product/docs/secrets.md`.
@@ -189,25 +189,27 @@ waits (`/var/run/reboot-required`), not on a demo day. `rp_filter=1`, `tcp_synco
 
 ## The domain
 
-cloudflared runs in the compose file (profile `cloudflared`, no published port) once `make deploy TUNNEL_TOKEN=...` has
-stored the token in the host's `.env`; later deploys keep it, `TUNNEL_TOKEN=off` stops the tunnel. A token that does not
-connect fails the deploy with what to do. The app runs with `BASE_URL=https://heyprudence.com` (sign-in and the Origin
-check are built from it) and `TRUST_PROXY=true`, so the rate limits key on the visitor's address. Once it is live,
-Better Stack's HTTP monitor belongs on https://heyprudence.com/api/health; `prudence-demo` (demo.heyprudence.com to a
-laptop) stays for takes from a laptop.
+heyprudence.com is live since Nov 4 through the Cloudflare tunnel `prudence` (Networking → Tunnels in the heyprudence.com
+Cloudflare account, where Vlad is a member): published application routes `heyprudence.com` and `www.heyprudence.com`,
+both to `http://app:3000` (the two CNAME records point at the tunnel), and the Redirect Rule "Redirect from WWW to root"
+(301, `https://www.*` → `https://${1}`, the query string kept). cloudflared runs in the compose file (profile
+`cloudflared`, no published port) since `make deploy TUNNEL_TOKEN=...` stored the token in the host's `.env`; later
+deploys keep it, `TUNNEL_TOKEN=off` stops the tunnel. The token went from the dashboard's Docker command through the
+clipboard into that one deploy command and lives nowhere else; to rotate it: Tunnels → prudence → Refresh token, then
+`make deploy TUNNEL_TOKEN=...` again. A token that does not connect fails the deploy with what to do. The app runs with
+`BASE_URL=https://heyprudence.com` (sign-in and the Origin check are built from it) and `TRUST_PROXY=true`, so the rate
+limits key on the visitor's address. Live checks after a deploy: `/api/health` names the commit, `/public/` 200, `/admin/`
+403 when signed out, `/dev/signin` and `/dev/outbox` 404, `https://www.heyprudence.com/x?y=1` 301 to the apex. Better
+Stack's HTTP monitor belongs on https://heyprudence.com/api/health; `prudence-demo` (demo.heyprudence.com to a laptop)
+stays for takes from a laptop.
 
 ## For Hadrien
 
 1. Tailscale: install it (tailscale.com/download) and sign in with your own account, which creates your own tailnet with
    you as its owner (you do not join Vlad's). Accept Vlad's share invite from the email (single use, 30 days). `tailscale
    status` must list `meikit` (100.127.78.127; `meikit.tail2c017.ts.net` works too, MagicDNS being on in a new tailnet).
-2. DNS, in the heyprudence.com Cloudflare account: Zero Trust → Networks → Tunnels, create a tunnel named `prudence`
-   (cloudflared, Docker) with public hostnames `heyprudence.com` and `www.heyprudence.com`, both to the service
-   `http://app:3000`. Delete any existing DNS record for the apex and for `www` first (DNS → Records), or Cloudflare
-   refuses the hostname. A new tunnel, not a hostname on `prudence-demo`: one tunnel with two connectors splits visitors
-   between two databases. Add a Redirect Rule (Rules → Redirect Rules) from `www.heyprudence.com/*` to
-   `https://heyprudence.com/${1}`: the app accepts writes from `https://heyprudence.com` only. Send the tunnel token (in
-   the install command, after `--token`) to Vlad privately: never in the repository, never in a chat with an agent.
+2. DNS: done on Nov 4 by Vlad (the tunnel `prudence`, both hostnames, the www redirect; The domain, above). Nothing
+   to do; the `prudence-demo` tunnel is yours to keep or delete.
 3. Google Cloud Console → the OAuth client: add `https://heyprudence.com/auth/google/callback` to the redirect URIs.
 4. `git pull`, then `make server`: the app on the shared database (your `config/master.key` opens the credentials), jobs
    off, migrated first. `make server DB=dev` for your local one, and for anything query-heavy. `make db-prod-shell` for
