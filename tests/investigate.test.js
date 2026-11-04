@@ -433,6 +433,21 @@ test("in French, every check and the answer are in French", async () => {
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
 });
 
+test("with no company known for the person yet, the companies check proves nothing (unknown), as the orders and people checks do", async () => {
+  const empty = { ...LINDA, providers: [], knownSenders: [] };
+  mock.script(ask(["my_providers", { company: "Chase" }], ["my_providers", { company: null }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message: { channel: "sms", from: "+1 555 0101", body: "Chase: confirm this payment" }, personalContext: empty, first: CAREFUL, deps: deps() });
+  assert.deepEqual(out.checks.map((c) => [c.found, c.flag]), [
+    ["Prudence does not know yet which companies write to you", "unknown"],
+    ["Prudence does not know yet which companies write to you", "unknown"],
+  ]);
+  // A proven real address still counts, known companies or not.
+  mock.script(ask(["my_providers", { company: "PayPal" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const real = await investigate({ message: { channel: "email", from: "service@paypal.com", auth: "spf=pass dkim=pass dmarc=pass", body: "PayPal: you sent a payment" },
+    personalContext: empty, first: CAREFUL, deps: deps() });
+  assert.equal(real.checks[0].found, "This message comes from PayPal's real address (paypal.com)");
+});
+
 test("every order the context keeps is matched, not only the last five", async () => {
   const orders = [{ merchant: "Etsy", carrier: "UPS", date: "2026-09-01" },
     ...Array.from({ length: 7 }, (_, i) => ({ merchant: "Amazon", carrier: "Amazon Logistics", date: `2026-10-${String(10 + i).padStart(2, "0")}` }))];
