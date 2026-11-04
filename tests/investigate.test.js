@@ -300,6 +300,13 @@ test("in French, every check and the answer are in French", async () => {
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
 });
 
+test("a model that writes null as a word is read as giving no value (seen live on Nov 4)", async () => {
+  mock.script(ask(["my_orders_and_carriers", { carrier: " USPS ", shop: "null" }], ["my_providers", { company: "None" }]), answer("scam", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  assert.deepEqual(out.checks.map((c) => c.asked), [{ carrier: "USPS", shop: null }, { company: null }]);
+  assert.equal(out.checks[1].found, "The sender is not one of the companies that write to you");
+});
+
 test("when the model fails, the look fails with a code and no check is kept anywhere", async () => {
   mock.script(new Error("fetch failed"));
   await assert.rejects(investigate({ message: D1.message, personalContext: LINDA, first: SCAM, deps: deps() }), (e) => e.code === "model" && e.message === "fetch failed");
