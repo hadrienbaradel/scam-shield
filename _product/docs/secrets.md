@@ -82,7 +82,8 @@ Shared database (`_product/docs/ops.md`): `DATABASE_URL`, the production Postgre
 WhatsApp channel (`_product/specs/whatsapp-channel.md`; the webhook answers 501 until the first two are set): `WHATSAPP_ACCESS_TOKEN`
 (a system-user token, not the 24-hour temporary one), `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`
 (any string, pasted again in Meta's webhook configuration), `WHATSAPP_APP_SECRET` (required: every delivery is signature-checked and
-refused with 403 until it is set; the startup line says so), optional `WHATSAPP_GRAPH_VERSION` (default `v22.0`) and `FFMPEG_PATH`.
+refused with 403 until it is set; the startup line says so), `META_APP_ID` (the Meta app's id, not secret, read by `scripts/whatsapp-check.mjs`
+for the app's webhook subscription), optional `WHATSAPP_GRAPH_VERSION` (default `v22.0`) and `FFMPEG_PATH`.
 
 Messenger channel (`_product/specs/messenger-channel.md`; the webhook answers 501 until the first two are set): `MESSENGER_PAGE_ACCESS_TOKEN`
 (a Page access token of the Prudence Page, generated in the app's Messenger settings), `MESSENGER_PAGE_ID`, `MESSENGER_VERIFY_TOKEN` (any string,
