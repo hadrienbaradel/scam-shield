@@ -12,5 +12,19 @@
     "url": "https://github.com/hadrienbaradel/scam-shield",
     "licence": "CC BY 4.0",
     "attribution": "Submitted to the Prudence scam library (Scam Shield), CC BY 4.0"
+  },
+  {
+    "id": "uci-sms",
+    "name": "UCI SMS Spam Collection",
+    "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC BY 4.0",
+    "attribution": "Almeida, T. and Hidalgo, J. M. G. (2011). SMS Spam Collection. UCI Machine Learning Repository, CC BY 4.0"
+  },
+  {
+    "id": "mishra-soni",
+    "name": "SMS Phishing Dataset for Machine Learning and Pattern Recognition",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
   }
 ]
