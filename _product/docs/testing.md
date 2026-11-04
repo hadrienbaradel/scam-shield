@@ -20,7 +20,7 @@ Tests are `node:test` suites in `tests/*.test.js`, run one file at a time. `test
 
 `make check` fails below 93% line coverage on `lib/` and `src/` (`--test-coverage-lines` in `package.json`; raised from 84 on Oct 30 at 93.98% measured). The rule is a ratchet: when coverage rises, raise the threshold to the new floor in the same commit; never lower it. A change that drops coverage adds tests, it does not touch the number.
 
-The README's numbers are measured, not typed: `make readme-numbers` (`scripts/readme-numbers.mjs`, tested in `tests/readmeNumbers.test.js`) writes them, and `make check`, so CI, fails with "run make readme-numbers" when the README's coverage (table or badge) and the run's `coverage/lcov.info` differ by more than one point. A fresh test database measures what CI does (about 0.15 points more than a migrated one, `src/db/migrate.js`'s apply path).
+The README's numbers are measured, not typed: `make readme-numbers` (`scripts/readme-numbers.mjs`, tested in `tests/readmeNumbers.test.js`) writes them, and `make check`, so CI, fails with "run make readme-numbers" when the README's coverage (table or badge) and the run's `coverage/lcov.info` differ by more than one point. The same code measures a few tenths apart from run to run (Nov 4: 94.64% on CI, 94.77% to 94.86% on a fresh local test database, 94.71% on a migrated one, which skips `src/db/migrate.js`'s apply path); the point of tolerance absorbs that, and a fresh `TEST_DB_SUFFIX` comes closest to CI.
 
 ## Postgres and per-agent databases
 

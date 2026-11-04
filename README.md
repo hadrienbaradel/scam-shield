@@ -35,7 +35,7 @@ Every message, whatever the channel, goes through the same steps (the full flow 
 | Android companion unit tests (JVM, run by CI) | **64** |
 | Commits since the kickoff (Oct 26, 12:24 PM ET), a team of two | **277** in 9 days |
 | CI runs (`ci.yml` on GitHub Actions) | **0 failed** of the last 100 (52 passed, 47 cancelled by a newer push, 1 running) |
-| Median time to a verdict with Muse Spark (prompt v4, Oct 31) | **5.8 s** per email on 500 public emails; 6.0 s on all 18,849 |
+| Median Muse Spark call, one per email (prompt v4, Oct 31; the rules, link checks and queue not included) | **5.8 s** on 500 public emails; 6.0 s on all 18,849 |
 
 As of 2026-11-04, measured by `make readme-numbers` (a row that names its own date comes from that run); `make check` fails when the coverage here and the run's differ by more than one point.
 <!-- numbers:end -->
@@ -44,7 +44,7 @@ As of 2026-11-04, measured by `make readme-numbers` (a row that names its own da
 
 | Run (date) | Rules alone | With Muse Spark |
 |---|---|---|
-| The 37 seed cases, PRD pass criteria (Nov 4; every call paid, none fell back to the rules; [raw output](_product/research/open-weights/run-2026-11-04-api.txt)) | 37/37 | **37/37**, 0 false Scam, median 8.5 s |
+| The 37 seed cases, PRD pass criteria (Nov 4; every call paid, none fell back to the rules; [raw output](_product/research/open-weights/run-2026-11-04-api.txt)) | 37/37 | **37/37**, 0 false Scam; median Muse Spark call 8.5 s |
 | 500 held-back public emails, Zenodo 8339691 (Oct 31): phishing called Scam | 32.0% | **79.2%** |
 | The same 500: genuine emails called Scam | 1 of 250 | **0 of 250** |
 | All 18,849 held-back public emails (Oct 31; Contributor tier, public data only): phishing called Scam | 28.7% | **81.4%** |
