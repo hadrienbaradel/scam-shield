@@ -4,9 +4,9 @@
 import "./helpers/env.js";
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { getProvider, llmConfigured, llmModel, llmLabel, llmThinking, providerName, capabilities, PROVIDER_NAMES } from "../lib/llm/index.js";
+import { getProvider, llmConfigured, llmModel, llmLabel, llmThinking, providerName, capabilities, PROVIDER_NAMES, toolsConfigured } from "../lib/llm/index.js";
 import { createMetaProvider, allowContributorForPublicEval } from "../lib/llm/meta.js";
-import { createOpenAiCompatibleProvider, toOpenAiMessages } from "../lib/llm/openai-compatible.js";
+import { createOpenAiCompatibleProvider, toOpenAiMessages, parseToolCalls } from "../lib/llm/openai-compatible.js";
 import { createAnthropicProvider, API_VERSION } from "../lib/llm/anthropic.js";
 import { createMockProvider } from "../lib/llm/mock.js";
 import { checkMessage, extractFromImage, museChat, breaker } from "../lib/muse.js";
@@ -396,4 +396,110 @@ test("museChat keeps the engine's tuning: 4000 tokens, temperature 0.1, one dead
   mock.script("x");
   await museChat({ messages: [] });
   assert.equal(mock.calls[2].thinking, "high");
+});
+
+// Function calling (Look closer, _product/specs/investigate.md): the wire
+// format live-tested on the Meta Model API on 2026-11-04.
+const TOOL = { name: "website_age", description: "When a website was registered", strict: true,
+  parameters: { type: "object", additionalProperties: false, required: ["domain"], properties: { domain: { type: "string" } } } };
+const toolTurn = (calls, content = "I'll check the age of that link's domain.") => ({
+  choices: [{ message: { role: "assistant", content, tool_calls: calls }, finish_reason: "tool_calls" }],
+  usage: { prompt_tokens: 625, completion_tokens: 161, total_tokens: 786 } });
+
+test("tools: Meta gets function tools with tool_choice auto, and the model's tool calls come back with their arguments parsed", async () => {
+  process.env.META_MODEL_API_KEY = "test-key";
+  const { fetchImpl, calls } = fakeFetch(ok(toolTurn([
+    { id: "call_1", type: "function", function: { name: "website_age", arguments: '{"domain":"usps-redelivery-fee.top"}' } },
+    { id: "call_2", type: "function", function: { name: "scam_patterns", arguments: "" } },
+  ])));
+  const out = await createMetaProvider({ fetchImpl }).complete({ system: "S", messages: [{ role: "user", content: "m" }], maxTokens: 2000, temperature: 0.1,
+    thinking: "low", tools: [TOOL], json: { name: "look_closer", schema: { type: "object" } } });
+  const body = calls[0].body;
+  assert.deepEqual(body.tools, [{ type: "function", function: { name: "website_age", description: "When a website was registered", parameters: TOOL.parameters, strict: true } }]);
+  assert.equal(body.tool_choice, "auto", "the only choice Meta takes");
+  assert.equal(body.response_format.json_schema.name, "look_closer", "tools and the answer's schema travel together");
+  assert.equal(body.reasoning_effort, "low");
+  assert.deepEqual(out.toolCalls, [{ id: "call_1", name: "website_age", arguments: { domain: "usps-redelivery-fee.top" } }, { id: "call_2", name: "scam_patterns", arguments: {} }]);
+  assert.equal(out.text, "I'll check the age of that link's domain.");
+  assert.equal(out.usage.prompt_tokens, 625);
+  const words = await createMetaProvider({ fetchImpl: fakeFetch(ok(chat("done"))).fetchImpl }).complete({ messages: [], tools: [TOOL] });
+  assert.deepEqual(words.toolCalls, [], "an answer in words carries no tool calls");
+  const plainCall = fakeFetch(ok(chat("x")));
+  assert.equal("toolCalls" in (await createMetaProvider({ fetchImpl: plainCall.fetchImpl }).complete({ messages: [] })), false, "no tools asked, the answer keeps its old shape");
+  assert.equal("tools" in plainCall.calls[0].body || "tool_choice" in plainCall.calls[0].body, false, "and the request carries no tools");
+});
+
+test("tools: the model's turn and each tool answer go back in OpenAI's shape", async () => {
+  process.env.META_MODEL_API_KEY = "test-key";
+  const turn = [{ role: "user", content: "m" },
+    { role: "assistant", content: "Checking.", toolCalls: [{ id: "call_1", name: "website_age", arguments: { domain: "a.test" } }] },
+    { role: "tool", toolCallId: "call_1", content: '{"check":1}' }];
+  const { fetchImpl, calls } = fakeFetch(ok(chat("final")));
+  await createMetaProvider({ fetchImpl }).complete({ messages: turn, tools: [TOOL] });
+  assert.deepEqual(calls[0].body.messages, [{ role: "user", content: "m" },
+    { role: "assistant", content: "Checking.", tool_calls: [{ id: "call_1", type: "function", function: { name: "website_age", arguments: '{"domain":"a.test"}' } }] },
+    { role: "tool", tool_call_id: "call_1", content: '{"check":1}' }]);
+  assert.deepEqual(toOpenAiMessages("", [{ role: "assistant", content: "", toolCalls: [{ id: "c", name: "n", arguments: '{"x":1}' }] }, { role: "tool", toolCallId: "c", content: 7 }]),
+    [{ role: "assistant", content: "", tool_calls: [{ id: "c", type: "function", function: { name: "n", arguments: '{"x":1}' } }] }, { role: "tool", tool_call_id: "c", content: "7" }],
+    "arguments already in text stay as they are; a tool answer is always text");
+  assert.deepEqual(toOpenAiMessages("", [{ role: "assistant", content: "hi", toolCalls: [] }]), [{ role: "assistant", content: "hi" }], "no calls, a plain turn");
+});
+
+test("tools: arguments that are not JSON throw one plain error naming the tool", async () => {
+  process.env.META_MODEL_API_KEY = "test-key";
+  const broken = fakeFetch(ok(toolTurn([{ id: "c1", type: "function", function: { name: "website_age", arguments: '{"domain": "a.te' } }])));
+  await assert.rejects(createMetaProvider({ fetchImpl: broken.fetchImpl }).complete({ messages: [], tools: [TOOL] }),
+    /^Error: Muse Spark asked for the tool website_age with arguments that are not JSON$/);
+  assert.throws(() => parseToolCalls([{ id: "c", function: { name: "x", arguments: "[1]" } }]), /arguments that are not an object/);
+  assert.deepEqual(parseToolCalls([{ id: "c", function: { name: "x", arguments: { a: 1 } } }]), [{ id: "c", name: "x", arguments: { a: 1 } }], "an object stays an object");
+  assert.deepEqual(parseToolCalls(undefined), []);
+});
+
+test("tools: every OpenAI-style preset sends them too; a spent budget with tool calls is still an answer", async () => {
+  process.env.OPENAI_API_KEY = "sk";
+  const { fetchImpl, calls } = fakeFetch(ok({ choices: [{ message: { content: null, tool_calls: [{ id: "g1", type: "function", function: { name: "website_age", arguments: '{"domain":"b.test"}' } }] }, finish_reason: "length" }] }));
+  const out = await createOpenAiCompatibleProvider({ preset: "groq", fetchImpl }).complete({ messages: [{ role: "user", content: "x" }], tools: [{ ...TOOL, strict: undefined }], maxTokens: 50 });
+  assert.equal(calls[0].body.tool_choice, "auto");
+  assert.equal("strict" in calls[0].body.tools[0].function, false, "strict only when the tool says so");
+  assert.deepEqual(out.toolCalls, [{ id: "g1", name: "website_age", arguments: { domain: "b.test" } }]);
+  assert.equal(out.text, "");
+  assert.equal(capabilities().groq.tools, true);
+  assert.equal(capabilities().meta.tools, true);
+});
+
+test("tools: Claude refuses them before any request leaves", async () => {
+  process.env.ANTHROPIC_API_KEY = "a";
+  const { fetchImpl, calls } = fakeFetch(ok({ content: [{ type: "text", text: "x" }] }));
+  const claude = createAnthropicProvider({ fetchImpl });
+  await assert.rejects(claude.complete({ messages: [{ role: "user", content: "m" }], tools: [TOOL] }), /^Error: tools are not supported by this provider \(Claude\)$/);
+  await assert.rejects(claude.complete({ messages: [{ role: "tool", toolCallId: "c", content: "{}" }] }), /tools are not supported/);
+  assert.equal(calls.length, 0);
+  assert.equal((await claude.complete({ messages: [{ role: "user", content: "m" }], tools: [] })).text, "x", "an empty list is no tools");
+  assert.equal(capabilities().anthropic.tools, false);
+});
+
+test("tools: the mock scripts tool calls, records the tools offered, and says which providers can use them", async () => {
+  const mock = createMockProvider();
+  mock.script({ toolCalls: [{ name: "website_age", arguments: { domain: "a.test" } }, { id: "mine", name: "scam_patterns" }], content: "Let me check." }, { verdict: "scam" });
+  const first = await mock.complete({ messages: [{ role: "user", content: "m" }], tools: [TOOL] });
+  assert.deepEqual(first.toolCalls, [{ id: "call_mock_1_1", name: "website_age", arguments: { domain: "a.test" } }, { id: "mine", name: "scam_patterns", arguments: {} }]);
+  assert.equal(first.text, "Let me check.");
+  assert.deepEqual(mock.calls[0].tools, [TOOL]);
+  const second = await mock.complete({ messages: [], tools: [TOOL] });
+  assert.deepEqual(second.toolCalls, [], "words, with tools offered");
+  assert.equal(second.text, '{"verdict":"scam"}');
+  mock.script("plain");
+  assert.equal("toolCalls" in (await mock.complete({ messages: [] })), false, "no tools offered, the old shape");
+  assert.equal(toolsConfigured(), false, "Muse Spark without its key: no tools");
+  process.env.META_MODEL_API_KEY = "k";
+  assert.equal(toolsConfigured(), true);
+  process.env.LLM_PROVIDER = "anthropic";
+  process.env.ANTHROPIC_API_KEY = "a";
+  assert.equal(toolsConfigured(), false, "Claude is configured but cannot call tools here");
+  process.env.LLM_PROVIDER = "mock";
+  assert.equal(toolsConfigured(), true);
+  process.env.LLM_PROVIDER = "nope";
+  const warn = console.warn;
+  console.warn = () => {};
+  try { assert.equal(toolsConfigured(), false); } finally { console.warn = warn; }
 });
