@@ -1,0 +1,47 @@
+Keywords: open weights, muse spark open, muse glimmer, baseten, partner inference, bonus prize, verification, score-open, ollama, modal, fireworks
+# Open weights: the seed cases on Muse Spark Open and Muse Glimmer (2026-11-04)
+
+Question: can the same engine run on an eligible Meta open-weight model (the $10K Open Weight bonus), with numbers next to the Muse Spark API's and a one-setting switch? Answer: the switch is built (`LLM_PROVIDER=baseten`, `make score-open`); the numbers are not, because no Baseten key was at hand on the night of Nov 3–4. Facts were checked at the source on 2026-11-04; "(unverified)" marks the rest.
+
+## Findings
+- What qualifies (participant guide, verbatim): "The best project built using Muse Glimmer or Muse Spark Open", "served on participants' own hardware or through partner-provided inference"; "Projects are flagged during the first judging round. The infrastructure partner verifies that the project runs on an eligible Meta open-weight model." Llama Prompt Guard 2, our injection shield, is not one of the two models, so it does not qualify on its own.
+- Which partner: the guide names no "infrastructure partner". It names three credit partners for open weights: Baseten ("$100 in Baseten credits + a 2M TPM rate limit", up to 2,000 participants, "granted per individual", "reviewed based on use case", answer by email; "Find the Baseten team in the Hackathon Discord's Baseten channel"), Modal ($100 to the first 1,000 participants "for running Meta's open-weight models through Endpoints") and Fireworks ($25 for shortlisted teams). Only Baseten gets a hackathon model id: "The docs use meta-models/muse-spark-open. For the hackathon, use meta-models/muse-spark-open-1026 instead." Our reading: Baseten is the verifying partner and the `-1026` id is how it recognises hackathon traffic (unverified; ask in the Baseten channel).
+- What verification needs from us: no field of the submission form names it; the form's "Feedback on partner technologies" answer today says we used no partner inference (`_product/marketing/submission.md`). Most likely: calls to `meta-models/muse-spark-open-1026` from a Baseten account the team can name, flagged when judges shortlist the project (unverified).
+- Baseten serving (docs): OpenAI-compatible Chat Completions, Responses and Messages (beta) at `https://inference.baseten.co/v1`, `Authorization: Bearer` with `BASETEN_API_KEY`. Muse Spark Open costs $1.25 per 1M input tokens, $0.15 cached, $4.25 output (the Meta API's Standard price). It always reasons: `reasoning_effort` takes `low`, `medium`, `high`, `xhigh` (the default; `none` and `minimal` run at `low`). It "accepts `json_schema` but doesn't enforce the schema"; `n` above 1 is a 400; synchronous calls are not stored (zero data retention).
+- Other hosts of Muse Spark Open (Meta's launch partners): Fireworks AI, Groq, Modal, Nebius, Together AI, and OpenRouter as a gateway (`meta/muse-spark-open` at $1.25 / $4.25; `meta/muse-glimmer-30b` at $0.30 / $1.20). Their ids other than OpenRouter's were not checked (unverified); none is a hackathon partner with a model id, so a run there may not be verifiable. Hugging Face hosts the weights (`meta-models/Muse-Spark-Open-816B-A42B`); whether its Inference Providers route this model was not checked (unverified). The hosted Llama API is retired (`meta-ai-stack.md`).
+- Own hardware: Muse Glimmer (30B dense) is in Ollama's library: `muse-glimmer:30b` (Q4_K_M, 18 GB, 128K context), `muse-glimmer:30b-mlx` (19 GB), `muse-glimmer:30b-q8_0` (31 GB). This Mac (Apple M4 Pro, 24 GB unified memory, 37 GB free disk) has no Ollama. 18 GB of weights in 24 GB leaves little room, and the engine gives each check 20 seconds (`museChat` in `lib/muse.js`), likely too short for a 30B model on a laptop reading our ~4,000-token prompt (unverified): a local run needs a longer deadline first. Muse Spark Open needs about 2 TB of VRAM in BF16: partner inference only.
+- Our code: the switch is one setting, `LLM_PROVIDER=baseten` (preset in `lib/llm/openai-compatible.js`): Baseten's address, `meta-models/muse-spark-open-1026`, `BASETEN_API_KEY` alone (an `OPENAI_API_KEY` is never sent to Baseten), effort `low` like the API baseline (Baseten's default `xhigh` would be slower and costlier). The prompt already asks for JSON and the engine parses and validates the answer itself, so an unenforced schema is not a blocker; an answer that fails the schema falls back to the detector, marked degraded.
+- Keys at hand on Nov 4 at 01:20 CET (`make secrets-keys`, names only): `META_MODEL_API_KEY` is the only model key. No `BASETEN_API_KEY`, `GROQ_API_KEY`, `HF_TOKEN`, `OPENAI_API_KEY` or other partner key; the log's To do "Baseten credits: claim them if not done" (Oct 29) is still open, and its Nov 3 Done line says "Baseten credits untouched".
+
+## Comparison (37 seed cases; PRD criteria: set A 100%, no false Scam on set C)
+
+| Model | Served by | Date | Cases passed | Degraded (rules answered) | False Scam (C) | Median latency | Tokens in / out | Cost |
+|---|---|---|---|---|---|---|---|---|
+| Muse Spark 1.3 (`muse-spark-1.3`, effort low) | Meta Model API | 2026-11-04 | 37/37 | 0 | 0 | 8.5 s | 151,968 / 35,519 | at most $0.34 (Meta credits) |
+| Muse Spark Open (`meta-models/muse-spark-open-1026`, effort low) | Baseten | not run yet | | | | | | about $0.35 expected (unverified) |
+| Muse Glimmer 30B (`muse-glimmer:30b`) | own hardware (Ollama) | not run | | | | | | none |
+
+Raw output: [open-weights/run-2026-11-04-api.txt](open-weights/run-2026-11-04-api.txt) (an empty cache, so every call was paid and timed). The open run goes next to it as `open-weights/run-2026-11-04-open.txt`.
+
+How to read a run: `scripts/score.mjs` passes a case on its final verdict, and a degraded case carries the detector's verdict (the rules alone pass 37/37), so a model's number counts only when the `Muse:` line says 0 degraded. Otherwise publish "N/37 judged by the model, M fell back to the rules" with the error lines.
+
+## Steps for Vlad (about 10 minutes once a key exists)
+1. Baseten account at app.baseten.co. Which email is your call: the vladztools@gmail.com rule covers Meta registrations only; the email registered for the hackathon is probably what the partner can match (unverified).
+2. Credits: if the "Request $100 in Baseten credits" form from the participant guide was never sent, ask in the Discord's Baseten channel (credits are per individual, reviewed, answered by email). A 37-case run costs about $0.35 at $1.25 / $4.25 per 1M tokens; adding a card is a decision, not a step.
+3. Key: app.baseten.co, API keys, create one, then `make secrets-set BASETEN_API_KEY=...` in the main checkout. Never paste it into a chat or a file.
+4. Run: `make score-open | tee _product/research/open-weights/run-2026-11-04-open.txt`. Check the `Muse:` line (0 degraded), `Overall:` and `False Scam on legit (C)`. On transport errors (429, 529 overloaded, timeouts) run it again: good answers are cached in `.runtime/eval/`, so only the failures are paid twice.
+5. Publish: fill the Muse Spark Open row above, the README line, `docs/ARCHITECTURE.md`'s measurements and the form's "Feedback on partner technologies". If the model fails the schema, that is the finding: copy the error lines here and do not patch the prompt on deadline day.
+6. Verification: in the Baseten channel, give the account email, the model id `meta-models/muse-spark-open-1026` and the repo link, and ask what the Open Weight bonus needs.
+7. Optional, a stronger "built using": record one take with `LLM_PROVIDER=baseten make server`; the card then reads "Baseten (meta-models/muse-spark-open-1026)".
+
+## What we can say
+- Today: "The same engine switches to Muse Spark Open, Meta's open-weight model, with one setting (`LLM_PROVIDER=baseten`)." No number, and no "runs on open weights", until the run exists.
+- After a run with 0 degraded: "Runs on Muse Spark Open too: N/37 seed cases, 0 false Scam (Baseten, `meta-models/muse-spark-open-1026`)."
+
+## Sources (accessed 2026-11-04)
+- Participant guide copies: https://github.com/Darthfranco/MERLIN/blob/main/docs/sources/participant-guide.txt (Open Weight prize wording, the verification sentences, Baseten, Modal and Fireworks credits, the `-1026` id, the Discord channel) ; https://github.com/meta-ai-hackathon/meta-hack/blob/main/info/event%20guide.md (same credits and id)
+- Meta: https://dev.meta.ai/docs/muse-spark-open (launch partners, 1,048,576-token context, Muse Model License, about 2 TB of VRAM in BF16, the Hugging Face repo)
+- Baseten: https://docs.baseten.co/development/model-apis/overview (address, key, the structured-output exception, Muse Spark Open limits, zero data retention) ; https://docs.baseten.co/inference/model-apis/reasoning (always on, effort values, `xhigh` default) ; https://docs.baseten.co/inference/structured-outputs ("accepts `json_schema` but doesn't enforce the schema") ; https://www.baseten.co/library/muse-spark-open/ (slug `meta-models/muse-spark-open`, $1.25 / $0.15 / $4.25 per 1M tokens)
+- OpenRouter catalogue: https://openrouter.ai/api/v1/models (`meta/muse-spark-open`, `meta/muse-glimmer-30b`, prices, context)
+- Ollama: https://ollama.com/library/muse-glimmer/tags (tags and sizes)
+- Repo: `lib/llm/openai-compatible.js` (the `baseten` preset), `lib/muse.js` (`museChat`: 20 s, 4,000 tokens), `scripts/score.mjs`, the `score-open` target in the `Makefile`, [meta-ai-stack.md](meta-ai-stack.md), [score-meta-tooling.md](score-meta-tooling.md) (candidate 5)
