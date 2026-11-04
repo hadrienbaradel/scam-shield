@@ -1,7 +1,7 @@
 # Prudence
 
 *Ask twice.* (Working title until Oct 28, 2026: Scam Shield. Code, database and repository names still say `scam-shield` until after the hackathon.)
-[![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml) [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/hadrienbaradel/scam-shield?quickstart=1) [![coverage](https://img.shields.io/badge/coverage-94.8%25-brightgreen)](_product/docs/testing.md) [![tests](https://img.shields.io/badge/tests-459%20passing-brightgreen)](tests/) [![seed cases](https://img.shields.io/badge/seed%20cases-37%2F37-brightgreen)](testcases/cases.json) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml) [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/hadrienbaradel/scam-shield?quickstart=1) [![coverage](https://img.shields.io/badge/coverage-94.7%25-brightgreen)](_product/docs/testing.md) [![tests](https://img.shields.io/badge/tests-459%20passing-brightgreen)](tests/) [![seed cases](https://img.shields.io/badge/seed%20cases-37%2F37-brightgreen)](testcases/cases.json) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Features and where each one stands: [_product/spec.md](_product/spec.md). The original PRD and the first status notes stay in [docs/archive/](docs/archive/) for history. What was built during the hackathon, with times: [docs/PROVENANCE.md](docs/PROVENANCE.md).
 
@@ -30,11 +30,11 @@ Every message, whatever the channel, goes through the same steps (the full flow 
 | What | Measured |
 |---|---|
 | Tests (`make check`, the Postgres suites included) | **459 passing**, 0 failing |
-| Line coverage of `lib/` and `src/` | **94.77%**; `make check` and CI fail below 93% |
+| Line coverage of `lib/` and `src/` | **94.72%**; `make check` and CI fail below 93% |
 | Seed cases, PRD pass criteria (`make score`, run by CI) | **37/37**, 0 genuine messages called Scam |
 | Android companion unit tests (JVM, run by CI) | **64** |
-| Commits since the kickoff (Oct 26, 12:24 PM ET), a team of two | **277** in 9 days |
-| CI runs (`ci.yml` on GitHub Actions) | **0 failed** of the last 100 (52 passed, 47 cancelled by a newer push, 1 running) |
+| Commits since the kickoff (Oct 26, 12:24 PM ET), a team of two | **284** in 9 days |
+| CI runs (`ci.yml` on GitHub Actions) | **0 failed** of the last 100 (50 passed, 49 cancelled by a newer push, 1 running) |
 | Median Muse Spark call, one per email (prompt v4, Oct 31; the rules, link checks and queue not included) | **5.8 s** on 500 public emails; 6.0 s on all 18,849 |
 
 As of 2026-11-04, measured by `make readme-numbers` (a row that names its own date comes from that run); `make check` fails when the coverage here and the run's differ by more than one point.
