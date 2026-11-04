@@ -124,6 +124,11 @@ readme-numbers: deps ## Re-measure the numbers atop README.md and its badges: te
 	@$(DOCTOR) testdb --quiet
 	@$(NODE) scripts/readme-numbers.mjs --write
 
+.PHONY: pr-review
+pr-review: deps ## Muse Spark reviews pull request PR=<n> through lib/llm and posts one comment (Prompt Guard 2 reads the diff first when GROQ_API_KEY or HF_TOKEN is set); DRY=1 prints it; needs gh
+	@[ -n "$(PR)" ] || { echo "Name the pull request: make pr-review PR=<number> [DRY=1]"; exit 1; }
+	@$(NODE) --import ./lib/credentials.js scripts/pr-review.mjs --pr $(PR) $(if $(filter 1,$(DRY)),--dry-run,--post)
+
 ##@ Secrets  (config/credentials.enc is committed, encrypted; config/master.key never is)
 
 secrets-init: ## First time: create config/master.key (or paste the team's) and config/credentials.enc

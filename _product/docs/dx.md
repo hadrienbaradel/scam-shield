@@ -16,6 +16,8 @@ make test      # every suite; add TEST_DB_SUFFIX=<your-name> when others may be 
 
 `make release VERSION=vX.Y.Z` tags a green `main` and pushes the tag (it refuses on a malformed version, uncommitted changes, another branch, `main` behind or ahead of `origin/main`, an existing tag, or a latest CI run for HEAD that has not passed, read through `gh`); the Release workflow then publishes the GitHub release with the APK (`_product/docs/git.md`, Releases).
 
+`make pr-review PR=<n>` has Muse Spark review a pull request through `lib/llm` (Llama Prompt Guard 2 reads the diff first when `GROQ_API_KEY` or `HF_TOKEN` is set) and posts it as one comment; `DRY=1` prints it instead. It needs `gh` signed in and the model's key from the credentials; the same script runs on every pull request in GitHub Actions (`_product/docs/git.md`).
+
 Without Google keys the app still signs you in on your own computer: the welcome buttons open `/dev/signin`, a local sign-in as anyone in the database or as a new person (on the shared database these are production's people and a new one is a dev user in production data: `_product/docs/ops.md`), `/admin/` included for an address in `ADMIN_EMAILS` (`_product/specs/developer-sign-in.md`; the real Google client: `docs/GOOGLE_SETUP.md`). Never put `make server` behind a proxy or a port forward unless `NODE_ENV=production`: the local pages trust loopback.
 
 ## Try it without keys
