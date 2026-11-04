@@ -7,7 +7,8 @@ import { $, esc, focusHeading, icon, signOut } from "./ui.js";
 import { TABS, screenFor } from "./protects.js";
 import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
 import { renderGlassesScreen } from "./views/glasses.js";
-import { renderLanding, renderOnboarding, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
+import { renderOnboarding, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
+import { showLanding, hideLanding, landingAnchor } from "../landing/landing.js";
 import { renderCheckScreen } from "./views/check.js";
 import { renderToday, onTodayEvent } from "./views/today.js";
 import { renderSettings as renderSettingsScreen, renderPeopleScreen, renderPhoneScreen, renderKnows, renderDid, renderDelete } from "./views/settings.js";
@@ -87,7 +88,9 @@ function applyPrefs() {
  * Wide pages without the tab bar: #/inbox, #/folder/scam, #/folder/careful
  * ("mail"), #/guardian ("guardian"), #/admin ("admin"), #/demo/all
  * ("demo-all"). The demo keeps its own two tabs: #/demo ("today") and
- * #/demo/learn ("learn"). Signed out: "landing"; first sign-in: "onboarding".
+ * #/demo/learn ("learn"). Signed out: "landing", the landing page in
+ * index.html (#landing, landing/landing.js) instead of #view, for any address
+ * but the demo's; first sign-in: "onboarding".
  * Today, My messages and Blocked need a mailbox; without one the guardian
  * page is drawn instead.
  *
@@ -251,11 +254,14 @@ async function draw() {
   // The screen being drawn, kept on the root: a late answer meant for another
   // screen sees it and is dropped (today.js, learn.js).
   const as = (name) => { root.dataset.view = name; return root; };
+  // Signed out, anywhere but the demo: the landing page, never an app screen.
+  // Otherwise the app, and a signed-in person's landing leaves the page.
+  if (!u && !hash.startsWith("#/demo")) { as("landing"); return showLanding(status); }
+  hideLanding(Boolean(u));
   try {
     if (hash.startsWith("#/demo/all")) return await renderDemo(as("demo-all"), status);
     if (hash.startsWith("#/demo/learn")) return await renderLearn(as("learn"), status, { demo: true });
     if (hash.startsWith("#/demo")) return await renderToday(as("today"), status, { demo: true });
-    if (!u) return renderLanding(as("landing"), status);
     if (status.gmail && !u.onboarded) return await renderOnboarding(as("onboarding"), status, refresh);
     if (hash.startsWith("#/admin") && u.isAdmin) return await renderAdmin(as("admin"));
     const screen = screenFor(hash);
@@ -277,6 +283,8 @@ async function refresh(reroute = true) {
   status = await api("/api/status");
   applyPrefs();
   renderChrome();
+  // The session ended with the page open: no live events for no one.
+  if (!status.user && stream) { stream.close(); stream = null; }
   if (status.user && !stream) {
     stream = events({
       check: () => refreshLists(),
@@ -295,12 +303,16 @@ async function refresh(reroute = true) {
   if (reroute) await route();
 }
 
-// Before the first status has arrived, start() draws the page itself.
-window.addEventListener("hashchange", () => { if (!status) return; renderChrome(); route(); });
+// Before the first status has arrived, start() draws the page itself. A
+// place on the landing (#early-access) is no route: the browser scrolls to it.
+window.addEventListener("hashchange", () => { if (!status || landingAnchor()) return; renderChrome(); route(); });
 
 // Startup must never leave a blank page: say what happened and offer a retry.
 async function start() {
   try { await refresh(); } catch {
+    // The landing reads without the server: a visitor keeps it.
+    if ($("#landing") && !document.documentElement.classList.contains("in-app")) return;
+    $("#view").hidden = false;
     $("#view").innerHTML = `<section class="card narrow"><p class="banner danger">${esc(t("load_failed"))}</p><button id="retryStart" class="btn btn-navy btn-big">${esc(t("retry"))}</button></section>`;
     $("#retryStart").addEventListener("click", start);
   }

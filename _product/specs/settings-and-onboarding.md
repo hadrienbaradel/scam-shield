@@ -45,6 +45,7 @@ Welcome
 | Breach lookup (`breach-exposure.md` lines 1, 2, 7) | Data breaches you were part of · "Not looked up yet" or "Looked up 2 minutes ago: your address is in 3 known breaches" + Look up my email address / Look up again, with the sentence saying what is sent | The breach step offers the same button under the checkboxes; Next skips it (nothing sent). The step stays in What Prudence knows after the redesign (Out of scope). Score: "Look up my email address" (`protection-menu.md` line 2b) |
 | Meta glasses on Check (`check-glasses.md` lines 16 to 18) | Meta glasses · "Not set up" + Set up my glasses; "Ready" + Use my glasses; for everyone, with or without a mailbox | The last step: "Do you have Meta glasses?" Yes or No; Next without a choice saves nothing. Score: Test my glasses, only for someone with a pair |
 | Check something else, micro-learning | None: a check keeps nothing; lesson stars go with Delete my account | None |
+| Look closer (`investigate.md` line 10) | None: it reads, sends, keeps and reaches nothing new (the same registries, context and model as every check, only on a tap) | None |
 | Developer sign-in | Your email: "Test mailbox on this computer", no Stop | The same steps when "Show the welcome steps" is ticked |
 
 ## Design (to agree before any code; Claude Design canvas: https://claude.ai/artifact/JKJAdCEd6pJQxUZDFSUJLY, private until shared)

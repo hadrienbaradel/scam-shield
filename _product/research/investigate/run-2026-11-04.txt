@@ -1,0 +1,77 @@
+# Look closer, live run: Muse Spark (muse-spark-1.3) through the Meta Model API with Prudence's own tools
+# 2026-11-04T11:19:05.602Z, code at 253d747 (branch vlad/investigate), provider Muse Spark, tools available: true
+# URLhaus key set: false; lookups are the real ones (RDAP, URLhaus) except a demo example's own link facts
+# Cases: D1, A4, A8, as /api/demo/investigate runs them: the persona's context, the 7 shipped cards, the first verdict from the demo check (one Muse Spark call), then the look.
+# D1 and A4 link to reserved .test addresses that no registry holds: D1's age comes from the example's own facts (marked "example"), A4's says so;
+# A8 is a real phishing email Hadrien received (redacted), whose link's website adecco-hrjobs.com is real: its age comes from the public registry (RDAP), live.
+# where_link_goes is not offered when the first verdict is Scam (spec line 6), nor blocklist without ABUSECH_AUTH_KEY (a note instead).
+# Re-run after the review fixes (the judged message and its links' facts behind the guardrails, the clean rules, the forced last round). Command:
+#   node --import ./lib/credentials.js live-investigate.mjs <repo> D1 A4 A8   (the script lives outside the repository)
+
+## D1 (en-US, sms), persona linda: "USPS: your package is on hold. Pay a $1.99 redelivery fee today: https://usps-hold.test/pa"
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 5.1 s [model, temperature, max_tokens, reasoning_effort, response_format; 2 messages]
+first verdict: scam by Muse Spark (muse-spark-1.3) in 5.3 s: "Scam: fake USPS text wants your card details."
+look closer (the example's own link facts: https://usps-hold.test/pay):
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 2.6 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 2 messages]
+  model turn 1: 4 tool call(s): website_age({"domain":"usps-hold.test"}), my_orders_and_carriers({"carrier":"USPS","shop":"null"}), my_providers({"company":"USPS"}), scam_patterns({}) in 2.6 s, 2206 tokens in / 385 out (159 reasoning), finish tool_calls
+    words with the calls: "I'll verify this USPS message with several quick checks."
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 4.0 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 7 messages]
+  model turn 2: final answer in 4.0 s, 2763 tokens in / 499 out (324 reasoning), finish stop
+Prudence checked:
+  1. The website usps-hold.test was registered 2 days ago (example)   [website_age {"domain":"usps-hold.test"}; warn; 6 ms]
+  2. No USPS parcel in your orders; your parcels come by Amazon Logistics   [my_orders_and_carriers {"carrier":"USPS","shop":null}; warn; 4 ms]
+  3. USPS is not one of the companies that write to you   [my_providers {"company":"USPS"}; warn; 4 ms]
+  4. Matches the known scam "USPS package on hold, small redelivery fee"   [scam_patterns {}; warn; 2 ms]
+  note (not a check): The list of dangerous websites was not checked (no key here)
+After looking closer: scam (confidence 0.97)
+  headline: Scam text pretending to be USPS to steal your card.
+  what to do: Delete this text and do not click the link or pay anything.
+  reason: The website address in the link was created only 2 days ago, which is a strong sign of a fake site. (check 1)
+  reason: You have no USPS parcel coming; your parcels come by Amazon Logistics, so the hold notice is false. (check 2)
+  reason: This message matches the known scam about a USPS package on hold with a small redelivery fee. (check 4)
+Looked closer by Muse Spark (muse-spark-1.3): 4 checks in 7 s (6714 ms); 2 model calls, 4 tool calls asked, 0 refused
+
+## A4 (fr-FR, sms), persona francoise: "Chronopost : votre colis est en attente. Payez 1,99 € de frais pour le reprogrammer : http"
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 6.8 s [model, temperature, max_tokens, reasoning_effort, response_format; 2 messages]
+first verdict: scam by Muse Spark (muse-spark-1.3) in 7.1 s: "Arnaque : faux SMS Chronopost qui demande 1,99 €."
+look closer (the example's own link facts: none, so the real lookups answer):
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 2.6 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 2 messages]
+  model turn 1: 4 tool call(s): website_age({"domain":"chronopost-suivi.test"}), my_orders_and_carriers({"carrier":"Chronopost","shop":"null"}), my_providers({"company":"Chronopost"}), scam_patterns({}) in 2.6 s, 2155 tokens in / 377 out (146 reasoning), finish tool_calls
+    words with the calls: "Je vérifie ce faux SMS Chronopost de plus près."
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 6.0 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 7 messages]
+  model turn 2: final answer in 6.0 s, 2728 tokens in / 768 out (573 reasoning), finish stop
+Prudence checked:
+  1. chronopost-suivi.test est une adresse d'exemple : aucun registre ne la connaît   [website_age {"domain":"chronopost-suivi.test"}; unknown; 0 ms]
+  2. Vous avez une commande récente de Fnac livrée par Chronopost (2026-10-22)   [my_orders_and_carriers {"carrier":"Chronopost","shop":null}; ok; 0 ms]
+  3. Chronopost ne fait pas partie des entreprises qui vous écrivent   [my_providers {"company":"Chronopost"}; warn; 0 ms]
+  4. Ne correspond à aucune des 7 arnaques connues que Prudence suit   [scam_patterns {}; ok; 0 ms]
+  note (not a check): La liste des sites dangereux n'a pas été consultée (pas de clé ici)
+After looking closer: scam (confidence 0.95)
+  headline: Faux message Chronopost qui veut vous faire payer.
+  what to do: Supprimez ce message sans cliquer sur le lien ni payer.
+  reason: Chronopost ne vous écrit pas d'habitude et l'adresse d'envoi n'est pas la vraie, donc ce n'est pas Chronopost. (check 3)
+  reason: L'adresse du lien est inconnue du registre public, ce n'est pas le vrai site de Chronopost. (check 1)
+  reason: Vous attendez bien un colis par Chronopost, et les arnaqueurs s'en servent pour vous tromper. (check 2)
+Looked closer by Muse Spark (muse-spark-1.3): 4 checks in 9 s (8650 ms); 2 model calls, 4 tool calls asked, 0 refused
+
+## A8 (en-US, email), persona linda: "Fully Remote Integrated Marketing Manager Position (Your Profile Matched)"
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 6.3 s [model, temperature, max_tokens, reasoning_effort, response_format; 2 messages]
+first verdict: scam by Muse Spark (muse-spark-1.3) in 6.4 s: "Scam: fake Adecco job offer to steal your information."
+look closer (the example's own link facts: none, so the real lookups answer):
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 2.0 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 2 messages]
+  model turn 1: 3 tool call(s): website_age({"domain":"calendar.adecco-hrjobs.com"}), my_providers({"company":"Adecco"}), scam_patterns({}) in 2.0 s, 2414 tokens in / 275 out (109 reasoning), finish tool_calls
+    words with the calls: "I'll take a closer look at this job offer and verify the warning signs."
+    HTTP POST api.meta.ai/v1/chat/completions -> 200 in 4.2 s [model, temperature, max_tokens, reasoning_effort, response_format, tools, tool_choice; 6 messages]
+  model turn 2: final answer in 4.2 s, 2836 tokens in / 523 out (337 reasoning), finish stop
+Prudence checked:
+  1. The website adecco-hrjobs.com was registered 2 months ago (public registry)   [website_age {"domain":"calendar.adecco-hrjobs.com"}; unknown; 213 ms]
+  2. Adecco is not one of the companies that write to you   [my_providers {"company":"Adecco"}; warn; 3 ms]
+  3. Matches the known scam "Fake recruiter 'your profile matched' sent through an invoicing platform"   [scam_patterns {}; warn; 2 ms]
+  note (not a check): The list of dangerous websites was not checked (no key here)
+After looking closer: scam (confidence 0.97)
+  headline: Fake Adecco job offer sent to steal your information.
+  what to do: Delete this email and do not click the apply link or reply.
+  reason: Adecco does not write to you and this did not come from Adecco's real website address, so it is pretending to be Adecco. (check 2)
+  reason: The apply website address was created only 2 months ago according to the public registry, which is a sign of a fake job site. (check 1)
+  reason: This matches a known scam where fake recruiters say your profile matched and send mail through an invoicing service. (check 3)
+Looked closer by Muse Spark (muse-spark-1.3): 3 checks in 6 s (6392 ms); 2 model calls, 3 tool calls asked, 0 refused

@@ -36,6 +36,8 @@ const { text, usage, model, provider, raw } = await complete({
 ```
 `complete` throws on any failure (HTTP error, refusal, a thinking budget spent with no answer); the engine catches, counts it on the circuit breaker and falls back to the detector. `usage` is the provider's own object (`prompt_tokens`/`completion_tokens` or `input_tokens`/`output_tokens`; `scripts/muse-file-cache.mjs` reads both).
 
+Function tools (Look closer, `lib/investigate.js`, `_product/specs/investigate.md`): `complete({ ..., tools: [{ name, description, parameters, strict }] })` sends them as OpenAI function tools with `tool_choice: "auto"` (the only value Meta takes); the answer then carries `toolCalls: [{ id, name, arguments }]`, the arguments parsed (a call whose arguments are not a JSON object comes back with `arguments: {}` and `invalid` saying why, so the caller refuses that call alone), `[]` when the model answered in words; without `tools` the answer keeps its old shape. A 200 that is not a chat completion (an HTML page, an empty body, no choices) throws one plain error. Tool parameters should stay inside OpenAI's strict subset (no `maxLength`, every property required), as `lib/investigate.js` keeps them; a last turn may send no `tools` after tool calls (Meta answers it: probed on 2026-11-04). The next turn echoes the model's turn back as `{ role: "assistant", content, toolCalls }` and answers each call with `{ role: "tool", toolCallId, content }` (`toOpenAiMessages` maps both). `tools` and `json` may travel together: the model either calls tools or answers the schema. `toolsConfigured()` says whether the active provider has its key and can use tools. Live-tested on the Meta Model API on 2026-11-04: `muse-spark-1.3` with `strict: true` tools, `reasoning_effort: low`, 2,000 tokens, answered `finish_reason: "tool_calls"` with parallel calls in 2.2 s, then its final sentence after the tool answers in 3.0 s.
+
 ## Capability matrix and degradation
 
 | | meta (Muse Spark) | openai-style (openai, groq, together, ollama, llama-api, baseten, openai-compatible) | anthropic | mock |
@@ -45,6 +47,7 @@ const { text, usage, model, provider, raw } = await complete({
 | temperature | 0.1 | 0.1; dropped on a 400 (reasoning models); `max_tokens` becomes `max_completion_tokens` on request | never sent (the API rejects sampling parameters) | recorded |
 | images | yes | depends on the model | yes | yes |
 | transcribe | Muse Voice Transcribe: multipart `POST /asr/transcribe`, `muse-voice-transcribe-1.0`, `audioEncoding: "WAV"`, `PUSH_TO_TALK`, plain-text answer | multipart `POST /audio/transcriptions`: `file`, `model` (`LLM_TRANSCRIBE_MODEL`, default `whisper-1`), `language`; JSON `text` answer; the endpoint must serve it | no: throws "not supported" | scripted (`mock.scriptTranscript`), recorded |
+| tools | function tools, `tool_choice: "auto"`, parallel calls; live-tested | the same wire format; not tried live | no: throws "tools are not supported by this provider (Claude)" before any request | scripted (`{ toolCalls }`), recorded |
 
 Without native JSON the prompts still say "return only JSON", the engine parses the first `{...}` in the text and validates it against the full verdict schema (`lib/schema.js`); anything invalid falls back to the detector.
 
@@ -64,7 +67,7 @@ Without native JSON the prompts still say "return only JSON", the engine parses 
 
 ## The mock provider in tests
 
-`LLM_PROVIDER=mock` routes the engine to one shared instance, `getProvider("mock")`: `mock.script(answer, ...)` queues answers (an object is sent as JSON text, a string as is, a function receives `(request, callNumber)`, an `Error` is thrown), `mock.respondWith(fn)` answers what the script does not cover, `mock.calls[i]` holds every request (`system`, `messages`, `json`, `maxTokens`, `temperature`, `thinking`, `signal`), and `mock.reset()` clears all of it (do it in `afterEach`). `createMockProvider()` gives a private instance for unit tests. Adapter tests inject `fetchImpl` into `createMetaProvider` and friends and never touch the network.
+`LLM_PROVIDER=mock` routes the engine to one shared instance, `getProvider("mock")`: `mock.script(answer, ...)` queues answers (an object is sent as JSON text, a string as is, a function receives `(request, callNumber)`, an `Error` is thrown), `mock.respondWith(fn)` answers what the script does not cover, `mock.calls[i]` holds every request (`system`, `messages`, `json`, `maxTokens`, `temperature`, `thinking`, `signal`, `tools`), and `mock.reset()` clears all of it (do it in `afterEach`). An object with a `toolCalls` array is the model asking for tools: `mock.script({ toolCalls: [{ name: "website_age", arguments: { domain: "x.test" } }], content: "Let me check." })` answers `toolCalls` (ids made up when absent) with `content` as the text; a request that offered tools always gets `toolCalls` (`[]` for an answer in words). `createMockProvider()` gives a private instance for unit tests. Adapter tests inject `fetchImpl` into `createMetaProvider` and friends and never touch the network.
 
 ## Prompt Guard (injection shield)
 

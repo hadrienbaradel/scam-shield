@@ -98,19 +98,28 @@ export default async function demoRoutes(app) {
   });
 
   app.post("/api/demo/check", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request, reply) => {
-    const { id } = request.body || {};
-    const e = DEMO_INBOX.find((x) => x.id === id);
+    const e = demoExample(request.body?.id);
     if (!e) return reply.code(404).send({ error: "unknown example" });
-    // Same example, same answer: judges and the video see stable verdicts,
-    // and a repeat view costs no model call. Failures are not kept.
-    const hit = demoVerdicts.get(e.id);
-    if (hit) return hit;
-    const verdict = await checkMessage({
-      locale: e.locale, message: e, personalContext: PROFILES[e.profile], patternCards: CARDS,
-      threadHistory: e.threadHistory, mockLinkInspection: e.mockLinkInspection, linkInspection: e.mockLinkInspection,
-    });
-    const out = { ...verdict, callBack: callBackFor(PROFILES[e.profile], e) };
-    if (!verdict.degraded) demoVerdicts.set(e.id, out);
-    return out;
+    return demoVerdict(e);
   });
+}
+
+// One example, its persona, the shipped cards: also read by Look closer
+// (src/routes/investigate.js) for the demo cards.
+export const demoExample = (id) => DEMO_INBOX.find((x) => x.id === id) || null;
+export const demoProfile = (e) => PROFILES[e.profile];
+export const DEMO_CARDS = CARDS;
+
+// Same example, same answer: judges and the video see stable verdicts, and a
+// repeat view costs no model call. Failures are not kept.
+export async function demoVerdict(e) {
+  const hit = demoVerdicts.get(e.id);
+  if (hit) return hit;
+  const verdict = await checkMessage({
+    locale: e.locale, message: e, personalContext: PROFILES[e.profile], patternCards: CARDS,
+    threadHistory: e.threadHistory, mockLinkInspection: e.mockLinkInspection, linkInspection: e.mockLinkInspection,
+  });
+  const out = { ...verdict, callBack: callBackFor(PROFILES[e.profile], e) };
+  if (!verdict.degraded) demoVerdicts.set(e.id, out);
+  return out;
 }

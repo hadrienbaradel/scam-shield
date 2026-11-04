@@ -28,6 +28,7 @@ The README's numbers are measured, not typed: `make readme-numbers` (`scripts/re
 - The database is `TEST_DATABASE_URL` (default `postgres://localhost/scam_shield_test`). Each run truncates it, so two runs on the same database collide. Never the shared production database: `tests/helpers/env.js` replaces any `DATABASE_URL` from the environment, and the credentials (whose `DATABASE_URL` is that database) never load under `node --test`; `tests/shared-database.test.js` proves both and wants every suite that imports `src/` to load `tests/helpers/env.js` first (or `tests/helpers/db.js`, which does).
 - Several agents or terminals at once: `make test TEST_DB_SUFFIX=<your-name>` (same for `make check` and `make coverage`) runs against `scam_shield_test_<your-name>`, created on first use by the helper (`src/db/testDatabase.js`); `make db-test-clean` drops every suffixed copy and never the base database.
 - `tests/lessons.test.js` also uses Postgres for the lesson-progress routes and account deletion (skipped with a reason without it); the lesson files, the rules and `GET /api/lessons` are tested without a database.
+- `tests/investigate.test.js` (Look closer) uses Postgres for its signed-in route only (skipped with a reason without it); the engine, its tools (all injected) and the demo route run without one.
 
 ## Writing tests
 

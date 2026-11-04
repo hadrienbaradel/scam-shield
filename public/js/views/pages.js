@@ -1,38 +1,16 @@
-// The other screens: welcome, first-time setup, guardian answers,
-// scam-report review, and the public examples. Check something lives in
-// check.js, Settings and the people and phone screens in settings.js
-// (2026-11-04 redesign).
+// The other screens: first-time setup, guardian answers, scam-report
+// review, and the public examples. Check something lives in check.js,
+// Settings and the people and phone screens in settings.js (2026-11-04
+// redesign). The signed-out welcome is the landing page in index.html
+// (landing/landing.js), since Nov 4.
 
 import { api } from "../api.js";
 import { t, ago, getLang, leakWords } from "../i18n.js";
 import { $, $$, esc, verdictCard, readAloud, toast, pill, busy } from "../ui.js";
 
-const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
-
 // Without Google keys, the developer's own computer still signs in: the
 // buttons open the local sign-in page (_product/specs/developer-sign-in.md).
 const localSignin = async (status) => !status.googleConfigured && Boolean((await api("/auth/config").catch(() => null))?.devSignin);
-
-export async function renderLanding(root, status) {
-  const params = new URLSearchParams(location.search);
-  const note = params.get("signin") ? t(SIGNIN_MESSAGES[params.get("signin")] || "signin_error") : params.get("invite") ? t("invite_expired") : "";
-  const local = await localSignin(status);
-  if (root.dataset.view !== "landing") return; // another screen was drawn meanwhile
-  const off = !status.googleConfigured && !local;
-  root.innerHTML = `
-    <section class="hero">
-      ${note ? `<p class="banner caution">${esc(note)}</p>` : ""}
-      <h1>${t("landing_title")}</h1>
-      <p class="lead">${t("landing_lead")}</p>
-      ${off ? `<p class="banner caution">${t("not_configured")}</p>` : local ? `<p class="banner caution">${t("local_signin_note")}</p>` : ""}
-      <div class="hero-actions">
-        <a class="btn btn-gold btn-big${off ? " disabled" : ""}" href="${off ? "#/" : "/auth/google?mode=gmail"}">${t("protect_me")}<span class="btn-sub">${t("protect_me_sub")}</span></a>
-        <a class="btn btn-light-dark btn-big${off ? " disabled" : ""}" href="${off ? "#/" : "/auth/google?mode=basic"}">${t("im_guardian")}</a>
-        <a class="btn btn-navy btn-big" href="#/demo">${t("try_demo")}</a>
-      </div>
-      <ul class="promises"><li>${t("promise_1")}</li><li>${t("promise_2")}</li><li>${t("promise_3")}</li></ul>
-    </section>`;
-}
 
 export async function renderOnboarding(root, status, refresh) {
   const { breachOptions } = await api("/api/context");
