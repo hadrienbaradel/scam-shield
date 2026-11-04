@@ -86,6 +86,21 @@ test("words the fact sheet itself quotes are not a person's quote (the trusted p
   assert.equal(mock.calls.length, 1, "no rewrite asked");
 });
 
+test("the fact sheet's words given to a relative are still a testimonial (a lower-case speaker, a possessive, \"'s answer\"); the fact sheet's own framing passes", () => {
+  for (const said of [
+    "\"I'll call you,\" my grandson Tom says.", "\"I'll call you,\" her son told her.", "My son's answer: \"I'll call you\"",
+    "\"Real or I'll call you\" — my daughter, every time.", "\"I'll call you,\" my grandson says.", "\"Scam, Real or I'll call you,\" the grandson answers.",
+    "\"We add them by hand,\" my neighbor at Prudence promised.",
+  ]) assert.ok(attributedQuotes(said).length, `refused: ${said}`);
+  assert.equal(validateWords(idea({ primary_text: "\"I'll call you,\" my grandson Tom says. Prudence checks each email against her life." })).ok, false);
+  for (const said of [
+    "The trusted person answers \"Scam, Real or I'll call you\" on her screen.", "Your trusted person answers: \"Scam, Real or I'll call you.\"",
+    "\"Scam, Real or I'll call you,\" the trusted person answers.", "\"Scam, Real or I'll call you,\" you answer, and she sees it.",
+    "Mom asks, and you answer \"Scam, Real or I'll call you.\"", "The answer: \"Scam, Real or I'll call you\".", "The trusted person's answer: \"Scam, Real or I'll call you\".",
+    "Prudence tells her in plain words. You answer \"Scam, Real or I'll call you.\"", "“I’ll call you”",
+  ]) assert.deepEqual(attributedQuotes(said), [], `passes: ${said}`);
+});
+
 test("the words and the photo brief name the same parent: \"Dad's email\" over a mother is refused and rewritten, \"your parent\" passes", async () => {
   const dad = "A second pair of eyes for Dad's email";
   assert.deepEqual(validateWords(idea({ headline: dad, primary_text: PARENT_TEXT })).problems, ["the words name Dad but the photo brief shows a mother: the photo must show the parent the words name"]);
