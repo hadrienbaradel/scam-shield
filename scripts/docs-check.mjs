@@ -6,7 +6,7 @@
 //   node scripts/docs-check.mjs --warn-only     everything becomes a warning, exit 0
 //   node scripts/docs-check.mjs --json          findings as JSON
 //   node scripts/docs-check.mjs --root <dir>    another checkout (the tests use this)
-//   node scripts/docs-check.mjs --no-git        skip the git calls (checks 6 and 8)
+//   node scripts/docs-check.mjs --no-git        skip the git calls (checks 6, 8 and 9)
 //
 // Output: "docs-check: N errors, M warnings", then one line per finding,
 // "<file>[:<line>]: <severity>: <problem>", sorted by file.
@@ -31,13 +31,18 @@
 //                   <!-- docs-check: ignore <name> --> in the doc opts a file or a folder out.
 //                   Warning when Last updated is older than the newest commit touching lib/ or src/
 //                   (git optional, as in 6)
+//   9 markers       no git-tracked text file has a line starting with "<<<<<<< " or ">>>>>>> ", the
+//                   merge-conflict markers a careless rebase commits ("=======" alone is a Markdown
+//                   underline, so it is not flagged); binary files and node_modules are skipped
+//                   (needs git: no git, no check)
 //
-// Plain Node (fs, path, two optional git calls), under a second. It reads only
-// markdown files, plus the names (never the contents) of the files under lib/
-// and src/: never .env, never config/master.key.
+// Plain Node (fs, path, three optional git calls), under a second. Checks 1-8
+// read only markdown files, plus the names (never the contents) of the files
+// under lib/ and src/; check 9 reads the files git tracks, which never include
+// .env or config/master.key (.gitignore; make check fails if master.key is tracked).
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -74,6 +79,12 @@ export const CODE_DIRS = ["lib", "src"];
 export const ARCH_UNIT_DIRS = ["lib", "src", "src/routes", "src/jobs", "src/db", "src/channels"];
 const SKIPPED_DIRS = ["node_modules", "migrations", "fixtures", "__tests__", "__mocks__"];
 const TEST_HELPER = /^test[A-Z0-9_.-]|\.(test|spec)\.[cm]?[jt]sx?$/;
+
+// Check 9: the outer markers of a merge conflict at the start of a line. The
+// middle one, "=======", is also a Markdown heading underline, so it is left out.
+export const CONFLICT_MARKER = /^(?:<{7}|>{7})(?: |$)/;
+// As git does: a NUL byte in the first 8000 bytes makes a file binary.
+const BINARY_PROBE = 8000;
 
 // ---------------------------------------------------------------- markdown
 
@@ -200,12 +211,26 @@ export function walkMd(root, dir) {
 // Date (YYYY-MM-DD) of the newest commit touching any of `paths`, or null when
 // git is missing, the folder is not a repository, or nothing is committed there.
 export function newestCommit(root, paths) {
+  const out = gitOutput(root, ["log", "-1", "--format=%cs", "--", ...paths])?.trim();
+  return out && /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
+}
+
+// Paths git tracks under root, sorted and unique (a conflicted file is listed
+// once per stage), or null when git is missing or root is not a repository.
+export function trackedFiles(root) {
+  const out = gitOutput(root, ["ls-files", "-z"]);
+  return out === null ? null : [...new Set(out.split("\0").filter(Boolean))].sort();
+}
+
+// Runs git in root without the caller's GIT_DIR, GIT_WORK_TREE or
+// GIT_INDEX_FILE (a hook or a test runner may set them); stdout, or null on
+// any failure.
+function gitOutput(root, args) {
   const env = { ...process.env };
   for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) delete env[key];
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%cs", "--", ...paths],
-      { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000 }).trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
+    return execFileSync("git", args,
+      { cwd: root, env, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000, maxBuffer: 16 * 1024 * 1024 });
   } catch {
     return null;
   }
@@ -425,6 +450,25 @@ function checkArchitecture(root, r, git) {
   }
 }
 
+// Check 9.
+function checkConflictMarkers(root, r, git) {
+  for (const file of (git && trackedFiles(root)) || []) {
+    if (file.split("/").includes("node_modules")) continue;
+    const abs = join(root, file);
+    let buf;
+    try {
+      if (!lstatSync(abs).isFile()) continue; // a symlink, a submodule, or deleted since the last add
+      buf = readFileSync(abs);
+    } catch { continue; }
+    if (buf.subarray(0, BINARY_PROBE).includes(0)) continue;
+    buf.toString("utf8").split(/\r?\n/).forEach((line, i) => {
+      if (CONFLICT_MARKER.test(line)) {
+        r.error("markers", file, i + 1, `merge-conflict marker ${line.slice(0, 7)} left by a merge or rebase: resolve the conflict, then delete the marker lines`);
+      }
+    });
+  }
+}
+
 const byFile = (a, b) => a.file.localeCompare(b.file) || (a.line ?? 0) - (b.line ?? 0)
   || a.severity.localeCompare(b.severity) || a.message.localeCompare(b.message);
 
@@ -442,6 +486,7 @@ export function runDocsCheck(root, { git = true } = {}) {
   checkLinks(root, r);
   checkStale(root, r);
   checkArchitecture(root, r, git);
+  checkConflictMarkers(root, r, git);
   const findings = r.findings.sort(byFile);
   return {
     root,

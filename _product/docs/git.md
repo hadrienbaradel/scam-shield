@@ -29,6 +29,7 @@ Area is the part of the product or repo (Engine, Sync, Guardians, Android, Spec,
 - Secrets: `.env`, `.env.*`, `.tokens.json`, `*.keystore`, `config/master.key`, downloaded Google client JSON, a key pasted in any file. Keys go into the encrypted `config/credentials.enc` through `make secrets-set KEY=value` (`_product/docs/secrets.md`).
 - Real people's data: `.runtime/`, eval corpora, screenshots of a real inbox.
 - `node_modules/`, build output, `.context/`.
+- Merge-conflict markers: a line starting with `<<<<<<<` or `>>>>>>>` is a conflict nobody resolved (`_product/log.md` carried some from Nov 3 to Nov 4). Resolve it before staging; `node scripts/docs-check.mjs`, so `make check` and CI, fails on one in any tracked file.
 - A secret that lands in a commit is rotated; a rewritten history does not un-leak it.
 
 ## Hackathon

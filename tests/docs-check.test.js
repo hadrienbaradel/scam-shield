@@ -1,8 +1,8 @@
 // scripts/docs-check.mjs: the product docs in _product/ stay consistent with
 // each other and with the repo (spec links, statuses, Keywords lines, index
-// files, CLAUDE.md links, Last updated, stale advice, the architecture doc).
-// Fixtures live in temp directories; no network; git is used only by the two
-// tests that need it.
+// files, CLAUDE.md links, Last updated, stale advice, the architecture doc,
+// committed conflict markers). Fixtures live in temp directories; no network;
+// git is used only by the tests that need it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
@@ -10,8 +10,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  backtickedPathsIn, codeFiles, formatReport, ignoredNames, isLocalLink, lastUpdated, linksIn, mentionsName, parseTables,
-  runDocsCheck, STATUSES,
+  backtickedPathsIn, codeFiles, CONFLICT_MARKER, formatReport, ignoredNames, isLocalLink, lastUpdated, linksIn, mentionsName,
+  parseTables, runDocsCheck, STATUSES, trackedFiles,
 } from "../scripts/docs-check.mjs";
 
 const script = new URL("../scripts/docs-check.mjs", import.meta.url).pathname;
@@ -363,6 +363,48 @@ test("8: a Last updated older than the newest commit touching lib/ or src/ is a 
   writeFileSync(join(root, "docs/ARCHITECTURE.md"), ARCH);
   gitAt(root, "2026-10-29T12:00:00Z")("commit", "-q", "-am", "docs only");
   assert.deepEqual(messages(runDocsCheck(root, { git: true })), []);
+});
+
+// ---------------------------------------------------------------- 9 conflict markers
+
+// Built here, so that no line of this file starts with a marker itself.
+const OURS = "<".repeat(7);
+const THEIRS = ">".repeat(7);
+const markerError = (marker) => `merge-conflict marker ${marker} left by a merge or rebase: resolve the conflict, then delete the marker lines`;
+
+test("9: an outer conflict marker at the start of a line matches; the ======= underline and look-alikes do not", () => {
+  for (const line of [`${OURS} HEAD`, `${THEIRS} 3f2a1b0 (Log: claim the CI task)`, OURS, THEIRS]) assert.ok(CONFLICT_MARKER.test(line), line);
+  for (const line of ["=======", `${OURS}< HEAD`, ` ${OURS} HEAD`, `${THEIRS}x`, `quoted: ${THEIRS} HEAD`]) assert.ok(!CONFLICT_MARKER.test(line), line);
+});
+
+test("9: a tracked text file with conflict markers is an error per marker line; binary, node_modules and untracked files are not", { skip: !hasGit && "git not installed" }, () => {
+  const conflicted = [
+    "# Team log", "", "## In progress", "", "| Who | Since |", "|---|---|",
+    `${OURS} HEAD`, "| Vlad · hygiene | 2026-11-04 |", "=======", "| Vlad · ci | 2026-11-04 |", `${THEIRS} 3f2a1b0 (Log: claim the CI task)`, "",
+  ].join("\n");
+  const root = layout({
+    ...GOOD,
+    "_product/log.md": conflicted,
+    "_product/docs/git.md": "Keywords: commit, branch\n\nGit rules\n=======\n\nAn underline, not a marker.\n",
+    "node_modules/pkg/README.md": conflicted,
+  });
+  writeFileSync(join(root, "data.bin"), Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(`\n${OURS} HEAD\n`)]));
+  const git = gitAt(root, "2026-10-27T12:00:00Z");
+  git("init", "-q");
+  git("add", "-A");
+  git("add", "-f", "node_modules/pkg/README.md", "data.bin"); // tracked even under a global ignore
+  git("commit", "-q", "-m", "a rebase gone wrong");
+  writeFileSync(join(root, "notes.md"), conflicted); // untracked: never read
+  const result = runDocsCheck(root, { git: true });
+  assert.deepEqual(messages(result), [
+    `_product/log.md:7: error: ${markerError(OURS)}`,
+    `_product/log.md:11: error: ${markerError(THEIRS)}`,
+  ]);
+  assert.ok(result.findings.every((f) => f.check === "markers"));
+  assert.ok(trackedFiles(root).includes("node_modules/pkg/README.md") && !trackedFiles(root).includes("notes.md"));
+  // No git, no check: --no-git, or a folder that is not a repository.
+  assert.deepEqual(messages(runDocsCheck(root, { git: false })), []);
+  assert.equal(trackedFiles(layout(GOOD)), null);
 });
 
 // ---------------------------------------------------------------- cli
