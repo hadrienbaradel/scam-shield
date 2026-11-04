@@ -37,15 +37,16 @@ export function investigateDeps(extra = {}) {
 // (lib/detector.js), each cut to the size the check routes allow; links in
 // the words are found again, so a pasted link is never lost.
 const clip = (v, n) => String(v ?? "").slice(0, n);
-const text = (v, n) => (typeof v === "string" && v ? { value: v.slice(0, n) } : null);
 export function messageFrom(input) {
   const m = input && typeof input === "object" ? input : {};
+  // One rule for every optional text: kept only when it holds more than spaces, then cut to size.
+  const named = (k, n) => (typeof m[k] === "string" && m[k].trim() ? { [k]: m[k].slice(0, n) } : {});
   const body = clip(m.body, 6000);
-  const fullText = text(m.fullText, 6000);
+  const { fullText } = named("fullText", 6000);
   // At most 40 links, read from at most 200 sent ones, de-duplicated in one pass.
   const links = [];
   const hrefs = new Set();
-  for (const l of [...(Array.isArray(m.links) ? m.links.slice(0, 200) : []), ...linksFromText(fullText ? fullText.value : body)]) {
+  for (const l of [...(Array.isArray(m.links) ? m.links.slice(0, 200) : []), ...linksFromText(fullText || body)]) {
     if (links.length >= 40) break;
     const href = clip(l?.href, 2000);
     if (!/^https?:\/\//i.test(href) || hrefs.has(href)) continue;
@@ -56,7 +57,6 @@ export function messageFrom(input) {
     .map((a) => ({ filename: clip(a?.filename, 200), mimeType: clip(a?.mimeType, 100), ...(Number.isFinite(a?.size) ? { size: a.size } : {}) }));
   const threads = m.inbox && Array.isArray(m.threads) ? m.threads.slice(0, 30)
     .map((t) => ({ name: clip(t?.name, 80), preview: clip(t?.preview, 300), date: clip(t?.date, 40), section: clip(t?.section, 20) })) : null;
-  const named = (k, n) => (typeof m[k] === "string" && m[k].trim() ? { [k]: m[k].slice(0, n) } : {});
   return {
     channel: /^[a-z_]{2,20}$/.test(String(m.channel || "")) ? m.channel : "email",
     from: clip(m.from, 200), fromName: clip(m.fromName, 200), replyTo: clip(m.replyTo, 200),
@@ -64,8 +64,7 @@ export function messageFrom(input) {
     auth: typeof m.auth === "string" ? clip(m.auth, 1000) : "",
     attachments,
     ...(m.date ? { date: clip(m.date, 40) } : {}),
-    ...(fullText ? { fullText: fullText.value } : {}),
-    ...named("hiddenText", 6000), ...named("claimedBrand", 100), ...named("claimedContact", 100),
+    ...named("fullText", 6000), ...named("hiddenText", 6000), ...named("claimedBrand", 100), ...named("claimedContact", 100),
     ...(threads ? { inbox: true, threads } : {}),
     ...(["bank", "company", "known"].includes(m.claimedSender) ? { claimedSender: m.claimedSender } : {}),
   };

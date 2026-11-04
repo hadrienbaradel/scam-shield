@@ -625,6 +625,10 @@ test("the page's message keeps every field the rules read (attachments, hidden t
   assert.deepEqual([full.claimedBrand, full.claimedContact], ["PayPal", "Ethan Miller"]);
   assert.deepEqual(full.links.map((l) => l.href), ["https://x.example.com/a"], "links found in the whole chat");
   assert.deepEqual(historyFrom([{ from: "Daniel", date: "", body: "hi", extra: 1 }, "junk"]), [{ from: "Daniel", date: "", body: "hi" }]);
+  // A blank chat text is no chat text: the link pasted in the body is still read.
+  const blank = messageFrom({ body: "Pay at https://pay.example.com/x", fullText: "   ", hiddenText: " \n ", claimedBrand: "" });
+  assert.deepEqual(blank.links.map((l) => l.href), ["https://pay.example.com/x"]);
+  assert.equal("fullText" in blank || "hiddenText" in blank || "claimedBrand" in blank, false, "every optional text follows one rule");
 });
 
 test("a body full of links costs nothing: at most 200 read, 40 kept, duplicates dropped in one pass", () => {
