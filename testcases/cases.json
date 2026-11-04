@@ -542,6 +542,60 @@
       }
     },
     {
+      "id": "B13",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "note": "Wrong-number opener (messenger-channel.md line 4): asks for nothing, but this is how romance and investment scams start, so never Safe.",
+      "message": {
+        "channel": "sms",
+        "fromName": "+1 555-0163",
+        "from": "+1 555-0163",
+        "subject": "",
+        "body": "Hi, is this Mary? It's Jessica, we met at the garden club last week. Are you free for tea on Saturday?",
+        "links": []
+      }
+    },
+    {
+      "id": "B14",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "scam",
+      "note": "Pig-butchering arc (messenger-channel.md lines 3 and 5): a wrong-number opener, a move to WhatsApp, profits shown, then the first deposit on the mentor's app.",
+      "threadHistory": [
+        {
+          "from": "Daniel",
+          "body": "Hello, is this Mary? Sorry, wrong number! You seem kind, can we be friends?"
+        },
+        {
+          "from": "you",
+          "body": "No problem. I am Linda."
+        },
+        {
+          "from": "Daniel",
+          "body": "Nice to meet you Linda. Let's talk on WhatsApp, it is easier for me."
+        },
+        {
+          "from": "Daniel",
+          "body": "My uncle is a trading mentor. His platform made me $8,400 this month, look at my profits."
+        },
+        {
+          "from": "you",
+          "body": "That is a lot of money!"
+        }
+      ],
+      "message": {
+        "channel": "whatsapp",
+        "fromName": "Daniel",
+        "from": "+1 555-0177",
+        "subject": "",
+        "body": "It is easy. Start with $500 on my mentor's app, I will guide you step by step.",
+        "links": []
+      }
+    },
+    {
       "id": "C5",
       "set": "C",
       "profile": "linda",
@@ -698,6 +752,36 @@
           "domain_age_days": null,
           "page_shows": "Le site ne répond pas : le sous-domaine redirect.bouyguestelecom.fr pointe vers une adresse supprimée (vérifié le 26 oct. 2026, Google et Cloudflare DNS)"
         }
+      }
+    },
+    {
+      "id": "C11",
+      "set": "C",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "safe",
+      "note": "A genuine friend's chat with history and no money (messenger-channel.md line 3): judging the whole conversation must not turn ordinary friendship into a warning.",
+      "threadHistory": [
+        {
+          "from": "Carol",
+          "body": "Lovely to see you at church today, Linda!"
+        },
+        {
+          "from": "you",
+          "body": "You too! Are we still on for lunch?"
+        },
+        {
+          "from": "Carol",
+          "body": "Yes, at my place. I will make the lemon cake."
+        }
+      ],
+      "message": {
+        "channel": "sms",
+        "fromName": "Carol",
+        "from": "+1 555-0188",
+        "subject": "",
+        "body": "See you Sunday at noon, and bring the photos from the trip!",
+        "links": []
       }
     },
     {
