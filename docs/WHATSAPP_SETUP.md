@@ -22,7 +22,7 @@ Who does it: **Hadrien, under his own Meta account** (`_product/docs/secrets.md`
 
 ## What Vlad needs back
 
-Over a private channel (iMessage, Signal, a WhatsApp message): never the repository, never a chat with an agent. Five values, named exactly as the credentials name them (`config/credentials.example`):
+Over a private channel (iMessage, Signal, a WhatsApp message): never the repository, never a chat with an agent. Six values, named exactly as the credentials name them (`config/credentials.example`):
 
 | Name | What it is | From step |
 |---|---|---|
@@ -31,14 +31,15 @@ Over a private channel (iMessage, Signal, a WhatsApp message): never the reposit
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | the WhatsApp Business Account ID | 4 |
 | `WHATSAPP_APP_SECRET` | the App secret | 7 |
 | `WHATSAPP_VERIFY_TOKEN` | the string you invented | 8 |
+| `WHATSAPP_PHONE_NUMBER` | the test number itself as digits only, country code first (for example 15551234567); not secret, it becomes the "Open WhatsApp" link in Settings | 4 |
 
-Plus two things that are not secret: the test number itself in international form (the phones save it as "Prudence") and the App ID.
+Plus the App ID, not secret either.
 
-Vlad stores them with `make secrets-set NAME=value` (five times, pasted from the clipboard, never typed in a chat), restarts his server, commits `config/credentials.enc` and runs `make deploy` so production has them too. Alternative once Vlad has sent you `config/master.key` (an open To do in `_product/log.md`): run the five `make secrets-set` yourself, commit `config/credentials.enc`, and tell him "pushed".
+Vlad stores them with `make secrets-set NAME=value` (six times, pasted from the clipboard, never typed in a chat), restarts his server, commits `config/credentials.enc` and runs `make deploy` so production has them too. Alternative once Vlad has sent you `config/master.key` (an open To do in `_product/log.md`): run the six `make secrets-set` yourself, commit `config/credentials.enc`, and tell him "pushed".
 
 ## Part 2: the webhook, 5 minutes, once the keys are on a server reachable over HTTPS
 
-Whoever holds the dashboard (Hadrien, or Vlad after step 9), after Vlad confirms the five keys are stored and names the host:
+Whoever holds the dashboard (Hadrien, or Vlad after step 9), after Vlad confirms the keys are stored and names the host:
 
 1. WhatsApp → **Configuration** → Webhook → **Edit**: Callback URL `https://<host>/api/whatsapp/webhook`, Verify token = the `WHATSAPP_VERIFY_TOKEN` string → **Verify and save**. The server answers the handshake with the verify token alone, so this works before any message flows. Hosts: Vlad's temporary tunnel today (a random `trycloudflare.com` name; it changes when his session ends), `heyprudence.com` once the production tunnel exists (then every redeploy keeps the URL and the webhook is set once for good).
 2. Webhook fields → **Manage** → subscribe to **messages**.
