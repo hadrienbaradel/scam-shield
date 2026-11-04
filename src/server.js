@@ -31,6 +31,8 @@ import demoRoutes from "./routes/demo.js";
 import lessonRoutes from "./routes/lessons.js";
 import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
+import messengerRoutes from "./routes/messenger.js";
+import { messengerConfigured, webhookActive as messengerWebhookActive } from "./channels/messenger.js";
 
 const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
 
@@ -67,7 +69,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   const origin = new URL(config.baseUrl).origin;
   app.addHook("onRequest", async (request, reply) => {
     if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
-    if (/^Bearer\s/i.test(request.headers.authorization || "") || request.url === "/api/devices/pair" || request.url === "/api/whatsapp/webhook") return; // Meta signs the webhook (src/routes/whatsapp.js)
+    if (/^Bearer\s/i.test(request.headers.authorization || "") || request.url === "/api/devices/pair" || request.url === "/api/whatsapp/webhook" || request.url === "/api/messenger/webhook") return; // Meta signs the webhooks (src/routes/whatsapp.js, src/routes/messenger.js)
     // No Origin: the Referer's origin; a Referer that is not a URL counts as no origin (403, never a 500).
     const { origin: sent, referer } = request.headers;
     const from = sent || (referer && URL.canParse(referer) ? new URL(referer).origin : null);
@@ -87,6 +89,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(demoRoutes);
   await app.register(lessonRoutes);
   await app.register(whatsappRoutes);
+  await app.register(messengerRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
 
   app.setErrorHandler((err, request, reply) => {
@@ -112,6 +115,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`  Muse Spark: ${museConfigured() ? museModel() : "NOT configured — detector only"}`);
   console.log(`  URLhaus (abuse.ch) link lookups: ${config.abusechKey ? "on (host names only)" : "off (no ABUSECH_AUTH_KEY)"}`);
   console.log(`  WhatsApp channel: ${webhookActive() ? "on (/api/whatsapp/webhook)" : whatsappConfigured() ? "webhook inactive until WHATSAPP_APP_SECRET is set" : "off (no WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID)"}`);
+  console.log(`  Messenger channel: ${messengerWebhookActive() ? "on (/api/messenger/webhook)" : messengerConfigured() ? "webhook inactive until MESSENGER_APP_SECRET is set" : "off (no MESSENGER_PAGE_ACCESS_TOKEN or MESSENGER_PAGE_ID)"}`);
   console.log(`  Rollbar error tracking: ${errorTrackingOn() ? `on (${process.env.NODE_ENV || "development"}, version ${config.appVersion})` : "off (no ROLLBAR_ACCESS_TOKEN)"}`);
   const beats = Object.values(config.heartbeats).filter(Boolean).length;
   console.log(`  Heartbeats: ${!config.production ? "off outside production" : beats ? `${beats} of ${Object.keys(config.heartbeats).length} jobs` : "off (no HEARTBEAT_*_URL)"}`);

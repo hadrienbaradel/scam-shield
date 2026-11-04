@@ -14,8 +14,17 @@ import { clientFor, rebuildContext, syncUser } from "../sync/worker.js";
 import { revokeAndForget, tokenStatus } from "../google/tokens.js";
 import { audit } from "../sync/actions.js";
 import { jobStatus } from "../jobs/scheduler.js";
+import { whatsappConfigured } from "../channels/whatsapp.js";
+import { messengerConfigured, messengerLink } from "../channels/messenger.js";
 
 const rebuilds = new Map();
+
+// The wa.me link of the Prudence WhatsApp number (WHATSAPP_PHONE_NUMBER,
+// digits only), only while the channel answers; null otherwise.
+export function whatsappLink(env = process.env) {
+  const digits = String(env.WHATSAPP_PHONE_NUMBER || "").replace(/[^0-9]/g, "");
+  return digits && whatsappConfigured(env) ? `https://wa.me/${digits}` : null;
+}
 
 // How long /api/health waits for Postgres to answer SELECT 1 (tests shorten it).
 export const healthCheck = { timeoutMs: 2000 };
@@ -53,6 +62,11 @@ export default async function accountRoutes(app) {
       googleConfigured: googleConfigured(),
       museConfigured: museConfigured(),
       voiceConfigured: voiceConfigured(),
+      // The "send it to Prudence" rows in Settings, one shape: is the channel on, and the link that opens it.
+      whatsappConfigured: whatsappConfigured(),
+      whatsappLink: whatsappLink(),
+      messengerConfigured: messengerConfigured(),
+      messengerLink: messengerLink(),
       museModel: museConfigured() ? museModel() : null,
       urlhaus: !config.abusechKey ? "off" : urlhausState.off ? "refused" : "on",
       instantChecks: pubsubConfigured() ? jobStatus.pubsub : "off",
