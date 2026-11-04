@@ -1,5 +1,5 @@
 # Ad studio: Meta AI makes our Facebook ads, a person approves them
-Status: Planned · Raised by Vlad, 2026-11-04 · Decided by Vlad 2026-11-04 15:50 (the full loop: ideas, photos checked by Muse Spark, prompt edits, approval publishes on Facebook, landing variants; Facebook only for now)
+Status: Partial (built Nov 4 on `vlad/ads`: ideas, photos and their check, prompt edits, the console, the Facebook adapter, landing variants; left: the first real publish on the Hey Prudence ad account) · Raised by Vlad, 2026-11-04 · Decided by Vlad 2026-11-04 15:50 (the full loop: ideas, photos checked by Muse Spark, prompt edits, approval publishes on Facebook, landing variants; Facebook only for now)
 
 ## Why
 Prudence needs adult children to find it, and an ad is the fastest way. Meta's models can do the work: Muse Spark writes the idea, Muse Image makes the photo, Muse Spark looks at the photo and asks for a fix. A person still decides what goes out under Prudence's name. For the hackathon this shows a third Meta model (Muse Image) and two Meta models checking each other, and it ends on Meta's own ads platform.
@@ -48,6 +48,8 @@ About 15 s for a recut, filmed on the console:
 ## Acceptance
 - `tests/llm-images.test.js`: Muse Image and OpenAI-style request shapes for generating and editing, errors, the mock.
 - `tests/ads-studio.test.js`: the idea schema and the line 3 refusals; the photo check with a fix and one retry; the edit by prompt; models named.
+- `tests/ads-check.test.js`: the check script's report, keys by name, never a token.
+- `tests/ads-landing.test.js`: the variant's rendering and escaping, `/` unchanged, the route and its counts, early-access attribution.
 - `tests/ads-facebook.test.js`: the Marketing API calls in order (image upload, campaign once, ad set, creative, ad), budget and targeting, review states, pause and resume, missing keys, no token in an error.
 - `tests/ads-routes.test.js` (Postgres): admins only; versions and Undo; publishing once; the variant page escapes its text, 404s an unpublished code for visitors, counts visits but not robots, and attributes an early-access request.
 - Manual: one real ad on the Hey Prudence ad account, its number in the log's Done line.
