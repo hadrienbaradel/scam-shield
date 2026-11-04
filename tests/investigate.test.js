@@ -504,6 +504,28 @@ test("every other result is said in plain words: a demo example's landing page, 
   assert.deepEqual([bare.checks[0].found, bare.checks[0].flag], ["The link goes to 203.0.113.9, a bare number with no website name: no registry has it", "warn"]);
 });
 
+test("small words are right: 2 months at 60 days, 2 years at 730, every scam counted is named or said to be among more, only real numbers cite a check", async () => {
+  const day = 86400000;
+  const message = { channel: "sms", body: "Pay https://a.example.com/x https://b.example.net/y", links: [{ href: "https://a.example.com/x" }, { href: "https://b.example.net/y" }] };
+  const registrationDate = async (d) => new Date(Date.now() - (d === "example.com" ? 60 : 730) * day);
+  mock.script(ask(["website_age", { domain: "a.example.com" }], ["website_age", { domain: "b.example.net" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ registrationDate }) });
+  assert.deepEqual(out.checks.map((c) => c.found), ["The website example.com was registered 2 months ago (public registry)", "The website example.net was registered 2 years ago (public registry)"]);
+  // Four cards matching the same message: three named, the count said with "including".
+  const card = (i) => ({ id: `c${i}`, name: `Parcel fee ${i}`, status: "active", channels: ["sms"], countries: ["US"], impersonated_brands: ["USPS"], lure: "package", red_flags: ["redelivery fee"], red_flag_domains: [] });
+  mock.script(ask(["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
+  const many = await investigate({ message: D1.message, personalContext: LINDA, patternCards: [1, 2, 3, 4].map(card), first: SCAM, deps: deps() });
+  assert.equal(many.checks[0].found, 'Matches 4 known scams, including "Parcel fee 1", "Parcel fee 2" and "Parcel fee 3"');
+  mock.script(ask(["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
+  const two = await investigate({ message: D1.message, personalContext: LINDA, patternCards: [1, 2].map(card), first: SCAM, deps: deps() });
+  assert.equal(two.checks[0].found, 'Matches 2 known scams: "Parcel fee 1" and "Parcel fee 2"');
+  const fallback = { verdict: "scam", reasons: [] };
+  for (const check of [true, [1], "1.0", 1.5, {}]) {
+    assert.equal(decideAnswer({ answer: answer("scam", [{ text: "x", check }]), checks: [{ n: 1, flag: "warn" }], first: SCAM, fallback, fr: false }).none, "no_reason", JSON.stringify(check));
+  }
+  assert.equal(decideAnswer({ answer: answer("scam", [{ text: "x", check: " 1 " }]), checks: [{ n: 1, flag: "warn" }], first: SCAM, fallback, fr: false }).verdict, "scam");
+});
+
 test("a model that writes null as a word is read as giving no value (seen live on Nov 4)", async () => {
   mock.script(ask(["my_orders_and_carriers", { carrier: " USPS ", shop: "null" }], ["my_providers", { company: "None" }]), answer("scam", [{ text: "x", check: 1 }]));
   const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
