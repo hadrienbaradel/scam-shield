@@ -6,8 +6,10 @@
 import "./helpers/env.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { CHANNELS, validateEntry } from "../lib/library.js";
+import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { CHANNELS, validateEntry, redactExample, bodyHash, indicatorsOf, filterEntries, exportLibrary, loadLibraryFiles } from "../lib/library.js";
 
 const load = async (p) => JSON.parse(await readFile(new URL(`../${p}`, import.meta.url), "utf8"));
 const FAMILY_IDS = ["delivery", "bank", "government", "tech-support", "family-emergency", "new-number", "romance", "investment", "prize",
@@ -63,4 +65,135 @@ test("validateEntry accepts the example entry and names what is wrong", async ()
   assert.deepEqual(validateEntry({ ...EXAMPLE, verdict: null, country: null, language: null, brand: null }, ctx), [], "nulls where allowed");
   assert.ok(validateEntry({ ...EXAMPLE, extra: 1 }, ctx).some((e) => /extra/.test(e)), "no unknown field");
   assert.deepEqual(validateEntry(null, ctx), ["entry is not an object"]);
+});
+
+test("redactExample keeps the evidence and removes what belongs to the recipient", () => {
+  const message = {
+    from: "alerts@secure-chase-login.com", subject: "Françoise, your code 123456 expires",
+    body: "Françoise, call us at +1 555-013-0199 about account FR76 3000 6000 0112 3456 7890 189, card 4111 1111 1111 1111 and SSN 123-45-6789. Reply to linda@gmail.com with your code 654321.",
+    links: [{ text: "chase.com", href: "https://secure-chase-login.com/verify" }],
+  };
+  const r = redactExample(message, { recipientName: "Françoise" });
+  assert.equal(r.from, message.from, "the sender stays");
+  assert.deepEqual(r.links, message.links, "the links stay");
+  assert.ok(r.body.includes("+1 555-013-0199"), "a phone number in the body stays");
+  assert.ok(r.body.includes("[bank account number]") && !r.body.includes("FR76"));
+  assert.ok(r.body.includes("[card number]") && !r.body.includes("4111"));
+  assert.ok(r.body.includes("[social security number]") && !r.body.includes("123-45-6789"));
+  assert.ok(r.body.includes("code [code]") && !r.body.includes("654321"));
+  assert.ok(r.body.includes("[someone]@gmail.com") && !r.body.includes("linda@"));
+  assert.ok(r.body.startsWith("[name], call") && !r.body.includes("Françoise"));
+  assert.equal(r.subject, "[name], your code [code] expires");
+  assert.equal(redactExample({ body: "Hello there" }).subject, null, "no subject stays no subject");
+  assert.equal(redactExample({ body: "Hi Al, pay now" }, { recipientName: "Al" }).body, "Hi Al, pay now", "a name under three letters is left alone");
+  // An IBAN in any case, with dots or dashes between its groups.
+  assert.equal(redactExample({ body: "Compte fr76.3000.6000.0112.3456.7890.189 débité" }).body, "Compte [bank account number] débité");
+  assert.equal(redactExample({ body: "Account de89-3704-0044-0532-0130-00 please" }).body, "Account [bank account number] please");
+  // A one-time code written in groups, or a few words after the word.
+  assert.equal(redactExample({ body: "Votre code : 12 34 56 expire bientôt" }).body, "Votre code : [code] expire bientôt");
+  assert.equal(redactExample({ body: "Votre code de validation est 123456, ne le partagez pas" }).body, "Votre code de validation est [code], ne le partagez pas");
+  assert.equal(redactExample({ body: "Enter the OTP 98-76-54 on the page" }).body, "Enter the OTP [code] on the page");
+  assert.equal(redactExample({ body: "It's the 6-digit code you just received." }).body, "It's the 6-digit code you just received.", "a code only spoken of stays");
+});
+
+test("validateEntry warns when the text may still carry a name; a warning blocks nothing", async () => {
+  const ctx = await refs();
+  const warningsOf = (patch) => validateEntry(withMessage(patch), ctx).warnings;
+  assert.deepEqual(warningsOf({ body: "Madame, votre nouvelle facture est disponible dans votre espace client." }), [], "a greeting alone is no name");
+  assert.deepEqual(warningsOf({ body: "Dear Customer, we noticed a sign-in from a new device. Hi Grandma, sorry." }), [], "the usual stand-ins are not names");
+  assert.deepEqual(warningsOf({ body: "Françoise, call us today about your account please." }), ["may carry a name: Françoise"], "a capitalised word opening a sentence before a comma");
+  assert.deepEqual(warningsOf({ body: "Hi there. Bonjour Thomas, votre colis est en attente." }), ["may carry a name: Thomas"], "a greeting then a capitalised word");
+  assert.deepEqual(warningsOf({ subject: "Dear Linda", body: "Your package is on hold, pay the fee today. Jessica, we met at the club." }), ["may carry a name: Linda", "may carry a name: Jessica"], "the subject too, once each");
+  const errs = validateEntry(withMessage({ body: "Hi Linda, your package is on hold." }), ctx);
+  assert.deepEqual(errs, [], "a warning is not an error");
+  assert.deepEqual(errs.warnings, ["may carry a name: Linda"]);
+  assert.deepEqual(validateEntry(null, ctx).warnings, []);
+});
+
+test("bodyHash ignores case, digits, punctuation and spacing", () => {
+  assert.equal(bodyHash({ body: "Pay $1.99 now!" }), bodyHash({ body: "pay 1 99 NOW" }));
+  assert.equal(bodyHash("Pay $1.99 now!"), bodyHash({ body: "  pay   now " }), "a string works too");
+  assert.notEqual(bodyHash({ body: "Pay now" }), bodyHash({ body: "Pay later" }));
+  assert.match(bodyHash({}), /^[0-9a-f]{64}$/);
+});
+
+test("indicatorsOf: the scam's domains, sender and phones, never a reserved host, a placeholder or a brand's real address", () => {
+  const a4 = indicatorsOf(EXAMPLE);
+  assert.deepEqual(a4, { domains: [], senders: [], phones: ["+33700000001"] }, ".test is reserved; the sender number is the phone");
+  const bouygues = indicatorsOf(withMessage({ from: "service@contestation-bouygues.example", body: "Votre facture est disponible sur https://contestation-bouygues.example/facture" }));
+  assert.deepEqual(bouygues, { domains: [], senders: [], phones: [] }, ".example is reserved");
+  const chase = indicatorsOf(withMessage({
+    from: "alerts@secure-chase-login.com",
+    body: "Verify at https://secure-chase-login.com/verify or http://WWW.Chase-Verify.net/x, call 1-555-0166 or +1 555-013-0199. Real site: https://www.chase.com/",
+    links: [{ text: "chase.com", href: "https://secure-chase-login.com/verify?x=1" }, { text: "img", href: "https://10.0.0.1/pixel" }, { text: "help", href: "https://chase.com/help" }],
+  }));
+  assert.deepEqual(chase.senders, ["alerts@secure-chase-login.com"]);
+  assert.deepEqual(chase.domains, ["secure-chase-login.com", "chase-verify.net"], "once each, lowercased, www. stripped, the private IP and chase.com's own address left out");
+  assert.deepEqual(chase.phones, ["15550166", "+15550130199"]);
+  assert.deepEqual(indicatorsOf(withMessage({ from: "[someone]@gmail.com", body: "Write to [someone]@gmail.com now please" })).senders, [], "a redacted address is nobody");
+  assert.deepEqual(indicatorsOf(withMessage({ from: "statements@chase.com", links: [] })).senders, [], "a spoofed real address is not a suspect");
+  assert.deepEqual(indicatorsOf(withMessage({ from: "Bouygues Telecom", links: [] })), { domains: [], senders: [], phones: [] }, "a display name is neither");
+  assert.deepEqual(indicatorsOf(withMessage({ from: "+33 6 12 34 56 78", body: "Rappelez le 06 98 76 54 32 ou le 0033612345678." })).phones, ["+33612345678", "0698765432", "0033612345678"]);
+  const careful = { ...EXAMPLE, verdict: { verdict: "be_careful", headline: "x", reasons: [] }, message: { ...EXAMPLE.message, from: "avis@antai-notice.org", links: [{ text: "x", href: "https://antai-notice.org/" }] } };
+  assert.deepEqual(indicatorsOf(careful), { domains: [], senders: [], phones: [] }, "a Be careful entry may be genuine: it accuses nobody");
+  assert.deepEqual(indicatorsOf({ ...careful, verdict: null }).domains, ["antai-notice.org"], "a sample without a verdict counts");
+  assert.deepEqual(indicatorsOf({}), { domains: [], senders: [], phones: [] });
+});
+
+const entries = [
+  EXAMPLE,
+  { ...EXAMPLE, id: "lib-demo-d1", country: "US", language: "en", brand: "USPS", lure: "a package is on hold", first_seen: "2026-10-22", last_seen: "2026-10-22",
+    message: { ...EXAMPLE.message, body: "USPS: your package is on hold. Pay a $1.99 redelivery fee today." } },
+  { ...EXAMPLE, id: "lib-demo-a2", family: "bank", channel: "email", brand: "Société Générale", lure: "unusual activity", ask: "confirm your codes", first_seen: "2026-10-25", last_seen: "2026-10-25",
+    message: { from: "alertes@sg-securite.test", subject: "Sécurisez votre compte", body: "Madame, une activité inhabituelle a été détectée. Confirmez vos codes.", links: [] } },
+];
+
+test("filterEntries narrows by family, channel, country, language and words", () => {
+  const ids = (f) => filterEntries(entries, f).map((e) => e.id);
+  assert.deepEqual(ids({}), ["lib-demo-a4", "lib-demo-d1", "lib-demo-a2"]);
+  assert.deepEqual(ids({ family: "bank" }), ["lib-demo-a2"]);
+  assert.deepEqual(ids({ channel: "sms" }), ["lib-demo-a4", "lib-demo-d1"]);
+  assert.deepEqual(ids({ country: "us" }), ["lib-demo-d1"], "country case does not matter");
+  assert.deepEqual(ids({ language: "fr" }), ["lib-demo-a4", "lib-demo-a2"]);
+  assert.deepEqual(ids({ q: "usps" }), ["lib-demo-d1"], "the brand");
+  assert.deepEqual(ids({ q: "CODES" }), ["lib-demo-a2"], "the ask and the body, any case");
+  assert.deepEqual(ids({ q: "Sécurisez" }), ["lib-demo-a2"], "the subject");
+  assert.deepEqual(ids({ q: "parcel is" }), ["lib-demo-a4"], "the lure");
+  assert.deepEqual(ids({ family: "delivery", q: "hold" }), ["lib-demo-d1"], "filters combine");
+  assert.deepEqual(ids({ q: "   " }), ["lib-demo-a4", "lib-demo-d1", "lib-demo-a2"], "blank words filter nothing");
+});
+
+test("exportLibrary carries the licence, a timestamp and everything else as is", () => {
+  const families = [{ id: "delivery" }];
+  const sources = [{ id: "prudence-demo" }];
+  const out = exportLibrary({ families, sources, entries });
+  assert.equal(out.licence, "CC BY 4.0");
+  assert.ok(!Number.isNaN(Date.parse(out.generated)));
+  assert.deepEqual(Object.keys(out), ["licence", "generated", "families", "sources", "entries"]);
+  assert.equal(out.entries.length, 3);
+});
+
+test("loadLibraryFiles reads a folder, validates every entry and names a bad file", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "library-"));
+  try {
+    await mkdir(join(dir, "entries"));
+    await writeFile(join(dir, "families.json"), JSON.stringify(await load("data/library/families.json")));
+    await writeFile(join(dir, "sources.json"), JSON.stringify(await load("data/library/sources.json")));
+    await writeFile(join(dir, "entries", "lib-demo-a4.json"), JSON.stringify(EXAMPLE));
+    await writeFile(join(dir, "entries", "notes.txt"), "not an entry");
+    const lib = await loadLibraryFiles(dir);
+    assert.equal(lib.families.length, 21);
+    assert.equal(lib.sources.length, 2);
+    assert.deepEqual(lib.entries, [EXAMPLE]);
+    await writeFile(join(dir, "entries", "lib-demo-bad.json"), JSON.stringify({ ...EXAMPLE, id: "lib-demo-bad", family: "x" }));
+    await assert.rejects(loadLibraryFiles(dir), /lib-demo-bad\.json: unknown family x/);
+    await writeFile(join(dir, "entries", "lib-demo-bad.json"), JSON.stringify(EXAMPLE));
+    await assert.rejects(loadLibraryFiles(dir), /lib-demo-bad\.json: id lib-demo-a4 is already used/, "two files, one id");
+    await writeFile(join(dir, "entries", "lib-demo-bad.json"), "{ not json");
+    await assert.rejects(loadLibraryFiles(dir), /lib-demo-bad\.json/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  const real = await loadLibraryFiles();
+  assert.ok(real.families.length === 21 && Array.isArray(real.entries), "the repo's own folder loads");
 });
