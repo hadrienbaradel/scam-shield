@@ -20,7 +20,7 @@ Vlad's sessions may land these during the day; each one changes a line below, so
 
 **Team:** Hadrien Baradel (product), Vlad Zloteanu (CTO)
 
-**Links:** video [YouTube link] · repo https://github.com/hadrienbaradel/scam-shield · page https://hadrienbaradel.github.io/prudence-site/ (once published) · heyprudence.com only if it answers on the day (it did not on Nov 4 at 07:30 Dublin, so the video's end card no longer names it)
+**Links:** video [YouTube link] · repo https://github.com/hadrienbaradel/scam-shield · live https://heyprudence.com (the app's landing page with the no-sign-in demo, live since Nov 4 midday; the video's end card, rendered that morning, names only the repo) · page https://hadrienbaradel.github.io/prudence-site/
 
 **Description:**
 
