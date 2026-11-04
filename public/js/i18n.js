@@ -184,6 +184,18 @@ export const STRINGS = {
     protect_facebook_on: "Send any message to Prudence on Messenger", protect_facebook_verb: "Open Messenger",
     protect_calls: "Your phone calls", protect_calls_line: "A warning before you call back a number from a scam message",
     protect_soon: "Coming soon", protect_soon_label: "{name}, coming soon, no action",
+    // --- protection score (score_*) ---
+    // The strip under Today's greeting (protects.js CRITERIA, renderScore):
+    // the title, the title at the full score, then per criterion its name and
+    // the words of the link that turns it on. Words, never a percentage; the
+    // count is held together by no-break spaces ("1 of 4" never splits).
+    score_title: "Protected: {on} of {total}", score_full: "All {total} protections on",
+    score_email: "Your email", score_email_step: "Connect my email",
+    score_texts: "Your text messages", score_texts_step: "Add my phone",
+    score_people: "A trusted person", score_people_step: "Add a trusted person",
+    score_learn: "A first lesson", score_learn_step: "Start a lesson",
+    score_whatsapp: "WhatsApp messages", score_whatsapp_step: "Open WhatsApp",
+    score_facebook: "Facebook and Messenger", score_facebook_step: "Open Messenger",
     // --- today (td_*) ---
     // Also read: v2_morning, v2_afternoon, v2_evening (the greeting), v2_need_one,
     // v2_need_many, v2_look_one, v2_look, and the three Check choices ck_photo,
@@ -473,6 +485,14 @@ export const STRINGS = {
     protect_facebook_on: "Envoyez n'importe quel message à Prudence sur Messenger", protect_facebook_verb: "Ouvrir Messenger",
     protect_calls: "Vos appels téléphoniques", protect_calls_line: "Un avertissement avant de rappeler un numéro venu d'un message frauduleux",
     protect_soon: "Bientôt", protect_soon_label: "{name}, bientôt, aucune action",
+    // --- protection score (score_*) ---
+    score_title: "Protections actives : {on} sur {total}", score_full: "Les {total} protections sont actives",
+    score_email: "Votre e-mail", score_email_step: "Connecter mes e-mails",
+    score_texts: "Vos messages texte", score_texts_step: "Ajouter mon téléphone",
+    score_people: "Une personne de confiance", score_people_step: "Ajouter une personne de confiance",
+    score_learn: "Une première leçon", score_learn_step: "Commencer une leçon",
+    score_whatsapp: "Messages WhatsApp", score_whatsapp_step: "Ouvrir WhatsApp",
+    score_facebook: "Facebook et Messenger", score_facebook_step: "Ouvrir Messenger",
     // --- today (td_*) ---
     td_others: "Les {n} autres étaient sûrs.", td_others_one: "L'autre était sûr.",
     td_allclear: "Rien dans vos e-mails n'a besoin de vous", td_checked: "Vérifié {when}.",

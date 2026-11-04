@@ -1728,3 +1728,56 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .set-event-what { font-size: var(--t22); line-height: 1.35; overflow-wrap: anywhere; }
 
 .set-keep { min-height: 72px; margin-top: 8px; }
+
+/* ---- 2026-11-04 protection score ---- */
+/* The strip under Today's greeting (protection-menu.md, line 2b;
+   renderScore() in js/protects.js): one compact row like a .row-card, the
+   gauge then the words. Sizes in rem follow the person's text size, the
+   gauge's too, so the count inside it grows with the words.
+     .score         white, 1px #d8dee6 border, 18px corners, 12px 16px
+                    padding: 80px tall at Normal with its 56px gauge
+     .score-gauge   the gauge, 56px at Normal: .score-track (the navy-wash
+                    arc, deepened with a little navy: the plain wash does
+                    not show on white), .score-bar (the gold share that is
+                    on), .score-count ("3/5", navy bold; .is-long for a
+                    longer count); decorative, the title says it in words
+     .score-words   the title over the link, 2px apart
+     .score-title   h2, 22px bold
+     .score-step    the next step: 19px bold navy, underlined, a chevron
+                    after (.score-step-end keeps it with the last word).
+                    Its ::after covers the whole strip, so the tap area is
+                    the strip (80px or more, the full width), not only the
+                    words */
+.score {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+.score:has(.score-step:hover) { background: var(--navy-wash); }
+.score-gauge { flex: none; width: calc(56rem / 19); height: calc(56rem / 19); }
+.score-track,
+.score-bar { fill: none; stroke-width: 6; stroke-linecap: round; }
+.score-track { stroke: color-mix(in srgb, var(--navy) 14%, var(--navy-wash)); }
+.score-bar { stroke: var(--gold); }
+/* In the gauge's own units (a 56 x 56 box): it scales with the gauge. */
+.score-count { fill: var(--navy); font-family: var(--type); font-size: 16px; font-weight: 700; }
+.score-count.is-long { font-size: 12px; }
+.score-words { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.score-title { margin: 0; font-size: var(--t22); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.score-step {
+  color: var(--navy);
+  font-size: var(--t19);
+  font-weight: 700;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+.score-step-end { white-space: nowrap; }
+.score-step svg { margin-left: 2px; vertical-align: -0.2em; }
+.score-step::after { content: ""; position: absolute; inset: 0; border-radius: 18px; }

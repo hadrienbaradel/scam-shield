@@ -1,8 +1,8 @@
 // The menu's tables (_product/specs/protection-menu.md): the six channels of
-// "What Prudence protects", the four tabs, and the senior's screens with the
-// tab each one lights. One table each, read by main.js (the header and the
-// tab bar), views/today.js and the Settings screen; tests/menu.test.js holds
-// them to the spec. No DOM access at import time: the tests import this
+// "What Prudence protects", the criteria of the protection score on Today,
+// the four tabs, and the senior's screens with the tab each one lights. One
+// table each, read by main.js (the header and the tab bar), views/today.js
+// and the Settings screen; tests/menu.test.js holds them to the spec. No DOM access at import time: the tests import this
 // module under Node.
 
 import { t, ago } from "./i18n.js";
@@ -38,6 +38,14 @@ export const CHANNELS = Object.freeze([
 // Where the email row's verb goes when Prudence cannot read the mailbox.
 const GMAIL_SIGN_IN = "/auth/google?mode=gmail";
 
+// The server's address for its WhatsApp number or Messenger Page (wa.me,
+// m.me), or null when it is not an https address: a strange address gives
+// no button rather than a strange one, on the list and on the score.
+const httpsLink = (v) => {
+  const s = String(v || "");
+  return /^https:\/\/[^\s"'<>]+$/.test(s) ? s : null;
+};
+
 // The email row, from /api/status's gmail block (src/routes/account.js):
 // connected, needsReconnect, syncStatus, lastSyncAt, ready, push. The status
 // has no "connected since" date, so the row says "On" and when it was last
@@ -65,14 +73,11 @@ function textsRow(devices) {
 }
 
 // A channel the server runs (status "server"): its row, or null while this
-// server does not run it. The link opens in a new tab (WhatsApp's wa.me or
-// Messenger's m.me address); anything but an https address gives no button
-// rather than a strange one.
+// server does not run it. The link opens in a new tab (httpsLink).
 function serverRow(c, status) {
   if (status?.[c.configuredBy] !== true) return null;
-  const link = String(status[c.linkBy] || "");
-  const ok = /^https:\/\/[^\s"'<>]+$/.test(link);
-  return { stateKey: c.states[1], on: true, verbKey: ok ? c.verbs[0] : null, href: ok ? link : null, external: ok };
+  const link = httpsLink(status[c.linkBy]);
+  return { stateKey: c.states[1], on: true, verbKey: link ? c.verbs[0] : null, href: link, external: Boolean(link) };
 }
 
 // The rows to draw for one senior, in CHANNELS order, in the current
@@ -129,6 +134,108 @@ export function renderProtects(rows, { heading = true } = {}) {
   return `<section class="protects"${heading ? ' aria-labelledby="protectsTitle"' : ` aria-label="${title}"`}>
       ${heading ? `<h2 id="protectsTitle" class="section-title">${title}</h2>` : ""}
       ${rows.map(row).join("")}
+    </section>`;
+}
+
+// ------------------------------------------------------------------ score --
+// The protection score, the strip under Today's greeting (protection-menu.md,
+// line 2b): how many protections are on, and the one step that turns on the
+// next. One row per protection the senior can turn on today, in the order
+// the strip offers them. Every new capability adds its row here when it
+// ships, next to its Settings row and its onboarding step (the settings and
+// onboarding rule, _product/docs/product-process.md): the strip is where the
+// senior and the demo see the product grow. A Coming soon channel never has
+// a row (the full score must always be reachable), and neither has voice:
+// there is nothing to set up, a voice message can be checked any time.
+// A row: key; channel (the CHANNELS key it stands for, when it is one); name
+// and step (i18n keys: what it is, the words of the link that turns it on);
+// href (where that link goes, or a function of ctx for a server's address);
+// on(ctx); available(ctx) when the row counts only on some servers (no
+// available: it always counts). ctx: { status (/api/status), devices
+// (/api/devices), guardians (/api/guardians), progress (/api/learn/progress) },
+// any of them missing or null.
+const serverCriterion = (key) => {
+  const c = CHANNELS.find((ch) => ch.key === key);
+  return {
+    key, channel: key, name: `score_${key}`, step: `score_${key}_step`,
+    // Counted only where this server runs it (the same flag as its row in
+    // the list), and then on by itself: there is nothing to set up.
+    available: (ctx) => ctx.status?.[c.configuredBy] === true,
+    on: () => true,
+    href: (ctx) => httpsLink(ctx.status?.[c.linkBy]),
+  };
+};
+export const CRITERIA = Object.freeze([
+  { key: "email", channel: "email", name: "score_email", step: "score_email_step", href: GMAIL_SIGN_IN,
+    on: (ctx) => Boolean(ctx.status?.gmail) && ctx.status.gmail.connected !== false && !ctx.status.gmail.needsReconnect },
+  { key: "texts", channel: "texts", name: "score_texts", step: "score_texts_step", href: "#/settings/phone",
+    on: (ctx) => Array.isArray(ctx.devices) && ctx.devices.length > 0 },
+  // A person who has not accepted the invitation yet cannot answer: not yet.
+  { key: "people", name: "score_people", step: "score_people_step", href: "#/settings/people",
+    on: (ctx) => Array.isArray(ctx.guardians) && ctx.guardians.some((g) => g?.status === "active") },
+  // One lesson finished (lib/lessons.js summarize: done counts them).
+  { key: "learn", name: "score_learn", step: "score_learn_step", href: "#/learn",
+    on: (ctx) => Number(ctx.progress?.summary?.done) >= 1 },
+  serverCriterion("whatsapp"),
+  serverCriterion("facebook"),
+].map((c) => Object.freeze(c)));
+
+// The score for one senior, { on, total, next }: on of the total criteria
+// this server counts, and next, the first of them in order not on yet ({ key, step (its
+// words in the current language), href, external (true: another app or site,
+// opened in a new tab) }), or null at the full score.
+export function scoreOf(ctx) {
+  const c = ctx || {};
+  const counted = CRITERIA.filter((row) => !row.available || row.available(c));
+  const first = counted.find((row) => !row.on(c));
+  const href = first ? (typeof first.href === "function" ? first.href(c) : first.href) : null;
+  return {
+    on: counted.filter((row) => row.on(c)).length,
+    total: counted.length,
+    next: first ? { key: first.key, step: t(first.step), href, external: /^https:/.test(href || "") } : null,
+  };
+}
+
+// The gauge's three-quarter arc on a 56 x 56 box: from 135 degrees to 405
+// (bottom left, over the top, to bottom right), radius 22, so the 6-wide
+// stroke and its round ends stay inside the box.
+const GAUGE_ARC = (() => {
+  const at = (deg) => [Math.cos, Math.sin].map((f) => (28 + 22 * f((deg * Math.PI) / 180)).toFixed(2)).join(" ");
+  return `M${at(135)}A22 22 0 1 1 ${at(405)}`;
+})();
+
+// The strip (styles.css, "2026-11-04 protection score"): the gauge, gold over
+// a navy-wash track with the count inside, decorative because the title
+// says the same in words; the title ("Protected: 3 of 5", at the full score
+// "All 5 protections on"); the one link to the next step, none at the full
+// score. The link's tap area is the whole strip (.score-step::after): a
+// finger anywhere on it gets the next step. Words, never a percentage, and
+// no colour of danger: a low score is an invitation (design.md).
+export function renderScore({ on, total, next }) {
+  const full = on >= total;
+  const count = `${on}/${total}`;
+  const title = full ? t("score_full", { total }) : t("score_title", { on, total });
+  // pathLength 100: the gold dash is the share that is on. None at zero:
+  // a zero dash with round ends would still draw a dot.
+  const bar = on > 0
+    ? `<path class="score-bar" d="${GAUGE_ARC}" pathLength="100" stroke-dasharray="${esc(Math.round((100 * on) / Math.max(1, total)))} 100"/>`
+    : "";
+  // The chevron stays on the line of the last word, however the words wrap.
+  const words = String(next?.step || "").split(" ");
+  const last = words.pop();
+  const label = `${words.length ? `${esc(words.join(" "))} ` : ""}<span class="score-step-end">${esc(last)}${icon("chevron-right", 22, 2.5)}</span>`;
+  const link = !full && next?.href
+    ? `<a class="score-step" href="${esc(next.href)}"${next.external ? ' target="_blank" rel="noopener"' : ""}>${label}</a>`
+    : "";
+  return `<section class="score" aria-labelledby="scoreTitle">
+      <svg class="score-gauge" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
+        <path class="score-track" d="${GAUGE_ARC}"/>${bar}
+        <text class="score-count${count.length > 3 ? " is-long" : ""}" x="28" y="28" text-anchor="middle" dominant-baseline="central">${esc(count)}</text>
+      </svg>
+      <div class="score-words">
+        <h2 id="scoreTitle" class="score-title">${esc(title)}</h2>
+        ${link}
+      </div>
     </section>`;
 }
 

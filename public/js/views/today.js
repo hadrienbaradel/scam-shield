@@ -6,19 +6,21 @@
 // screen. The same screens run on the person's own Gmail and on the public
 // demo (Linda or Françoise).
 //
-// Today, top to bottom: the greeting; the white card "1 message needs you"
-// with the gold "Look at it now", or the green all-clear followed by the
-// three Check choices (the all-clear only when the mailbox was checked
-// within the last day; otherwise a banner with Reconnect or Try again
-// stands in for it: mailboxProblem); the "3 scams moved away this week" card (live only);
-// "What Prudence protects" (live only: the demo has no mailbox or phone).
+// Today, top to bottom: the greeting; the protection score strip ("Protected:
+// 3 of 5" and the one next step, live only: protects.js scoreOf and
+// renderScore); the white card "1 message needs you" with the gold "Look at
+// it now", or the green all-clear followed by the three Check choices (the
+// all-clear only when the mailbox was checked within the last day; otherwise
+// a banner with Reconnect or Try again stands in for it: mailboxProblem); the
+// "3 scams moved away this week" card (live only); "What Prudence protects"
+// (live only: the demo has no mailbox or phone).
 // The status line of the old Today now lives in the email row of the list.
 
 import { api } from "../api.js";
 import { t, getLang, ago } from "../i18n.js";
 import { $, esc, icon, readAloud, toast, busy, focusHeading } from "../ui.js";
 import { syncLine } from "./mail.js";
-import { protectRows, renderProtects } from "../protects.js";
+import { protectRows, renderProtects, scoreOf, renderScore } from "../protects.js";
 import { verdictCardHtml, unsureRowHtml, bindVerdictCard } from "./card.js";
 
 let S = null; // the screen state: source, info, queue, index, details, last action
@@ -67,7 +69,7 @@ function liveSource(status) {
   return {
     demo: false,
     async load() {
-      const [inbox, scam, people, devices, fresh] = await Promise.all([
+      const [inbox, scam, people, devices, fresh, progress] = await Promise.all([
         api("/api/inbox?box=inbox&fresh=1"),
         api("/api/inbox?box=scam").catch(() => ({ messages: [] })),
         api("/api/guardians").catch(() => ({ guardians: [] })),
@@ -75,12 +77,16 @@ function liveSource(status) {
         // The status the page was drawn with grows old (lastSyncAt): a live
         // refresh reads it again for "Checked 2 minutes ago" and the list.
         api("/api/status").catch(() => null),
+        // The lessons finished, for the score's "Start a lesson" (null: not counted as done).
+        api("/api/learn/progress").catch(() => null),
       ]);
       const active = (people.guardians || []).filter((g) => g.status === "active");
       const moved = movedThisWeek(scam.messages);
       return {
         name: firstName(status.user?.name),
         guardian: active[0] || null,
+        guardians: people.guardians || [],
+        progress,
         status: fresh?.user ? fresh : status,
         statusOk: Boolean(fresh?.user),
         devices: devices.devices || [],
@@ -259,6 +265,7 @@ function drawToday({ focus = true } = {}) {
     <div id="tdHome" class="v2 screen">
       ${demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : ""}
       <h1 class="screen-title">${esc(greeting())}</h1>
+      ${demo ? "" : renderScore(scoreOf({ status: S.status, devices: S.info.devices, guardians: S.info.guardians, progress: S.info.progress }))}
       ${problemBanner(S.problem)}
       ${topCard(n)}
       ${n === 0 && !demo ? choices() : ""}

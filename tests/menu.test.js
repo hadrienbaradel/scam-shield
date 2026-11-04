@@ -1,13 +1,14 @@
 // "What Prudence protects" and the menu (_product/specs/protection-menu.md,
 // Acceptance): the channel table in public/js/protects.js against the
 // feature statuses in _product/spec.md, the rows a senior sees with and
-// without a paired phone, the four tabs and the screens they light, and the
-// words of the redesign in English and French. No database.
+// without a paired phone, the protection score's criteria against the
+// channel table and its count, the four tabs and the screens they light,
+// and the words of the redesign in English and French. No database.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { STRINGS, setLang } from "../public/js/i18n.js";
-import { CHANNELS, TABS, SCREENS, protectRows, renderProtects, screenFor } from "../public/js/protects.js";
+import { CHANNELS, CRITERIA, TABS, SCREENS, protectRows, renderProtects, renderScore, scoreOf, screenFor } from "../public/js/protects.js";
 import { ICON_NAMES } from "../public/js/ui.js";
 
 const minutesAgo = (n) => new Date(Date.now() - n * 60000).toISOString();
@@ -82,13 +83,14 @@ const REUSED = [
   "settings_title", "v2_tab_people", "mode_move", "mode_move_sub", "mode_label", "mode_label_sub", "size_q", "size_1", "size_2", "size_3",
   "lang_q", "knows_title", "history_title", "delete_btn", "phone_title", "people_title", "saved",
 ];
-const REDESIGN = /^(protect_|td_|msg_|blk_|ck_|lh_|set_)|^(tab_blocked|nav_tabs_label|nav_top_label)$/;
+const REDESIGN = /^(protect_|score_|td_|msg_|blk_|ck_|lh_|set_)|^(tab_blocked|nav_tabs_label|nav_top_label)$/;
 const placeholders = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 test("every word of the channel table, the tabs and the new screens exists in English and in French", () => {
   const used = new Set([
     ...CHANNELS.flatMap((c) => [c.name, ...c.states, ...c.verbs]),
     ...TABS.map((tab) => tab.label),
+    ...CRITERIA.flatMap((c) => [c.name, c.step]), "score_title", "score_full",
     "protect_title", "protect_soon", "protect_soon_label",
     ...REUSED,
     ...Object.keys(STRINGS.en).filter((k) => REDESIGN.test(k)),
@@ -221,6 +223,100 @@ test("no technical word in the protect strings or the redesign's words", () => {
       assert.doesNotMatch(v, TECH, `${l}.${k}: "${v}"`);
       assert.doesNotMatch(v, /%/, `${l}.${k}: no percentage`);
     }
+  }
+});
+
+// The protection score (protection-menu.md, line 2b). The senior's world in
+// four parts, each one either nothing yet or set up.
+const nobody = { status: null, devices: [], guardians: [], progress: null };
+const thomas = { id: "g1", name: "Thomas", status: "active" };
+const oneLesson = { progress: {}, summary: { done: 1, total: 9, stars: 3, days: 1 } };
+const servers = { whatsappConfigured: true, whatsappLink: "https://wa.me/15550001111", messengerConfigured: true, messengerLink: "https://m.me/prudence.example" };
+
+test("the score counts what the senior can turn on today: every built channel but voice, never a Coming soon one", () => {
+  assert.deepEqual(CRITERIA.map((c) => c.key), ["email", "texts", "people", "learn", "whatsapp", "facebook"], "the spec's order");
+  const byChannel = new Map(CRITERIA.filter((c) => c.channel).map((c) => [c.channel, c]));
+  for (const c of CHANNELS) {
+    if (c.status === "built" && c.key !== "voice") assert.ok(byChannel.has(c.key), `${c.key}: built, so it has a criterion`);
+    if (c.status === "soon") assert.ok(!byChannel.has(c.key), `${c.key}: Coming soon, so it is never in the denominator`);
+    if (c.status === "server") assert.equal(typeof byChannel.get(c.key)?.available, "function", `${c.key}: counted only where the server runs it`);
+  }
+  assert.ok(!byChannel.has("voice"), "voice: nothing to set up, so nothing to count");
+  for (const c of CRITERIA) {
+    assert.ok(!c.channel || CHANNELS.some((ch) => ch.key === c.channel), `${c.key}: its channel exists`);
+    assert.deepEqual([c.name, c.step], [`score_${c.key}`, `score_${c.key}_step`], `${c.key}: its words`);
+    assert.ok(Object.isFrozen(c), `${c.key}: frozen`);
+  }
+});
+
+test("a senior with nothing yet: 0 of 4, and the first step is her email", () => {
+  const s = scoreOf(nobody);
+  assert.deepEqual(s, { on: 0, total: 4, next: { key: "email", step: "Connect my email", href: "/auth/google?mode=gmail", external: false } });
+  assert.deepEqual(scoreOf(undefined), s, "no context at all is nothing yet");
+  assert.equal(scoreOf({ ...nobody, status: { gmail: { ...linda.gmail, needsReconnect: true } } }).next.key, "email", "a mailbox Prudence cannot read is not on");
+  assert.equal(scoreOf({ ...nobody, status: { gmail: { ...linda.gmail, connected: false } } }).on, 0, "a disconnected mailbox is not on");
+});
+
+test("with her email and her phone: 2 of 4, the next step is a trusted person, then a lesson", () => {
+  const s = scoreOf({ ...nobody, status: linda, devices: [phone] });
+  assert.deepEqual([s.on, s.total], [2, 4]);
+  assert.deepEqual(s.next, { key: "people", step: "Add a trusted person", href: "#/settings/people", external: false });
+  const invited = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [{ ...thomas, status: "pending" }] });
+  assert.deepEqual([invited.on, invited.next.key], [2, "people"], "an invitation not accepted yet does not count");
+  const withThomas = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas], progress: { summary: { done: 0 } } });
+  assert.deepEqual([withThomas.on, withThomas.next], [3, { key: "learn", step: "Start a lesson", href: "#/learn", external: false }]);
+});
+
+test("everything on, WhatsApp and Messenger run by the server: 6 of 6, no next step", () => {
+  const s = scoreOf({ status: { ...linda, ...servers }, devices: [phone], guardians: [thomas], progress: oneLesson });
+  assert.deepEqual(s, { on: 6, total: 6, next: null });
+  const html = renderScore(s);
+  assert.match(html, /<h2 id="scoreTitle" class="score-title">All 6 protections on<\/h2>/);
+  assert.doesNotMatch(html, /<a /, "nothing left to do: no link");
+  assert.deepEqual(scoreOf({ status: linda, devices: [phone], guardians: [thomas], progress: oneLesson }), { on: 4, total: 4, next: null },
+    "a server without WhatsApp or Messenger: 4 of 4 is the full score");
+});
+
+test("a server running WhatsApp with an http address still counts it, but gives no link to it", () => {
+  const whatsapp = CRITERIA.find((c) => c.key === "whatsapp");
+  for (const bad of ["http://wa.me/15550001111", "javascript:alert(1)", "", null]) {
+    const ctx = { ...nobody, status: { ...linda, whatsappConfigured: true, whatsappLink: bad } };
+    assert.deepEqual([scoreOf(ctx).on, scoreOf(ctx).total], [2, 5], `${bad}: counted, and on by itself`);
+    assert.equal(whatsapp.href(ctx), null, `${bad}: no link to a strange address`);
+  }
+  assert.equal(whatsapp.href({ status: servers }), servers.whatsappLink);
+  for (const flag of [false, "true", undefined]) {
+    assert.equal(scoreOf({ ...nobody, status: { ...linda, whatsappConfigured: flag, whatsappLink: servers.whatsappLink } }).total, 4, `${flag}: not counted`);
+  }
+});
+
+test("the strip: a decorative gauge, the score in words and one link to the next step", () => {
+  const html = renderScore(scoreOf({ ...nobody, status: linda, devices: [phone] }));
+  assert.match(html, /^<section class="score" aria-labelledby="scoreTitle">/);
+  assert.match(html, /<svg class="score-gauge" viewBox="0 0 56 56" aria-hidden="true" focusable="false">/);
+  assert.match(html, />2\/4<\/text>/, "the count inside the gauge");
+  assert.match(html, /stroke-dasharray="50 100"/, "half the arc is gold");
+  assert.match(html, /<h2 id="scoreTitle" class="score-title">Protected: 2\u00a0of\u00a04<\/h2>/, "the count never splits over two lines");
+  assert.equal((html.match(/<a /g) || []).length, 1, "one link");
+  assert.match(html, /<a class="score-step" href="#\/settings\/people">Add a trusted <span class="score-step-end">person<svg/, "the chevron stays with the last word");
+  assert.doesNotMatch(html, /\sstyle=/, "no style attribute: the page's CSP allows only styles.css");
+  assert.doesNotMatch(html, /%|unprotected|danger|scam/i, "words, never a percentage or a warning");
+  assert.doesNotMatch(renderScore(scoreOf(nobody)), /score-bar/, "at zero no gold at all, not even a dot");
+  const out = renderScore({ on: 1, total: 2, next: { key: "x", step: "Open <it>", href: "https://wa.me/1", external: true } });
+  assert.match(out, /<a class="score-step" href="https:\/\/wa.me\/1" target="_blank" rel="noopener">Open <span class="score-step-end">&lt;it&gt;<svg/, "another app opens in a new tab");
+});
+
+test("the strip in French", () => {
+  globalThis.document = { documentElement: {} }; // setLang records the language on <html>
+  try {
+    setLang("fr");
+    const html = renderScore(scoreOf(nobody));
+    assert.match(html, /Protections actives\u00a0: 0\u00a0sur\u00a04/);
+    assert.match(html, />Connecter mes <span class="score-step-end">e-mails<svg/);
+    assert.match(renderScore(scoreOf({ status: linda, devices: [phone], guardians: [thomas], progress: oneLesson })), /Les 4 protections sont actives/);
+  } finally {
+    setLang("en");
+    delete globalThis.document;
   }
 });
 
