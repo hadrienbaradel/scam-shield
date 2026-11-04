@@ -418,11 +418,37 @@ test("breach lookup: a bank number found by the lookup is explained away in the 
     body: "Madame, un prélèvement de 69,90 € sera effectué sur votre compte FR76 3000 3000 3000 3000 3000 1234. Contester : https://contestation-prelevement.test/fr",
     links: [{ text: "Contester", href: "https://contestation-prelevement.test/fr" }] };
   const v = detect({ locale: "fr-FR", message, personalContext: { breaches, providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] }, patternCards: [] });
-  // The card keeps three reasons (sender, authentication, link rank first
-  // here); the breach signal is in the evidence the model reads either way.
-  const signal = v._signals.find((r) => r.evidence === "breach");
-  assert.ok(signal, "the verdict's evidence carries the breach");
-  assert.match(signal.text, /réel, mais il a fuité lors du piratage de Bouygues Telecom \(2025\)/);
+  // The card keeps three reasons; the breach one outranks the link so the
+  // senior reads it (specs/breach-exposure.md, line 4; the verdict engine's demo path).
+  const reason = v.reasons.find((r) => r.evidence === "breach");
+  assert.ok(reason, "the breach reason is on the card");
+  assert.match(reason.text, /^Ce numéro de compte est réel, mais il a fuité lors du piratage de Bouygues Telecom \(2025\)/);
   const without = detect({ locale: "fr-FR", message, personalContext: { breaches: [], providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] }, patternCards: [] });
   assert.ok(!without._signals.some((r) => r.evidence === "breach"), "no breach known, no breach signal");
+  const blank = detect({ locale: "fr-FR", message: { ...message, body: "Votre facture est disponible dans votre espace client." }, personalContext: { breaches, providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] }, patternCards: [] });
+  assert.ok(!blank._signals.some((r) => r.evidence === "breach"), "a breach known but nothing quoted adds nothing");
+});
+
+test("breach rule: a social security number, a date of birth or the end of a card quoted in a message is explained away when a known breach leaked it, in both languages", () => {
+  const ctx = (breaches) => ({ breaches, providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] });
+  const npd = { id: "npd-2024", source: "National Public Data", date: "2024", leaked: ["name", "address", "phone", "Social Security number"] };
+  const viamedis = { id: "viamedis-almerys-2024", source: "Viamedis / Almerys", date: "2024", leaked: ["name", "date of birth", "social security number", "health insurer"] };
+  const ticketmaster = { id: "ticketmaster-2024", source: "Ticketmaster", date: "2024", leaked: ["name", "email", "phone", "partial card number"] };
+  const scam = (body, locale = "en-US") => ({ locale, message: { channel: "email", fromName: "Medicare", from: "benefits@medicare-renewal.test", claimedBrand: "Medicare", auth: "spf=fail dkim=none dmarc=fail", subject: "Action required", body, links: [{ text: "Confirm", href: "https://medicare-renewal.test/confirm" }] }, patternCards: [] });
+  const breachText = (v) => v._signals.find((r) => r.evidence === "breach")?.text || null;
+
+  assert.match(breachText(detect({ ...scam("Your social security number 078-05-1120 is on file. Confirm your benefits today."), personalContext: ctx([npd]) })),
+    /^That social security number is real, but it leaked in the National Public Data breach \(2024\)/);
+  assert.equal(breachText(detect({ ...scam("Your social security number 078-05-1120 is on file."), personalContext: ctx([ticketmaster]) })), null, "a breach that leaked something else does not explain a social security number");
+  assert.match(breachText(detect({ ...scam("Nous avons bien votre numéro de sécurité sociale 1 55 03 75 123 456 78. Confirmez vos droits.", "fr-FR"), personalContext: ctx([viamedis]) })),
+    /^Ce numéro de sécurité sociale est réel, mais il a fuité lors du piratage de Viamedis \/ Almerys \(2024\)/);
+  assert.match(breachText(detect({ ...scam("Née le 12/03/1951, vous devez confirmer votre mutuelle.", "fr-FR"), personalContext: ctx([viamedis]) })),
+    /^Cette date de naissance est réelle, mais elle a fuité lors du piratage de Viamedis \/ Almerys \(2024\)/);
+  assert.match(breachText(detect({ ...scam("Your card ending in 4421 was charged $249. Dispute it now."), personalContext: ctx([ticketmaster]) })),
+    /^Those card digits are real, but it leaked in the Ticketmaster breach \(2024\)/);
+  assert.match(breachText(detect({ ...scam("Votre carte se terminant par 4421 a été débitée de 249 €.", "fr-FR"), personalContext: ctx([ticketmaster]) })),
+    /^Ces chiffres de carte sont réels, mais ils ont fuité lors du piratage de Ticketmaster \(2024\)/);
+  assert.equal(breachText(detect({ ...scam("A parcel 1 55 03 75 123 456 78 is waiting for you."), personalContext: ctx([viamedis]) })), null, "digits alone, not announced as a social security number, are not one");
+  assert.match(breachText(detect({ ...scam("Ihr Konto FR76 3000 3000 3000 3000 3000 1234 ... your old password is Linda1951."), personalContext: ctx([{ id: "old-password", source: "a website you used", date: "unknown", leaked: ["old password", "email"] }]) })),
+    /^That old password is real/, "the old-password wording stands");
 });

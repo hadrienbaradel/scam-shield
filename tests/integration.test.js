@@ -186,7 +186,7 @@ test("HTTP: the demo voicemail is heard by Muse Voice Transcribe and judged; wit
 });
 
 test("HTTP: the breach lookup runs only on the senior's tap, lists what it found, waits a minute between taps, and an unticked breach goes", opts, async () => {
-  const user = await makeUser({ email: "breach@example.test", name: "Linda", gmail: true });
+  const user = await makeUser({ email: "lookup@example.test", name: "Linda", gmail: true });
   const h = { cookie: await sessionFor(user), origin: ORIGIN };
   const fresh = (await app.inject({ url: "/api/context", headers: h })).json();
   assert.equal(fresh.context.breachLookup, undefined, "nothing looked up before the tap");
@@ -198,7 +198,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     if (u.startsWith("https://api.xposedornot.com/v1/breach-analytics")) {
       listCalls++;
       if (listDown) return new Response("", { status: 503 });
-      assert.ok(u.endsWith("?email=breach%40example.test"), u);
+      assert.ok(u.endsWith("?email=lookup%40example.test"), u);
       return new Response(JSON.stringify({ ExposedBreaches: { breaches_details: [{ breach: "BouyguesTelecom", domain: "bouyguestelecom.fr", xposed_date: "2025", xposed_data: "Email addresses;Names;Physical addresses" }] } }), { status: 200 });
     }
     if (u === "https://haveibeenpwned.com/api/v3/breaches") return new Response(JSON.stringify([{ Name: "BouyguesTelecom", Title: "Bouygues Telecom", Domain: "bouyguestelecom.fr", BreachDate: "2025-07-23", DataClasses: ["Bank account numbers", "Email addresses", "Names", "Physical addresses"] }]), { status: 200 });
@@ -231,12 +231,23 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     assert.deepEqual(gone.json().breaches.map((b) => b.id), ["bouygues-2025"], "an unticked looked-up breach goes");
 
     // A mailbox rescan refreshes the lookup only because the senior asked once.
-    const gmail = fakeGmail({ email: "breach@example.test", messages: [] });
+    const gmail = fakeGmail({ email: "lookup@example.test", messages: [] });
     await syncUser(user.id, { client: gmail });
     const rescanned = (await one("SELECT data FROM contexts WHERE user_id = $1", [user.id])).data;
     assert.equal(listCalls, 2, "the rescan asked the list again");
     assert.deepEqual(rescanned.breaches.map((b) => b.id), ["xon-BouyguesTelecom", "bouygues-2025"], "fresh lookup first, the ticked one kept");
     assert.ok(rescanned.breachLookup.at > lookup.at);
+
+    // The trusted person sees nothing of it (specs/breach-exposure.md, line 9).
+    const inv = await app.inject({ method: "POST", url: "/api/guardians", headers: h, payload: { name: "Thomas", email: "thomas.lookup@example.test", relation: "grandson" } });
+    assert.equal(inv.statusCode, 200);
+    const inviteToken = (await one("SELECT text_body FROM outbox WHERE to_email = 'thomas.lookup@example.test' ORDER BY created_at DESC LIMIT 1")).text_body.match(/\/invite\/([\w-]+)/)[1];
+    const guardian = await makeUser({ email: "thomas.lookup@example.test", name: "Thomas" });
+    assert.equal((await acceptInvite({ token: inviteToken, user: guardian })).status, "active");
+    const dash = await app.inject({ url: "/api/guardian/alerts", headers: { cookie: await sessionFor(guardian) } });
+    assert.equal(dash.statusCode, 200);
+    assert.equal(dash.json().protecting[0].name, "Linda");
+    assert.ok(!/breach|Bouygues|xon-|IBAN/i.test(dash.body), "the guardian's view carries none of the senior's breaches");
 
     // A senior who never tapped is never looked up, even on a rescan.
     const quiet = await makeUser({ email: "quiet@example.test", gmail: true });

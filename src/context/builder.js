@@ -25,6 +25,7 @@ export const KNOWN_BREACHES = [
   { id: "bouygues-2025", source: "Bouygues Telecom", date: "2025", country: "FR", leaked: ["name", "address", "IBAN", "BIC"] },
   { id: "free-2024", source: "Free", date: "2024", country: "FR", leaked: ["name", "address", "IBAN"] },
   { id: "france-travail-2024", source: "France Travail", date: "2024", country: "FR", leaked: ["name", "address", "phone", "email", "social security number"] },
+  { id: "viamedis-almerys-2024", source: "Viamedis / Almerys", date: "2024", country: "FR", leaked: ["name", "date of birth", "social security number", "health insurer"] },
   { id: "att-2024", source: "AT&T", date: "2024", country: "US", leaked: ["name", "address", "phone", "Social Security number"] },
   { id: "npd-2024", source: "National Public Data", date: "2024", country: "US", leaked: ["name", "address", "phone", "Social Security number"] },
   { id: "change-healthcare-2024", source: "Change Healthcare", date: "2024", country: "US", leaked: ["name", "address", "health data", "Social Security number"] },
