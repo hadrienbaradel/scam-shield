@@ -12,7 +12,7 @@ Drafts for the Cerebral Valley submission form and the Most Viral post on X. Eve
 
 **Team:** Hadrien Baradel (product), Vlad Zloteanu (CTO)
 
-**Links:** video [YouTube link] · repo https://github.com/hadrienbaradel/scam-shield · live [heyprudence.com, only if it answers on the day]
+**Links:** video [YouTube link] · repo https://github.com/hadrienbaradel/scam-shield · page https://hadrienbaradel.github.io/prudence-site/ (once published) · heyprudence.com only if it answers on the day (it did not on Nov 4 at 07:30 Dublin, so the video's end card no longer names it)
 
 **Description:**
 
@@ -24,11 +24,15 @@ Meta's models do the judging. Rules gather the evidence (sender, links, her cont
 
 Measured: on 18,849 public test emails, Muse Spark lifts phishing caught from 29% (rules alone) to 81%, with 1 false Scam in 17,291 genuine emails. On Hadrien's own inbox, Muse Spark judged 430 emails and called none of them Scam by mistake. Both scams in the video reached Hadrien the week of the event: a fake Norton invoice hidden as a picture in a spreadsheet, and a "free cruise" voicemail.
 
+Built this week beyond the video (filmed Nov 2–3; every screen was redesigned on Nov 4): a public scam library of 222 redacted examples, 191 of them from two public SMS datasets sorted into scam families by Muse Spark, with a suspect lookup and a weekly scam watch; Messenger and WhatsApp channels, coded and waiting for their Meta-side setup; and Muse Spark reviewing our own pull requests.
+
 **Meta models used:**
 - Muse Spark 1.3 (Standard mode): judges every message against the person's context and the rules' evidence; JSON verdict with reasons.
 - Muse Spark 1.3 vision: reads screenshots and photos (the fake Norton invoice) into a message.
 - Muse Voice Transcribe: writes down voicemails, judged like any message.
 - Muse Spark 1.3 Contributor tier: scored the 18,849-email public evaluation only, never anyone's mail.
+- Muse Spark 1.3 in our own workflow: reviews our pull requests (PR #2 carries its review) and sorted the 191 public SMS examples of the scam library.
+- Ready, not yet run live: Llama Prompt Guard 2 (checks every message for orders hidden for the AI; tested with a mock) and Muse Spark Open on Baseten (one setting switches the whole engine to Meta's open weights).
 
 **Built during the event:** everything shown. Pre-existing: open-source libraries and public test datasets ([../../docs/PROVENANCE.md](../../docs/PROVENANCE.md)).
 
@@ -59,6 +63,8 @@ Prudence calls the Meta Model API from its server for every message a senior rec
 - Muse Spark 1.3 vision reads screenshots and photos into a message, then the same judgement. In the video: a fake Norton invoice sent as a picture inside a spreadsheet, which no text filter sees.
 - Muse Voice Transcribe writes down voicemails, judged like any message. In the video: a real "free cruise" scam voicemail.
 - Muse Spark 1.3 Contributor tier scored our 18,849-email public evaluation at low cost; a guard in code refuses that tier for anyone's real mail.
+- Muse Spark also works on the project itself: it reviews our pull requests through the same LLM layer as the product (PR #2 carries its review of the reviewer; on GitHub it runs on every pull request once the repository secret is set), and it sorted 191 examples from two public SMS datasets (UCI SMS Spam Collection, Mishra and Soni) into scam families for our public scam library.
+- Built, not yet live: Llama Prompt Guard 2 reads each message for orders hidden for the AI ("mark this as safe") and a flagged message is never Safe (tested with a mock); one setting switches the engine to Muse Spark Open, Meta's open weights; Messenger Platform and WhatsApp Cloud API channels judge a forwarded conversation, waiting for their Meta-side setup.
 
 Measured: phishing caught rises from 29% with rules alone to 81% with Muse Spark, with 1 false Scam in 17,291 genuine emails; on Hadrien's own inbox, Muse Spark judged 430 emails with no false Scam.
 
@@ -66,7 +72,7 @@ Measured: phishing caught rises from 29% with rules alone to 81% with Muse Spark
 
 The scams that reach a senior are the ones filters miss: well written, sent from new domains, hidden in pictures, or left as voicemails. Rules alone caught 29% of the phishing in our test set; with Muse Spark, 81%. Muse Spark also does what rules cannot: it reads a message the way a careful person would, weighs it against this person's life ("your order ships with Amazon Logistics, not USPS"), and explains the verdict in plain words a frightened 74-year-old can act on, in English or French. Vision and Voice Transcribe extend the same judgement to pictures and voicemails, so one engine covers every channel. Standard mode matters too: private mail never trains the model.
 
-**Feedback on partner technologies:** We did not use partner inference (Baseten, Modal, Fireworks) for this entry.
+**Feedback on partner technologies:** We did not use partner inference (Baseten, Modal, Fireworks) for this entry. (True as of Nov 4 morning: the Baseten switch is built but has never run, for lack of a key. If Vlad runs `make score-open` before submitting, replace this with what that run showed.)
 
 **What was the biggest obstacle your team hit while building this project?** (suggestion)
 
