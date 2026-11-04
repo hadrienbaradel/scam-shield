@@ -342,6 +342,25 @@ test("in French, every check and the answer are in French", async () => {
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
 });
 
+test("a company is found through its brand's aliases, a brand's real and proven address counts before it ever wrote to her, and no sender address means nothing to compare", async () => {
+  const run = async (message, company) => {
+    mock.script(ask(["my_providers", { company }]), answer("be_careful", [{ text: "x", check: 1 }]));
+    const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps() });
+    return [out.checks[0].found, out.checks[0].flag];
+  };
+  const mail = (from, body, auth = "spf=pass dkim=pass dmarc=pass") => ({ channel: "email", from, fromName: "", subject: "", body, links: [], auth });
+  assert.deepEqual(await run(mail("statements@chase.com", "Chase Bank: your statement is ready"), "Chase Bank"), ["Chase writes to you, and this message comes from its real address", "ok"]);
+  assert.deepEqual(await run(mail("auto-confirm@amazon.com", "Amazon.com: your order"), "Amazon.com"), ["Amazon writes to you, and this message comes from its real address", "ok"]);
+  assert.deepEqual(await run(mail("service@paypal.com", "PayPal: you sent a payment"), "PayPal"), ["This message comes from PayPal's real address (paypal.com)", "ok"]);
+  assert.deepEqual(await run(mail("service@paypal.com", "PayPal: you sent a payment", "spf=fail dkim=fail dmarc=fail"), "PayPal"),
+    ["This message says it comes from PayPal's real address (paypal.com), but nothing proves it", "unknown"], "a forged address is not proof");
+  assert.deepEqual(await run(mail("service@paypal.com", "You sent a payment"), null), ["This message comes from PayPal's real address (paypal.com)", "ok"]);
+  assert.deepEqual(await run({ channel: "sms", from: "+1 555 0101", body: "Chase: confirm this payment" }, "Chase"),
+    ["Chase writes to you; this message has no sender address to compare with its real one", "unknown"], "a text has no address to compare");
+  assert.deepEqual(await run({ channel: "voice_transcript", from: "", body: "This is Chase calling about your card" }, "Chase"),
+    ["Chase writes to you; this message has no sender address to compare with its real one", "unknown"]);
+});
+
 test("a breach counts only for the kind of data it leaked, in the words the context uses: IBAN is bank details, username is not a name", async () => {
   const ctx = { ...LINDA, breaches: [{ source: "A forum", date: "2023", leaked: ["username", "email"] }, { source: "Bouygues Telecom", date: "2025", leaked: ["name", "address", "IBAN", "BIC"] }] };
   const run = async (kinds, context = ctx) => {
@@ -382,7 +401,7 @@ test("every other result is said in plain words: a demo example's landing page, 
   mock.script(ask(["my_providers", { company: "Chase" }], ["my_providers", { company: null }]), answer("be_careful", [{ text: "x", check: 1 }]));
   const real = await investigate({ message: C8.message, personalContext: LINDA, first: CAREFUL, deps: deps() });
   assert.deepEqual(real.checks.map((c) => c.found), ["Chase writes to you, and this message comes from its real address", "The sender is Chase, from its real address"]);
-  const fromEthan = { channel: "email", from: "ethan.miller@example-mail.test", fromName: "Ethan", body: "Photos from Sunday", links: [] };
+  const fromEthan = { channel: "email", from: "ethan.miller@example-mail.test", fromName: "Ethan", body: "Photos from Sunday", links: [], auth: "spf=pass dkim=pass dmarc=pass" };
   mock.script(ask(["my_people", { name: null }], ["my_providers", { company: null }]), answer("safe", [{ text: "x", check: 1 }]));
   const family = await investigate({ message: fromEthan, personalContext: LINDA, first: SAFE, deps: deps() });
   assert.deepEqual(family.checks.map((c) => c.found), ["It comes from the saved address or number of your grandson", "The sender has written to you before"]);
