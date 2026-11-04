@@ -57,11 +57,20 @@ export function workerOff(env) {
   return databaseOnThisMachine(env.DATABASE_URL || DEFAULT_DATABASE_URL) ? "" : "the database is on another machine, whose host runs them; WORKER=1 forces them";
 }
 
+// The address the browser opens when BASE_URL names none: http://localhost:<port>, or in a GitHub
+// Codespace the forwarded https://<codespace>-<port>.<forwarding domain> (.devcontainer/), so the Origin
+// check (src/server.js) accepts the demo's own requests there with no setting.
+export function defaultBaseUrl(env) {
+  const port = env.PORT || 3000;
+  const { CODESPACE_NAME: name, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: domain } = env;
+  return name && domain ? `https://${name}-${port}.${domain}` : `http://localhost:${port}`;
+}
+
 export const config = {
   port: Number(env.PORT || 3000),
   // Loopback only by default. Pairing a real phone on the LAN needs HOST=0.0.0.0.
   host: env.HOST || "127.0.0.1",
-  baseUrl: (env.BASE_URL || `http://localhost:${env.PORT || 3000}`).replace(/\/$/, ""),
+  baseUrl: (env.BASE_URL || defaultBaseUrl(env)).replace(/\/$/, ""),
   databaseUrl: env.DATABASE_URL || DEFAULT_DATABASE_URL,
   tokenKey: env.TOKEN_ENC_KEY || "",
   google: {

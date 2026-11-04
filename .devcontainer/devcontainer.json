@@ -1,0 +1,23 @@
+// GitHub Codespaces (the README's "Open in GitHub Codespaces" badge) and VS Code Dev Containers:
+// Prudence running in one click with no key at all. Node 24 as in .nvmrc, Docker inside the container
+// for the dev compose Postgres (.infra/dev), the app on port 3000 in demo mode: the examples judged
+// by the rules detector until META_MODEL_API_KEY is set, Google sign-in off.
+// _product/docs/infra.md (Codespaces) and _product/docs/dx.md (Try it without keys). No Java: the
+// Android companion is not part of the one-click path. Full-line comments only (tests/codespaces.test.js).
+{
+  "name": "Prudence",
+  // 24-bookworm, not 24: that tag is Debian trixie, where the docker-in-docker feature cannot install Moby.
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": { "dockerDashComposeVersion": "v2" }
+  },
+  // The compose Postgres's superuser, and the user the app, the tests and make doctor connect as (as in CI).
+  "containerEnv": { "PG_USER": "postgres", "PGUSER": "postgres" },
+  // Once: dependencies, Docker ready, then Postgres up (waits for healthy), both databases created and migrated.
+  "postCreateCommand": "npm ci --no-audit --no-fund && timeout 120 bash -c 'until docker info >/dev/null 2>&1; do sleep 2; done' && make db-up",
+  // Each time the editor attaches: the app with restart on change. No master key here, so it stays on this
+  // container's Postgres; BASE_URL defaults to the forwarded address (src/config.js, defaultBaseUrl).
+  "postAttachCommand": "make server",
+  "forwardPorts": [3000],
+  "portsAttributes": { "3000": { "label": "Prudence", "onAutoForward": "openPreview" } }
+}
