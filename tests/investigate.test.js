@@ -418,6 +418,22 @@ test("a company is found through its brand's aliases, a brand's real and proven 
     ["Chase writes to you; this message has no sender address to compare with its real one", "unknown"]);
 });
 
+test("a free website service is said for what it is, never as a registry line: anyone can publish a page there", async () => {
+  const asked = [];
+  const registrationDate = async (d) => { asked.push(d); return null; };
+  const message = { channel: "sms", from: "+1 555 0101", body: "Pay: https://usps-fee.github.io/pay https://sites.google.com/view/pay https://pay.vercel.app/",
+    links: [{ href: "https://usps-fee.github.io/pay" }, { href: "https://sites.google.com/view/pay" }, { href: "https://pay.vercel.app/" }] };
+  mock.script(ask(["website_age", { domain: "usps-fee.github.io" }], ["website_age", { domain: "sites.google.com" }], ["website_age", { domain: "pay.vercel.app" }]),
+    answer("scam", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: SCAM, deps: deps({ registrationDate }) });
+  assert.deepEqual(out.checks.map((c) => [c.found, c.flag]), [
+    ["usps-fee.github.io is a page on github.io, a free website service where anyone can publish a page", "warn"],
+    ["sites.google.com is a service where anyone can publish a page", "warn"],
+    ["pay.vercel.app is a page on vercel.app, a free website service where anyone can publish a page", "warn"],
+  ]);
+  assert.deepEqual(asked, [], "no registry asked");
+});
+
 test("a breach counts only for the kind of data it leaked, in the words the context uses: IBAN is bank details, username is not a name", async () => {
   const ctx = { ...LINDA, breaches: [{ source: "A forum", date: "2023", leaked: ["username", "email"] }, { source: "Bouygues Telecom", date: "2025", leaked: ["name", "address", "IBAN", "BIC"] }] };
   const run = async (kinds, context = ctx) => {
