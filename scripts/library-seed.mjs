@@ -13,7 +13,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { validateEntry, redactExample, loadLibraryFiles, LIBRARY_DIR } from "../lib/library.js";
+import { validateEntry, redactExample, LIBRARY_DIR } from "../lib/library.js";
 
 const load = async (p) => JSON.parse(await readFile(new URL(`../${p}`, import.meta.url), "utf8"));
 const PROFILE = { francoise: { country: "FR", language: "fr" }, linda: { country: "US", language: "en" } };
@@ -124,7 +124,9 @@ export function entryFromCase(c, profile) {
 export async function seedLibrary({ dir = LIBRARY_DIR, log = console.log } = {}) {
   const { cases } = await load("testcases/cases.json");
   const profiles = { francoise: await load("data/profiles/francoise.json"), linda: await load("data/profiles/linda.json") };
-  const { families, sources } = await loadLibraryFiles(dir);
+  // The two lists read as files, not through loadLibraryFiles: the entries being rewritten may fail a rule that changed.
+  const families = JSON.parse(await readFile(join(dir, "families.json"), "utf8"));
+  const sources = JSON.parse(await readFile(join(dir, "sources.json"), "utf8"));
   await mkdir(join(dir, "entries"), { recursive: true });
   const written = [];
   for (const c of cases.filter((x) => x.expected !== "safe")) {

@@ -36,11 +36,16 @@ const countryCode = (v) => code(v, /^[A-Z]{2}$/, (s) => s.toUpperCase());
 const languageCode = (v) => code(v, /^[a-z]{2}$/, (s) => s.toLowerCase());
 const text = (v, max) => (v == null || v === "" ? null : String(v).slice(0, max));
 
-// The message as the library keeps it: four fields, the links as text and href.
-function cleanMessage(message = {}) {
+// The message as the library keeps it: four fields, the links as text and
+// href, redacted. For a senior's share her name becomes [name] and her own
+// address as the sender (a spoofed "from yourself") becomes [someone]@domain.
+function cleanMessage(message = {}, { recipientName = "", ownEmail = "" } = {}) {
   const links = Array.isArray(message.links) ? message.links.filter((l) => l && typeof l.href === "string").slice(0, 50)
     .map((l) => ({ text: text(l.text, 500), href: l.href.slice(0, 2000) })) : [];
-  return redactExample({ from: text(message.from, 320), subject: text(message.subject, 500), body: String(message.body ?? ""), links });
+  const clean = redactExample({ from: text(message.from, 320), subject: text(message.subject, 500), body: String(message.body ?? ""), links }, { recipientName });
+  const own = String(ownEmail || "").trim().toLowerCase();
+  if (own && clean.from && clean.from.trim().toLowerCase() === own) clean.from = `[someone]@${own.split("@")[1]}`;
+  return clean;
 }
 
 // The app's verdict, reduced to what the entry shows: the verdict word, the headline, the reasons as lines.
@@ -51,7 +56,8 @@ function cleanVerdict(verdict) {
 }
 
 export async function submit({ channel, message, country = null, language = null, note = null, verdict = null, userId = null, fromApp = false, submitterHash = null, classify = null }) {
-  const clean = cleanMessage(message);
+  const owner = fromApp && userId ? await one("SELECT name, email FROM users WHERE id = $1", [userId]) : null;
+  const clean = cleanMessage(message, { recipientName: owner?.name, ownEmail: owner?.email });
   const hash = bodyHash(clean);
   const lib = await getLibrary();
   const entryId = cache.hashes.get(hash);
@@ -87,7 +93,7 @@ export async function listSubmissions() {
 export async function approveSubmission(id, overrides = {}) {
   const row = await one("SELECT * FROM library_submissions WHERE id = $1", [id]);
   if (!row) return null;
-  if (row.status !== "pending") return { errors: [`submission is ${row.status}`] };
+  if (row.status !== "pending") return { errors: [`submission is ${row.status}`], decided: true };
   const lib = await getLibrary();
   const today = new Date().toISOString().slice(0, 10);
   const source = lib.sources.find((s) => s.id === SUBMISSIONS_SOURCE);
@@ -103,7 +109,9 @@ export async function approveSubmission(id, overrides = {}) {
   };
   const errors = validateEntry(entry, lib);
   if (errors.length) return { errors: [...errors] };
-  await q("UPDATE library_submissions SET status = 'approved', entry = $2, entry_id = $3, decided_at = now() WHERE id = $1", [id, entry, entry.id]);
+  // Conditional: two reviewers approving at once publish one entry, not two.
+  const done = await one("UPDATE library_submissions SET status = 'approved', entry = $2, entry_id = $3, decided_at = now() WHERE id = $1 AND status = 'pending' RETURNING id", [id, entry, entry.id]);
+  if (!done) return { errors: ["submission is not pending"], decided: true };
   forgetLibrary();
   return { entry };
 }

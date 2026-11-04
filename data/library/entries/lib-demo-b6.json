@@ -10,7 +10,7 @@
   "message": {
     "from": "linda@example-mail.test",
     "subject": "I filmed you - pay in 48 hours",
-    "body": "I filmed you through your webcam. Pay $1,500 in Bitcoin in 48 hours or I send the video to everyone. Your old password is: sunshine42. Pay in bitcoin now.",
+    "body": "I filmed you through your webcam. Pay $1,500 in Bitcoin in 48 hours or I send the video to everyone. Your old password is: [password]. Pay in bitcoin now.",
     "links": []
   },
   "first_seen": "2026-10-27",

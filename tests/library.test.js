@@ -98,6 +98,27 @@ test("redactExample keeps the evidence and removes what belongs to the recipient
   assert.equal(redactExample({ body: "Enter code123456 now" }).body, "Enter code[code] now", "digits glued to the word");
   assert.equal(redactExample({ body: "votre code de validation est 12 34 56 merci" }).body, "votre code de validation est [code] merci");
   assert.equal(redactExample({ body: "The parcel was pinned to 2026 shelves" }).body, "The parcel was pinned to 2026 shelves", "a longer word is not the word");
+  // A password the scammer quotes, in either language; a word after "password is" that is not a password stays.
+  assert.equal(redactExample({ body: "Your old password is: sunshine42. Pay now." }).body, "Your old password is: [password]. Pay now.");
+  assert.equal(redactExample({ body: "votre mot de passe : soleil42 a fuité" }).body, "votre mot de passe : [password] a fuité");
+  assert.equal(redactExample({ body: "Password=Tr0ub4dor&3 was leaked" }).body, "Password=[password] was leaked");
+  assert.equal(redactExample({ body: "Your password is expired. Nouveau mot de passe enregistré. A password must be changed." }).body,
+    "Your password is expired. Nouveau mot de passe enregistré. A password must be changed.");
+  // Links keep their scheme, host and path; their text is redacted like the body.
+  const links = redactExample({ body: "Click to verify your account now", links: [
+    { text: "Open as linda@gmail.com", href: "https://secure-chase-login.com/verify?email=linda@gmail.com&t=abc#top" }, { text: null, href: "https://x.test/a/b" }] }).links;
+  assert.deepEqual(links, [{ text: "Open as [someone]@gmail.com", href: "https://secure-chase-login.com/verify" }, { text: null, href: "https://x.test/a/b" }]);
+  assert.equal("links" in redactExample({ body: "no links at all here" }), false, "no links key added");
+});
+
+test("validateEntry refuses a link with a query string or a fragment, or link text with an address", async () => {
+  const ctx = await refs();
+  const link = (href, text = "chronopost.fr") => withMessage({ links: [{ text, href }] });
+  assert.ok(validateEntry(link("https://chronopost-colis.test/pay?id=12"), ctx).includes("links must carry no query string or fragment"));
+  assert.ok(validateEntry(link("https://chronopost-colis.test/pay#x"), ctx).includes("links must carry no query string or fragment"));
+  assert.ok(validateEntry(link("https://chronopost-colis.test/pay", "reply to linda@gmail.com"), ctx).includes("link text carries personal data"));
+  assert.deepEqual(validateEntry(link("https://chronopost-colis.test/pay", "reply to [someone]@gmail.com"), ctx), [], "the redacted form passes");
+  assert.deepEqual(validateEntry(link("https://chronopost-colis.test/pay", null), ctx), [], "no text is fine");
 });
 
 test("validateEntry warns when the text may still carry a name; a warning blocks nothing", async () => {
