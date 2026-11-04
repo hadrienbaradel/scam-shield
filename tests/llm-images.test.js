@@ -87,7 +87,7 @@ test("meta: a photo is asked as JSON (model, prompt, n, size 1080x1350, jpeg) wi
   assert.equal(calls[0].url, "https://api.meta.ai/v1/images/generations");
   assert.equal(calls[0].opts.method, "POST");
   assert.deepEqual(calls[0].headers, { "content-type": "application/json", authorization: "Bearer test-key" });
-  assert.deepEqual(calls[0].body, { model: "muse-image-1.0", prompt: "a daughter and her mother at a kitchen table", n: 1, size: "1080x1350", output_format: "jpeg" });
+  assert.deepEqual(calls[0].body, { model: "muse-image-1.0", prompt: "a daughter and her mother at a kitchen table", n: 1, size: "1080x1350", output_format: "jpeg", response_format: "b64_json" });
   assert.equal(calls[0].signal, signal, "the caller's signal goes through");
   assert.equal(out.images.length, 1);
   assert.ok(out.images[0].bytes.equals(TINY_JPEG));
@@ -102,7 +102,7 @@ test("meta: an edit sends the photo as a data URL in images[], no mask, the size
   const out = await createMetaImages({ fetchImpl }).editImage({ prompt: "remove the second pair of glasses. Keep everything else the same.", images: [{ bytes: TINY_JPEG, mime: "image/jpeg" }] });
   assert.equal(calls[0].url, "https://proxy.test/v1/images/edits");
   assert.deepEqual(calls[0].body, {
-    model: "muse-image-1.0", prompt: "remove the second pair of glasses. Keep everything else the same.", n: 1, output_format: "jpeg",
+    model: "muse-image-1.0", prompt: "remove the second pair of glasses. Keep everything else the same.", n: 1, output_format: "jpeg", response_format: "b64_json",
     images: [{ image_url: `data:image/jpeg;base64,${b64(TINY_JPEG)}` }],
   });
   assert.equal(out.images[0].mime, "image/png", "the bytes say what they are");
@@ -135,7 +135,7 @@ test("meta: a safety block (400 content_policy_violation) becomes one plain sent
   const html = fakeFetch({ status: 502, text: "<html>Bad gateway</html>" });
   await assert.rejects(createMetaImages({ fetchImpl: html.fetchImpl }).generateImage({ prompt: "p" }), { message: "Muse Image 1.0 502" });
   const empty = fakeFetch({ status: 200, json: { data: [] } });
-  await assert.rejects(createMetaImages({ fetchImpl: empty.fetchImpl }).generateImage({ prompt: "p" }), { message: "Muse Image 1.0 answered without a photo" });
+  await assert.rejects(createMetaImages({ fetchImpl: empty.fetchImpl }).generateImage({ prompt: "p" }), { message: "Muse Image 1.0 returned no image data" });
   const timeout = fakeFetch(Object.assign(new Error("t"), { name: "TimeoutError" }));
   await assert.rejects(createMetaImages({ fetchImpl: timeout.fetchImpl }).generateImage({ prompt: "p" }), { message: "Muse Image 1.0 timed out", code: "timeout" });
 });
@@ -171,24 +171,23 @@ test("meta: a Contributor-tier model, an empty prompt or an edit without a photo
   assert.equal(calls.length, 0);
 });
 
-test("openai: a photo is asked as JSON at IMAGE_BASE_URL; a refused size is tried once with OpenAI's nearest; a URL answer is downloaded", async () => {
+test("openai: a photo is asked as JSON at IMAGE_BASE_URL; a refused response_format, then a refused size, are each tried once without", async () => {
   process.env.IMAGE_PROVIDER = "openai";
   process.env.OPENAI_API_KEY = "sk-test";
   const { fetchImpl, calls } = fakeFetch([
+    fail(400, "Unknown parameter: 'response_format'.", { param: "response_format" }),
     fail(400, "Invalid value: '1080x1350'. Supported values are: '1024x1024', '1024x1536', '1536x1024', and 'auto'.", { param: "size" }),
-    { status: 200, json: { data: [{ url: "https://files.test/photo.png" }] } },
-    { status: 200, bytes: PNG },
+    answer(PNG),
   ]);
   const out = await generateImage({ prompt: "a son on the phone with his father", format: "png", fetchImpl });
+  assert.equal(calls.length, 3);
   assert.equal(calls[0].url, "https://api.openai.com/v1/images/generations");
   assert.deepEqual(calls[0].headers, { "content-type": "application/json", authorization: "Bearer sk-test" });
-  assert.deepEqual(calls[0].body, { model: "gpt-image-1", prompt: "a son on the phone with his father", n: 1, size: "1080x1350", output_format: "png" });
-  assert.equal(calls[1].body.size, "1024x1536", "portrait stays portrait");
-  assert.equal(calls[2].url, "https://files.test/photo.png");
+  assert.deepEqual(calls[0].body, { model: "gpt-image-1", prompt: "a son on the phone with his father", n: 1, size: "1080x1350", output_format: "png", response_format: "b64_json" });
+  assert.equal(calls[1].body.response_format, undefined, "asked again without it");
+  assert.equal(calls[2].body.size, "1024x1536", "portrait stays portrait");
   assert.equal(out.images[0].mime, "image/png");
   assert.deepEqual({ provider: out.provider, label: out.label }, { provider: "openai", label: "gpt-image-1" });
-  const lost = fakeFetch([{ status: 200, json: { data: [{ url: "https://files.test/x.png" }] } }, { status: 404, text: "gone" }]);
-  await assert.rejects(generateImage({ prompt: "p", fetchImpl: lost.fetchImpl }), { message: "gpt-image-1 made a photo but it could not be downloaded (404)" });
   assert.deepEqual([nearestStandardSize("1350x1080"), nearestStandardSize("1024x1024"), nearestStandardSize("bad")], ["1536x1024", "1024x1024", "1024x1024"]);
 });
 
@@ -242,6 +241,19 @@ test("mock: scripted photos in order (a Buffer, an Error, a function), every cal
   mock.reset();
   assert.equal(mock.imageCalls.length, 0);
   assert.ok((await generateImage({ prompt: "after reset" })).images[0].bytes.equals(TINY_JPEG), "the scripted photo was cleared");
+});
+
+test("security: an answer that only names a URL is never fetched; it fails with no image data after exactly one request", async () => {
+  process.env.META_MODEL_API_KEY = "test-key";
+  const meta = fakeFetch({ status: 200, json: { data: [{ url: "http://169.254.169.254/latest/meta-data/" }] } });
+  await assert.rejects(createMetaImages({ fetchImpl: meta.fetchImpl }).generateImage({ prompt: "p" }), { message: "Muse Image 1.0 returned no image data" });
+  assert.equal(meta.calls.length, 1, "the API call, no second fetch");
+  process.env.IMAGE_PROVIDER = "openai";
+  process.env.IMAGE_BASE_URL = "http://localhost:8080/v1";
+  const openai = fakeFetch({ status: 200, json: { data: [{ url: "http://127.0.0.1:5432/" }] } });
+  await assert.rejects(editImage({ prompt: "p", images: [{ bytes: TINY_JPEG }], fetchImpl: openai.fetchImpl }), { message: "gpt-image-1 returned no image data" });
+  assert.equal(openai.calls.length, 1);
+  assert.equal(openai.calls[0].body.get("response_format"), "b64_json", "the edit asks for the bytes too");
 });
 
 test("helpers: the bytes name their type; Muse ids read as names", () => {
