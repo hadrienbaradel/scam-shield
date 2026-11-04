@@ -4,12 +4,16 @@
 // seconds is judged as one conversation and gets one reply in the chat
 // (_product/specs/messenger-channel.md). Same engine and wordings as the
 // WhatsApp channel (src/channels/whatsapp.js), whose pieces are reused.
+// A video is judged on what is said in it and what it shows, together: its
+// sound through Muse Voice Transcribe, four frames through Muse Spark, one
+// verdict (line 16).
 // Pure logic: the Graph API and Meta's CDN go through an injectable fetch,
-// ffmpeg through an injectable transcoder, the grouping window through an
-// injectable timer, so tests run with the mock LLM and no network. Nothing
-// is stored (not the messages, the pictures, the recordings, nor the
-// verdict); the sender is a Page-scoped id, not an account, so the check
-// uses the pattern cards and no personal context.
+// ffmpeg through an injectable transcoder and video reader, the grouping
+// window through an injectable timer, so tests run with the mock LLM and
+// no network. Nothing is stored (not the messages, the pictures, the
+// recordings, the videos, nor the verdict); the sender is a Page-scoped
+// id, not an account, so the check uses the pattern cards and no personal
+// context.
 // Payload and endpoint shapes follow Meta's Messenger Platform docs
 // (webhook "messages" event, Send API, checked 2026-11-04), unverified live
 // until the first delivery; every such assumption is a named constant below.
@@ -22,7 +26,7 @@ import { emptyContext } from "../../lib/context.js";
 import { linksFromText } from "../google/gmail.js";
 import { inspectMessageLinks } from "../links/resolver.js";
 import {
-  GRAPH_URL, IMAGE_TYPES, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, createLimiter, createSeen, detectLanguage, ffmpegToWav, formatReply,
+  GRAPH_URL, IMAGE_TYPES, MAX_AUDIO_BYTES, MAX_IMAGE_BYTES, createLimiter, createSeen, detectLanguage, ffmpegToWav, ffmpegVideo, formatReply,
   shippedCards, wordsFor,
 } from "./whatsapp.js";
 
@@ -37,6 +41,11 @@ export const MAX_REPLY_CHARS = 1900;
 export const DEFAULT_GROUP_MS = 3000;
 // A group is judged at once past this many items, whatever the window says.
 export const MAX_GROUP_ITEMS = 20;
+// A video longer or bigger than this gets "too long" (spec line 16).
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+export const MAX_VIDEO_SECONDS = 180;
+// Assumption: a video comes as type "video" with its url on video.xx.fbcdn.net
+// (or another Meta CDN host below), checked on the first live delivery.
 // Assumption: attachment URLs are on Meta's CDN, seen as scontent.xx.fbcdn.net,
 // video.xx.fbcdn.net, cdn.fbsbx.com and lookaside.fbsbx.com. Anything else,
 // plain http, or a redirect is refused; no token is ever attached.
@@ -47,7 +56,7 @@ export const ATTACHMENT_HOST_SUFFIXES = [".fbcdn.net", ".fbsbx.com"];
 const EXTENSION_TYPES = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
 // Attachment types as the webhook names them (Aug 2026: a sticker is its own
 // type, with payload.sticker_id; before, an image with a sticker_id).
-// Only image and audio are read; the rest is "only texts, pictures and voice notes".
+// Image, audio and video are read; the rest is "only texts, pictures, voice notes and videos".
 const ATTACHMENT_TYPES = { image: "image", audio: "audio", video: "video", file: "file", sticker: "sticker", fallback: "link" };
 
 export function messengerConfig(env = process.env) {
@@ -139,15 +148,20 @@ function imageMime(contentType, url) {
   return EXTENSION_TYPES[ext] || ct;
 }
 
-// The bytes, never more than max (the download stops there).
-async function readCapped(res, max) {
-  if (Number(res.headers.get("content-length")) > max) throw new Expected("tooBig");
-  if (!res.body) return Buffer.from(await res.arrayBuffer());
+// The bytes, never more than max (the download stops there); over it, the
+// reply named by tooBig.
+async function readCapped(res, max, tooBig = "tooBig") {
+  if (Number(res.headers.get("content-length")) > max) throw new Expected(tooBig);
+  if (!res.body) {
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length > max) throw new Expected(tooBig);
+    return buffer;
+  }
   const chunks = [];
   let size = 0;
   for await (const chunk of res.body) {
     size += chunk.length;
-    if (size > max) throw new Expected("tooBig");
+    if (size > max) throw new Expected(tooBig);
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
@@ -162,6 +176,7 @@ export function createMessengerChannel({
   env = process.env,
   fetchImpl = (...args) => globalThis.fetch(...args),
   transcode = (buffer) => ffmpegToWav(buffer, { ffmpegPath: messengerConfig(env).ffmpegPath }),
+  readVideo = (buffer, opts) => ffmpegVideo(buffer, { ffmpegPath: messengerConfig(env).ffmpegPath, ...opts }),
   patternCards = shippedCards,
   inspectLinks = (message) => inspectMessageLinks(message, emptyContext(""), { resolve: false, fetchImpl }),
   now = Date.now,
@@ -174,6 +189,8 @@ export function createMessengerChannel({
   maxGroupItems = MAX_GROUP_ITEMS,
   maxImageBytes = MAX_IMAGE_BYTES,
   maxAudioBytes = MAX_AUDIO_BYTES,
+  maxVideoBytes = MAX_VIDEO_BYTES,
+  maxVideoSeconds = MAX_VIDEO_SECONDS,
   maxReplyChars = MAX_REPLY_CHARS,
 } = {}) {
   const cfg = () => messengerConfig(env);
@@ -202,12 +219,12 @@ export function createMessengerChannel({
   const typingOn = (to) => send({ recipient: { id: to }, sender_action: "typing_on" }).catch((e) => log.warn?.({ err: e.message }, "messenger typing failed"));
 
   // Downloaded at once (the URLs expire), with no token, never following a redirect.
-  async function download(media, maxBytes) {
+  async function download(media, maxBytes, tooBig = "tooBig") {
     const url = attachmentUrl(media?.url, attachmentHosts);
     const res = await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(30000) });
     if (res.status >= 300 && res.status < 400) throw new Error(`attachment redirected (${res.status}), not followed`);
     if (!res.ok) throw new Error(`attachment download ${res.status}`);
-    const buffer = await readCapped(res, maxBytes);
+    const buffer = await readCapped(res, maxBytes, tooBig);
     return { buffer, mime: imageMime(res.headers.get("content-type"), url) };
   }
 
@@ -220,16 +237,38 @@ export function createMessengerChannel({
     });
   }
 
+  // A video as one turn: what its four frames show (Muse Spark) and what
+  // is said in it (Muse Voice Transcribe, when voice is on), read together
+  // from one temporary file; null when neither has anything. stats gets
+  // its length and size for the log, never its words.
+  async function readVideoTurn(media, stats) {
+    const { buffer } = await download(media, maxVideoBytes, "videoTooLong");
+    const clip = await readVideo(buffer, { maxSeconds: maxVideoSeconds });
+    (stats.videos ||= []).push({ seconds: Math.round(clip.durationSec * 10) / 10, bytes: buffer.length });
+    if (clip.tooLong || clip.durationSec > maxVideoSeconds) throw new Expected("videoTooLong");
+    const [shown, heard] = await Promise.all([
+      clip.sheet ? extractFromImage({ imageBase64: clip.sheet.toString("base64"), mime: "image/jpeg" }) : null,
+      clip.wav && voiceConfigured() ? transcribeVoice({ wav: clip.wav, fetchImpl }).then((r) => r.text) : "",
+    ]);
+    const screen = shown?.isMessage ? String(shown.message?.body || "").trim() : "";
+    const said = String(heard || "").trim();
+    if (!screen && !said) return null;
+    const text = [screen && `What the video shows:\n${screen}`, said && `What is said in it:\n${said}`].filter(Boolean).join("\n\n");
+    const links = [...(screen ? shown.message.links || [] : []), ...linksFromText(said)];
+    return { who: "them", name: (screen && shown.message.fromName) || "", text, raw: [screen, said].filter(Boolean).join("\n"), links, setting: "video", said };
+  }
+
   // One reply for a group of items: { text, lang, verdict? }. Texts are the
   // other person's turns; a picture gives one turn, a chat's turns, a
   // profile's facts, or a list of conversations (an inbox, judged as its
-  // own message with its rows); a voice message gives its words. The last
-  // turn is judged, the earlier ones are its thread history.
-  async function answer(items, lang = "en") {
+  // own message with its rows); a voice message gives its words; a video
+  // one turn with what it shows and what is said in it. The last turn is
+  // judged, the earlier ones are its thread history.
+  async function answer(items, lang = "en", stats = {}) {
     const W = () => wordsFor(lang);
-    const readable = items.filter((i) => (i.type === "text" && i.text.trim()) || ((i.type === "image" || i.type === "audio") && i.media?.url));
-    if (!readable.length) return { text: W().onlyTypes, lang };
-    if ((readable.some((i) => i.type === "image") && !museConfigured()) || (readable.some((i) => i.type === "audio") && !voiceConfigured())) {
+    const readable = items.filter((i) => (i.type === "text" && i.text.trim()) || (["image", "audio", "video"].includes(i.type) && i.media?.url));
+    if (!readable.length) return { text: W().onlyTypesVideo, lang };
+    if ((readable.some((i) => i.type === "image" || i.type === "video") && !museConfigured()) || (readable.some((i) => i.type === "audio") && !voiceConfigured())) {
       return { text: W().needsMuse, lang };
     }
     const turns = [];
@@ -238,6 +277,8 @@ export function createMessengerChannel({
     let profileMessage = null;
     let blankPicture = false;
     let silentVoice = false;
+    let emptyVideo = false;
+    let videoWords = false;
     for (const it of readable) {
       if (it.type === "text") turns.push({ who: "them", name: "", text: it.text.trim() });
       else if (it.type === "image") {
@@ -253,6 +294,11 @@ export function createMessengerChannel({
         } else if (read.isMessage && read.message?.body) {
           turns.push({ who: "them", name: read.message.fromName || "", text: read.message.body, links: read.message.links });
         } else blankPicture = true;
+      } else if (it.type === "video") {
+        const turn = await readVideoTurn(it.media, stats);
+        if (!turn) { emptyVideo = true; continue; }
+        if (turn.said) { transcripts.push(turn.said); videoWords = true; }
+        turns.push(turn);
       } else {
         const { buffer } = await download(it.media, maxAudioBytes);
         const wav = await transcode(buffer);
@@ -263,17 +309,21 @@ export function createMessengerChannel({
       }
     }
     if (!turns.length && !profileMessage) {
-      return { text: blankPicture ? W().noMessage : silentVoice ? W().noWords : W().onlyTypes, lang };
+      return { text: emptyVideo ? W().videoNothing : blankPicture ? W().noMessage : silentVoice ? W().noWords : W().onlyTypesVideo, lang };
     }
-    const words = [...turns.map((t) => t.text), ...(profile?.facts || [])].join("\n");
+    // A video's own words, not the labels its turn is framed with.
+    const words = [...turns.map((t) => t.raw ?? t.text), ...(profile?.facts || [])].join("\n");
     lang = detectLanguage(words, "");
     const last = turns.at(-1);
     const message = last?.inbox ? { ...last.inbox, channel: "messenger" }
-      : last ? { channel: "messenger", from: "", fromName: last.who === "you" ? "You" : last.name || "", subject: "", body: last.text.slice(0, 6000), links: last.links || linksFromText(last.text), auth: "" }
+      : last ? {
+        channel: "messenger", from: "", fromName: last.who === "you" ? "You" : last.name || "", subject: "", body: last.text.slice(0, 6000),
+        links: last.links || linksFromText(last.text), auth: "", ...(last.setting ? { setting: last.setting } : {}),
+      }
       : { ...profileMessage, channel: "messenger" };
     const threadHistory = turns.slice(0, -1).slice(-30).map((t) => ({ from: speakerOf(t), date: null, body: t.text }));
     const verdict = await judge({ message, threadHistory, socialProfile: profile?.facts.length ? profile : null, lang });
-    const reply = formatReply(verdict, { lang, transcript: transcripts.join(" ") }).slice(0, maxReplyChars);
+    const reply = formatReply(verdict, { lang, transcript: transcripts.join(" "), saysKey: videoWords ? "saysVideo" : "says" }).slice(0, maxReplyChars);
     return { text: reply, lang, verdict };
   }
 
@@ -282,15 +332,17 @@ export function createMessengerChannel({
     const items = [...g.items].sort((a, b) => a.timestamp - b.timestamp);
     let lang = detectLanguage(items.map((i) => i.text).join(" "), "");
     const ids = items.map((i) => i.id);
+    // A video's length and size only, never its words or what it shows.
+    const stats = {};
     try {
-      const out = await answer(items, lang);
+      const out = await answer(items, lang, stats);
       lang = out.lang;
       const sent = await sendText(g.from, out.text);
-      log.info?.({ ids, types: items.map((i) => i.type), lang, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null, ms: now() - started }, "messenger check answered");
+      log.info?.({ ids, types: items.map((i) => i.type), lang, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null, ms: now() - started, ...stats }, "messenger check answered");
       return { ids, lang, verdict: out.verdict?.verdict || null, reply: out.text, sent };
     } catch (e) {
       const key = e.replyKey || "failed";
-      log.error?.({ ids, types: items.map((i) => i.type), err: e.message, ms: now() - started }, "messenger check failed");
+      log.error?.({ ids, types: items.map((i) => i.type), err: e.message, ms: now() - started, ...stats }, "messenger check failed");
       await sendText(g.from, wordsFor(lang)[key]).catch((e2) => log.error?.({ ids, err: e2.message }, "messenger reply failed"));
       return { ids, lang, error: e.message, reply: wordsFor(lang)[key] };
     }

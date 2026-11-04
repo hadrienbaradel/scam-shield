@@ -15,7 +15,9 @@
 
 import { spawn } from "node:child_process";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { checkMessage, extractFromImage, museConfigured, museLabel, transcribeVoice, voiceConfigured } from "../../lib/muse.js";
 import { emptyContext } from "../../lib/context.js";
 import { linksFromText } from "../google/gmail.js";
@@ -162,9 +164,14 @@ export const WORDS = {
     forwardedMany: "This message has been forwarded many times. Chain messages like this are often scams.",
     labelOnce: "Forwarded message", labelMany: "Forwarded many times",
     says: "What the voice note says:",
+    saysVideo: "What is said in the video:",
     checked: (label) => `Checked with ${label === "Muse Spark" ? "Meta's Muse Spark" : label}.`,
     checkedRules: (label) => `Checked with Prudence's rules (${label} was not available).`,
     onlyTypes: "I can only check texts, pictures and voice notes for now.",
+    // Messenger reads videos too (messenger-channel.md line 16); WhatsApp does not.
+    onlyTypesVideo: "I can only check texts, pictures, voice notes and videos for now.",
+    videoTooLong: "This video is too long for me. Please send a shorter one, or a screenshot.",
+    videoNothing: "I could not hear or read anything in this video. Please send a screenshot, or type the words.",
     noMessage: "I could not find a message in this picture.",
     noWords: "I could not hear any words in this voice note.",
     needsMuse: "Checking pictures and voice notes needs Meta's Muse Spark. Please type the words instead.",
@@ -179,9 +186,13 @@ export const WORDS = {
     forwardedMany: "Ce message a été transféré de nombreuses fois. Les messages en chaîne sont souvent des arnaques.",
     labelOnce: "Message transféré", labelMany: "Transféré de nombreuses fois",
     says: "Ce que dit le message vocal :",
+    saysVideo: "Ce qui est dit dans la vidéo :",
     checked: (label) => `Vérifié avec ${label === "Muse Spark" ? "Muse Spark de Meta" : label}.`,
     checkedRules: (label) => `Vérifié avec les règles de Prudence (${label} n'était pas disponible).`,
     onlyTypes: "Je ne peux vérifier que des textes, des images et des messages vocaux pour l'instant.",
+    onlyTypesVideo: "Je ne peux vérifier que des textes, des images, des messages vocaux et des vidéos pour l'instant.",
+    videoTooLong: "Cette vidéo est trop longue pour moi. Envoyez-en une plus courte, ou une capture d'écran.",
+    videoNothing: "Je n'ai rien entendu ni rien pu lire dans cette vidéo. Envoyez une capture d'écran, ou tapez les mots.",
     noMessage: "Je n'ai pas trouvé de message dans cette image.",
     noWords: "Je n'ai entendu aucun mot dans ce message vocal.",
     needsMuse: "Vérifier une image ou un message vocal demande Muse Spark de Meta. Tapez les mots du message à la place.",
@@ -198,8 +209,9 @@ const HEADLINE_PREFIX = /^(scam|be careful|safe|arnaque|attention|rassurez-vous|
 const sentence = (s) => { const t = String(s || "").trim(); return t ? t[0].toUpperCase() + t.slice(1) : ""; };
 
 // One text message for the chat: verdict word, headline, up to three
-// reasons, the next step, the forward note, the voice words, who checked.
-export function formatReply(verdict, { lang = "en", forwarded = null, transcript = "", label = museLabel() } = {}) {
+// reasons, the next step, the forward note, the voice words (a video's
+// under saysKey "saysVideo"), who checked.
+export function formatReply(verdict, { lang = "en", forwarded = null, transcript = "", saysKey = "says", label = museLabel() } = {}) {
   const W = wordsFor(lang);
   const blocks = [`${W[verdict.verdict] || W.be_careful}\n${sentence(String(verdict.headline || "").replace(HEADLINE_PREFIX, ""))}`];
   const reasons = (verdict.reasons || []).map((r) => (typeof r === "string" ? r : r?.text)).filter(Boolean).slice(0, 3);
@@ -209,7 +221,7 @@ export function formatReply(verdict, { lang = "en", forwarded = null, transcript
   else if (forwarded) blocks.push(W.forwardedOnce);
   if (transcript) {
     const t = String(transcript).trim();
-    blocks.push(`${W.says} "${t.length > TRANSCRIPT_QUOTE ? `${t.slice(0, TRANSCRIPT_QUOTE - 1)}…` : t}"`);
+    blocks.push(`${W[saysKey] || W.says} "${t.length > TRANSCRIPT_QUOTE ? `${t.slice(0, TRANSCRIPT_QUOTE - 1)}…` : t}"`);
   }
   blocks.push(/^detector\b/i.test(String(verdict.source || "")) ? W.checkedRules(label) : W.checked(label));
   return blocks.join("\n\n").slice(0, MAX_REPLY_CHARS);
@@ -251,6 +263,88 @@ export function ffmpegToWav(input, { ffmpegPath = process.env.FFMPEG_PATH || "ff
     p.stdin.on("error", () => {}); // EPIPE when ffmpeg stops early; "close" reports it
     p.stdin.end(input);
   });
+}
+
+// One ffmpeg or ffprobe run on files, its stdout as a Buffer. On a timeout
+// the process is killed and the promise settles only once it has exited,
+// so a caller's cleanup never races a process still writing.
+function runTool(path, args, { timeoutMs, name }) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(path, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const out = [];
+    const err = [];
+    let timedOut = false;
+    let failed = null;
+    const timer = setTimeout(() => { timedOut = true; p.kill("SIGKILL"); }, timeoutMs);
+    p.stdout.on("data", (d) => out.push(d));
+    p.stderr.on("data", (d) => err.push(d));
+    p.on("error", (e) => { failed = new Error(`${name} not available (${e.message}): install it or set FFMPEG_PATH`); });
+    p.on("close", (code) => {
+      clearTimeout(timer);
+      if (failed) return reject(failed);
+      if (timedOut) return reject(new Error(`${name} timed out`));
+      if (code !== 0) return reject(new Error(`${name} exited ${code}: ${Buffer.concat(err).toString().trim().slice(0, 200)}`));
+      resolve(Buffer.concat(out));
+    });
+  });
+}
+
+// ffprobe sits beside ffmpeg (FFMPEG_PATH=/opt/bin/ffmpeg gives /opt/bin/ffprobe).
+export const ffprobeBeside = (ffmpegPath) => (/ffmpeg(\.exe)?$/i.test(ffmpegPath) ? ffmpegPath.replace(/ffmpeg(\.exe)?$/i, "ffprobe$1") : "ffprobe");
+
+// Where the four frames of a video are taken: at 1/8, 3/8, 5/8 and 7/8 of
+// its length, so never its very first or last frame.
+export const frameTimes = (seconds) => [1, 3, 5, 7].map((k) => Math.round(((seconds * k) / 8) * 1000) / 1000);
+
+// A video (a screen recording, a clip filmed with a phone or Meta glasses)
+// to what the models read: { durationSec, wav, sheet }. The sound as the
+// same 16 kHz mono WAV as ffmpegToWav (null without an audio track); four
+// frames spread over it tiled 2x2 into one JPEG, each tile at most 960 px
+// wide so screen text stays readable (null without a picture). Over
+// maxSeconds nothing is extracted: { durationSec, tooLong: true }. Phone
+// MP4s often keep their index at the end, which ffmpeg cannot reach on a
+// pipe, so the bytes go to a file in a fresh 0700 folder under the OS temp
+// folder, removed whatever happens (read, failed or timed out).
+export async function ffmpegVideo(input, {
+  ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg", ffprobePath = ffprobeBeside(ffmpegPath),
+  maxSeconds = Infinity, timeoutMs = 30000, tmpRoot = tmpdir(),
+} = {}) {
+  const dir = await mkdtemp(join(tmpRoot, "prudence-video-"));
+  try {
+    await chmod(dir, 0o700);
+    const file = join(dir, "clip");
+    await writeFile(file, input, { mode: 0o600 });
+    const probed = await runTool(ffprobePath, ["-v", "error", "-show_entries", "format=duration:stream=codec_type,duration", "-of", "json", file], { timeoutMs, name: "ffprobe" });
+    let info;
+    try { info = JSON.parse(probed.toString()); } catch { throw new Error("ffprobe answer unreadable"); }
+    const durationSec = Number(info.format?.duration);
+    if (!Number.isFinite(durationSec) || durationSec <= 0) throw new Error("video duration unreadable");
+    if (durationSec > maxSeconds) return { durationSec, tooLong: true, wav: null, sheet: null };
+    const streams = Array.isArray(info.streams) ? info.streams : [];
+    const video = streams.find((s) => s.codec_type === "video");
+    const hasAudio = streams.some((s) => s.codec_type === "audio");
+    // The picture track can end before the sound: its own length places the frames.
+    const pictureSec = Number(video?.duration) > 0 ? Number(video.duration) : durationSec;
+    const base = ["-hide_banner", "-loglevel", "error", "-nostdin", "-y"];
+    const wavFile = join(dir, "sound.wav");
+    const sheetFile = join(dir, "frames.jpg");
+    const tiles = frameTimes(pictureSec).map((_, i) => `[${i}:v:0]scale=w=min(960\\,iw):h=-2,setsar=1[f${i}]`).join(";");
+    const jobs = [
+      hasAudio ? runTool(ffmpegPath, [...base, "-i", file, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", wavFile], { timeoutMs, name: "ffmpeg" })
+        .then(() => readFile(wavFile)) : null,
+      video ? runTool(ffmpegPath, [
+        ...base, ...frameTimes(pictureSec).flatMap((t) => ["-ss", String(t), "-i", file]),
+        "-filter_complex", `${tiles};[f0][f1][f2][f3]xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0[sheet]`,
+        "-map", "[sheet]", "-frames:v", "1", "-q:v", "3", sheetFile,
+      ], { timeoutMs, name: "ffmpeg" }).then(() => readFile(sheetFile)) : null,
+    ];
+    // Both runs end before the folder goes, whichever fails first.
+    const [wav, sheet] = await Promise.allSettled(jobs);
+    for (const r of [wav, sheet]) if (r.status === "rejected") throw r.reason;
+    return { durationSec, wav: wav.value ? fixWavSizes(wav.value) : null, sheet: sheet.value || null };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 let shipped = null;

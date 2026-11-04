@@ -2,18 +2,23 @@
 // handshake and signature, then the behavior lines of
 // _product/specs/messenger-channel.md that the channel owns, against a fake
 // Graph API and Meta CDN (injected fetch), a fake grouping timer and the
-// mock LLM. No network, no Postgres, no ffmpeg (the transcoder is injected).
+// mock LLM. No network, no Postgres; ffmpeg only in one test that skips
+// itself without it (the transcoder and the video reader are injected).
 import "./helpers/env.js";
 import { test, afterEach, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import Fastify from "fastify";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker, buildUserPrompt, extractFromImage } from "../lib/muse.js";
 import {
   attachmentUrl, createMessengerChannel, DEFAULT_GRAPH_VERSION, messengerConfig, messengerConfigured, messengerLink, parseWebhook, webhookActive,
 } from "../src/channels/messenger.js";
-import { createLimiter, WORDS } from "../src/channels/whatsapp.js";
+import { createLimiter, ffmpegVideo, ffprobeBeside, frameTimes, WORDS } from "../src/channels/whatsapp.js";
 import messengerRoutes from "../src/routes/messenger.js";
 import { whatsappLink } from "../src/routes/account.js";
 import { buildApp } from "../src/server.js";
@@ -32,6 +37,7 @@ afterEach(() => { delete process.env.LLM_PROVIDER; delete process.env.META_MODEL
 const IMG = "https://scontent.xx.fbcdn.net/v/t1.15752-9/465_n.jpg?_nc_cat=1&oh=abc&oe=6730";
 const IMG2 = "https://scontent.xx.fbcdn.net/v/t1.15752-9/466_n.png?_nc_cat=1&oh=abd&oe=6730";
 const VOICE = "https://cdn.fbsbx.com/v/t59.3654-21/audioclip-1761750000.mp4?_nc_cat=1&oe=6730";
+const VIDEO = "https://video.xx.fbcdn.net/v/t42.3356-2/clip-1761750000.mp4?_nc_cat=1&oe=6730";
 const SEND = /^https:\/\/graph\.facebook\.com\/v[\d.]+\/PAGE1\/messages$/;
 function fakeMeta({ media = {}, sendStatus = 200, typingStatus = 200 } = {}) {
   const calls = [];
@@ -359,7 +365,7 @@ test("a screenshot of a chat becomes the conversation's turns, and a screenshot 
   // A GIF is not read.
   const gif = fakeMeta({ media: { [IMG]: { type: "image/gif" } } });
   await send(channelWith(gif), attach("image", { url: IMG }));
-  assert.deepEqual(gif.replies(), [WORDS.en.onlyTypes]);
+  assert.deepEqual(gif.replies(), [WORDS.en.onlyTypesVideo]);
 });
 
 test("Muse Spark reads a picture as one message, a chat or a profile, and every caller still gets a message to judge", async () => {
@@ -449,13 +455,201 @@ test("a voice message is written down by Muse Voice Transcribe and judged, the r
   assert.deepEqual(silent.replies(), [WORDS.en.noWords]);
 });
 
-test("a sticker, a video, a file, a reel or a shared link alone gets the plain reply; beside a text it is skipped", async () => {
+// A video as the injected reader returns it: its length, its sound as WAV,
+// its four frames as one JPEG sheet. Each call is recorded.
+const CLIP = Buffer.from("mp4-moov-at-the-end");
+const SHEET = Buffer.from("jpeg-2x2-sheet");
+const CLIP_WAV = Buffer.from("RIFF-video-wav");
+function videoReader(out = {}) {
+  const calls = [];
+  const readVideo = async (buffer, opts) => {
+    calls.push({ buffer, opts });
+    if (out instanceof Error) throw out;
+    return { durationSec: 15, wav: CLIP_WAV, sheet: SHEET, ...out };
+  };
+  readVideo.calls = calls;
+  return readVideo;
+}
+const ALERT_HEARD = "Warning. Your computer has been locked. Do not restart. Call technical support now at 555 010 0199 to unlock it.";
+const ALERT_SCREEN = read("message", {
+  sender_name: "Security Center", body: "SYSTEM SECURITY ALERT. Your computer has been locked. DO NOT RESTART. CALL TECHNICAL SUPPORT NOW: (555) 010-0199",
+  links: [{ text: "secure-unlock.test/help", href: "secure-unlock.test/help" }],
+});
+const TECH = {
+  ...verdict("scam"), headline: "Scam: this is a fake security alert.",
+  reasons: [{ text: "Real security warnings never ask you to call a number.", evidence: "pattern" }],
+  action: "delete", action_text: "Do not call the number. Turn the computer off and on.", impersonated_brand: null, scam_type: "tech_support",
+};
+const verdictCalls = () => mock.calls.filter((c) => typeof c.messages[0].content === "string" && c.messages[0].content.includes("<message>"));
+const messageOf = (call) => JSON.parse(call.messages[0].content.match(/<message>(.*)<\/message>/)[1]);
+
+test("a video gets the typing dots and exactly one reply, from one Muse Spark verdict on what it shows and what is said in it", async () => {
+  const meta = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  const readVideo = videoReader();
+  mock.scriptTranscript(ALERT_HEARD);
+  mock.script(ALERT_SCREEN, TECH);
+  await send(channelWith(meta, { readVideo }), attach("video", { url: VIDEO }));
+  assert.ok(readVideo.calls[0].buffer.equals(CLIP), "the downloaded bytes went to the reader");
+  assert.equal(readVideo.calls[0].opts.maxSeconds, 180);
+  const [typing, ...rest] = meta.sends();
+  assert.equal(typing.sender_action, "typing_on");
+  assert.equal(rest.length, 1, "the dots, then exactly one reply");
+  assert.ok(mock.transcribeCalls[0].wav.equals(CLIP_WAV), "the sound went to Muse Voice Transcribe");
+  const frames = mock.calls.find((c) => Array.isArray(c.messages[0].content));
+  assert.deepEqual(frames.messages[0].content[1], { type: "image", mime: "image/jpeg", base64: SHEET.toString("base64") }, "the frame sheet went to Muse Spark");
+  assert.equal(verdictCalls().length, 1, "one verdict");
+  const message = messageOf(verdictCalls()[0]);
+  // Both sides in one message (the phone number redacted for the model, as for any message).
+  assert.match(message.body, /^What the video shows:\nSYSTEM SECURITY ALERT[^]*\n\nWhat is said in it:\nWarning\. Your computer has been locked\. [^]*Call technical support now at \[phone number\] to unlock it\.$/, message.body);
+  assert.match(message.setting, /^A video the person sent: what it shows .* and what is said in it/);
+  assert.equal(message.from_name, "Security Center");
+  assert.deepEqual(message.links.map((l) => l.goes_to), ["secure-unlock.test/help"]);
+  const body = meta.replies()[0];
+  assert.match(body, /^🔴 Scam\nThis is a fake security alert\./, body);
+  assert.ok(body.includes("What to do: Do not call the number."), body);
+  assert.ok(body.includes(`What is said in the video: "${ALERT_HEARD}"`), body);
+  assert.match(body, /Checked with Mock LLM\.$/);
+
+  // Only one side has something: that side is judged.
+  mock.reset();
+  mock.script(read("none"), TECH);
+  mock.scriptTranscript(ALERT_HEARD);
+  const heardOnly = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  await send(channelWith(heardOnly, { readVideo: videoReader() }), attach("video", { url: VIDEO }));
+  assert.match(messageOf(verdictCalls()[0]).body, /^What is said in it:\nWarning\. Your computer has been locked\.[^]*unlock it\.$/);
+  assert.match(heardOnly.replies()[0], /^🔴 Scam/);
+  mock.reset();
+  mock.script(ALERT_SCREEN, TECH); // no sound track, so nothing to transcribe
+  const shownOnly = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  await send(channelWith(shownOnly, { readVideo: videoReader({ wav: null }) }), attach("video", { url: VIDEO }));
+  assert.match(messageOf(verdictCalls()[0]).body, /^What the video shows:\nSYSTEM SECURITY ALERT[^]*SUPPORT NOW: \[phone number\]$/);
+  assert.equal(mock.transcribeCalls.length, 0);
+  assert.ok(!shownOnly.replies()[0].includes("What is said in the video"), "no words heard, none quoted");
+});
+
+test("a video too big or too long gets its sentence, and one with nothing heard and nothing read gets its own", async () => {
+  const tooLong = "This video is too long for me. Please send a shorter one, or a screenshot.";
+  assert.equal(WORDS.en.videoTooLong, tooLong);
+  // Too big: the download stops at the cap, or Meta announces more.
+  const big = fakeMeta({ media: { [VIDEO]: { bytes: Buffer.alloc(64), type: "video/mp4" } } });
+  const reader = videoReader();
+  await send(channelWith(big, { readVideo: reader, maxVideoBytes: 32 }), attach("video", { url: VIDEO }));
+  assert.deepEqual(big.replies(), [tooLong]);
+  const announced = fakeMeta({ media: { [VIDEO]: { bytes: Buffer.alloc(8), headers: { "content-type": "video/mp4", "content-length": String(26 * 1024 * 1024) } } } });
+  await send(channelWith(announced, { readVideo: reader }), attach("video", { url: VIDEO }));
+  assert.deepEqual(announced.replies(), [tooLong], "over 25 MB by its own announcement");
+  assert.equal(reader.calls.length, 0, "never read");
+  // Too long: over three minutes, by the reader's word or by its length.
+  for (const out of [{ durationSec: 181, tooLong: true, wav: null, sheet: null }, { durationSec: 240 }]) {
+    const long = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+    mock.scriptTranscript("never used");
+    await send(channelWith(long, { readVideo: videoReader(out) }), attach("video", { url: VIDEO }));
+    assert.deepEqual(long.replies(), [tooLong]);
+  }
+  assert.equal(mock.calls.length, 0, "nothing judged");
+  // Nothing heard, nothing read.
+  mock.reset();
+  mock.scriptTranscript("");
+  mock.script(read("none"));
+  const empty = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  await send(channelWith(empty, { readVideo: videoReader() }), attach("video", { url: VIDEO }));
+  assert.deepEqual(empty.replies(), ["I could not hear or read anything in this video. Please send a screenshot, or type the words."]);
+  assert.equal(verdictCalls().length, 0);
+});
+
+test("a video the reader cannot read gets the failure wording; French words give French; Muse off needs Muse Spark", async () => {
+  logs.length = 0;
+  const broken = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  await send(channelWith(broken, { readVideo: videoReader(new Error("ffprobe exited 1: Invalid data found when processing input")) }), attach("video", { url: VIDEO }));
+  assert.deepEqual(broken.replies(), [WORDS.en.failed]);
+  assert.match(logs.find(([m]) => m === "messenger check failed")[1].err, /ffprobe exited 1/);
+  // French.
+  const heard = "Attention, votre ordinateur est bloqué. N'éteignez pas. Appelez le support technique au 01 23 45 67 89 pour le débloquer.";
+  mock.scriptTranscript(heard);
+  mock.script(read("message", { body: "ALERTE DE SÉCURITÉ. Votre ordinateur est bloqué. Appelez le support : 01 23 45 67 89" }), {
+    ...TECH, headline: "Arnaque : cette alerte de sécurité est fausse.", reasons: [{ text: "Une vraie alerte ne demande jamais d'appeler un numéro.", evidence: "pattern" }],
+    action_text: "N'appelez pas ce numéro. Éteignez l'ordinateur.", language: "fr",
+  });
+  const fr = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  await send(channelWith(fr, { readVideo: videoReader() }), attach("video", { url: VIDEO }));
+  assert.ok(verdictCalls()[0].messages[0].content.includes("<locale>fr-FR</locale>"), "the labels around the words do not make it English");
+  const body = fr.replies()[0];
+  assert.match(body, /^🔴 Arnaque\nCette alerte de sécurité est fausse\./, body);
+  assert.ok(body.includes(`Ce qui est dit dans la vidéo : "${heard}"`) && body.includes("Que faire : N'appelez pas ce numéro."), body);
+  assert.equal(WORDS.fr.videoTooLong, "Cette vidéo est trop longue pour moi. Envoyez-en une plus courte, ou une capture d'écran.");
+  assert.equal(WORDS.fr.videoNothing, "Je n'ai rien entendu ni rien pu lire dans cette vidéo. Envoyez une capture d'écran, ou tapez les mots.");
+  // Muse off.
+  delete process.env.LLM_PROVIDER;
+  const off = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  const reader = videoReader();
+  await send(channelWith(off, { readVideo: reader }), attach("video", { url: VIDEO }));
+  assert.deepEqual(off.replies(), [WORDS.en.needsMuse]);
+  assert.equal(reader.calls.length, 0);
+  assert.ok(off.calls.every((c) => SEND.test(c.url)), "no download without the model");
+});
+
+test("nothing of a video is kept: the log names its length, its size and the verdict, never its words or what it shows", async () => {
+  const meta = fakeMeta({ media: { [VIDEO]: { bytes: CLIP, type: "video/mp4" } } });
+  mock.scriptTranscript(ALERT_HEARD);
+  mock.script(ALERT_SCREEN, TECH);
+  logs.length = 0;
+  await send(channelWith(meta, { readVideo: videoReader({ durationSec: 15.04 }) }), attach("video", { url: VIDEO }));
+  const [, answered] = logs.find(([m]) => m === "messenger check answered");
+  assert.deepEqual([answered.types, answered.verdict, answered.videos], [["video"], "scam", [{ seconds: 15, bytes: CLIP.length }]]);
+  assert.equal(typeof answered.ms, "number");
+  const said = JSON.stringify(logs);
+  for (const words of ["locked", "technical support", "0199", "SECURITY", "Security Center", "secure-unlock"]) assert.ok(!said.includes(words), words);
+  assert.ok(meta.calls.every((c) => SEND.test(c.url) || c.url === VIDEO));
+});
+
+test("ffmpeg reads a phone video from a temporary file: the sound as 16 kHz mono WAV, four frames as one 2x2 sheet, the folder gone afterwards", { skip: !ffmpegForVideo() }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "prudence-video-test-"));
+  try {
+    // A 3 s clip with its index at the end (no faststart), as phones write them.
+    const made = join(root, "made.mp4");
+    const r = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=duration=3:size=320x240:rate=10", "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+      "-c:v", "mpeg4", "-c:a", "aac", "-shortest", made]);
+    assert.equal(r.status, 0, r.stderr?.toString());
+    const clip = await readFile(made);
+    await rm(made);
+    const work = join(root, "work");
+    await mkdir(work);
+    const out = await ffmpegVideo(clip, { tmpRoot: work, maxSeconds: 180 });
+    assert.ok(Math.abs(out.durationSec - 3) < 0.2, String(out.durationSec));
+    assert.equal(out.wav.toString("ascii", 0, 4), "RIFF");
+    assert.equal(out.wav.readUInt16LE(22), 1, "mono");
+    assert.equal(out.wav.readUInt32LE(24), 16000, "16 kHz");
+    assert.equal(out.wav.readUInt16LE(34), 16, "16-bit");
+    assert.equal(out.sheet.readUInt16BE(0), 0xffd8, "a JPEG");
+    const sheetFile = join(root, "sheet.jpg");
+    await writeFile(sheetFile, out.sheet);
+    const size = spawnSync("ffprobe", ["-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0", sheetFile], { encoding: "utf8" });
+    assert.equal(size.stdout.trim(), "640,480", "four 320x240 frames, 2x2");
+    assert.deepEqual(await readdir(work), [], "the temporary folder is gone");
+    // Too long: nothing extracted, the folder gone too.
+    const long = await ffmpegVideo(clip, { tmpRoot: work, maxSeconds: 2 });
+    assert.deepEqual([long.tooLong, long.wav, long.sheet], [true, null, null]);
+    assert.deepEqual(await readdir(work), []);
+    // Not a video, or no ffmpeg: an error, and the folder gone.
+    await assert.rejects(ffmpegVideo(Buffer.from("not a video"), { tmpRoot: work }), /ffprobe exited/);
+    await assert.rejects(ffmpegVideo(clip, { tmpRoot: work, ffmpegPath: "/nonexistent/ffmpeg" }), /ffprobe not available/);
+    await assert.rejects(ffmpegVideo(clip, { tmpRoot: work, timeoutMs: 1 }), /timed out/);
+    assert.deepEqual(await readdir(work), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+  assert.deepEqual(frameTimes(16), [2, 6, 10, 14], "never the very first or last frame");
+  assert.equal(ffprobeBeside("/opt/homebrew/bin/ffmpeg"), "/opt/homebrew/bin/ffprobe");
+  assert.equal(ffprobeBeside("ffmpeg"), "ffprobe");
+});
+
+test("a sticker, a file, a reel or a shared link alone gets the plain reply; beside a text it is skipped", async () => {
   const meta = fakeMeta();
   const channel = channelWith(meta, { limiter: createLimiter({ max: 100 }) });
   const loners = [
     attach("sticker", { url: IMG, sticker_id: 369239263222822 }),
     attach("image", { url: IMG, sticker_id: 369239263222822 }),
-    attach("video", { url: "https://video.xx.fbcdn.net/v/clip.mp4" }),
+    attach("video", {}),
     attach("file", { url: "https://cdn.fbsbx.com/v/facture.pdf" }),
     attach("fallback", { url: "https://l.facebook.com/l.php?u=x", title: "Win a prize" }),
     delivery(event({ attachments: [{ type: "fallback" }] })),
@@ -465,7 +659,8 @@ test("a sticker, a video, a file, a reel or a shared link alone gets the plain r
     delivery(event({})),
   ];
   for (const b of loners) await send(channel, b);
-  assert.deepEqual(meta.replies(), Array(loners.length).fill(WORDS.en.onlyTypes));
+  assert.deepEqual(meta.replies(), Array(loners.length).fill(WORDS.en.onlyTypesVideo));
+  assert.equal(WORDS.en.onlyTypesVideo, "I can only check texts, pictures, voice notes and videos for now.");
   assert.equal(mock.calls.length, 0, "nothing was judged");
   assert.ok(meta.calls.every((c) => SEND.test(c.url)), "nothing was downloaded");
   assert.deepEqual(parseWebhook(loners[0]).messages[0].type, "sticker");
@@ -622,3 +817,9 @@ test("the server starts without the Messenger keys: the webhook answers 501 with
     await app.close();
   }
 });
+
+function ffmpegForVideo() {
+  const probe = spawnSync("ffprobe", ["-version"]);
+  const filters = spawnSync("ffmpeg", ["-hide_banner", "-filters"], { encoding: "utf8" });
+  return probe.status === 0 && filters.status === 0 && /\bxstack\b/.test(filters.stdout || "");
+}
