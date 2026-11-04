@@ -8,7 +8,7 @@ import { many, one, q } from "../db/pool.js";
 import { museConfigured, museModel, voiceConfigured } from "../../lib/muse.js";
 import { urlhausState } from "../links/resolver.js";
 import { subscribe } from "../notify/sse.js";
-import { KNOWN_BREACHES, forgetItem } from "../context/builder.js";
+import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp } from "../context/builder.js";
 import { loadContext } from "../sync/checker.js";
 import { clientFor, rebuildContext, syncUser } from "../sync/worker.js";
 import { revokeAndForget, tokenStatus } from "../google/tokens.js";
@@ -18,6 +18,7 @@ import { whatsappConfigured } from "../channels/whatsapp.js";
 import { messengerConfigured, messengerLink } from "../channels/messenger.js";
 
 const rebuilds = new Map();
+const lookups = new Map();
 
 // The wa.me link of the Prudence WhatsApp number (WHATSAPP_PHONE_NUMBER,
 // digits only), only while the channel answers; null otherwise.
@@ -135,10 +136,33 @@ export default async function accountRoutes(app) {
       const ids = new Set(Array.isArray(request.body?.ids) ? request.body.ids : []);
       const row = await one("SELECT data FROM contexts WHERE user_id = $1", [request.user.id]);
       const ctx = row?.data || { userName: request.user.name, knownSenders: [], knownLinkDomains: [], providers: [], orders: [], breaches: [], trustedContacts: [], subscriptions: [] };
-      const fromHibp = (ctx.breaches || []).filter((b) => String(b.id || "").startsWith("hibp-"));
-      ctx.breaches = [...fromHibp, ...KNOWN_BREACHES.filter((b) => ids.has(b.id))];
+      // A looked-up breach stays only while it is ticked (specs/breach-exposure.md, line 3).
+      const stillTicked = (ctx.breaches || []).filter((b) => lookedUp(b) && ids.has(b.id));
+      ctx.breaches = [...stillTicked, ...KNOWN_BREACHES.filter((b) => ids.has(b.id))];
       await q(`INSERT INTO contexts (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [request.user.id, ctx]);
       return { breaches: ctx.breaches };
+    });
+
+    // The lookup sends the senior's address to a public breach list, so it
+    // runs only on their tap (specs/breach-exposure.md, lines 1-2, 5-6), once
+    // a minute per person: the free list allows 25 an hour for the whole server.
+    priv.post("/api/context/lookup-breaches", async (request, reply) => {
+      const last = lookups.get(request.user.id) || 0;
+      if (last > Date.now() - 60000) return reply.code(429).send({ error: "lookup_wait" });
+      lookups.set(request.user.id, Date.now());
+      const email = (await one("SELECT email FROM gmail_state WHERE user_id = $1", [request.user.id]))?.email || request.user.email;
+      let result;
+      try { result = await lookupBreaches(email, { hibpKey: config.hibpKey }); } catch (e) {
+        request.log.warn(`breach lookup failed: ${e.message}`);
+        return reply.code(502).send({ error: "lookup_failed" });
+      }
+      const row = await one("SELECT data FROM contexts WHERE user_id = $1", [request.user.id]);
+      const ctx = row?.data || { userName: request.user.name, knownSenders: [], knownLinkDomains: [], providers: [], orders: [], breaches: [], trustedContacts: [], subscriptions: [] };
+      ctx.breaches = [...result.breaches, ...(ctx.breaches || []).filter((b) => !lookedUp(b))];
+      ctx.breachLookup = { at: new Date().toISOString(), source: result.source, found: result.breaches.length };
+      await q(`INSERT INTO contexts (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [request.user.id, ctx]);
+      await audit(request.user.id, "breach_lookup", { found: result.breaches.length, source: result.source });
+      return { breaches: ctx.breaches, lookup: ctx.breachLookup };
     });
 
     // A rebuild reads hundreds of messages: once per 10 minutes per person.

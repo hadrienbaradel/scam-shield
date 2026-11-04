@@ -134,7 +134,9 @@ test("Overview lists every dependency with a status word, a plain detail and the
   assert.equal(by.instant_checks.status, "off");
   assert.equal(by.worker.status, "warn");
   assert.match(by.worker.detail, /WORKER=0/);
-  for (const id of ["email", "links", "breaches", "voice"]) assert.equal(by[id].status, "off", id);
+  for (const id of ["email", "links", "voice"]) assert.equal(by[id].status, "off", id);
+  assert.equal(by.breaches.status, "ok", "the free breach list answers without a key");
+  assert.match(by.breaches.detail, /XposedOrNot.*no HIBP_API_KEY/);
   assert.equal(by.live_updates.status, "ok");
   assert.equal(overall, "warn", "the worst status, ignoring what is off");
   for (const c of checks) assert.ok(!/[A-Za-z0-9+/]{40,}/.test(c.detail), `${c.id}: no secret-looking value in the detail`);

@@ -163,17 +163,91 @@ export function forgetItem(ctx, kind, item) {
   return { ...ctx, removed: [...new Set([...(ctx.removed || []), key])] };
 }
 
-// Optional: Have I Been Pwned lookup when HIBP_API_KEY is set.
-export async function hibpBreaches(email, apiKey) {
+// --- Breach lookup (_product/specs/breach-exposure.md) ---
+// What a breach leaked, in the words the detector and the card use:
+// lib/context.js breachLeaking matches on them (the detector reads "IBAN"
+// and "old password"). Have I Been Pwned and XposedOrNot share this
+// vocabulary of data classes; a class not listed here is left out rather
+// than shown to the senior as jargon.
+const DATA_CLASS_WORDS = {
+  Passwords: "old password", "Password hints": "old password", "Bank account numbers": "IBAN",
+  "Physical addresses": "address", Names: "name", "Phone numbers": "phone", "Email addresses": "email",
+  "Dates of birth": "date of birth", "Government issued IDs": "social security number",
+  "Social security numbers": "social security number", "Credit cards": "card number",
+  "Partial credit card data": "partial card number", "Health insurance information": "health data",
+  "Historical health records": "health data", Purchases: "purchases", Usernames: "username",
+};
+export const leakedWords = (classes) => [...new Set((classes || []).map((c) => DATA_CLASS_WORDS[String(c).trim()]).filter(Boolean))];
+const UA = "Prudence/1.0 (scam protection; breach lookup on the person's request)";
+// "BouyguesTelecom" reads "Bouygues Telecom" when the catalogue has no title for it.
+const readableName = (name) => String(name || "").replace(/[-_]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+const normName = (name) => String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Looked-up breaches carry their list as a prefix; the curated ones do not.
+export const lookedUp = (b) => /^(hibp|xon)-/.test(String(b?.id || ""));
+
+// Have I Been Pwned's search by email: needs a paid key (Core 1: 10 requests a minute).
+export async function hibpBreaches(email, apiKey, { fetchImpl = fetch } = {}) {
   if (!apiKey) return [];
-  const res = await fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`, {
-    headers: { "hibp-api-key": apiKey, "user-agent": "ScamShield/1.0" }, signal: AbortSignal.timeout(10000),
+  const res = await fetchImpl(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`, {
+    headers: { "hibp-api-key": apiKey, "user-agent": UA }, signal: AbortSignal.timeout(10000),
   });
   if (res.status === 404) return [];
+  if (res.status === 429) throw new Error("busy");
   if (!res.ok) throw new Error(`HIBP ${res.status}`);
-  const map = { Passwords: "old password", "Bank account numbers": "IBAN", "Physical addresses": "address", Names: "name", "Phone numbers": "phone", "Email addresses": "email" };
   return (await res.json()).map((b) => ({
-    id: `hibp-${b.Name}`, source: b.Title, date: String(b.BreachDate || "").slice(0, 4),
-    leaked: (b.DataClasses || []).map((d) => map[d]).filter(Boolean),
+    id: `hibp-${b.Name}`, source: b.Title || readableName(b.Name), domain: b.Domain || null,
+    date: String(b.BreachDate || "").slice(0, 4), leaked: leakedWords(b.DataClasses),
   }));
+}
+
+// XposedOrNot's free list: no key; 2 a second, 25 an hour, 100 a day per
+// server address. A 200 with nothing exposed is "not found" too.
+export async function xposedOrNotBreaches(email, { fetchImpl = fetch } = {}) {
+  const res = await fetchImpl(`https://api.xposedornot.com/v1/breach-analytics?email=${encodeURIComponent(email)}`, {
+    headers: { "user-agent": UA }, signal: AbortSignal.timeout(10000),
+  });
+  if (res.status === 404) return [];
+  if (res.status === 429) throw new Error("busy");
+  if (!res.ok) throw new Error(`XposedOrNot ${res.status}`);
+  const body = await res.json().catch(() => ({}));
+  return (body?.ExposedBreaches?.breaches_details || []).map((b) => ({
+    id: `xon-${b.breach}`, source: readableName(b.breach), domain: b.domain || null,
+    date: String(b.xposed_date || "").slice(0, 4), leaked: leakedWords(String(b.xposed_data || "").split(";")),
+  }));
+}
+
+// Have I Been Pwned's breach catalogue is free and keyless: it names each
+// breach ("Bouygues Telecom") and knows what leaked (bank account numbers
+// for Bouygues 2025, which XposedOrNot's entry lacks). Once a day per process.
+let catalogue = { at: 0, byName: new Map(), byDomain: new Map() };
+export async function breachCatalogue({ fetchImpl = fetch, now = Date.now() } = {}) {
+  if (catalogue.at > now - 86400000) return catalogue;
+  const res = await fetchImpl("https://haveibeenpwned.com/api/v3/breaches", { headers: { "user-agent": UA }, signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`HIBP catalogue ${res.status}`);
+  const byName = new Map(); const byDomain = new Map();
+  for (const b of await res.json()) {
+    const entry = { title: b.Title || readableName(b.Name), date: String(b.BreachDate || "").slice(0, 4), leaked: leakedWords(b.DataClasses) };
+    byName.set(normName(b.Name), entry);
+    if (b.Domain) byDomain.set(String(b.Domain).toLowerCase(), entry);
+  }
+  catalogue = { at: now, byName, byDomain };
+  return catalogue;
+}
+export function resetBreachCatalogue() { catalogue = { at: 0, byName: new Map(), byDomain: new Map() }; }
+
+function withCatalogue(b, cat) {
+  const entry = cat?.byName.get(normName(b.id.replace(/^xon-/, ""))) || (b.domain && cat?.byDomain.get(b.domain.toLowerCase())) || null;
+  if (!entry) return b;
+  return { ...b, source: entry.title || b.source, date: b.date || entry.date, leaked: [...new Set([...b.leaked, ...entry.leaked])] };
+}
+
+// The lookup the senior asks for, never run on its own: Have I Been Pwned
+// with a key, XposedOrNot plus HIBP's catalogue without. The catalogue
+// being down only costs the nicer names and the extra data classes.
+export async function lookupBreaches(email, { hibpKey = "", fetchImpl = fetch } = {}) {
+  if (hibpKey) return { source: "hibp", breaches: await hibpBreaches(email, hibpKey, { fetchImpl }) };
+  const found = await xposedOrNotBreaches(email, { fetchImpl });
+  let cat = null;
+  if (found.length) { try { cat = await breachCatalogue({ fetchImpl }); } catch { cat = null; } }
+  return { source: "xposedornot", breaches: found.map((b) => withCatalogue(b, cat)) };
 }

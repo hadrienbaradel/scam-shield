@@ -4,7 +4,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { encrypt, decrypt, pkcePair, sha256 } from "../src/crypto.js";
 import { gmailClient, normalizeMessage, parseAuthResults, htmlToText } from "../src/google/gmail.js";
-import { extractOrder, buildContext, correspondents, withGuardians, forgetItem } from "../src/context/builder.js";
+import { extractOrder, buildContext, correspondents, withGuardians, forgetItem, lookupBreaches, lookedUp, leakedWords, resetBreachCatalogue } from "../src/context/builder.js";
+import { breachLeaking } from "../lib/context.js";
 import { decideAction, isProtectedSender } from "../src/sync/actions.js";
 import { isPrivateAddress, registrableDomain, resolveLink, describePage, domainAgeDays, inspectMessageLinks, urlhausHost, urlhausState } from "../src/links/resolver.js";
 import { config } from "../src/config.js";
@@ -320,4 +321,108 @@ test("links: a page 'asks for card details' only when it has card fields, not wh
   assert.match(describePage('<form><input autocomplete="cc-number" name="n"></form>'), /asks for card details/);
   assert.match(describePage('<form><input type="text" name="cardNumber"><input name="cvv"></form>'), /asks for card details/);
   assert.match(describePage('<form><input type="password" name="p"></form>'), /asks for a password/);
+});
+
+// --- Breach lookup (_product/specs/breach-exposure.md) ---
+const XON_URL = "https://api.xposedornot.com/v1/breach-analytics?email=";
+const CATALOGUE_URL = "https://haveibeenpwned.com/api/v3/breaches";
+const HIBP_SEARCH = "https://haveibeenpwned.com/api/v3/breachedaccount/";
+const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const xonAnswer = (details) => json({ ExposedBreaches: { breaches_details: details } });
+const XON_BOUYGUES = { breach: "BouyguesTelecom", domain: "bouyguestelecom.fr", xposed_date: "2025", xposed_data: "Email addresses;Names;Phone numbers;Dates of birth;Physical addresses" };
+const XON_SHOP = { breach: "SomeShop", domain: "someshop.example", xposed_date: "2021", xposed_data: "Email addresses;Passwords;IP addresses" };
+const CATALOGUE = [
+  { Name: "BouyguesTelecom", Title: "Bouygues Telecom", Domain: "bouyguestelecom.fr", BreachDate: "2025-07-23", DataClasses: ["Bank account numbers", "Dates of birth", "Email addresses", "Names", "Phone numbers", "Physical addresses"] },
+  { Name: "Adobe", Title: "Adobe", Domain: "adobe.com", BreachDate: "2013-10-04", DataClasses: ["Email addresses", "Password hints", "Passwords", "Usernames"] },
+];
+const breachFetch = ({ xon = xonAnswer([XON_BOUYGUES, XON_SHOP]), catalogue = json(CATALOGUE), hibp = json([]) } = {}) => {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url: String(url), headers: init.headers || {} });
+    if (String(url).startsWith(XON_URL)) return typeof xon === "function" ? xon() : xon;
+    if (String(url) === CATALOGUE_URL) return typeof catalogue === "function" ? catalogue() : catalogue;
+    if (String(url).startsWith(HIBP_SEARCH)) return hibp;
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  return { fetchImpl, calls };
+};
+
+test("breach lookup: without a Have I Been Pwned key, the lookup asks the free list and completes what leaked from the catalogue", async () => {
+  resetBreachCatalogue();
+  const { fetchImpl, calls } = breachFetch();
+  const out = await lookupBreaches("linda+test@example.test", { fetchImpl });
+  assert.equal(out.source, "xposedornot");
+  assert.equal(calls[0].url, `${XON_URL}linda%2Btest%40example.test`, "the address travels encoded, to the free list first");
+  assert.ok(!("hibp-api-key" in calls[0].headers), "no key is sent to the free list");
+  assert.equal(calls[1].url, CATALOGUE_URL, "the free catalogue completes the answer");
+  const [bouygues, shop] = out.breaches;
+  assert.equal(bouygues.id, "xon-BouyguesTelecom");
+  assert.equal(bouygues.source, "Bouygues Telecom", "the catalogue's title, not the list's compact name");
+  assert.equal(bouygues.date, "2025");
+  assert.ok(bouygues.leaked.includes("IBAN"), "bank account numbers come from the catalogue");
+  assert.deepEqual(bouygues.leaked, ["email", "name", "phone", "date of birth", "address", "IBAN"]);
+  assert.equal(shop.source, "Some Shop", "a name the catalogue does not know is still readable");
+  assert.deepEqual(shop.leaked, ["email", "old password"], "IP addresses are not a word for the senior");
+  assert.ok(out.breaches.every(lookedUp) && !lookedUp({ id: "bouygues-2025" }), "looked-up breaches are told apart from the curated ones");
+  assert.equal(breachLeaking({ breaches: out.breaches }, "IBAN")?.source, "Bouygues Telecom");
+});
+
+test("breach lookup: an address in no known breach gives an empty list, not an error, and never fetches the catalogue", async () => {
+  resetBreachCatalogue();
+  const notFound = breachFetch({ xon: json({ Error: "Not found", email: null }, 404) });
+  assert.deepEqual(await lookupBreaches("nobody@example.test", { fetchImpl: notFound.fetchImpl }), { source: "xposedornot", breaches: [] });
+  assert.equal(notFound.calls.length, 1, "nothing to complete, so no catalogue");
+  const nothingExposed = breachFetch({ xon: json({ BreachMetrics: null, ExposedBreaches: null }) });
+  assert.deepEqual((await lookupBreaches("nobody@example.test", { fetchImpl: nothingExposed.fetchImpl })).breaches, []);
+  assert.equal(nothingExposed.calls.length, 1);
+});
+
+test("breach lookup: with a Have I Been Pwned key, the lookup asks Have I Been Pwned itself and never the free list", async () => {
+  resetBreachCatalogue();
+  const { fetchImpl, calls } = breachFetch({ hibp: json([{ Name: "FreeMobile", Title: "Free Mobile", Domain: "free.fr", BreachDate: "2024-10-17", DataClasses: ["Bank account numbers", "Names", "Physical addresses"] }]) });
+  const out = await lookupBreaches("linda@example.test", { hibpKey: "k-test", fetchImpl });
+  assert.equal(out.source, "hibp");
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].url.startsWith(`${HIBP_SEARCH}linda%40example.test`));
+  assert.equal(calls[0].headers["hibp-api-key"], "k-test");
+  assert.deepEqual(out.breaches, [{ id: "hibp-FreeMobile", source: "Free Mobile", domain: "free.fr", date: "2024", leaked: ["IBAN", "name", "address"] }]);
+  const none = breachFetch({ hibp: new Response("", { status: 404 }) });
+  assert.deepEqual((await lookupBreaches("linda@example.test", { hibpKey: "k-test", fetchImpl: none.fetchImpl })).breaches, []);
+});
+
+test("breach lookup: a busy or broken list is a plain error; a missing catalogue only costs the nicer names", async () => {
+  resetBreachCatalogue();
+  await assert.rejects(lookupBreaches("a@example.test", { fetchImpl: breachFetch({ xon: json({}, 429) }).fetchImpl }), /busy/);
+  await assert.rejects(lookupBreaches("a@example.test", { fetchImpl: breachFetch({ xon: json({}, 500) }).fetchImpl }), /XposedOrNot 500/);
+  await assert.rejects(lookupBreaches("a@example.test", { hibpKey: "k", fetchImpl: breachFetch({ hibp: json({}, 429) }).fetchImpl }), /busy/);
+  const noCatalogue = breachFetch({ catalogue: json({}, 503) });
+  const out = await lookupBreaches("a@example.test", { fetchImpl: noCatalogue.fetchImpl });
+  assert.equal(out.breaches[0].source, "Bouygues Telecom", "the compact name is still read as words");
+  assert.deepEqual(out.breaches[0].leaked, ["email", "name", "phone", "date of birth", "address"], "only what the free list knows");
+});
+
+test("breach lookup: the catalogue is fetched once a day, not per lookup", async () => {
+  resetBreachCatalogue();
+  const { fetchImpl, calls } = breachFetch();
+  await lookupBreaches("a@example.test", { fetchImpl });
+  await lookupBreaches("b@example.test", { fetchImpl });
+  assert.deepEqual(calls.map((c) => c.url === CATALOGUE_URL), [false, true, false], "two lookups, one catalogue");
+  assert.deepEqual(leakedWords(["Passwords", "Bank account numbers", "Unknown thing", " Names "]), ["old password", "IBAN", "name"]);
+});
+
+test("breach lookup: a bank number found by the lookup is explained away in the verdict", async () => {
+  resetBreachCatalogue();
+  const { breaches } = await lookupBreaches("francoise@example.test", { fetchImpl: breachFetch().fetchImpl });
+  const message = { channel: "email", fromName: "Bouygues Telecom", from: "service@contestation-bouygues.test", claimedBrand: "Bouygues Telecom",
+    auth: "spf=softfail dkim=none dmarc=fail", subject: "Avis de prélèvement de 69,90 €",
+    body: "Madame, un prélèvement de 69,90 € sera effectué sur votre compte FR76 3000 3000 3000 3000 3000 1234. Contester : https://contestation-prelevement.test/fr",
+    links: [{ text: "Contester", href: "https://contestation-prelevement.test/fr" }] };
+  const v = detect({ locale: "fr-FR", message, personalContext: { breaches, providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] }, patternCards: [] });
+  // The card keeps three reasons (sender, authentication, link rank first
+  // here); the breach signal is in the evidence the model reads either way.
+  const signal = v._signals.find((r) => r.evidence === "breach");
+  assert.ok(signal, "the verdict's evidence carries the breach");
+  assert.match(signal.text, /réel, mais il a fuité lors du piratage de Bouygues Telecom \(2025\)/);
+  const without = detect({ locale: "fr-FR", message, personalContext: { breaches: [], providers: [], orders: [], trustedContacts: [], knownSenders: [], subscriptions: [] }, patternCards: [] });
+  assert.ok(!without._signals.some((r) => r.evidence === "breach"), "no breach known, no breach signal");
 });

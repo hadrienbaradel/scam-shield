@@ -9,7 +9,7 @@ import { many, one, q, pool } from "../db/pool.js";
 import { gmailClient, ensureLabels, normalizeMessage } from "../google/gmail.js";
 import { accessTokenFor } from "../google/tokens.js";
 import { ReauthNeeded } from "../google/oauth.js";
-import { buildContext, hibpBreaches } from "../context/builder.js";
+import { buildContext, lookupBreaches, lookedUp } from "../context/builder.js";
 import { decideAction, applyDecision, audit } from "./actions.js";
 import { runCheck, recordCheck } from "./checker.js";
 import { publish } from "../notify/sse.js";
@@ -114,11 +114,16 @@ export async function rebuildContext({ user, client }) {
   // means none in these emails (Oct 28: a real invoice was doubted that way).
   const dates = recent.map((m) => Date.parse(m.date)).filter(Number.isFinite);
   ctx.coverage = { emailsRead: recent.length, since: dates.length ? new Date(Math.min(...dates)).toISOString().slice(0, 10) : null };
-  try {
-    const found = await hibpBreaches(profileEmail, config.hibpKey);
-    const have = new Set((ctx.breaches || []).map((b) => b.id || b.source));
-    ctx.breaches = [...(ctx.breaches || []), ...found.filter((b) => !have.has(b.id))];
-  } catch (e) { console.warn(`[hibp] ${e.message}`); }
+  // The breach lookup sends the address to a public list: only once the
+  // senior asked for it (specs/breach-exposure.md, line 2); a rescan then
+  // refreshes it, and a list that does not answer keeps the last result.
+  if (previous?.breachLookup) {
+    try {
+      const { source, breaches } = await lookupBreaches(profileEmail, { hibpKey: config.hibpKey });
+      ctx.breaches = [...breaches, ...(ctx.breaches || []).filter((b) => !lookedUp(b))];
+      ctx.breachLookup = { at: new Date().toISOString(), source, found: breaches.length };
+    } catch (e) { console.warn(`[breach lookup] ${e.message}`); }
+  }
   await q(`INSERT INTO contexts (user_id, data, built_at, updated_at) VALUES ($1, $2, now(), now())
            ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, built_at = now(), updated_at = now()`, [user.id, ctx]);
   publish(user.id, "context", { scanned: recent.length, sent: sent.length });

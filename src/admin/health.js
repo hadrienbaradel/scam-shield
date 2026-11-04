@@ -114,7 +114,8 @@ export async function healthReport() {
       : off(`Local outbox (no RESEND_API_KEY); ${counts?.outboxWaiting ?? "?"} emails waiting`)],
     ["links", "Link lookups (URLhaus)", !config.abusechKey ? off("Off (no ABUSECH_AUTH_KEY)")
       : urlhausState.off ? warn(`Refused: ${urlhausState.off}`) : ok("On (host names only)")],
-    ["breaches", "Breach lookups (HIBP)", config.hibpKey ? ok("HIBP configured") : off("Off (no HIBP_API_KEY); curated list only")],
+    ["breaches", "Breach lookups (on the senior's request)", config.hibpKey ? ok("Have I Been Pwned search (HIBP_API_KEY set)")
+      : ok("XposedOrNot's free list, what leaked from HIBP's free catalogue (no HIBP_API_KEY)")],
     ["voice", "Voice notes (Muse Voice Transcribe)", voiceConfigured() ? ok(VOICE_MODEL) : off("Off (no META_MODEL_API_KEY)")],
     ["live_updates", "Live updates (SSE)", ok(`${live.connections} open connections for ${live.people} people`)],
   ];
