@@ -190,7 +190,14 @@ export default async function mailRoutes(app) {
     const file = await request.file();
     if (!file || !["image/png", "image/jpeg", "image/webp"].includes(file.mimetype)) return reply.code(400).send({ error: "Please choose a PNG or JPEG picture." });
     const buf = await file.toBuffer();
-    const { isMessage, message } = await extractFromImage({ imageBase64: buf.toString("base64"), mime: file.mimetype });
+    // Muse Spark unreachable or answering nonsense: one plain sentence, never
+    // the raw error ("fetch failed") nor a status code.
+    let read;
+    try { read = await extractFromImage({ imageBase64: buf.toString("base64"), mime: file.mimetype }); } catch (e) {
+      request.log.warn({ err: e.message }, "picture reading failed");
+      return reply.code(502).send({ error: "image_failed", message: "We could not read this picture right now. Please try again in a minute." });
+    }
+    const { isMessage, message } = read;
     if (!isMessage || !message.body) return reply.code(422).send({ error: "no_message", message: "We could not find a message in this picture." });
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "screenshot" });
