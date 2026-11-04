@@ -345,6 +345,97 @@ test("approve: a technique becomes a candidate card (watch-<slug>, the source an
   assert.ok(Date.parse(week[0].decided_at) >= Date.parse(week[week.length - 1].decided_at), "newest first");
 });
 
+// ----------------------------------------------------------- the routes ---
+import { makeUser, sessionFor } from "./helpers/db.js";
+import { buildApp } from "../src/server.js";
+
+const ORIGIN = "http://localhost:3999";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("routes: the public week needs no session and lists approved items only; the review is admins only; approve answers the card id, reject takes a reason, run now is a manual run of the Scam watch job", opts, async () => {
+  await resetDb();
+  const app = await buildApp({ logger: false });
+  const realFetch = globalThis.fetch;
+  const scamwatch = JOBS.find((j) => j.id === "scamwatch");
+  try {
+    const admin = await makeUser({ email: "admin@example.test", name: "Vlad" });
+    const adminHeaders = { cookie: await sessionFor(admin), origin: ORIGIN };
+    const senior = await makeUser({ email: "linda-watch@example.test" });
+    const seniorHeaders = { cookie: await sessionFor(senior), origin: ORIGIN };
+    const post = (url, headers, payload = {}) => app.inject({ method: "POST", url, headers, payload });
+    await runScamWatch({ fetchImpl: fixtures().fetchImpl, classify: classifier().classify, now: NOW });
+    // Nothing approved yet: an empty week, no session needed.
+    let res = await app.inject({ url: "/api/public/watch" });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.json(), { items: [] });
+    // The review needs an admin.
+    const which = await one("SELECT id FROM watch_items WHERE source = 'which'");
+    assert.equal((await app.inject({ url: "/api/admin/db/watch" })).statusCode, 401);
+    assert.equal((await app.inject({ url: "/api/admin/db/watch", headers: seniorHeaders })).statusCode, 403);
+    assert.equal((await post(`/api/admin/db/watch/${which.id}/approve`, seniorHeaders)).statusCode, 403);
+    assert.equal((await post(`/api/admin/db/watch/${which.id}/reject`, seniorHeaders, { reason: "x" })).statusCode, 403);
+    assert.equal((await post("/api/admin/db/watch/run", seniorHeaders)).statusCode, 403);
+    assert.equal((await one("SELECT status FROM watch_items WHERE id = $1", [which.id])).status, "candidate", "nothing moved");
+    // The queue, the sources and the last run.
+    res = await app.inject({ url: "/api/admin/db/watch", headers: adminHeaders });
+    assert.equal(res.statusCode, 200);
+    const queue = res.json();
+    assert.ok(queue.items.length > 10 && queue.items.every((i) => i.status === "candidate"));
+    assert.deepEqual(queue.sources.map((s) => s.id), WATCH_SOURCES.map((s) => s.id));
+    assert.equal(queue.lastRun, null);
+    // Approve with an edited action; a breach gives no card.
+    const edited = { en: "Open the carrier's app yourself.", fr: "Ouvrez vous-même l'application du transporteur." };
+    res = await post(`/api/admin/db/watch/${which.id}/approve`, adminHeaders, { one_action: edited });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.json(), { ok: true, cardId: "watch-scam-warning-fake-parcel-texts" });
+    const hibpRow = await one("SELECT id FROM watch_items WHERE source = 'hibp'");
+    assert.deepEqual((await post(`/api/admin/db/watch/${hibpRow.id}/approve`, adminHeaders)).json(), { ok: true, cardId: null });
+    // Reject with a reason.
+    const krebs = await one("SELECT id FROM watch_items WHERE source = 'krebs'");
+    assert.deepEqual((await post(`/api/admin/db/watch/${krebs.id}/reject`, adminHeaders, { reason: "not for seniors" })).json(), { ok: true });
+    assert.equal((await one("SELECT reason FROM watch_items WHERE id = $1", [krebs.id])).reason, "not for seniors");
+    // Unknown and malformed ids.
+    assert.equal((await post("/api/admin/db/watch/00000000-0000-0000-0000-000000000000/approve", adminHeaders)).statusCode, 404);
+    assert.equal((await post("/api/admin/db/watch/not-a-uuid/approve", adminHeaders)).statusCode, 404);
+    assert.equal((await post("/api/admin/db/watch/not-a-uuid/reject", adminHeaders, { reason: "x" })).statusCode, 404);
+    // The public week now: the two approved, the reviewer's wording, no summary.
+    res = await app.inject({ url: "/api/public/watch?days=7" });
+    const { items } = res.json();
+    assert.deepEqual(items.map((i) => i.source).sort(), ["hibp", "which"]);
+    assert.deepEqual(items.find((i) => i.source === "which").one_action, edited);
+    assert.ok(items.every((i) => !("summary" in i) && !("status" in i)));
+    assert.equal((await app.inject({ url: "/api/public/watch?days=0" })).json().items.length, 2, "0 reads as the default week");
+    assert.equal((await app.inject({ url: "/api/public/watch?days=abc" })).json().items.length, 2);
+    assert.equal((await app.inject({ url: "/api/public/watch?days=400" })).json().items.length, 2, "400 reads as the default week");
+    assert.equal((await app.inject({ url: "/api/public/watch?days=30" })).json().items.length, 2);
+    // Run now: 202, then a job_runs row (the feeds are the fixtures: nothing is new).
+    globalThis.fetch = fixtures().fetchImpl;
+    res = await post("/api/admin/db/watch/run", adminHeaders);
+    assert.equal(res.statusCode, 202);
+    assert.deepEqual(res.json(), { started: true, job: "scamwatch" });
+    let row = null;
+    for (let i = 0; i < 50 && !row?.finished_at; i++) {
+      await sleep(100);
+      row = await one("SELECT * FROM job_runs WHERE job = 'scamwatch' ORDER BY id DESC LIMIT 1");
+    }
+    assert.ok(row?.finished_at, "the run finished within 5 s");
+    assert.equal(row.ok, true);
+    assert.equal(row.trigger, "manual");
+    assert.equal(row.result.newItems, 0);
+    res = await app.inject({ url: "/api/admin/db/watch", headers: adminHeaders });
+    assert.equal(res.json().lastRun.job, "scamwatch");
+    assert.equal(res.json().lastRun.trigger, "manual");
+    // Refused while one runs.
+    scamwatch.running = true;
+    assert.equal((await post("/api/admin/db/watch/run", adminHeaders)).statusCode, 409);
+  } finally {
+    globalThis.fetch = realFetch;
+    scamwatch.running = false;
+    scamwatch.lastRun = null;
+    await app.close();
+  }
+});
+
 test("the classifier: the mock provider's JSON answer becomes kind, fields and the one action; nonsense is refused; no provider, no classifier", async () => {
   const mock = getProvider("mock").reset();
   delete process.env.LLM_PROVIDER;

@@ -214,7 +214,7 @@ test("Overview shows the server and today's counts", opts, async () => {
   assert.ok(typeof counts.cardsCandidate === "number" && typeof counts.cardsActive === "number");
   assert.equal(counts.outboxWaiting, 0);
   assert.equal(counts.liveConnections, 0);
-  assert.equal(jobs.length, 5, "the jobs come with the health report");
+  assert.equal(jobs.length, 6, "the jobs come with the health report");
 });
 
 test("Jobs lists every piece of background work with its schedule and health, and Run now starts a run", opts, async () => {

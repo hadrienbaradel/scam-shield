@@ -32,6 +32,7 @@ import lessonRoutes from "./routes/lessons.js";
 import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 import messengerRoutes from "./routes/messenger.js";
+import dbWatchRoutes from "./routes/dbWatch.js";
 import { messengerConfigured, webhookActive as messengerWebhookActive } from "./channels/messenger.js";
 
 const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
@@ -99,6 +100,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(lessonRoutes);
   await app.register(whatsappRoutes);
   await app.register(messengerRoutes);
+  await app.register(dbWatchRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
 
   return app;

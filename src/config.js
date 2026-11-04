@@ -81,6 +81,10 @@ export const config = {
   },
   resend: { apiKey: env.RESEND_API_KEY || "", from: env.MAIL_FROM || "Prudence <alerts@example.test>" },
   hibpKey: env.HIBP_API_KEY || "",
+  // Bluesky keyword search for the scam watch (an app password; read by
+  // nothing yet, the search is a follow-up): the keys are declared so the
+  // docs can name them.
+  bluesky: { identifier: env.BLUESKY_IDENTIFIER || "", appPassword: env.BLUESKY_APP_PASSWORD || "" },
   // abuse.ch URLhaus lookups (fair use, not-for-profit): host names only.
   abusechKey: env.ABUSECH_AUTH_KEY || "",
   adminEmails: list(env.ADMIN_EMAILS),
@@ -98,6 +102,7 @@ export const config = {
     poll: env.HEARTBEAT_POLL_URL || "",
     watch: env.HEARTBEAT_WATCH_URL || "",
     threatfeed: env.HEARTBEAT_THREATFEED_URL || "",
+    scamwatch: env.HEARTBEAT_SCAMWATCH_URL || "",
     retention: env.HEARTBEAT_RETENTION_URL || "",
   },
   trustProxy: parseTrustProxy(env.TRUST_PROXY),
