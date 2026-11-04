@@ -38,6 +38,7 @@ Welcome
 | Gmail connection, reversible mail actions | Your email · Stop checking; When a message is a scam · Change | Step 1 |
 | Trusted person loop | Your trusted person · Change; Tell Thomas automatically · Turn on/off | Step 2 |
 | WhatsApp channel | Your mobile number · Add/Change (question 1); its own row: Idea "Save Prudence in WhatsApp" | Step 3 |
+| Messenger channel (`messenger-channel.md` line 13) | Facebook and Messenger · Open Messenger (the Page's m.me link; a QR on a computer); Page not configured: the Coming soon row of `protection-menu.md` | None: nothing to ask; listed on "You are protected" under "Add it any time" |
 | Android SMS companion | Your Android phone · Remove (none: Add a phone) | None: a relative installs the app |
 | Senior screen | Text size · Change; Language · the other one; Read aloud · Turn on/off | Step 4; language in the top bar |
 | Life context, privacy and account | What Prudence knows · Look; What Prudence did · Look; What Prudence keeps · Delete my account | None: learned from step 1's email |

@@ -12,7 +12,7 @@ On a phone the top of the app is a wall of links (Today, My email, Check somethi
    - **Your text messages**: with a paired Android phone "On, on Linda's phone" → "Change"; without: "Needs the Prudence app on your Android phone" → "Add my phone" (today's pairing code).
    - **Voice messages**: "Send one any time" → "Check a voice message" (Check something, voice); voicemail read by itself stays an idea.
    - **WhatsApp messages**: Coming soon ("Forward a message to Prudence and the answer comes back in the chat").
-   - **Facebook and Messenger**: Coming soon ("A message or a Marketplace chat that feels wrong").
+   - **Facebook and Messenger**: with the Prudence Page configured (`messenger-channel.md` line 13), "Send any message to Prudence on Messenger" → "Open Messenger"; otherwise Coming soon ("A message or a Marketplace chat that feels wrong").
    - **Your phone calls**: Coming soon ("A warning before you call back a number from a scam message").
 4. **Coming soon** rows are grey, have no button and one line of what they will do; tapping one does nothing. A row leaves Coming soon only when its feature is Built in `_product/spec.md`; the app reads the status from one table in the code, never from the spec file at run time.
 5. **Check something** opens on three big choices before any form: "Take a screenshot and send it" (on a phone it opens the camera roll or the camera; on a computer, a file; the picture is read by Muse Spark and never kept, `check-something-else.md` line 2), "Paste the words" and "Send a voice message"; the email file sits behind "More ways". The same three choices are offered on an empty Today ("Nothing in your email needs you. Got something else? Take a screenshot of it.").

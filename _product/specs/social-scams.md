@@ -21,6 +21,9 @@ The costliest scams are conversations, not single messages: a stranger on Linked
 14. Nothing is scraped: Prudence never opens LinkedIn, Instagram, Facebook or dating-app pages and judges only what the person shows it. Screenshots, photos and files are never stored; only the verdict is kept, as today.
 15. A photo is never called fake from its look, and no face recognition is ever run.
 
+## Planned change (2026-11-04, `messenger-channel.md`)
+Lines 1 to 6 (the whole conversation, the stage and the next move, the opener, the never-asks, the chat and profile screenshots) ship with "Facebook and Messenger: send it to Prudence" for the Messenger chat and for the words or pictures sent to Check something; the file, repository and investment-platform checks (9 to 12) and the two big questions (6) stay here as Idea.
+
 ## Demo path
 Linda's phone, WhatsApp open on "Daniel" (he wrote to her "by mistake" on Instagram three weeks ago): "My uncle's app made me $8,400 this month. Start with $500, I will guide you." She selects his last messages, taps Forward, picks Prudence; seconds later one reply lands: "Scam. This is the 'new friend, then investment' trick: he wrote to you by mistake, moved you to WhatsApp and now shows you his profits. Next he will ask you to put money on his app, then for a fee to take it out. Do not send anything. Show this to Thomas." Narrator: "Meta's Muse Spark reads the whole conversation, not one message, and sees where it is going before the money moves." Optional 5 s: a developer forwards `Assignment.pdf.exe` (the harmless EICAR test file) and reads "Do not open this file. It is a program, not a PDF." Needs the WhatsApp test number, the tunnel and Linda's phone on the allowlist; fallback: the same chat pasted in Check something at phone width.
 
