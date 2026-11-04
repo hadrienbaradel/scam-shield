@@ -75,15 +75,16 @@ export const historyFrom = (input) => (Array.isArray(input) ? input.slice(-30) :
   .map((t) => ({ from: clip(t.from, 200), date: clip(t.date, 40), body: clip(t.body, 1000) }));
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const demoLooks = new Map(); // example id -> a look that came back with a verdict
+const demoLooks = new Map(); // example id -> the look running or kept for it (a promise)
 
 export default async function investigateRoutes(app) {
   const unavailable = (reply) => reply.code(503).send({ error: "investigate_unavailable", message: "Looking closer needs Muse Spark, which is not switched on here." });
   // One plain sentence, never the model's or the network's own words.
+  const failed = (reply) => reply.code(502).send({ error: "investigate_failed", message: "Prudence could not look closer right now. Please try again in a minute." });
   const look = async (request, reply, args) => {
     try { return await investigate(args); } catch (e) {
       request.log.warn({ err: String(e?.message || e).slice(0, 200), code: e?.code || null }, "look closer failed");
-      return reply.code(502).send({ error: "investigate_failed", message: "Prudence could not look closer right now. Please try again in a minute." });
+      return failed(reply);
     }
   };
 
@@ -105,21 +106,38 @@ export default async function investigateRoutes(app) {
     });
   });
 
+  // One look per example, shared: the pending look is kept at once, so a second
+  // viewer tapping during its 10 to 25 seconds waits for it instead of paying
+  // another. It is dropped when it fails or ends without a verdict, or when it
+  // stands on the rules' answer for a failing model (degraded, not kept by the
+  // demo check either), so the next tap tries again.
+  const demoLook = async (e, log) => {
+    const first = await demoVerdict(e);
+    try {
+      const out = await investigate({
+        message: e, threadHistory: e.threadHistory || [], linkInspection: e.mockLinkInspection || {}, locale: e.locale,
+        personalContext: demoProfile(e), patternCards: DEMO_CARDS,
+        first, deps: investigateDeps({ exampleFacts: e.mockLinkInspection || null }),
+      });
+      return { out, keep: Boolean(out.verdict) && !first?.degraded };
+    } catch (err) {
+      log.warn({ err: String(err?.message || err).slice(0, 200), code: err?.code || null }, "look closer failed");
+      return { failed: true, keep: false };
+    }
+  };
+
   app.post("/api/demo/investigate", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request, reply) => {
     const e = demoExample(request.body?.id);
     if (!e) return reply.code(404).send({ error: "unknown example" });
     if (!investigateConfigured()) return unavailable(reply);
-    const hit = demoLooks.get(e.id);
-    if (hit) return hit;
-    const first = await demoVerdict(e);
-    const out = await look(request, reply, {
-      message: e, threadHistory: e.threadHistory || [], linkInspection: e.mockLinkInspection || {}, locale: e.locale,
-      personalContext: demoProfile(e), patternCards: DEMO_CARDS,
-      first, deps: investigateDeps({ exampleFacts: e.mockLinkInspection || null }),
-    });
-    // Kept only when it stands on a real first verdict: never after the rules answered
-    // for a failing model (degraded, not kept by the demo check either), never without a verdict.
-    if (out?.verdict && !first?.degraded) demoLooks.set(e.id, out);
-    return out;
+    let job = demoLooks.get(e.id);
+    if (!job) {
+      job = demoLook(e, request.log);
+      demoLooks.set(e.id, job);
+      job.then((r) => { if (!r.keep && demoLooks.get(e.id) === job) demoLooks.delete(e.id); });
+    }
+    const r = await job;
+    if (r.failed) return failed(reply);
+    return r.out;
   });
 }

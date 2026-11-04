@@ -717,6 +717,20 @@ test("a demo look is never kept when its first verdict came from the rules for a
   assert.equal((await look()).json().verdict, "scam", "asked again after a look without a verdict");
 });
 
+test("two viewers tapping the same example at once share one look: the second waits for the first", async () => {
+  const slow = (value) => async () => { await new Promise((r) => setTimeout(r, 40)); return value; };
+  mock.script(
+    { verdict: "scam", confidence: 0.95, headline: "Scam: unpaid toll.", reasons: [{ text: "x", evidence: "link" }], action: "delete", action_text: "Delete it.",
+      real_company_says: null, impersonated_brand: "E-ZPass", scam_type: "toll", matched_pattern_ids: [], escalate_to_guardian: false, guardian_summary: null, language: "en" },
+    slow(ask(["scam_patterns", {}])), slow(answer("scam", [{ text: "Matches the toll scam.", check: 1 }])));
+  const tap = () => app.inject({ method: "POST", url: "/api/demo/investigate", headers: { origin: ORIGIN }, payload: { id: "D2" } });
+  const [a, b] = await Promise.all([tap(), tap()]);
+  assert.deepEqual([a.statusCode, b.statusCode], [200, 200]);
+  assert.deepEqual(a.json(), b.json());
+  assert.equal(a.json().verdict, "scam");
+  assert.equal(mock.calls.length, 3, "one first verdict and one look of two rounds, for both viewers");
+});
+
 test("a look that cannot run answers 502 with one plain sentence, never the model's own words", async () => {
   mock.script(
     { verdict: "be_careful", confidence: 0.6, headline: "Be careful.", reasons: [{ text: "x", evidence: "sender" }], action: "ask_guardian", action_text: "Ask.",
