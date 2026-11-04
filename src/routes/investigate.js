@@ -81,10 +81,12 @@ export default async function investigateRoutes(app) {
   const unavailable = (reply) => reply.code(503).send({ error: "investigate_unavailable", message: "Looking closer needs Muse Spark, which is not switched on here." });
   // One plain sentence, never the model's or the network's own words.
   const failed = (reply) => reply.code(502).send({ error: "investigate_failed", message: "Prudence could not look closer right now. Please try again in a minute." });
+  // The look, or null once the 502 is sent.
   const look = async (request, reply, args) => {
     try { return await investigate(args); } catch (e) {
       request.log.warn({ err: String(e?.message || e).slice(0, 200), code: e?.code || null }, "look closer failed");
-      return failed(reply);
+      failed(reply);
+      return null;
     }
   };
 
@@ -101,10 +103,11 @@ export default async function investigateRoutes(app) {
     // first check looked (a Be careful verdict with links had its landing look).
     const { ctx, cards } = await contextFor(request.user, message);
     const linkInspection = await linkFactsFor(message, ctx, { resolve: needsLandingLook(check.verdict, message) });
-    return look(request, reply, {
+    const out = await look(request, reply, {
       message, threadHistory: historyFrom(threadHistory), linkInspection, locale: request.user.locale || "en-US",
       personalContext: ctx, patternCards: cards, first: check.verdict, deps: investigateDeps(),
     });
+    return out ?? reply; // the 502 already went out
   });
 
   // One look per example, shared: the pending look is kept at once, so a second

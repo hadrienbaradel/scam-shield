@@ -815,4 +815,10 @@ test("signed in: the look uses the check's own first verdict, the person's conte
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: h, payload: { checkId: checked.checkId } })).statusCode, 400);
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: { origin: ORIGIN }, payload: { checkId: checked.checkId, message: checked.message } })).statusCode, 401);
   assert.equal((await app.inject({ url: "/api/status", headers: h })).json().lookCloser, true, "the mock can use tools");
+  // The model failing: one plain 502, never the model's words, nothing stored.
+  mock.script(new Error("Meta Model API 500: upstream exploded"));
+  const down = await app.inject({ method: "POST", url: "/api/check/investigate", headers: h,
+    payload: { checkId: checked.checkId, message: checked.judged.message, threadHistory: checked.judged.threadHistory } });
+  assert.equal(down.statusCode, 502);
+  assert.deepEqual(down.json(), { error: "investigate_failed", message: "Prudence could not look closer right now. Please try again in a minute." });
 });
