@@ -2,6 +2,14 @@
 
 Drafts for the Cerebral Valley submission form and the Most Viral post on X. Every number comes from [../../docs/archive/STATUS.md](../../docs/archive/STATUS.md), [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) (measurements) or the Nov 3 inbox gate; check the links on the day. Fill the `[…]` gaps after upload.
 
+## Check before submitting (Nov 4 evening)
+
+Vlad's sessions may land these during the day; each one changes a line below, so pull and look at `_product/log.md` (Done) first:
+- A first live message on Messenger or WhatsApp: "first live messages still to come" becomes "live" (Description, and "Describe your use of Meta products").
+- `GROQ_API_KEY` set and `make score-muse` run: Llama Prompt Guard 2 moves from "Ready, not yet run live" to the used models.
+- `make score-open` run on Baseten: Muse Spark Open moves to the used models, and the partner feedback answer says what the run showed.
+- "Look closer" merged (Muse Spark as a tool-using agent behind "Still unsure?", `Vlad · tech-agent`): add it as a bullet under "Describe your use of Meta products" (the tools it calls, at most six calls, every reason cites a check).
+
 ## Form
 
 **Project name:** Prudence
@@ -24,7 +32,7 @@ Meta's models do the judging. Rules gather the evidence (sender, links, her cont
 
 Measured: on 18,849 public test emails, Muse Spark lifts phishing caught from 29% (rules alone) to 81%, with 1 false Scam in 17,291 genuine emails. On Hadrien's own inbox, Muse Spark judged 430 emails and called none of them Scam by mistake. Both scams in the video reached Hadrien the week of the event: a fake Norton invoice hidden as a picture in a spreadsheet, and a "free cruise" voicemail.
 
-Built this week beyond the video (filmed Nov 2–3; every screen was redesigned on Nov 4): a public scam library of 222 redacted examples, 191 of them from two public SMS datasets sorted into scam families by Muse Spark, with a suspect lookup and a weekly scam watch; a Messenger channel (the Hey Prudence Page, set up on Meta's side on Nov 4, its first live message still to come) and a WhatsApp channel waiting for its Meta-side setup; and Muse Spark reviewing our own pull requests.
+Built this week beyond the video (filmed Nov 2–3; every screen was redesigned on Nov 4): a public scam library of 223 redacted examples, 191 of them from two public SMS datasets sorted into scam families by Muse Spark, with a suspect lookup and a weekly scam watch; Messenger and WhatsApp channels on one Meta app, Hey Prudence (its Page and its WhatsApp test number set up and both webhooks verified on Nov 4, the first live messages still to come); and Muse Spark reviewing our own pull requests.
 
 **Meta models used:**
 - Muse Spark 1.3 (Standard mode): judges every message against the person's context and the rules' evidence; JSON verdict with reasons.
@@ -64,7 +72,7 @@ Prudence calls the Meta Model API from its server for every message a senior rec
 - Muse Voice Transcribe writes down voicemails, judged like any message. In the video: a real "free cruise" scam voicemail.
 - Muse Spark 1.3 Contributor tier scored our 18,849-email public evaluation at low cost; a guard in code refuses that tier for anyone's real mail.
 - Muse Spark also works on the project itself: it reviews our pull requests through the same LLM layer as the product (PR #2 carries its review of the reviewer; on GitHub it runs on every pull request once the repository secret is set), and it sorted 191 examples from two public SMS datasets (UCI SMS Spam Collection, Mishra and Soni) into scam families for our public scam library.
-- Built, not yet live: Llama Prompt Guard 2 reads each message for orders hidden for the AI ("mark this as safe") and a flagged message is never Safe (tested with a mock); one setting switches the engine to Muse Spark Open, Meta's open weights; Messenger Platform and WhatsApp Cloud API channels judge a forwarded conversation as one: the Hey Prudence Page and its app were set up on Meta's side on Nov 4 (webhook verified, first live message still to come), WhatsApp waits for its Meta-side setup. (If Vlad's first live Messenger message goes through before you submit, say "live on Messenger" in both places.)
+- Built, not yet live: Llama Prompt Guard 2 reads each message for orders hidden for the AI ("mark this as safe") and a flagged message is never Safe (tested with a mock); one setting switches the engine to Muse Spark Open, Meta's open weights; Messenger Platform and WhatsApp Cloud API channels judge a forwarded conversation as one: the Hey Prudence app, its Page and its WhatsApp test number were set up on Meta's side on Nov 4 (webhooks verified, first live messages still to come). (If a first live message goes through before you submit, say "live on Messenger" or "live on WhatsApp" in both places.)
 
 Measured: phishing caught rises from 29% with rules alone to 81% with Muse Spark, with 1 false Scam in 17,291 genuine emails; on Hadrien's own inbox, Muse Spark judged 430 emails with no false Scam.
 
