@@ -62,6 +62,15 @@ function draw(root, data, fams, ctx) {
 
 const fromWhere = (s) => (pick(s, "from_app") ? tag("from the app", "warn") : tag("from the site"));
 
+// No rule proves a first name absent: the server flags a capitalised word
+// after a greeting or before a comma (proposed.may_carry_name, and the
+// words in warnings); the reviewer reads the message before approving.
+function nameWarning(s) {
+  const words = (s.warnings || []).map((w) => String(w).replace(/^may carry a name:\s*/i, "")).filter(Boolean);
+  if (!s.proposed?.may_carry_name && !words.length) return "";
+  return `<p class="review-warning">${tag("May carry a name", "warn")} Read the message before approving${words.length ? `: ${esc(words.join(", "))}` : ""}.</p>`;
+}
+
 function review(s, fams) {
   const id = String(s.id);
   const m = s.message || {};
@@ -77,6 +86,7 @@ function review(s, fams) {
       ${(m.links || []).length ? `<dt>Links</dt><dd class="small">${m.links.map((l) => `<span class="mono">${esc(l?.href || l?.text || "")}</span>`).join(", ")} <span class="muted">(as text, never clickable)</span></dd>` : ""}
       ${s.note ? `<dt>Note</dt><dd>${esc(s.note)}</dd>` : ""}
     </dl>
+    ${nameWarning(s)}
     <details open><summary>The message, redacted</summary><pre>${esc(m.body || "")}</pre></details>
     <div class="btn-row">
       <div class="field"><label for="${f("family")}">Family</label>

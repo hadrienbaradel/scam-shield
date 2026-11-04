@@ -10,7 +10,7 @@
 // from_app, counted and withdrawn per person.
 
 import { randomBytes } from "node:crypto";
-import { loadLibraryFiles, redactExample, bodyHash, validateEntry, nameWarnings, LIBRARY_VERDICTS } from "../../lib/library.js";
+import { loadLibraryFiles, redactExample, bodyHash, validateEntry, nameWarnings, exportLibrary, LIBRARY_VERDICTS } from "../../lib/library.js";
 import { many, one, q } from "../db/pool.js";
 
 const CACHE_MS = 60000;
@@ -30,6 +30,15 @@ export async function getLibrary({ reload = false } = {}) {
   return cache.library;
 }
 export const forgetLibrary = () => { cache = null; };
+
+// The whole library as one JSON string, built once per cache (a minute, or
+// until an approval lands), so /api/public/library.json never serialises
+// per hit.
+export async function exportJson() {
+  const library = await getLibrary();
+  if (!cache.exportJson) cache.exportJson = JSON.stringify(exportLibrary(library));
+  return cache.exportJson;
+}
 
 const code = (v, re, fix) => { const s = fix(String(v ?? "").trim()); return re.test(s) ? s : null; };
 const countryCode = (v) => code(v, /^[A-Z]{2}$/, (s) => s.toUpperCase());
@@ -84,10 +93,13 @@ export async function submissionStatus(id) {
   return row ? { id: row.id, status: row.status, reason: row.reason, entryId: row.entry_id } : null;
 }
 
-// The queue for the console: never who submitted (user_id, submitter_hash).
+// The queue for the console: never who submitted (user_id, submitter_hash);
+// each row carries the name warnings of its message so the page can say
+// which word to read twice before approving.
 export async function listSubmissions() {
-  const submissions = await many(`SELECT id, created_at, channel, message, proposed, country, language, note, status, reason, entry_id, from_app, verdict, decided_at
-                                  FROM library_submissions ORDER BY (status = 'pending') DESC, created_at DESC LIMIT 200`);
+  const rows = await many(`SELECT id, created_at, channel, message, proposed, country, language, note, status, reason, entry_id, from_app, verdict, decided_at
+                           FROM library_submissions ORDER BY (status = 'pending') DESC, created_at DESC LIMIT 200`);
+  const submissions = rows.map((r) => ({ ...r, warnings: nameWarnings(r.message) }));
   const c = await one(`SELECT count(*) FILTER (WHERE status = 'pending')::int AS pending, count(*) FILTER (WHERE status = 'approved')::int AS approved,
                        count(*) FILTER (WHERE status = 'rejected')::int AS rejected FROM library_submissions`);
   return { submissions, counts: { pending: c.pending, approved: c.approved, rejected: c.rejected } };
@@ -113,15 +125,21 @@ export async function approveSubmission(id, overrides = {}) {
   };
   const errors = validateEntry(entry, lib);
   if (errors.length) return { errors: [...errors] };
-  // Conditional: two reviewers approving at once publish one entry, not two.
-  const done = await one("UPDATE library_submissions SET status = 'approved', entry = $2, entry_id = $3, decided_at = now() WHERE id = $1 AND status = 'pending' RETURNING id", [id, entry, entry.id]);
+  // Conditional: two reviewers approving at once publish one entry, not two. The submitter's hash goes with the decision.
+  const done = await one(`UPDATE library_submissions SET status = 'approved', entry = $2, entry_id = $3, decided_at = now(), submitter_hash = NULL
+                          WHERE id = $1 AND status = 'pending' RETURNING id`, [id, entry, entry.id]);
   if (!done) return { errors: ["submission is not pending"], decided: true };
   forgetLibrary();
   return { entry };
 }
 
+// A rejected or withdrawn row keeps its decision and its body hash (the
+// duplicate rule) and nothing else of the message: no text, note, proposal
+// or submitter; the retention job deletes it after 30 days.
+const SCRUB = "message = '{}'::jsonb, note = NULL, proposed = NULL, submitter_hash = NULL, decided_at = now()";
+
 export async function rejectSubmission(id, reason) {
-  const rows = await many("UPDATE library_submissions SET status = 'rejected', reason = $2, decided_at = now() WHERE id = $1 AND status = 'pending' RETURNING id", [id, text(reason, 2000)]);
+  const rows = await many(`UPDATE library_submissions SET status = 'rejected', reason = $2, ${SCRUB} WHERE id = $1 AND status = 'pending' RETURNING id`, [id, text(reason, 2000)]);
   return rows.length === 1;
 }
 
@@ -132,6 +150,6 @@ export async function sharedCounts(userId) {
 }
 
 export async function withdrawShared(userId) {
-  const rows = await many("UPDATE library_submissions SET status = 'withdrawn', decided_at = now() WHERE user_id = $1 AND from_app AND status = 'pending' RETURNING id", [userId]);
+  const rows = await many(`UPDATE library_submissions SET status = 'withdrawn', ${SCRUB} WHERE user_id = $1 AND from_app AND status = 'pending' RETURNING id`, [userId]);
   return { withdrawn: rows.length };
 }

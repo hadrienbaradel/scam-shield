@@ -5,17 +5,19 @@
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { readFile, access } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { one, many } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
 import { config } from "../src/config.js";
+import { runRetention } from "../src/jobs/retention.js";
+import { submitterHashOf } from "../src/routes/db.js";
 import { getProvider } from "../lib/llm/index.js";
 import { loadLibraryFiles, validateEntry, bodyHash } from "../lib/library.js";
 import { classifyExample, CLASSIFY_SCHEMA } from "../lib/libraryMuse.js";
 import { getLibrary, submit, submissionStatus, listSubmissions, approveSubmission, rejectSubmission, sharedCounts, withdrawShared } from "../src/library/store.js";
 
 const load = async (p) => JSON.parse(await readFile(new URL(`../${p}`, import.meta.url), "utf8"));
-const exists = (p) => access(new URL(`../${p}`, import.meta.url)).then(() => true, () => false);
 const ORIGIN = "http://localhost:3999";
 const hasDb = await dbAvailable();
 const opts = { skip: hasDb ? false : "Postgres test database not available" };
@@ -211,15 +213,26 @@ test("the list filters and pages, newest first; the detail carries the brand's c
   assert.ok(a3b.cards.every((c) => c.status === "active"));
   const b6 = (await get("/api/public/library/lib-demo-b6")).json();
   assert.deepEqual(b6.cards, [], "no brand, no cards");
+  assert.deepEqual((await get("/api/public/library/lib-demo-a4")).json().indicators, { domains: [], senders: [], phones: ["+337550199"] }, "the server's indicators: the number, never the .test site");
+  assert.deepEqual((await get("/api/public/library/lib-demo-c8")).json().indicators, { domains: [], senders: [], phones: [] }, "a Be careful entry names nobody");
+  assert.deepEqual((await get("/api/public/library/lib-demo-a6")).json().indicators.phones, [], "a share capital is not a phone number");
   const { cards } = (await get("/api/public/cards")).json();
   assert.ok(cards.length >= 1 && cards.every((c) => c.status === "active"));
 
   const res = await get("/api/public/library.json");
   assert.equal(res.statusCode, 200);
+  assert.equal(res.headers["cache-control"], "public, max-age=60");
+  assert.match(res.headers["content-type"], /application\/json/);
   const file = res.json();
   assert.equal(file.licence, "CC BY 4.0");
   assert.equal(file.entries.length, all.total);
   assert.ok(file.sources.some((s) => s.id === "prudence-demo") && file.families.length === 21);
+  assert.equal((await get("/api/public/library.json")).json().generated, file.generated, "one string per cache, not a serialisation per hit");
+  // 30 downloads a minute per address: the 31st is refused, another address goes on.
+  let last;
+  for (let i = 0; i < 31; i++) last = await app.inject({ url: "/api/public/library.json", remoteAddress: "10.0.0.31" });
+  assert.equal(last.statusCode, 429);
+  assert.equal((await app.inject({ url: "/api/public/library.json", remoteAddress: "10.0.0.32" })).statusCode, 200);
 });
 
 test("submit: 202 then pending, 400 on a bad body, 409 on a duplicate, stored as text and redacted", opts, async () => {
@@ -234,7 +247,8 @@ test("submit: 202 then pending, 400 on a bad body, 409 on a duplicate, stored as
   assert.equal((await get("/api/public/library/submit/00000000-0000-0000-0000-000000000000")).statusCode, 404);
   const row = await one("SELECT * FROM library_submissions WHERE id = $1", [id]);
   assert.deepEqual([row.country, row.language, row.note, row.from_app, row.user_id], ["US", "en", "received today", false, null]);
-  assert.match(row.submitter_hash, /^[0-9a-f]{64}$/, "the address hashed, never kept");
+  assert.equal(row.submitter_hash, submitterHashOf("127.0.0.1"), "the address keyed-hashed with TOKEN_ENC_KEY, never kept");
+  assert.notEqual(row.submitter_hash, createHash("sha256").update("127.0.0.1").digest("hex"), "not a plain hash anyone can walk back");
 
   assert.equal((await post("/api/public/library/submit", { ...body, message: { body: "Hello" } })).statusCode, 400);
   assert.match((await post("/api/public/library/submit", { ...body, message: { body: "Hello" } })).json().error, /20 to 10,000 characters/);
@@ -302,6 +316,8 @@ test("the senior's share: signed in only, counted and withdrawn per person", opt
   assert.deepEqual((await post("/api/library/shared/withdraw", {}, headers)).json(), { withdrawn: 2 });
   assert.equal((await get(`/api/public/library/submit/${id}`)).json().status, "withdrawn");
   assert.deepEqual((await get("/api/library/shared", headers)).json(), { count: 2, pending: 0, approved: 0 });
+  const withdrawn = await one("SELECT message, note, proposed, submitter_hash FROM library_submissions WHERE id = $1", [id]);
+  assert.deepEqual([withdrawn.message, withdrawn.note, withdrawn.proposed, withdrawn.submitter_hash], [{}, null, null, null], "withdrawn means her message is gone from the row");
 });
 
 test("the admin queue: admins only, approve publishes a valid entry at once, reject keeps the reason", opts, async () => {
@@ -318,6 +334,10 @@ test("the admin queue: admins only, approve publishes a valid entry at once, rej
   assert.ok(list.submissions.some((s) => s.id === id && s.status === "pending" && s.message.body.includes("$850")), "the reviewer reads the redacted message");
   assert.ok(list.counts.pending >= 1 && "approved" in list.counts && "rejected" in list.counts);
   assert.ok(list.submissions.every((s) => !("user_id" in s) && !("submitter_hash" in s)));
+  assert.deepEqual(list.submissions.find((s) => s.id === id).warnings, [], "no name in this one");
+  const named = (await post("/api/public/library/submit", { channel: "email", message: { subject: "Hi Linda", body: "Dear Linda, your parcel waits at the depot, pay the fee on the link today please." } }, {}, "10.0.0.3")).json().id;
+  const namedRow = (await get("/api/admin/db/submissions", adminHeaders)).json().submissions.find((s) => s.id === named);
+  assert.deepEqual([namedRow.proposed, namedRow.warnings], [{ may_carry_name: true }, ["may carry a name: Linda"]], "the reviewer is told which word to read twice");
 
   assert.equal((await post(`/api/admin/db/submissions/${id}/approve`, { family: "nope" }, adminHeaders)).statusCode, 400);
   assert.match((await post(`/api/admin/db/submissions/${id}/approve`, {}, adminHeaders)).json().error, /family/, "no family proposed, none given");
@@ -327,6 +347,7 @@ test("the admin queue: admins only, approve publishes a valid entry at once, rej
   assert.deepEqual([entry.family, entry.brand, entry.lure, entry.country, entry.source.id, entry.status], ["recovery", null, "a law firm recovers lost money", "US", "prudence-submissions", "published"]);
   assert.equal((await get(`/api/public/library/${entry.id}`)).statusCode, 200, "served at once");
   assert.equal((await get(`/api/public/library/submit/${id}`)).json().entryId, entry.id, "the submitter is told");
+  assert.equal((await one("SELECT submitter_hash FROM library_submissions WHERE id = $1", [id])).submitter_hash, null, "the submitter's hash goes with the decision");
   assert.equal((await post(`/api/admin/db/submissions/${id}/approve`, {}, adminHeaders)).statusCode, 409, "decided already");
   assert.equal((await post("/api/admin/db/submissions/not-a-uuid/approve", {}, adminHeaders)).statusCode, 404);
   assert.equal((await post(`/api/admin/db/submissions/${id}/approve`, {}, { cookie: await sessionFor(senior) })).statusCode, 403);
@@ -335,22 +356,52 @@ test("the admin queue: admins only, approve publishes a valid entry at once, rej
   assert.equal((await post(`/api/admin/db/submissions/${other}/reject`, {}, adminHeaders)).statusCode, 400, "a reason is needed");
   assert.deepEqual((await post(`/api/admin/db/submissions/${other}/reject`, { reason: "no sender, no number: nothing to learn" }, adminHeaders)).json(), { ok: true });
   assert.deepEqual((await get(`/api/public/library/submit/${other}`)).json(), { id: other, status: "rejected", reason: "no sender, no number: nothing to learn", entryId: null });
+  const rejected = await one("SELECT message, note, proposed, submitter_hash, body_hash FROM library_submissions WHERE id = $1", [other]);
+  assert.deepEqual([rejected.message, rejected.note, rejected.proposed, rejected.submitter_hash], [{}, null, null, null], "a rejected row keeps nothing of the message");
+  assert.match(rejected.body_hash, /^[0-9a-f]{64}$/, "but its hash, for the duplicate rule");
   assert.equal((await post(`/api/admin/db/submissions/${other}/reject`, { reason: "again" }, adminHeaders)).statusCode, 404, "decided already");
 });
 
 test("the public site is served at /public/, apart from the senior's app", opts, async () => {
-  // Agent S's pages live in public/db/; until they are merged the mount answers 404, never a 500.
-  const built = await exists("public/db/index.html");
   const index = await get("/public/");
-  assert.equal(index.statusCode, built ? 200 : 404);
-  if (built) {
-    assert.match(index.headers["content-type"], /text\/html/);
-    assert.match(index.body, /<title>Prudence scam database<\/title>/);
-    const js = await get("/public/db.js");
-    assert.equal(js.statusCode, 200);
-    assert.match(js.headers["content-type"], /javascript/);
-  }
+  assert.equal(index.statusCode, 200);
+  assert.match(index.headers["content-type"], /text\/html/);
+  assert.match(index.body, /<title>Prudence scam database<\/title>/);
+  const js = await get("/public/db.js");
+  assert.equal(js.statusCode, 200);
+  assert.match(js.headers["content-type"], /javascript/);
   assert.equal((await get("/public/nothing-here.js")).statusCode, 404);
   assert.equal((await get("/public/../package.json")).statusCode, 404, "no way out of the folder");
   assert.match((await get("/public/")).headers["content-security-policy"], /script-src 'self'/, "the same strict CSP");
+});
+
+test("retention: decided submissions go after 30 days, unreviewed ones after 180, dead watch items after 90", opts, async () => {
+  const sub = async (body, patch) => {
+    const row = await submit({ channel: "sms", message: { body } });
+    if (patch) await pool.query(`UPDATE library_submissions SET ${patch} WHERE id = $1`, [row.id]);
+    return row.id;
+  };
+  const oldRejected = await sub("Retention one: a parcel waits at the depot, pay the fee on the link today.", "status = 'rejected', decided_at = now() - interval '31 days'");
+  const freshRejected = await sub("Retention two: a parcel waits at the depot, pay the fee on the link today.", "status = 'rejected', decided_at = now() - interval '29 days'");
+  const oldWithdrawn = await sub("Retention three: a parcel waits at the depot, pay the fee on the link today.", "status = 'withdrawn', decided_at = now() - interval '40 days'");
+  const stalePending = await sub("Retention four: a parcel waits at the depot, pay the fee on the link today.", "created_at = now() - interval '181 days'");
+  const freshPending = await sub("Retention five: a parcel waits at the depot, pay the fee on the link today.", "created_at = now() - interval '179 days'");
+  const oldApproved = await sub("Retention six: a parcel waits at the depot, pay the fee on the link today.", "status = 'approved', decided_at = now() - interval '400 days'");
+  const watch = async (patch) => (await one(`INSERT INTO watch_items (source, url, title, kind, status, fetched_at, decided_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    [patch.source || "krebs", `https://watch.example/${Math.random()}`, "An item", patch.kind ?? "technique", patch.status ?? "candidate", patch.fetched, patch.decided ?? null])).id;
+  const oldRejectedItem = await watch({ status: "rejected", fetched: new Date(Date.now() - 100 * 86400000), decided: new Date(Date.now() - 91 * 86400000) });
+  const freshRejectedItem = await watch({ status: "rejected", fetched: new Date(Date.now() - 100 * 86400000), decided: new Date(Date.now() - 10 * 86400000) });
+  const oldOther = await watch({ kind: "other", fetched: new Date(Date.now() - 91 * 86400000) });
+  const oldApprovedBreach = await watch({ kind: "breach", status: "approved", fetched: new Date(Date.now() - 200 * 86400000), decided: new Date(Date.now() - 200 * 86400000) });
+  const oldCandidate = await watch({ kind: "technique", fetched: new Date(Date.now() - 200 * 86400000) });
+
+  const counts = await runRetention();
+  assert.equal(counts.librarySubmissions, 3, "the old rejected, the old withdrawn and the stale pending rows");
+  assert.equal(counts.watchItems, 2, "the old rejected item and the old 'other' item");
+  const left = new Set((await many("SELECT id FROM library_submissions")).map((r) => r.id));
+  assert.ok(!left.has(oldRejected) && !left.has(oldWithdrawn) && !left.has(stalePending));
+  assert.ok(left.has(freshRejected) && left.has(freshPending) && left.has(oldApproved), "a fresh decision, a recent pending row and a published entry stay");
+  const items = new Set((await many("SELECT id FROM watch_items")).map((r) => r.id));
+  assert.ok(!items.has(oldRejectedItem) && !items.has(oldOther));
+  assert.ok(items.has(freshRejectedItem) && items.has(oldApprovedBreach) && items.has(oldCandidate), "a fresh rejection, an approved breach and an unreviewed candidate stay");
 });

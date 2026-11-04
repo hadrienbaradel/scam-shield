@@ -1,6 +1,9 @@
 // Housekeeping (PRD privacy rules): verdicts are kept 90 days, sign-in
 // leftovers an hour, the local outbox a week, job runs 30 days. Pattern
-// cards with no sighting for 90 days retire.
+// cards with no sighting for 90 days retire. The public database's queues:
+// a rejected or withdrawn library submission goes after 30 days, a pending
+// one nobody reviewed after 180; a rejected watch item, or one classified
+// as neither a breach nor a technique, after 90.
 
 import { q } from "../db/pool.js";
 
@@ -19,5 +22,10 @@ export async function runRetention() {
   await del("retiredCards", `UPDATE pattern_cards SET status = 'retired', updated_at = now()
                              WHERE status IN ('active', 'candidate') AND (card->>'last_seen') IS NOT NULL
                                AND (card->>'last_seen')::date < now() - interval '90 days'`);
+  await del("librarySubmissions", `DELETE FROM library_submissions
+                                   WHERE (status IN ('rejected', 'withdrawn') AND decided_at < now() - interval '30 days')
+                                      OR (status = 'pending' AND created_at < now() - interval '180 days')`);
+  await del("watchItems", `DELETE FROM watch_items
+                           WHERE (status = 'rejected' OR kind = 'other') AND coalesce(decided_at, fetched_at) < now() - interval '90 days'`);
   return counts;
 }
