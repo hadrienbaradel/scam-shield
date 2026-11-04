@@ -1889,7 +1889,11 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
   font-size: var(--t32);
   font-weight: 700;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  /* Read aloud by her: a long word ("enregistrement" at French Largest) is
+     hyphenated in the page's language, never cut anywhere. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 .gl-level { height: 16px; overflow: hidden; border-radius: 8px; background: var(--line); }
 .gl-level-bar {
