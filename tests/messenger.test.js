@@ -9,6 +9,7 @@ import { test, afterEach, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { createServer } from "node:http";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,7 +19,7 @@ import { breaker, buildUserPrompt, extractFromImage } from "../lib/muse.js";
 import {
   attachmentUrl, createMessengerChannel, DEFAULT_GRAPH_VERSION, messengerConfig, messengerConfigured, messengerLink, parseWebhook, webhookActive,
 } from "../src/channels/messenger.js";
-import { createLimiter, ffmpegVideo, ffprobeBeside, frameTimes, WORDS } from "../src/channels/whatsapp.js";
+import { createLimiter, ffmpegToWav, ffmpegVideo, ffprobeBeside, frameTimes, VIDEO_FORMATS, WORDS } from "../src/channels/whatsapp.js";
 import messengerRoutes from "../src/routes/messenger.js";
 import { whatsappLink } from "../src/routes/account.js";
 import { buildApp } from "../src/server.js";
@@ -639,8 +640,60 @@ test("ffmpeg reads a phone video from a temporary file: the sound as 16 kHz mono
     await rm(root, { recursive: true, force: true });
   }
   assert.deepEqual(frameTimes(16), [2, 6, 10, 14], "never the very first or last frame");
+  assert.ok(!VIDEO_FORMATS.includes("hls") && !VIDEO_FORMATS.includes("concat"));
   assert.equal(ffprobeBeside("/opt/homebrew/bin/ffmpeg"), "/opt/homebrew/bin/ffprobe");
   assert.equal(ffprobeBeside("ffmpeg"), "ffprobe");
+});
+
+test("ffmpeg opens a video only as a local MP4 or WebM: a playlist or a file list dressed as one is refused before anything is read, nothing fetched", { skip: !ffmpegForVideo() }, async () => {
+  let hits = 0;
+  const server = createServer((req, res) => { hits++; res.end("#EXTM3U\n"); });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const root = await mkdtemp(join(tmpdir(), "prudence-video-test-"));
+  try {
+    const { port } = server.address();
+    const secret = join(root, "secret.txt");
+    await writeFile(secret, "not for the model");
+    const work = join(root, "work");
+    await mkdir(work);
+    const playlist = Buffer.from(`#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nhttp://127.0.0.1:${port}/segment.ts\n#EXT-X-ENDLIST\n`);
+    await assert.rejects(ffmpegVideo(playlist, { tmpRoot: work }), /ffprobe exited|refused/, "an HLS playlist");
+    await assert.rejects(ffmpegToWav(playlist), /ffmpeg exited/, "the same playlist as a voice note");
+    await assert.rejects(ffmpegVideo(Buffer.from(`ffconcat version 1.0\nfile '${secret}'\n`), { tmpRoot: work }), /ffprobe exited|refused/, "a concat list");
+    // A real recording that is not a video format: refused too.
+    const wav = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-f", "wav", "pipe:1"]);
+    await assert.rejects(ffmpegVideo(wav.stdout, { tmpRoot: work }), /ffprobe exited|refused/, "a WAV sent as a video");
+    assert.equal(hits, 0, "nothing was fetched");
+    assert.deepEqual(await readdir(work), [], "nothing extracted, the folder gone");
+  } finally {
+    await new Promise((r) => server.close(r));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a video whose container lies about its length is never decoded past the cap", { skip: !ffmpegForVideo() }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "prudence-video-test-"));
+  try {
+    const made = join(root, "made.mkv");
+    const r = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=duration=6:size=160x120:rate=5", "-f", "lavfi", "-i", "sine=frequency=440:duration=6",
+      "-c:v", "mpeg4", "-c:a", "aac", made]);
+    assert.equal(r.status, 0, r.stderr?.toString());
+    // Matroska's Duration (id 0x4489, an 8-byte float in ms) rewritten from 6 s to 1 s.
+    const clip = await readFile(made);
+    const at = clip.findIndex((b, i) => b === 0x44 && clip[i + 1] === 0x89 && clip[i + 2] === 0x88);
+    assert.ok(at > 0, "the Duration element");
+    clip.writeDoubleBE(1000, at + 3);
+    const work = join(root, "work");
+    await mkdir(work);
+    const out = await ffmpegVideo(clip, { tmpRoot: work, maxSeconds: 2 });
+    assert.equal(out.durationSec, 1, "the container says 1 s");
+    const seconds = (out.wav.length - 44) / 32000;
+    assert.ok(seconds <= 2.1, `the sound stops at the 2 s cap, not at the 6 s it holds (${seconds} s)`);
+    assert.equal(out.sheet.readUInt16BE(0), 0xffd8);
+    assert.deepEqual(await readdir(work), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("a sticker, a file, a reel or a shared link alone gets the plain reply; beside a text it is skipped", async () => {

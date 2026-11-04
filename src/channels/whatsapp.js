@@ -15,7 +15,7 @@
 
 import { spawn } from "node:child_process";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkMessage, extractFromImage, museConfigured, museLabel, transcribeVoice, voiceConfigured } from "../../lib/muse.js";
@@ -243,11 +243,19 @@ export function fixWavSizes(wav) {
   return out;
 }
 
-// A voice note (Ogg/Opus, or anything ffmpeg reads) to 16 kHz mono 16-bit
-// WAV, the only input Muse Voice Transcribe takes. Nothing touches the disk.
+// What ffmpeg may open: never a URL or another file named inside the bytes
+// (an HLS playlist or a concat list dressed as a recording), and only the
+// demuxers of real recordings. A voice note: Ogg/Opus (WhatsApp), MP4/AAC
+// and M4A (Messenger, iPhone), MP3, AAC, AMR, WAV, WebM. A video: MP4/MOV
+// and Matroska/WebM.
+export const AUDIO_FORMATS = ["ogg", "mov", "mp4", "m4a", "3gp", "3g2", "mj2", "mp3", "aac", "amr", "wav", "matroska", "webm"];
+export const VIDEO_FORMATS = ["mov", "mp4", "m4a", "3gp", "3g2", "mj2", "matroska", "webm"];
+
+// A voice note (Ogg/Opus, or another recording format above) to 16 kHz mono
+// 16-bit WAV, the only input Muse Voice Transcribe takes. Nothing touches the disk.
 export function ffmpegToWav(input, { ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg", timeoutMs = 30000 } = {}) {
   return new Promise((resolve, reject) => {
-    const args = ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", "pipe:1"];
+    const args = ["-hide_banner", "-loglevel", "error", "-protocol_whitelist", "pipe", "-format_whitelist", AUDIO_FORMATS.join(","), "-i", "pipe:0", "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", "pipe:1"];
     const p = spawn(ffmpegPath, args, { stdio: ["pipe", "pipe", "pipe"] });
     const out = [];
     const err = [];
@@ -296,47 +304,66 @@ export const ffprobeBeside = (ffmpegPath) => (/ffmpeg(\.exe)?$/i.test(ffmpegPath
 // its length, so never its very first or last frame.
 export const frameTimes = (seconds) => [1, 3, 5, 7].map((k) => Math.round(((seconds * k) / 8) * 1000) / 1000);
 
+// An output file read back only under its cap.
+async function readCappedFile(path, max, what) {
+  const { size } = await stat(path);
+  if (size > max) throw new Error(`${what} is ${size} bytes, over ${max}`);
+  return readFile(path);
+}
+
 // A video (a screen recording, a clip filmed with a phone or Meta glasses)
 // to what the models read: { durationSec, wav, sheet }. The sound as the
 // same 16 kHz mono WAV as ffmpegToWav (null without an audio track); four
 // frames spread over it tiled 2x2 into one JPEG, each tile at most 960 px
 // wide so screen text stays readable (null without a picture). Over
-// maxSeconds nothing is extracted: { durationSec, tooLong: true }. Phone
-// MP4s often keep their index at the end, which ffmpeg cannot reach on a
-// pipe, so the bytes go to a file in a fresh 0700 folder under the OS temp
-// folder, removed whatever happens (read, failed or timed out).
+// maxSeconds nothing is extracted: { durationSec, tooLong: true }; and as
+// the container may lie about its length, no more than maxSeconds is ever
+// decoded and the WAV is capped at that many seconds. Phone MP4s often keep
+// their index at the end, which ffmpeg cannot reach on a pipe, so the bytes
+// go to a file in a fresh 0700 folder under the OS temp folder, removed
+// whatever happens (read, failed or timed out). Only MP4/MOV and
+// Matroska/WebM are opened, and only as a local file (VIDEO_FORMATS): a
+// playlist or a list of other files is refused before anything is read.
 export async function ffmpegVideo(input, {
   ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg", ffprobePath = ffprobeBeside(ffmpegPath),
-  maxSeconds = Infinity, timeoutMs = 30000, tmpRoot = tmpdir(),
+  maxSeconds = 180, timeoutMs = 30000, tmpRoot = tmpdir(), maxSheetBytes = MAX_IMAGE_BYTES,
 } = {}) {
   const dir = await mkdtemp(join(tmpRoot, "prudence-video-"));
   try {
     await chmod(dir, 0o700);
     const file = join(dir, "clip");
     await writeFile(file, input, { mode: 0o600 });
-    const probed = await runTool(ffprobePath, ["-v", "error", "-show_entries", "format=duration:stream=codec_type,duration", "-of", "json", file], { timeoutMs, name: "ffprobe" });
+    const only = ["-protocol_whitelist", "file", "-format_whitelist", VIDEO_FORMATS.join(",")];
+    const probed = await runTool(ffprobePath, ["-v", "error", ...only, "-show_entries", "format=format_name,duration:stream=codec_type,duration", "-of", "json", file], { timeoutMs, name: "ffprobe" });
     let info;
     try { info = JSON.parse(probed.toString()); } catch { throw new Error("ffprobe answer unreadable"); }
+    const formats = String(info.format?.format_name || "").split(",").filter(Boolean);
+    if (!formats.length || !formats.every((f) => VIDEO_FORMATS.includes(f))) throw new Error(`video format ${formats.join(",") || "unknown"} refused`);
     const durationSec = Number(info.format?.duration);
     if (!Number.isFinite(durationSec) || durationSec <= 0) throw new Error("video duration unreadable");
     if (durationSec > maxSeconds) return { durationSec, tooLong: true, wav: null, sheet: null };
     const streams = Array.isArray(info.streams) ? info.streams : [];
     const video = streams.find((s) => s.codec_type === "video");
     const hasAudio = streams.some((s) => s.codec_type === "audio");
-    // The picture track can end before the sound: its own length places the frames.
-    const pictureSec = Number(video?.duration) > 0 ? Number(video.duration) : durationSec;
+    // The picture track can end before the sound: its own length places the
+    // frames, never past the probed length.
+    const pictureSec = Math.min(Number(video?.duration) > 0 ? Number(video.duration) : durationSec, durationSec);
     const base = ["-hide_banner", "-loglevel", "error", "-nostdin", "-y"];
+    const limit = ["-t", String(maxSeconds)];
     const wavFile = join(dir, "sound.wav");
     const sheetFile = join(dir, "frames.jpg");
+    // 16 kHz mono 16-bit is 32,000 bytes a second, plus the header.
+    const maxWavBytes = Math.ceil(maxSeconds * 32000) + 65536;
     const tiles = frameTimes(pictureSec).map((_, i) => `[${i}:v:0]scale=w=min(960\\,iw):h=-2,setsar=1[f${i}]`).join(";");
     const jobs = [
-      hasAudio ? runTool(ffmpegPath, [...base, "-i", file, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", wavFile], { timeoutMs, name: "ffmpeg" })
-        .then(() => readFile(wavFile)) : null,
+      hasAudio ? runTool(ffmpegPath, [
+        ...base, ...only, "-i", file, ...limit, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-fs", String(maxWavBytes), "-f", "wav", wavFile,
+      ], { timeoutMs, name: "ffmpeg" }).then(() => readCappedFile(wavFile, maxWavBytes, "the video's sound")) : null,
       video ? runTool(ffmpegPath, [
-        ...base, ...frameTimes(pictureSec).flatMap((t) => ["-ss", String(t), "-i", file]),
+        ...base, ...frameTimes(pictureSec).flatMap((t) => [...only, "-ss", String(t), "-i", file]),
         "-filter_complex", `${tiles};[f0][f1][f2][f3]xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0[sheet]`,
-        "-map", "[sheet]", "-frames:v", "1", "-q:v", "3", sheetFile,
-      ], { timeoutMs, name: "ffmpeg" }).then(() => readFile(sheetFile)) : null,
+        "-map", "[sheet]", ...limit, "-frames:v", "1", "-q:v", "3", sheetFile,
+      ], { timeoutMs, name: "ffmpeg" }).then(() => readCappedFile(sheetFile, maxSheetBytes, "the video's frames")) : null,
     ];
     // Both runs end before the folder goes, whichever fails first.
     const [wav, sheet] = await Promise.allSettled(jobs);
