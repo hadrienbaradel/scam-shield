@@ -42,11 +42,16 @@ export function messageFrom(input) {
   const m = input && typeof input === "object" ? input : {};
   const body = clip(m.body, 6000);
   const fullText = text(m.fullText, 6000);
-  const links = [...(Array.isArray(m.links) ? m.links : []), ...linksFromText(fullText ? fullText.value : body)]
-    .filter((l) => l && /^https?:\/\//i.test(String(l.href || "")))
-    .map((l) => ({ href: clip(l.href, 2000), text: clip(l.text || l.href, 300) }))
-    .filter((l, i, all) => all.findIndex((x) => x.href === l.href) === i)
-    .slice(0, 40);
+  // At most 40 links, read from at most 200 sent ones, de-duplicated in one pass.
+  const links = [];
+  const hrefs = new Set();
+  for (const l of [...(Array.isArray(m.links) ? m.links.slice(0, 200) : []), ...linksFromText(fullText ? fullText.value : body)]) {
+    if (links.length >= 40) break;
+    const href = clip(l?.href, 2000);
+    if (!/^https?:\/\//i.test(href) || hrefs.has(href)) continue;
+    hrefs.add(href);
+    links.push({ href, text: clip(l.text || l.href, 300) });
+  }
   const attachments = (Array.isArray(m.attachments) ? m.attachments : []).slice(0, 20)
     .map((a) => ({ filename: clip(a?.filename, 200), mimeType: clip(a?.mimeType, 100), ...(Number.isFinite(a?.size) ? { size: a.size } : {}) }));
   const threads = m.inbox && Array.isArray(m.threads) ? m.threads.slice(0, 30)
@@ -86,10 +91,11 @@ export default async function investigateRoutes(app) {
   app.post("/api/check/investigate", { preHandler: requireUser, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     if (!investigateConfigured()) return unavailable(reply);
     const { checkId = null, message: provided = null, threadHistory = [] } = request.body || {};
-    const message = messageFrom(provided);
-    if (!message.body.trim() && !message.subject.trim()) return reply.code(400).send({ error: "message_required", message: "Check this message first." });
+    // The person's own check first: nothing in the body is read for anyone else.
     const check = UUID.test(String(checkId || "")) ? await one("SELECT verdict FROM checks WHERE id = $1 AND user_id = $2", [checkId, request.user.id]) : null;
     if (!check) return reply.code(404).send({ error: "check_not_found", message: "Check this message first." });
+    const message = messageFrom(provided);
+    if (!message.body.trim() && !message.subject.trim()) return reply.code(400).send({ error: "message_required", message: "Check this message first." });
     // The context and the link facts of the first check (runCheck in src/sync/checker.js):
     // the links' age and listings, and where they land when the check looked.
     const ctx = { ...(await loadContext(request.user)), seenBefore: await seenBeforeFor(request.user.id, message.from, null) };

@@ -469,6 +469,16 @@ test("the page's message keeps every field the rules read (attachments, hidden t
   assert.deepEqual(historyFrom([{ from: "Daniel", date: "", body: "hi", extra: 1 }, "junk"]), [{ from: "Daniel", date: "", body: "hi" }]);
 });
 
+test("a body full of links costs nothing: at most 200 read, 40 kept, duplicates dropped in one pass", () => {
+  const many = Array.from({ length: 30000 }, (_, i) => ({ href: `https://x${i % 5000}.example.com/`, text: "x" }));
+  const t0 = Date.now();
+  const m = messageFrom({ body: "hi", links: many });
+  assert.ok(Date.now() - t0 < 200, `${Date.now() - t0} ms`);
+  assert.equal(m.links.length, 40);
+  assert.equal(new Set(m.links.map((l) => l.href)).size, 40);
+  assert.equal(messageFrom({ body: "x", links: [{ href: "https://a.example.com" }, { href: "https://a.example.com" }, { href: "ftp://b.example.com" }] }).links.length, 1);
+});
+
 test("the look's rules see what the first check's rules saw: an .html attachment, hidden orders to the AI, the links' facts, the thread", async () => {
   // A look-alike PayPal sender is Be careful alone, Scam with an .html attachment or orders hidden for the AI (lib/detector.js).
   const pp = { channel: "email", from: "service@paypal-billing-center.com", fromName: "PayPal", subject: "Invoice", body: "Your PayPal invoice is attached.", links: [], auth: "spf=pass dkim=pass dmarc=pass" };
@@ -566,6 +576,11 @@ test("signed in: the look uses the check's own first verdict, the person's conte
   const h2 = { cookie: await sessionFor(other), origin: ORIGIN };
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: h2, payload: { checkId: checked.checkId, message: checked.message } })).statusCode, 404);
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: h, payload: { checkId: "not-a-uuid", message: checked.message } })).statusCode, 404);
+  // An unknown check is refused before the body is read, however many links it carries.
+  const flood = { body: "x", links: Array.from({ length: 20000 }, (_, i) => ({ href: `https://f${i}.example.com/` })) };
+  const t0 = Date.now();
+  assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: h, payload: { checkId: "00000000-0000-4000-8000-000000000000", message: flood } })).statusCode, 404);
+  assert.ok(Date.now() - t0 < 1000, `${Date.now() - t0} ms`);
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: h, payload: { checkId: checked.checkId } })).statusCode, 400);
   assert.equal((await app.inject({ method: "POST", url: "/api/check/investigate", headers: { origin: ORIGIN }, payload: { checkId: checked.checkId, message: checked.message } })).statusCode, 401);
   assert.equal((await app.inject({ url: "/api/status", headers: h })).json().lookCloser, true, "the mock can use tools");
