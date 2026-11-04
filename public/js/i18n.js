@@ -200,6 +200,14 @@ export const STRINGS = {
     blk_lead_one: "1 scam this week, moved out of your inbox into the Prudence folder. Nothing is deleted.",
     blk_none: "No scam this week. Prudence keeps watching your email.",
     blk_put_back: "Put it back",
+    msg_chip_inbox: "My inbox", msg_chip_first: "Check first",
+    msg_none_first: "Nothing to check first. That is good news.",
+    msg_move_away: "Move it away", msg_moved: "Moved away.",
+    msg_links: "Check the links", msg_links_done: "We followed the links. The card above is up to date.",
+    blk_lead_all: "{n} scams moved out of your inbox into the Prudence folder. Nothing is deleted.",
+    blk_lead_all_one: "1 scam moved out of your inbox into the Prudence folder. Nothing is deleted.",
+    blk_back_done: "Put back.", blk_move_again: "Move it away again",
+    blk_restored_title: "You put these back",
     // --- check (ck_*) ---
     // Also read: v2_tab_check (the "Check" back link), channel_q ("Where did you
     // get it?"), ch_sms ("Text message"), ch_whatsapp, eml_title ("Or an email
@@ -428,7 +436,15 @@ export const STRINGS = {
     blk_lead: "{n} arnaques cette semaine, sorties de votre boîte de réception et rangées dans le dossier Prudence. Rien n'est supprimé.",
     blk_lead_one: "1 arnaque cette semaine, sortie de votre boîte de réception et rangée dans le dossier Prudence. Rien n'est supprimé.",
     blk_none: "Aucune arnaque cette semaine. Prudence continue de surveiller vos e-mails.",
-    blk_put_back: "Le remettre",
+    blk_put_back: "Remettre dans ma boîte",
+    msg_chip_inbox: "Ma boîte", msg_chip_first: "À vérifier d'abord",
+    msg_none_first: "Rien à vérifier d'abord. C'est une bonne nouvelle.",
+    msg_move_away: "L'écarter de ma boîte", msg_moved: "Écarté de votre boîte.",
+    msg_links: "Vérifier les liens", msg_links_done: "Nous avons suivi les liens. La carte ci-dessus est à jour.",
+    blk_lead_all: "{n} arnaques sorties de votre boîte de réception et rangées dans le dossier Prudence. Rien n'est supprimé.",
+    blk_lead_all_one: "1 arnaque sortie de votre boîte de réception et rangée dans le dossier Prudence. Rien n'est supprimé.",
+    blk_back_done: "Remis dans votre boîte.", blk_move_again: "L'écarter à nouveau",
+    blk_restored_title: "Vous les avez remis dans votre boîte",
     // --- check (ck_*) ---
     ck_title: "Vérifier quelque chose", ck_lead: "Montrez à Prudence tout ce qui vous inquiète.",
     ck_photo: "Faire une capture d'écran et l'envoyer", ck_photo_sub: "Ouvre vos photos ou l'appareil photo",

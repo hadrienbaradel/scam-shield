@@ -1486,3 +1486,59 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 /* Read by a screen reader, not shown (an earned badge's name). */
 .learn-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .learn.learn-run { gap: 14px; margin-top: -12px; }
+
+/* --- redesign: messages and blocked (mail.js) --- */
+/* My messages (frame 1e) and Blocked (frame 1f), and the message they open
+   in place (the shared card, frames 1l to 1n). Built on .screen, .chip-small,
+   .msg-list, .msg-row, .row-card, .pill-verdict, .btn-outline and .btn-back;
+   only what those do not cover is here.
+     .pill-verdict.is-grey  "Not checked yet" and "Put back by you": grey
+                            outline, the word and an icon, never a verdict colour
+     .msg-wait              "Please wait a moment." while the list loads
+     .blk-list              the Blocked cards, 12px apart
+     .blk-words             a Blocked card's words, a button that opens the
+                            message: the sender in quotes, subject · date, the pill
+     .blk-none              "No scam this week", the green check first
+     .msg-done              "Put back." or "Moved away." with its note, the
+                            undo button under it (on a card and in a message)
+     .msg-which             the sender and the subject above an open card
+     .msg-moves             the move of an open message and its undo
+     .msg-links             what "Check the links" found */
+.pill-verdict.is-grey { background: var(--soon); border-color: var(--field); color: var(--muted); }
+.msg-wait { margin: 0; font-size: var(--t22); color: var(--muted); }
+.msg-screen .chip-row,
+.blk-screen .screen-lead { margin: 0; }
+.blk-title { margin-top: 12px; }
+#blkList { display: flex; flex-direction: column; gap: 14px; }
+.blk-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.blk-put-title { margin-top: 8px; }
+.blk-words {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.blk-none { display: flex; align-items: flex-start; gap: 10px; margin: 0; font-size: var(--t22); line-height: 1.4; }
+.blk-none > svg { flex: none; margin-top: 0.15em; color: var(--safe); }
+.msg-done { display: flex; flex-direction: column; gap: 4px; }
+.msg-done p { margin: 0; }
+.msg-done-line { display: flex; align-items: center; gap: 8px; color: var(--safe-ink); font-size: var(--t22); font-weight: 700; line-height: 1.3; }
+.msg-done-line > svg { flex: none; color: var(--safe); }
+.msg-done-note { font-size: var(--t19); line-height: 1.4; }
+.msg-which { display: flex; flex-direction: column; gap: 4px; }
+.msg-moves { display: flex; flex-direction: column; gap: 12px; }
+.msg-moves > .btn,
+.msg-open > .btn,
+.blk-row > .btn { width: 100%; }
+.msg-links { display: flex; flex-direction: column; gap: 8px; font-size: var(--t19); }
+.msg-links .link-list { margin: 0; padding-left: 1.2em; }
+.msg-open .trusted { margin: 0; }

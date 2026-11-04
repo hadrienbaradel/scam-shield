@@ -5,7 +5,7 @@ import { api, events } from "./api.js";
 import { t, setLang, getLang } from "./i18n.js";
 import { $, esc, focusHeading, icon, signOut } from "./ui.js";
 import { TABS, screenFor } from "./protects.js";
-import { renderMail, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
+import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
 import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
 import { renderToday, onTodayEvent } from "./views/today.js";
 import { renderLearn } from "./views/learn.js";
@@ -226,8 +226,8 @@ async function withSignOut(root, drawing) {
 // changes only its own line, and adds the import of its view at the top.
 const DRAW = {
   today: (root) => renderToday(root, status),
-  messages: (root) => renderMail(root, status, "inbox"),
-  blocked: (root) => renderMail(root, status, "scam"),
+  messages: (root) => renderMessages(root, status),
+  blocked: (root) => renderBlocked(root, status),
   check: (root) => renderCheck(root, status),
   "check-paste": (root) => renderCheck(root, status),
   "check-photo": (root) => renderCheck(root, status),
