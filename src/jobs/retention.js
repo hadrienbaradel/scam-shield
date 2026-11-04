@@ -3,7 +3,8 @@
 // cards with no sighting for 90 days retire. The public database's queues:
 // a rejected or withdrawn library submission goes after 30 days, a pending
 // one nobody reviewed after 180; a rejected watch item, or one classified
-// as neither a breach nor a technique, after 90.
+// as neither a breach nor a technique, after 90. An early-access request
+// goes 90 days after it was marked added; an open one stays.
 
 import { q } from "../db/pool.js";
 
@@ -27,5 +28,6 @@ export async function runRetention() {
                                       OR (status = 'pending' AND created_at < now() - interval '180 days')`);
   await del("watchItems", `DELETE FROM watch_items
                            WHERE (status = 'rejected' OR kind = 'other') AND coalesce(decided_at, fetched_at) < now() - interval '90 days'`);
+  await del("earlyAccess", "DELETE FROM early_access_requests WHERE status = 'added' AND added_at < now() - interval '90 days'");
   return counts;
 }

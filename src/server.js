@@ -37,6 +37,7 @@ import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 import messengerRoutes from "./routes/messenger.js";
 import dbWatchRoutes from "./routes/dbWatch.js";
+import earlyAccessRoutes from "./routes/earlyAccess.js";
 import { messengerConfigured, webhookActive as messengerWebhookActive } from "./channels/messenger.js";
 
 const publicDir = fileURLToPath(new URL("../public/", import.meta.url));
@@ -108,6 +109,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(whatsappRoutes);
   await app.register(messengerRoutes);
   await app.register(dbWatchRoutes);
+  await app.register(earlyAccessRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
   // The public database's site (public/db/) at /public/: another interface of heyprudence, no session, never the senior's app.
   app.get("/public", (request, reply) => reply.redirect("/public/", 301)); // the bare prefix is no route of the static plugin
