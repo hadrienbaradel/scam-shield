@@ -9,8 +9,8 @@ import { STRINGS, setLang } from "../public/js/i18n.js";
 import { inspectWav } from "../lib/llm/audio.js";
 import { CRITERIA, SCREENS, glassesChoice, glassesRow, handsFreeWays, hasGlasses, scoreOf, screenFor } from "../public/js/protects.js";
 import { ICON_NAMES } from "../public/js/ui.js";
-import { LISTEN_SECONDS, MIN_SECONDS, createListener, createRing, encodeWav, isBluetoothMic, micProblem, phoneMicId, pickPhoneMic, resample } from "../public/js/listen.js";
-import { glassesDrawing, handsFreeHtml, spokenAnswer } from "../public/js/views/glasses.js";
+import { LISTEN_SECONDS, MIN_SECONDS, createListener, createRing, createSession, encodeWav, isBluetoothMic, micProblem, phoneMicId, pickPhoneMic, resample } from "../public/js/listen.js";
+import { glassesDrawing, handsFreeHtml, spokenAnswer, sayHere, hush, lookJob } from "../public/js/views/glasses.js";
 
 const withGlasses = (glasses) => ({ user: { glasses } });
 const inFrench = (fn) => {
@@ -133,7 +133,7 @@ test("every word of the glasses screens is the spec's, in English and in French"
     gl_look_3: "Open the Meta AI app, so the photo reaches your phone.", gl_look_choose: "Choose my photo", gl_free: "Without touching your phone",
     gl_listen_lead: "The phone hears the person in front of you. Keep it in your hand or on the table. The answer comes in your glasses.",
     gl_listen_start: "Start listening", gl_listen_calls: "It cannot hear a phone call on this phone.",
-    gl_open: "An assistant is listening to help me. Nothing is kept.", gl_open_say: "Say this out loud.", gl_speak_tell: "Prudence is listening. Tell them.",
+    gl_open: "An assistant is listening to help me. No recording is kept.", gl_open_say: "Say this out loud.", gl_speak_tell: "Prudence is listening. Tell them.",
     gl_ask: "What do they want?", gl_thinking: "Prudence is thinking…", gl_keep: "Keep listening",
     gl_nobody: "Prudence has not heard anyone yet. Wait until they have spoken, then tap again.", gl_stopped: "Prudence stopped listening.",
     onb_glasses_q: "Do you have Meta glasses?", onb_glasses_yes: "Yes", onb_glasses_no: "No",
@@ -143,6 +143,11 @@ test("every word of the glasses screens is the spec's, in English and in French"
   for (const k of keys) {
     assert.ok(STRINGS.fr[k]?.trim(), `fr.${k}`);
     if (!/^(onb_glasses_no)$/.test(k)) assert.notEqual(STRINGS.fr[k], en[k], `fr.${k} is translated`);
+  }
+  // Said aloud to the other person: true, since the verdict is kept like any check (review round 1).
+  assert.equal(STRINGS.fr.gl_open, "Un assistant m'écoute pour m'aider. Aucun enregistrement n'est gardé.");
+  for (const lang of ["en", "fr"]) {
+    assert.doesNotMatch(STRINGS[lang].gl_open, /Nothing is kept|Rien n'est gardé/, `${lang}: never the old promise`);
   }
 });
 
@@ -246,19 +251,25 @@ test("the microphone changes only when something Bluetooth is around", () => {
   assert.equal(phoneMicId(undefined), null);
 });
 
-test("what goes wrong with the microphone: none (no button) or denied (Try again)", () => {
+test("what goes wrong with the microphone: none (no button), denied (how to allow it) or failed (another app may hold it)", () => {
   assert.equal(micProblem({ code: "no_mic" }), "none");
   assert.equal(micProblem({ name: "NotFoundError" }), "none");
-  for (const name of ["NotAllowedError", "SecurityError", "NotReadableError", "AbortError"]) assert.equal(micProblem({ name }), "denied", name);
+  for (const name of ["NotAllowedError", "SecurityError"]) assert.equal(micProblem({ name }), "denied", name);
+  for (const name of ["NotReadableError", "AbortError", "OverconstrainedError", "TypeError", undefined]) assert.equal(micProblem({ name }), "failed", String(name));
+  assert.equal(micProblem(undefined), "failed");
+  assert.equal(STRINGS.en.gl_mic_failed, "Prudence could not use the microphone. Close any other app using it, then try again.");
+  assert.equal(STRINGS.fr.gl_mic_failed, "Prudence n'a pas pu utiliser le micro. Fermez toute autre application qui l'utilise, puis réessayez.");
+  assert.doesNotMatch(STRINGS.en.gl_mic_failed, /settings/i, "not the refusal's advice");
 });
 
 // ---------------------------------------------------------------- the listener --
 // A fake browser: tracks that know when they stopped, a clock of frames.
-function fakeBrowser({ devices = IPHONE, label = "iPhone Microphone", deny = null, rate = 48000 } = {}) {
+function fakeBrowser({ devices = IPHONE, label = "iPhone Microphone", deny = null, rate = 48000, slow = false } = {}) {
   const log = [];
   const tracks = [];
   const streams = [];
   const contexts = [];
+  const pending = [];
   class FakeContext {
     constructor() { this.sampleRate = rate; this.destination = {}; this.state = "suspended"; contexts.push(this); log.push("context"); }
     resume() { this.state = "running"; log.push("resume"); return Promise.resolve(); }
@@ -271,7 +282,9 @@ function fakeBrowser({ devices = IPHONE, label = "iPhone Microphone", deny = nul
       async getUserMedia(constraints) {
         log.push(`mic ${JSON.stringify(constraints.audio)}`);
         if (deny) throw deny;
-        const track = { label, readyState: "live", onended: null, stop() { this.readyState = "ended"; log.push("track stop"); } };
+        // slow: after the first ask, the microphone arrives only when the test lets it (a busy phone).
+        if (slow && tracks.length) await new Promise((resolve) => pending.push(resolve));
+        const track = { label, readyState: "live", onended: null, onmute: null, stop() { this.readyState = "ended"; log.push("track stop"); } };
         tracks.push(track);
         const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
         streams.push(stream);
@@ -285,8 +298,40 @@ function fakeBrowser({ devices = IPHONE, label = "iPhone Microphone", deny = nul
     const frame = new Float32Array(4096).fill(value);
     for (let left = seconds * rate; left > 0; left -= frame.length) processor.onaudioprocess?.({ inputBuffer: { getChannelData: () => frame } });
   };
-  return { env: { AudioContext: FakeContext, navigator }, log, tracks, contexts, hear };
+  const arrive = () => { while (pending.length) pending.shift()(); };
+  const live = () => tracks.filter((tr) => tr.readyState === "live").length;
+  return { env: { AudioContext: FakeContext, navigator }, log, tracks, contexts, hear, arrive, live };
 }
+
+// The page around it: whether it is hidden, its pagehide, the screen's wake lock.
+function fakePage(b, { wakeLock = true, slowLock = false } = {}) {
+  const on = (target) => {
+    const handlers = {};
+    target.addEventListener = (type, fn) => { (handlers[type] ||= new Set()).add(fn); };
+    target.removeEventListener = (type, fn) => { handlers[type]?.delete(fn); };
+    target.fire = (type) => { for (const fn of [...(handlers[type] || [])]) fn({ type }); };
+    target.count = (type) => handlers[type]?.size || 0;
+    return target;
+  };
+  const document = on({ visibilityState: "visible" });
+  const locks = [];
+  const waiting = [];
+  if (wakeLock) b.env.navigator.wakeLock = {
+    request: async () => {
+      if (slowLock) await new Promise((resolve) => waiting.push(resolve));
+      const lock = { released: false, release() { this.released = true; return Promise.resolve(); } };
+      locks.push(lock);
+      return lock;
+    },
+  };
+  const env = on(Object.assign(b.env, { document }));
+  const hide = () => { document.visibilityState = "hidden"; document.fire("visibilitychange"); };
+  const show = () => { document.visibilityState = "visible"; document.fire("visibilitychange"); };
+  const held = () => locks.filter((l) => !l.released).length;
+  const grant = () => { while (waiting.length) waiting.shift()(); };
+  return { env, document, hide, show, locks, held, grant };
+}
+const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 test("Start: the context resumes inside the tap, the microphone is asked once then let go, and nothing is captured before start()", async () => {
   const b = fakeBrowser();
@@ -419,4 +464,225 @@ test("the level moves at most ten times a second, from 0 to 1, and the end of a 
     l.destroy();
     assert.equal(b.tracks.at(-1).onended, null, "stopped by us: not told");
   } finally { Date.now = realNow; }
+});
+
+// -------------------------------------------------------------- review round 1 --
+test("a microphone still being opened when it is let go is closed the moment it arrives, never kept open", async () => {
+  const b = fakeBrowser({ slow: true });
+  const l = createListener({ env: b.env });
+  await l.prepare();
+  const opening = l.start(); // after "Prudence has not heard anyone", it listens again...
+  await tick();
+  l.release(); // ...and she taps "What do they want?" before the microphone has come
+  b.arrive();
+  assert.equal(await opening, false, "not started");
+  assert.equal(b.live(), 0, "the late microphone was let go");
+  assert.equal(l.live(), false);
+  assert.equal(b.contexts[0].processor, undefined, "nothing was wired to it");
+  // The next start is a new one, and works.
+  const again = l.start();
+  await tick();
+  b.arrive();
+  assert.equal(await again, true);
+  assert.equal(b.live(), 1);
+  l.destroy();
+});
+
+test("a call or Siri taking the microphone ends the listening: a muted track, an interrupted audio, an ended track; not once it is let go", async () => {
+  for (const how of ["mute", "interrupted", "ended"]) {
+    const b = fakeBrowser();
+    const page = fakePage(b);
+    const stops = [];
+    const session = createSession({ env: page.env, onStop: (why) => stops.push(why) });
+    await session.prepare();
+    assert.equal(await session.capture(), true);
+    await tick();
+    b.hear(3);
+    const track = b.tracks.at(-1);
+    if (how === "mute") track.onmute();
+    if (how === "ended") track.onended();
+    if (how === "interrupted") { b.contexts[0].state = "interrupted"; b.contexts[0].onstatechange(); }
+    assert.deepEqual(stops, ["interrupted"], how);
+    assert.equal(session.over, true, `${how}: the session is over`);
+    assert.equal(b.live(), 0, `${how}: no track live`);
+    assert.equal(session.capturedSeconds(), 0, `${how}: the stale audio is gone, never judged`);
+    assert.equal(page.held(), 0, `${how}: the screen may sleep`);
+  }
+  // After "What do they want?" the microphone is off already: nothing to stop.
+  const b = fakeBrowser();
+  const page = fakePage(b);
+  const stops = [];
+  const session = createSession({ env: page.env, onStop: (why) => stops.push(why) });
+  await session.prepare();
+  await session.capture();
+  const track = b.tracks.at(-1);
+  session.release();
+  assert.equal(track.onmute, null, "a released track tells nothing");
+  b.contexts[0].state = "interrupted";
+  b.contexts[0].onstatechange();
+  assert.deepEqual(stops, [], "interrupted while Prudence thinks: the answer still comes");
+  session.end();
+});
+
+test("hiding the page while it listens ends it; once the microphone is let go, hiding changes nothing and the answer still comes", async () => {
+  const b = fakeBrowser();
+  const page = fakePage(b);
+  const stops = [];
+  const session = createSession({ env: page.env, onStop: (why) => stops.push(why) });
+  await session.prepare();
+  await session.capture();
+  page.hide();
+  assert.deepEqual(stops, ["hidden"]);
+  assert.equal(b.live(), 0, "no capture in the background");
+  assert.equal(page.document.count("visibilitychange"), 0, "nothing left listening to the page");
+
+  const b2 = fakeBrowser();
+  const page2 = fakePage(b2);
+  const stops2 = [];
+  const thinking = createSession({ env: page2.env, onStop: (why) => stops2.push(why) });
+  await thinking.prepare();
+  await thinking.capture();
+  b2.hear(5);
+  thinking.release(); // "What do they want?": Prudence is thinking
+  const wav = thinking.takeWav();
+  page2.hide(); // she locks the phone
+  assert.deepEqual(stops2, [], "the check is not stopped");
+  assert.equal(thinking.over, false);
+  assert.ok(wav.size > 44, "the seconds she sent are still there to send");
+  page2.show();
+  thinking.end();
+});
+
+test("the microphone is never opened on a hidden page: the session ends instead, back to Prudence stopped listening", async () => {
+  // Hidden while Prudence was thinking, the answer is "nobody spoke": it would listen again.
+  const b = fakeBrowser();
+  const page = fakePage(b);
+  const stops = [];
+  const session = createSession({ env: page.env, onStop: (why) => stops.push(why) });
+  await session.prepare();
+  await session.capture();
+  session.release();
+  page.hide();
+  const asked = b.log.filter((line) => line.startsWith("mic ")).length;
+  assert.equal(await session.capture(), false);
+  assert.deepEqual(stops, ["hidden"]);
+  assert.equal(b.log.filter((line) => line.startsWith("mic ")).length, asked, "the microphone was not even asked for");
+  assert.equal(b.live(), 0);
+  assert.equal(session.over, true);
+  assert.equal(await session.capture(), false, "and never reopens");
+
+  // Hidden while the microphone is still being opened: it is let go when it arrives.
+  const b2 = fakeBrowser({ slow: true });
+  const page2 = fakePage(b2);
+  const stops2 = [];
+  const opening = createSession({ env: page2.env, onStop: (why) => stops2.push(why) });
+  await opening.prepare();
+  const started = opening.capture();
+  await tick();
+  page2.hide();
+  b2.arrive();
+  assert.equal(await started, false);
+  assert.deepEqual(stops2, ["hidden"]);
+  assert.equal(b2.live(), 0);
+});
+
+test("the page closing ends it at any moment; Stop and another screen end it without a word", async () => {
+  const b = fakeBrowser();
+  const page = fakePage(b);
+  const stops = [];
+  const session = createSession({ env: page.env, onStop: (why) => stops.push(why) });
+  await session.prepare();
+  await session.capture();
+  page.env.fire("pagehide");
+  assert.deepEqual(stops, ["left"]);
+  assert.equal(b.live(), 0);
+  assert.equal(page.env.count("pagehide"), 0, "nothing left listening to the page");
+  session.end();
+  assert.deepEqual(stops, ["left"], "told once");
+  const quiet = createSession({ env: fakePage(fakeBrowser()).env, onStop: () => stops.push("quiet") });
+  quiet.end();
+  assert.deepEqual(stops, ["left"]);
+});
+
+test("the screen is kept awake only while the microphone is open: let go on the verdict, taken again with Keep listening", async () => {
+  const b = fakeBrowser();
+  const page = fakePage(b);
+  const session = createSession({ env: page.env });
+  await session.prepare();
+  assert.equal(page.held(), 0, "not before it listens");
+  await session.capture();
+  await tick();
+  assert.equal(page.held(), 1);
+  assert.equal(session.awake, true);
+  session.release(); // "What do they want?": thinking, then the verdict or a failure
+  assert.equal(page.held(), 0, "released with the microphone");
+  assert.equal(session.awake, false);
+  await session.capture(); // "Keep listening", or nobody heard
+  await tick();
+  assert.equal(page.held(), 1, "taken again");
+  session.end();
+  assert.equal(page.held(), 0);
+
+  // A lock that arrives after the microphone was let go is given back at once.
+  const b2 = fakeBrowser();
+  const page2 = fakePage(b2, { slowLock: true });
+  const late = createSession({ env: page2.env });
+  await late.prepare();
+  await late.capture();
+  late.release();
+  page2.grant();
+  await tick();
+  assert.equal(page2.locks.length, 1);
+  assert.equal(page2.held(), 0, "given back");
+  late.end();
+
+  // No wake lock in this browser: it listens anyway.
+  const plain = createSession({ env: fakePage(fakeBrowser(), { wakeLock: false }).env });
+  await plain.prepare();
+  assert.equal(await plain.capture(), true);
+  plain.end();
+});
+
+// A browser that speaks, for Look's answer: what it says, what it cancels.
+function fakeSpeech() {
+  const said = [];
+  let cancelled = 0;
+  const handlers = {};
+  const win = {
+    speechSynthesis: { speak: (u) => said.push(u.text), cancel: () => { cancelled++; } },
+    addEventListener: (type, fn) => { (handlers[type] ||= new Set()).add(fn); },
+    removeEventListener: (type, fn) => { handlers[type]?.delete(fn); },
+  };
+  const saved = { window: globalThis.window, speechSynthesis: globalThis.speechSynthesis, SpeechSynthesisUtterance: globalThis.SpeechSynthesisUtterance };
+  globalThis.window = win;
+  globalThis.speechSynthesis = win.speechSynthesis;
+  globalThis.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+  return {
+    said, cancelled: () => cancelled,
+    navigate: () => { for (const fn of [...(handlers.hashchange || [])]) fn({ type: "hashchange" }); },
+    listening: () => handlers.hashchange?.size || 0,
+    restore: () => { for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; } },
+  };
+}
+
+test("Look's answer stops when she leaves the screen, and when a new photo is sent: a new screen never keeps reading the last one", async () => {
+  const sp = fakeSpeech();
+  try {
+    const job = lookJob({ name: "letter.png" }, () => {});
+    assert.equal(job.backHref, "#/check/glasses");
+    job.afterVerdict({ headline: "Scam: a fake Medicare notice.", action_text: "Do not call the number.", language: "en" });
+    assert.deepEqual(sp.said, ["Scam: a fake Medicare notice. Do not call the number."]);
+    const before = sp.cancelled();
+    sp.navigate(); // Back, a tab, any other screen
+    assert.ok(sp.cancelled() > before, "silenced on leaving");
+    assert.equal(sp.listening(), 0, "and the listener is gone with it");
+
+    sayHere("An earlier answer", "en");
+    const second = lookJob({ name: "screen.png" }, () => {});
+    const now = sp.cancelled();
+    await second.send(new AbortController().signal).catch(() => {}); // no canvas under Node: the picture fails after the hush
+    assert.ok(sp.cancelled() > now, "a new photo silences the last answer before it is sent");
+    hush();
+    assert.equal(sp.listening(), 0);
+  } finally { sp.restore(); }
 });

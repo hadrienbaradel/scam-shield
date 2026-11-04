@@ -9,15 +9,19 @@
 //   resample(pcm, fromRate, toRate)  to the 16 kHz mono the server takes
 //   encodeWav(pcm)                   its bytes (public/js/audio.js)
 //   isBluetoothMic(label), pickPhoneMic(devices), phoneMicId(devices, label)
-//   micProblem(error) -> "none" | "denied"
+//   micProblem(error) -> "none" | "denied" | "failed"
 //
-// createListener({ onLevel, onEnded, env }) -> the one microphone session:
+// createSession({ env, onLevel, onStop }): the listener with the rules of
+// the screen around it (hidden page, wake lock, interruptions; below).
+//
+// createListener({ onLevel, onEnded, env }) -> the one microphone:
 //   prepare()  inside the tap: resumes the audio, asks for the microphone,
 //              decides which one, then lets go of it (iOS routes speech badly
 //              while the microphone is open, and the glasses' microphone is
 //              aimed at the wearer: lines 10 and 14)
 //   start()    opens the microphone; only from here do samples enter the ring
-//   release()  microphone off; the ring stays, for takeWav()
+//   release()  microphone off, even one still being opened; the ring stays,
+//              for takeWav()
 //   capturedSeconds(), takeWav() -> a WAV Blob, clear()
 //   destroy()  microphone off, ring zeroed, audio closed: nothing is left
 //   live()     whether a microphone track is open now
@@ -116,11 +120,14 @@ export function phoneMicId(devices, trackLabel = "") {
   return pickPhoneMic(inputs)?.deviceId || null;
 }
 
-// What the screen says when the microphone cannot be opened: no microphone at
-// all ("none", no button), or anything else, a refusal first ("denied", with
-// Try again).
+// What the screen says when the microphone cannot be opened (line 15): no
+// microphone at all ("none", no button); a refusal ("denied": how to allow it,
+// and Try again); anything else ("failed": another app may hold it, Try
+// again).
 export function micProblem(e) {
-  return e?.code === "no_mic" || e?.name === "NotFoundError" ? "none" : "denied";
+  if (e?.code === "no_mic" || e?.name === "NotFoundError") return "none";
+  if (e?.name === "NotAllowedError" || e?.name === "SecurityError") return "denied";
+  return "failed";
 }
 
 // ---------------------------------------------------------------- listening --
@@ -133,8 +140,11 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
   let processor = null;
   let lastLevel = 0;
   let gone = false;
+  // Bumped by every release: a microphone that arrives for an older start()
+  // is let go at once, never kept open after it was meant to be off.
+  let generation = 0;
 
-  const stopTracks = (s) => s?.getTracks?.().forEach((tr) => { tr.onended = null; tr.stop(); });
+  const stopTracks = (s) => s?.getTracks?.().forEach((tr) => { tr.onended = null; tr.onmute = null; tr.stop(); });
   const devices = () => env.navigator?.mediaDevices;
   const open = async () => {
     const media = devices();
@@ -148,6 +158,7 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
   };
 
   const release = () => {
+    generation++;
     if (processor) { processor.onaudioprocess = null; processor.disconnect?.(); }
     source?.disconnect?.();
     stopTracks(stream);
@@ -155,6 +166,10 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
     source = null;
     stream = null;
   };
+
+  // Something else took the microphone while it was open: a track that ends,
+  // or one the system mutes (iOS mutes rather than ends on a call or Siri).
+  const lost = (s) => { if (stream === s) onEnded(); };
 
   return {
     async prepare() {
@@ -164,6 +179,8 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
       ctx = new AudioCtx();
       const resumed = ctx.resume?.();
       ring = createRing(ctx.sampleRate);
+      // Safari's "interrupted": a call, Siri or an alarm took the audio.
+      ctx.onstatechange = () => { if (ctx?.state === "interrupted" && stream) onEnded(); };
       const first = await devices().getUserMedia({ audio: true });
       try {
         const list = await devices().enumerateDevices?.();
@@ -174,16 +191,19 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
       await resumed?.catch?.(() => {});
     },
 
-    // Reopens the microphone. Returns false when destroyed meanwhile. Nothing
-    // enters the ring before this.
+    // Reopens the microphone. true once samples flow into the ring; false when
+    // released or destroyed meanwhile (the late microphone is let go).
+    // Nothing enters the ring before this.
     async start() {
-      if (gone || stream) return !gone;
+      if (gone) return false;
+      if (stream) return true;
+      const mine = generation;
       const s = await open();
-      if (gone) { stopTracks(s); return false; }
+      if (gone || mine !== generation) { stopTracks(s); return false; }
       if (stream) { stopTracks(s); return true; }
       stream = s;
       await ctx.resume?.();
-      if (gone || stream !== s) return !gone;
+      if (gone || mine !== generation || stream !== s) return false;
       source = ctx.createMediaStreamSource(s);
       // A worklet would need its own file; this runs on iOS Safari and Chrome on Android.
       processor = ctx.createScriptProcessor(FRAME, 1, 1);
@@ -200,7 +220,10 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
       source.connect(processor);
       // Connected so it runs; its output stays silent.
       processor.connect(ctx.destination);
-      s.getAudioTracks?.().forEach((tr) => { tr.onended = () => { if (stream === s) onEnded(); }; });
+      s.getAudioTracks?.().forEach((tr) => {
+        tr.onended = () => lost(s);
+        tr.onmute = () => lost(s);
+      });
       return true;
     },
 
@@ -215,8 +238,103 @@ export function createListener({ onLevel = () => {}, onEnded = () => {}, env = g
       release();
       ring?.clear();
       ring = null;
+      if (ctx) ctx.onstatechange = null;
       ctx?.close?.()?.catch?.(() => {});
       ctx = null;
     },
+  };
+}
+
+// ------------------------------------------------------------------ session --
+// The one Listen session of js/views/glasses.js: the listener and the rules
+// around it (lines 10 to 13), here so they are tested without a browser.
+// - The microphone is never opened on a hidden page: capture() then ends the
+//   session instead (onStop("hidden")), so she comes back to "Prudence
+//   stopped listening.", never to a microphone open in the background.
+// - Hiding the page while the microphone is open ends the session. Once it is
+//   let go (Prudence thinking, the verdict), hiding changes nothing: the
+//   answer still arrives and is spoken.
+// - The screen is kept awake only while the microphone is open.
+// - The page closing ("left") or the microphone taken by a call or Siri
+//   ("interrupted") end it too; the ring is zeroed, so nothing stale is judged.
+// onStop(reason) runs once when the session ends by itself; end() is the
+// screen's own way out (Stop, another screen) and calls nothing.
+//
+// createSession({ env, onLevel, onStop }) -> { prepare(), capture() -> Promise
+//   <boolean>, release(), end(), capturedSeconds(), takeWav(), clear(),
+//   live(), over, capturing, awake }
+export function createSession({ env = globalThis, onLevel, onStop = () => {} } = {}) {
+  let over = false;
+  let capturing = false;
+  let wake = null;
+  let wakeAsk = 0;
+  const doc = env.document;
+  const hidden = () => doc?.visibilityState === "hidden";
+
+  const letSleep = () => {
+    wakeAsk++;
+    const lock = wake;
+    wake = null;
+    lock?.release?.()?.catch?.(() => {});
+  };
+  const keepAwake = async () => {
+    const ask = ++wakeAsk;
+    let lock = null;
+    try { lock = await env.navigator?.wakeLock?.request?.("screen"); } catch { return; } // the phone may sleep: that ends it
+    if (ask === wakeAsk && capturing && !over) wake = lock || null;
+    else lock?.release?.()?.catch?.(() => {});
+  };
+
+  const listener = createListener({ env, onLevel, onEnded: () => { if (capturing) stopBy("interrupted"); } });
+  const onHidden = () => { if (capturing && hidden()) stopBy("hidden"); };
+  const onLeave = () => stopBy("left");
+  doc?.addEventListener?.("visibilitychange", onHidden);
+  env.addEventListener?.("pagehide", onLeave);
+
+  function end() {
+    if (over) return;
+    over = true;
+    capturing = false;
+    doc?.removeEventListener?.("visibilitychange", onHidden);
+    env.removeEventListener?.("pagehide", onLeave);
+    letSleep();
+    listener.destroy();
+  }
+  function stopBy(reason) {
+    if (over) return;
+    end();
+    onStop(reason);
+  }
+  function release() {
+    capturing = false;
+    letSleep();
+    listener.release();
+  }
+
+  return {
+    get over() { return over; },
+    get capturing() { return capturing; },
+    get awake() { return Boolean(wake); },
+    prepare: () => listener.prepare(),
+    async capture() {
+      if (over) return false;
+      if (hidden()) { stopBy("hidden"); return false; }
+      capturing = true;
+      keepAwake();
+      try {
+        return (await listener.start()) && !over && capturing;
+      } catch (e) {
+        if (over) return false;
+        capturing = false;
+        letSleep();
+        throw e;
+      }
+    },
+    release,
+    end,
+    capturedSeconds: () => listener.capturedSeconds(),
+    takeWav: () => listener.takeWav(),
+    clear: () => listener.clear(),
+    live: () => listener.live(),
   };
 }

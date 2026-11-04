@@ -16,14 +16,17 @@
 //     reloads the status without redrawing this screen.
 //
 // A check runs through check.js's run(), as on Check; only its job differs.
-// Listen keeps one session (below): every way out (Stop, another screen, the
-// phone going to sleep, a new draw) ends it, and with it the microphone and
-// the audio (js/listen.js).
+// Listen keeps one session (js/listen.js createSession): every way out (Stop,
+// another screen, the phone going to sleep while it listens, a new draw) ends
+// it, and with it the microphone and the audio. What Prudence says belongs to
+// the screen that said it: leaving it, or a new photo, silences it.
 //
 // Pure helpers, tested in tests/glasses-view.test.js:
 //   spokenAnswer(verdict)    what Prudence says in the ear: at most two sentences
 //   glassesDrawing()         the drawing, decorative: its words are real text under it
 //   handsFreeHtml(status)    "Without touching your phone", or nothing
+//   sayHere(text, lang), hush()  speech that stops when the screen changes
+//   lookJob(file, back)      Look's check: silences the last answer, says the new one
 //
 // Styles: "2026-11-04 Meta glasses" at the end of styles.css.
 
@@ -31,7 +34,7 @@ import { api } from "../api.js";
 import { t, getLang } from "../i18n.js";
 import { $, esc, icon, speak, unlockSpeech, toast, focusHeading } from "../ui.js";
 import { handsFreeWays } from "../protects.js";
-import { createListener, micProblem, MIN_SECONDS } from "../listen.js";
+import { createSession, micProblem, MIN_SECONDS } from "../listen.js";
 import { backLink, problemBox, showProblem, run, pictureJob, stopCheck } from "./check.js";
 
 const TO_GLASSES = Object.freeze({ backHref: "#/check/glasses", backKey: "gl_title" });
@@ -99,9 +102,25 @@ async function saveGlasses(value, refresh) {
   }
 }
 
+// ------------------------------------------------------------------ speech --
+// A new screen never keeps reading the last one (line 7, and Listen's rule):
+// sayHere speaks until the hash changes; hush() stops it now.
+let hushOnLeave = null;
+export function hush() {
+  if (hushOnLeave) { window.removeEventListener("hashchange", hushOnLeave); hushOnLeave = null; }
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+}
+export function sayHere(text, lang) {
+  hush();
+  hushOnLeave = () => hush();
+  window.addEventListener("hashchange", hushOnLeave);
+  speak(text, lang);
+}
+
 // ------------------------------------------------------------------- draw --
 export function renderGlassesScreen(root, status, { step = "home", refresh } = {}) {
   endSession();
+  hush();
   const s = status || {};
   if (step === "setup") drawSetup(root, s, refresh);
   else if (step === "look") drawLook(root, s);
@@ -257,6 +276,7 @@ function drawLook(root, status, problem = "") {
   if (!can) return;
   const input = $("#glPhoto", root);
   $("#glChoose", root).addEventListener("click", () => {
+    hush();
     unlockSpeech(); // the answer is spoken after the check, far from this tap
     input.click();
   });
@@ -264,18 +284,26 @@ function drawLook(root, status, problem = "") {
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    run(root, pictureJob(file, {
-      ...TO_GLASSES,
-      back: (key) => drawLook(root, status, key),
-      afterVerdict: (v) => speak(spokenAnswer(v), v.language || getLang()),
-    }));
+    run(root, lookJob(file, (key) => drawLook(root, status, key)));
   });
   if (problem) $("#ckProblem", root)?.focus();
 }
 
+// A photo's check from Look: the last answer stops the moment a new one is
+// sent; the new one is said in the ear until she leaves the screen.
+export function lookJob(file, back) {
+  const job = pictureJob(file, {
+    ...TO_GLASSES,
+    back,
+    afterVerdict: (v) => sayHere(spokenAnswer(v), v.language || getLang()),
+  });
+  const send = job.send;
+  return { ...job, send: (signal) => { hush(); return send(signal); } };
+}
+
 // ----------------------------------------------------------------- listen --
-// The one listening session: { listener, root, status, timer, wake, and the
-// three handlers that end it }. No session, no microphone.
+// The one listening session: { listen (js/listen.js createSession), root,
+// status, timer, onHash }. No session, no microphone.
 let session = null;
 
 function endSession() {
@@ -284,15 +312,13 @@ function endSession() {
   session = null;
   clearTimeout(s.timer);
   window.removeEventListener("hashchange", s.onHash);
-  document.removeEventListener("visibilitychange", s.onHidden);
-  window.removeEventListener("pagehide", s.onLeave);
-  s.listener.destroy();
-  s.wake?.release?.()?.catch?.(() => {});
+  s.listen.end();
   stopCheck();
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  hush();
 }
 
-// Stop, or the phone going to sleep: line 13.
+// Stop, the phone going to sleep while it listens, a call taking the
+// microphone, the page closing: line 13.
 function stopListening(s) {
   if (session !== s) return;
   const { root, status } = s;
@@ -318,13 +344,15 @@ function drawIntro(root, status, note = "") {
   $("#glStart", root)?.addEventListener("click", () => beginListening(root, status));
 }
 
-// Line 15: refused (Try again), or no microphone at all (no button).
+// Line 15: refused (how to allow it, Try again), held by something else (Try
+// again), or no microphone at all (no button). kind: micProblem's answer.
+const MIC_WORDS = { none: "gl_mic_none", denied: "gl_mic_denied", failed: "gl_mic_failed" };
 function drawMicProblem(root, status, kind) {
   root.innerHTML = `
     <div class="screen is-snug ck-screen gl-screen gl-intro">
       ${backLink(TO_GLASSES)}
       <h1 class="screen-title">${esc(t("gl_talk"))}</h1>
-      <p class="banner caution ck-problem" role="alert">${esc(t(kind === "none" ? "gl_mic_none" : "gl_mic_denied"))}</p>
+      <p class="banner caution ck-problem" role="alert">${esc(t(MIC_WORDS[kind] || MIC_WORDS.failed))}</p>
       ${kind === "none" ? "" : `<button id="glStart" class="btn btn-gold btn-big" type="button">${esc(t("retry"))}</button>`}
     </div>`;
   $("#glStart", root)?.addEventListener("click", () => beginListening(root, status));
@@ -338,33 +366,22 @@ function micFailed(s, e) {
   focusHeading(root);
 }
 
-async function keepAwake(s) {
-  try {
-    const lock = await navigator.wakeLock?.request("screen");
-    if (session === s) s.wake = lock;
-    else lock?.release?.()?.catch?.(() => {});
-  } catch { /* the phone may sleep: that ends the listening, it never records asleep */ }
-}
-
 // The tap on "Start listening": the order is in js/listen.js and line 10.
 async function beginListening(root, status) {
   endSession();
+  hush();
   unlockSpeech();
-  const s = { root, status, timer: 0, wake: null };
-  s.listener = createListener({
+  const s = { root, status, timer: 0 };
+  s.listen = createSession({
     onLevel: (level) => showLevel(root, level),
-    onEnded: () => stopListening(s), // a call took the microphone, or it went away
+    // Hidden while listening, the page closing, a call or Siri: line 13.
+    onStop: () => stopListening(s),
   });
   s.onHash = () => endSession();
-  s.onHidden = () => { if (document.visibilityState === "hidden") stopListening(s); };
-  s.onLeave = () => stopListening(s);
   session = s;
   window.addEventListener("hashchange", s.onHash);
-  document.addEventListener("visibilitychange", s.onHidden);
-  window.addEventListener("pagehide", s.onLeave);
-  try { await s.listener.prepare(); } catch (e) { micFailed(s, e); return; }
+  try { await s.listen.prepare(); } catch (e) { micFailed(s, e); return; }
   if (session !== s) return;
-  keepAwake(s);
   drawListening(s);
   focusHeading(root);
   // Nothing is captured before this sentence ends.
@@ -379,7 +396,9 @@ async function beginListening(root, status) {
   speak(t("gl_speak_tell"), getLang(), next);
 }
 
-const capture = (s) => s.listener.start().catch((e) => micFailed(s, e));
+// The microphone on again, and the screen kept awake while it is; on a hidden
+// page the session ends instead (js/listen.js createSession).
+const capture = (s) => s.listen.capture().catch((e) => micFailed(s, e));
 
 function drawListening(s, problem = "") {
   const { root } = s;
@@ -409,10 +428,11 @@ function showLevel(root, level) {
 // "What do they want?": the microphone off first, then those seconds sent.
 function ask(s) {
   if (session !== s) return;
-  const { root, listener } = s;
-  if (listener.capturedSeconds() < MIN_SECONDS) { showProblem(root, "gl_nobody"); return; }
-  listener.release();
-  let wav = listener.takeWav();
+  const { root, listen } = s;
+  if (listen.capturedSeconds() < MIN_SECONDS) { showProblem(root, "gl_nobody"); return; }
+  // Off, and the screen may sleep: from here on, hiding the page changes nothing.
+  listen.release();
+  let wav = listen.takeWav();
   run(root, {
     ...TO_GLASSES,
     kind: "voice",
@@ -422,11 +442,12 @@ function ask(s) {
       const form = new FormData();
       // Before the file: the only fields the server's request.file() sees.
       form.append("context", "conversation");
+      form.append("lang", getLang()); // the card names the speaker in the page's language
       form.append("audio", wav, "conversation.wav");
       return api("/api/check/voice", { method: "POST", form, signal });
     },
     // A verdict came: those seconds are gone, on the phone too.
-    done: () => { wav = null; listener.clear(); },
+    done: () => { wav = null; listen.clear(); },
     back: (key) => {
       if (session !== s) return;
       if (!key) { stopListening(s); return; } // Stop on "Prudence is thinking…"
@@ -444,8 +465,8 @@ function ask(s) {
 function keepListening(s) {
   if (session !== s) return;
   clearTimeout(s.timer);
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
-  s.listener.clear();
+  hush();
+  s.listen.clear();
   drawListening(s);
   capture(s);
   focusHeading(s.root);
