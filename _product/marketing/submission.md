@@ -32,6 +32,56 @@ Measured: on 18,849 public test emails, Muse Spark lifts phishing caught from 29
 
 **Built during the event:** everything shown. Pre-existing: open-source libraries and public test datasets ([../../docs/PROVENANCE.md](../../docs/PROVENANCE.md)).
 
+## The form, field by field (as it appears on the platform, Nov 4)
+
+Required fields are marked *. The rating questions are Hadrien's own opinion; the suggestions below rest on what happened during the build.
+
+**Team Name\*:** Prudence
+
+**Team Members:** check that every person who worked on it is listed (Hadrien Baradel, Vlad Zloteanu); a member the platform shows under another name must be confirmed.
+
+**Track\*:** Indie Developer
+
+**Problem statement\*:** Build for Your World
+
+**Most Viral X post:** the link to the post below, once it is live.
+
+**Project Description\*:** the Description above.
+
+**Public GitHub Repository\*:** https://github.com/hadrienbaradel/scam-shield (only once it is public, after the tech team's review)
+
+**3-Minute Demo Video\*:** the YouTube link (unlisted or public; open it logged out before submitting).
+
+**Describe your use of Meta products to build the submitted project\*:**
+
+Prudence calls the Meta Model API from its server for every message a senior receives or wants checked.
+- Muse Spark 1.3 (Standard mode) judges each email, text, voicemail transcript or picture. It receives the message with personal details masked, the evidence our rules gathered (sender authentication, where each link really goes and how old that site is, matching scam patterns) and the person's own context, learned from their genuine mail: their bank, recent orders and carriers, the people they write to. It answers in a fixed JSON schema: verdict, confidence, a plain-words headline, what to do, and reasons that each name the evidence they rest on. A guardrail in code stops it from clearing a proven scam or condemning a known, authenticated sender.
+- Muse Spark 1.3 vision reads screenshots and photos into a message, then the same judgement. In the video: a fake Norton invoice sent as a picture inside a spreadsheet, which no text filter sees.
+- Muse Voice Transcribe writes down voicemails, judged like any message. In the video: a real "free cruise" scam voicemail.
+- Muse Spark 1.3 Contributor tier scored our 18,849-email public evaluation at low cost; a guard in code refuses that tier for anyone's real mail.
+
+Measured: phishing caught rises from 29% with rules alone to 81% with Muse Spark, with 1 false Scam in 17,291 genuine emails; on Hadrien's own inbox, Muse Spark judged 430 emails with no false Scam.
+
+**Why are Meta's models important to your solution?\*:**
+
+The scams that reach a senior are the ones filters miss: well written, sent from new domains, hidden in pictures, or left as voicemails. Rules alone caught 29% of the phishing in our test set; with Muse Spark, 81%. Muse Spark also does what rules cannot: it reads a message the way a careful person would, weighs it against this person's life ("your order ships with Amazon Logistics, not USPS"), and explains the verdict in plain words a frightened 74-year-old can act on, in English or French. Vision and Voice Transcribe extend the same judgement to pictures and voicemails, so one engine covers every channel. Standard mode matters too: private mail never trains the model.
+
+**Feedback on partner technologies:** We did not use partner inference (Baseten, Modal, Fireworks) for this entry.
+
+**What was the biggest obstacle your team hit while building this project?** (suggestion)
+
+Reliability seen from the client: from some networks we saw 10-second connection timeouts to api.meta.ai and a 408 from Muse Voice Transcribe. A senior cannot be left with a spinner, so when the API fails our rules answer, the verdict is marked as degraded and nothing in the mailbox is moved, and a circuit breaker pauses calls after three failures in a row. Outside Meta, Gmail's OAuth verification is the step that stands between us and a public launch.
+
+**Compared with other AI models your team has used for the same kind of work, how did Meta's models perform?** Hadrien's call. A fact that helps: on the 375 emails both tiers scored, the Contributor tier gave the same verdict as Standard on 96% of phishing and 94% of genuine mail, and neither called a genuine email Scam (`docs/STATUS.md`).
+
+**When your team chooses an AI model or coding tool, what matters most?** (suggestion) Accuracy on our own evaluation, structured output we can validate, how user data is handled (no training on it), then latency and price.
+
+**What makes it hardest to switch to a different AI model or coding tool?** (suggestion) Our prompt, JSON schema and guardrail thresholds are tuned to one model; switching means re-running the 18,849-email evaluation and re-checking every threshold.
+
+**If your team took this project to production, what would most likely stop you from using Meta's models?** (suggestion) A data-processing agreement that covers personal email (GDPR, for our French users), clear retention guarantees, uptime and latency commitments, and availability in the EU.
+
+**Rating questions** (likely to build with the Meta Model API, overall opinion, recommend the Meta Model API, recommend Muse Code): Hadrien's own answers. Only rate Muse Code on what was actually used.
+
 ## X post (Most Viral: likes, reposts and comments count until Nov 8)
 
 > Americans over 60 lost $7.7B to online fraud last year. The scams that get through arrive at 9 PM, when nobody is there to ask.
