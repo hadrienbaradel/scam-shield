@@ -35,9 +35,10 @@ function submissionProblem(body) {
   if (typeof text !== "string" || text.trim().length < BODY_MIN || text.length > BODY_MAX) return `the message body must be ${BODY_MIN} to ${BODY_MAX.toLocaleString("en-US")} characters`;
   return null;
 }
+// A pending submission's id is given back only to its own submitter (the store decides); an entry's id is public anyway.
 const duplicateAnswer = (out) => ({
   error: out.entryId ? "This message is already in the library." : "This message was already submitted and waits for a reviewer.",
-  entryId: out.entryId, submissionId: out.submissionId,
+  entryId: out.entryId, ...(out.submissionId ? { submissionId: out.submissionId } : {}),
 });
 
 export default async function dbRoutes(app) {

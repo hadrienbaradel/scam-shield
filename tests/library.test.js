@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CHANNELS, validateEntry, redactExample, bodyHash, indicatorsOf, filterEntries, exportLibrary, loadLibraryFiles } from "../lib/library.js";
+import { CHANNELS, validateEntry, redactExample, cleanHref, bodyHash, indicatorsOf, filterEntries, exportLibrary, loadLibraryFiles } from "../lib/library.js";
 
 const load = async (p) => JSON.parse(await readFile(new URL(`../${p}`, import.meta.url), "utf8"));
 const FAMILY_IDS = ["delivery", "bank", "government", "tech-support", "family-emergency", "new-number", "romance", "investment", "prize",
@@ -111,11 +111,29 @@ test("redactExample keeps the evidence and removes what belongs to the recipient
   assert.equal("links" in redactExample({ body: "no links at all here" }), false, "no links key added");
 });
 
-test("validateEntry refuses a link with a query string or a fragment, or link text with an address", async () => {
+test("cleanHref keeps the scheme, host and path; credentials, an address and a token in the path go", () => {
+  assert.equal(cleanHref("https://a:b@evil.example/x"), "https://evil.example/x");
+  assert.equal(cleanHref("https://evil.example/verify/linda@gmail.com"), "https://evil.example/verify/[someone]@gmail.com");
+  assert.equal(cleanHref("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9e"), "https://evil.example/t/[token]");
+  assert.equal(cleanHref("https://evil.example/s/aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRva2Vu"), "https://evil.example/s/[token]", "a base64 run");
+  assert.equal(cleanHref("https://evil.example/fully-remote-integrated-marketing-manager-position/invite/REDACTED"),
+    "https://evil.example/fully-remote-integrated-marketing-manager-position/invite/REDACTED", "words with dashes and a short id stay");
+  assert.equal(cleanHref("https://u46337456.ct.sendgrid.net/ls/click?upn=abc#frag"), "https://u46337456.ct.sendgrid.net/ls/click");
+  assert.equal(cleanHref("https://evil.example"), "https://evil.example", "no path");
+  assert.equal(cleanHref("chronopost.fr"), "chronopost.fr", "not a URL: left as is");
+  assert.equal(cleanHref(null), "");
+});
+
+test("validateEntry refuses a link that redaction would change, or link text with an address", async () => {
   const ctx = await refs();
   const link = (href, text = "chronopost.fr") => withMessage({ links: [{ text, href }] });
-  assert.ok(validateEntry(link("https://chronopost-colis.test/pay?id=12"), ctx).includes("links must carry no query string or fragment"));
-  assert.ok(validateEntry(link("https://chronopost-colis.test/pay#x"), ctx).includes("links must carry no query string or fragment"));
+  const LINK_ERROR = "links must carry no query string, fragment, credentials or token";
+  assert.ok(validateEntry(link("https://chronopost-colis.test/pay?id=12"), ctx).includes(LINK_ERROR));
+  assert.ok(validateEntry(link("https://chronopost-colis.test/pay#x"), ctx).includes(LINK_ERROR));
+  assert.ok(validateEntry(link("https://a:b@evil.example/x"), ctx).includes(LINK_ERROR), "credentials");
+  assert.ok(validateEntry(link("https://evil.example/verify/linda@gmail.com"), ctx).includes(LINK_ERROR), "an address in the path");
+  assert.ok(validateEntry(link("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9e"), ctx).includes(LINK_ERROR), "a token in the path");
+  assert.deepEqual(validateEntry(link("https://evil.example/verify/[someone]@gmail.com/t/[token]"), ctx), [], "the redacted form passes");
   assert.ok(validateEntry(link("https://chronopost-colis.test/pay", "reply to linda@gmail.com"), ctx).includes("link text carries personal data"));
   assert.deepEqual(validateEntry(link("https://chronopost-colis.test/pay", "reply to [someone]@gmail.com"), ctx), [], "the redacted form passes");
   assert.deepEqual(validateEntry(link("https://chronopost-colis.test/pay", null), ctx), [], "no text is fine");

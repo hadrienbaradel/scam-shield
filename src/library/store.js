@@ -62,8 +62,12 @@ export async function submit({ channel, message, country = null, language = null
   const lib = await getLibrary();
   const entryId = cache.hashes.get(hash);
   if (entryId) return { duplicate: true, entryId, submissionId: null };
-  const pending = await one("SELECT id FROM library_submissions WHERE body_hash = $1 AND status = 'pending' LIMIT 1", [hash]);
-  if (pending) return { duplicate: true, entryId: null, submissionId: pending.id };
+  // A pending row's id is told only to whoever sent it (same address hash, or the same senior): another submitter learns nothing.
+  const pending = await one("SELECT id, submitter_hash, user_id FROM library_submissions WHERE body_hash = $1 AND status = 'pending' LIMIT 1", [hash]);
+  if (pending) {
+    const mine = (submitterHash && pending.submitter_hash === submitterHash) || (userId && pending.user_id === userId);
+    return { duplicate: true, entryId: null, submissionId: mine ? pending.id : null };
+  }
   let proposed = null;
   if (classify) {
     // The reviewer classifies by hand when the model is down.

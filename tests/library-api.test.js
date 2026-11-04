@@ -94,8 +94,10 @@ test("submit stores a redacted body and refuses a duplicate", opts, async () => 
   const stored = await one("SELECT message FROM library_submissions WHERE id = $1", [row.id]);
   assert.ok(!stored.message.body.includes("4111"), "never stored unredacted");
 
-  const again = await submit({ channel: "email", message: { body: body.toUpperCase() }, submitterHash: "def" });
-  assert.deepEqual(again, { duplicate: true, entryId: null, submissionId: row.id }, "the same words again: the pending one");
+  const again = await submit({ channel: "email", message: { body: body.toUpperCase() }, submitterHash: "abc" });
+  assert.deepEqual(again, { duplicate: true, entryId: null, submissionId: row.id }, "the same words again from the same address: the pending one");
+  const someoneElse = await submit({ channel: "email", message: { body: body.toUpperCase() }, submitterHash: "def" });
+  assert.deepEqual(someoneElse, { duplicate: true, entryId: null, submissionId: null }, "another address learns no id");
   const seed = (await getLibrary()).entries[0];
   const copy = await submit({ channel: seed.channel, message: { body: `${seed.message.body}!!!` }, submitterHash: "ghi" });
   assert.deepEqual(copy, { duplicate: true, entryId: seed.id, submissionId: null }, "a message already in the library");
@@ -242,11 +244,14 @@ test("submit: 202 then pending, 400 on a bad body, 409 on a duplicate, stored as
 
   const again = await post("/api/public/library/submit", { ...body, message: { body: body.message.body.toUpperCase() } });
   assert.equal(again.statusCode, 409);
-  assert.deepEqual(again.json(), { error: "This message was already submitted and waits for a reviewer.", entryId: null, submissionId: id });
+  assert.deepEqual(again.json(), { error: "This message was already submitted and waits for a reviewer.", entryId: null, submissionId: id }, "the same address gets its own id back");
+  const elsewhere = await post("/api/public/library/submit", { ...body, message: { body: body.message.body.toUpperCase() } }, {}, "10.0.0.7");
+  assert.equal(elsewhere.statusCode, 409);
+  assert.deepEqual(elsewhere.json(), { error: "This message was already submitted and waits for a reviewer.", entryId: null }, "another address learns no id");
   const seed = (await get("/api/public/library/lib-demo-d1")).json().entry;
   const copy = await post("/api/public/library/submit", { channel: "sms", message: { body: seed.message.body } });
   assert.equal(copy.statusCode, 409);
-  assert.deepEqual(copy.json(), { error: "This message is already in the library.", entryId: "lib-demo-d1", submissionId: null });
+  assert.deepEqual(copy.json(), { error: "This message is already in the library.", entryId: "lib-demo-d1" }, "an entry's id is public anyway");
 
   const html = await post("/api/public/library/submit", { channel: "sms", message: { body: "Click <script>alert(1)</script> to claim your <b>prize</b> today" } });
   assert.equal(html.statusCode, 202);
