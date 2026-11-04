@@ -313,3 +313,5 @@ html.l-fr #landing .l-lang[data-lang="fr"][hidden] { display: block !important; 
 
 /* The skip link, 64px like every other control. */
 .landing .skip-link { display: inline-flex; align-items: center; min-height: 64px; }
+/* A French word with a hyphen (est-il, e-mails) is never cut at it. */
+.l-nowrap { white-space: nowrap; }
