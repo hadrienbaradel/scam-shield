@@ -42,6 +42,7 @@ Welcome
 | Android SMS companion | Your Android phone · Remove (none: Add a phone) | None: a relative installs the app |
 | Senior screen | Text size · Change; Language · the other one; Read aloud · Turn on/off | Step 4; language in the top bar |
 | Life context, privacy and account | What Prudence knows · Look; What Prudence did · Look; What Prudence keeps · Delete my account | None: learned from step 1's email |
+| Breach lookup (`breach-exposure.md` lines 1, 2, 7) | Data breaches you were part of · "Not looked up yet" or "Looked up 2 minutes ago: your address is in 3 known breaches" + Look up my email address / Look up again, with the sentence saying what is sent | The breach step offers the same button under the checkboxes; Next skips it (nothing sent). The step stays in What Prudence knows after the redesign (Out of scope) |
 | Check something else, micro-learning | None: a check keeps nothing; lesson stars go with Delete my account | None |
 | Developer sign-in | Your email: "Test mailbox on this computer", no Stop | The same steps when "Show the welcome steps" is ticked |
 

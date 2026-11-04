@@ -1,5 +1,5 @@
 # Life context ("What Scam Shield knows about you")
-Status: Built (unverified live) · Last updated: 2026-10-27
+Status: Built (unverified live) · Last updated: 2026-11-04
 
 ## Why
 "Your parcel comes by Amazon Logistics, not Chronopost" is a reason a 74-year-old understands instantly. The context is what makes the verdict personal, so it must be learned safely, be visible, and be correctable.
@@ -7,7 +7,7 @@ Status: Built (unverified live) · Last updated: 2026-10-27
 ## Behavior
 1. After connecting Gmail, Scam Shield learns, from genuine mail only, the companies that write to the user and the addresses they really use (bank, telecom, toll, health, retail, carriers), recent orders with their carrier and tracking number, paid subscriptions, and the people the user writes to (two or more emails in a year).
 2. Only mail that passes Google's authentication and that the checker already judges safe can teach the context, so a scam can never plant a fake order or provider.
-3. The user can tick well-known data breaches they were part of (Bouygues 2025, Free 2024, France Travail 2024, AT&T 2024, National Public Data 2024, Change Healthcare 2024, Ticketmaster 2024, "an old password"); with a HIBP key, breaches are looked up automatically (unverified).
+3. The user can tick well-known data breaches they were part of (Bouygues 2025, Free 2024, France Travail 2024, AT&T 2024, National Public Data 2024, Change Healthcare 2024, Ticketmaster 2024, "an old password"), and can ask Prudence to look their email address up in a public breach list with one button, nothing being sent before they tap ([breach-exposure.md](breach-exposure.md)).
 4. Real personal data in a message (an IBAN, an old password) never proves it is genuine when a known breach leaked that data; the card says "that bank number is real, but it leaked in the Bouygues breach".
 5. A parcel message is checked against real orders: a carrier that is not delivering anything to the user is called out. A bill from a company that is not one of the user's providers is called out.
 6. A trusted contact is the saved email address or phone number, never a typed name: "Ethan Miller <other@gmail.com>" or "it's Ethan, new number" is a claim, and the safe step is calling the number the user already has. A trusted contact's real address asking for money, secrecy or codes is "Be careful: their account may be hacked".
@@ -27,9 +27,9 @@ Contacts from Google Contacts or the phone; calendar; purchase history outside e
 - Live: never run on a real mailbox yet; a real 300-message scan should produce a context the user recognises as theirs (to verify with the first test senior).
 
 ## Implementation pointers
-src/context/builder.js (buildContext, KNOWN_BREACHES, correspondents, hibpBreaches, withGuardians, forgetItem), lib/context.js (trustedContactFor, claimedContactFor, breachLeaking), src/routes/account.js (/api/context, forget, breaches, rebuild), public/js/views/pages.js renderSettings, src/sync/actions.js putBack.
+src/context/builder.js (buildContext, KNOWN_BREACHES, correspondents, lookupBreaches, withGuardians, forgetItem), lib/context.js (trustedContactFor, claimedContactFor, breachLeaking), src/routes/account.js (/api/context, forget, breaches, rebuild), public/js/views/pages.js renderSettings, src/sync/actions.js putBack.
 
 ## Open questions
 - Phone numbers are never learned (contacts from Sent have none), so an SMS from a grandson's real number is only recognised if the user adds it: do we add a "their phone number" field to the trusted-person form?
-- Breach list for launch: curated eight, HIBP (paid key), or both? Who maintains the curated list?
+- Breach list for launch: decided 2026-11-04, both, on the senior's tap (breach-exposure.md). Who maintains the curated list?
 - Should the guardian be allowed to correct the senior's context (remove a wrong provider) on the senior's behalf?
