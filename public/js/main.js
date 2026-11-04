@@ -9,6 +9,7 @@ import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, l
 import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
 import { renderCheckScreen } from "./views/check.js";
 import { renderToday, onTodayEvent } from "./views/today.js";
+import { renderSettings as renderSettingsScreen, renderPeopleScreen, renderPhoneScreen, renderKnows, renderDid, renderDelete } from "./views/settings.js";
 import { renderLearn } from "./views/learn.js";
 
 let status = null;
@@ -212,16 +213,6 @@ async function route() {
   if (!location.hash.startsWith("#/inbox") && !location.hash.startsWith("#/folder")) focusHeading(view());
 }
 
-// Sign out left the header (frame 1q puts it last in Settings). Until the new
-// Settings screen draws its own, the old one gets the button at its end.
-async function withSignOut(root, drawing) {
-  const name = root.dataset.view;
-  await drawing;
-  if (root.dataset.view !== name || $("#settingsSignOut", root)) return;
-  root.insertAdjacentHTML("beforeend", `<button id="settingsSignOut" class="btn btn-outline btn-big settings-signout" type="button">${icon("sign-out", 26)}<span>${esc(t("sign_out"))}</span></button>`);
-  $("#settingsSignOut", root).addEventListener("click", signOut);
-}
-
 // How each screen of the senior column is drawn, by its root.dataset.view
 // name (SCREENS in protects.js). One line per screen: a screen's builder
 // changes only its own line, and adds the import of its view at the top.
@@ -235,12 +226,12 @@ const DRAW = {
   "check-voice": (root) => renderCheckScreen(root, status, { step: "voice" }),
   "check-more": (root) => renderCheckScreen(root, status, { step: "more" }),
   learn: (root) => renderLearn(root, status),
-  settings: (root) => withSignOut(root, renderSettings(root, status, refresh)),
-  "settings-people": (root) => renderPeople(root),
-  "settings-phone": (root) => renderPeople(root),
-  "settings-knows": (root) => withSignOut(root, renderSettings(root, status, refresh)),
-  "settings-did": (root) => withSignOut(root, renderSettings(root, status, refresh)),
-  "settings-delete": (root) => withSignOut(root, renderSettings(root, status, refresh)),
+  settings: (root) => renderSettingsScreen(root, status, refresh),
+  "settings-people": (root) => renderPeopleScreen(root, status),
+  "settings-phone": (root) => renderPhoneScreen(root, status),
+  "settings-knows": (root) => renderKnows(root, status),
+  "settings-did": (root) => renderDid(root, status),
+  "settings-delete": (root) => renderDelete(root, status),
 };
 
 async function draw() {

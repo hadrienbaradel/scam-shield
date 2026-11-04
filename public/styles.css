@@ -1640,3 +1640,69 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .ck-more .row-card .row-name { margin: 0; }
 .ck-more .row-card .row-state { display: block; }
 .ck-ask-panel:empty { display: none; }
+
+/* --- redesign: settings (settings.js) --- */
+/* Settings and the screens under it (frames 1q, 1r, 1s). The rows are the
+   shared .row-card, .row-head, .row-icon, .row-name, .row-state and the
+   buttons above; what follows is only what those do not cover.
+     .set-list        the setting cards, 10px apart (the canvas's list)
+     .set-signout     Sign out, 6px below the last card
+     .set-gap         a section title that opens a new part of a sub-screen
+     .row-state.is-waiting  an invitation not answered yet: the clock in grey
+     .set-reach       how a trusted person is reached, one line each (19px)
+     .set-form, .set-field  the invitation and mobile number forms: 19px bold
+                      labels over 64px fields with 22px words
+     .set-remove, .set-confirm  Remove, and the question that replaces it
+                      (Keep first, gold; then the red outline)
+     .set-tech        the folded server address on the phone screen
+     .set-pair        the pairing code and its QR, centred
+     .set-items       What Prudence knows: one line per thing, the words then
+                      Remove; the button drops under the words when both do
+                      not fit (Largest)
+     .set-events      What Prudence did: the date (19px grey) over the words
+     .set-keep        Keep my account: 72px, 8px more above (frame 1s) */
+/* What gets the keyboard focus is never left under the tab bar. */
+.settings :focus { scroll-margin: 16px 0 calc(var(--tabbar-h, 80px) + 16px); }
+.set-list { display: flex; flex-direction: column; gap: 10px; }
+.set-signout { margin-top: 6px; }
+.settings .section-title.set-gap { margin-top: 8px; }
+.row-state.is-waiting > svg { color: var(--muted); }
+
+.set-reach { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: var(--t19); line-height: 1.35; overflow-wrap: anywhere; }
+
+.set-form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.set-field { display: flex; flex-direction: column; gap: 6px; margin: 0; font-size: var(--t19); font-weight: 700; line-height: 1.3; }
+.set-field input { min-height: 64px; margin: 0; padding: 10px 14px; border-radius: 14px; font-size: var(--t22); }
+.set-form > .btn { width: 100%; }
+
+.set-remove { padding-top: 12px; border-top: 1px solid var(--line); }
+.set-remove > .btn { width: 100%; }
+.set-confirm { display: flex; flex-direction: column; gap: 10px; }
+.set-confirm-q { margin: 0; font-size: var(--t22); font-weight: 700; line-height: 1.35; }
+
+.set-tech { border-top: 1px solid var(--line); }
+.set-tech summary { display: flex; align-items: center; min-height: 64px; color: var(--navy); font-size: var(--t19); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.set-tech[open] summary { margin-bottom: 4px; }
+.set-pair { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: var(--t22); line-height: 1.35; }
+.set-pair p { margin: 0; }
+.set-pair .qr { line-height: 0; }
+.set-pair-server { color: var(--muted); font-size: var(--t19); overflow-wrap: anywhere; }
+
+.settings h2.row-name { margin: 0; }
+.set-note { color: var(--muted); font-size: var(--t19); line-height: 1.35; }
+.set-items { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.set-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.set-item:first-child { padding-top: 4px; border-top: 0; }
+.set-item:last-child { padding-bottom: 0; }
+.set-item-words { display: flex; flex: 1 1 9em; flex-direction: column; gap: 2px; min-width: 0; }
+.set-item-name { font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.set-item-sub { font-size: var(--t19); line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
+.set-item > .btn { flex: 0 0 auto; }
+
+.set-events { margin: 0; padding: 4px 16px; gap: 0; list-style: none; }
+.set-event { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-top: 1px solid var(--line); }
+.set-event:first-child { border-top: 0; }
+.set-event-when { color: var(--muted); font-size: var(--t19); line-height: 1.35; }
+.set-event-what { font-size: var(--t22); line-height: 1.35; overflow-wrap: anywhere; }
+
+.set-keep { min-height: 72px; margin-top: 8px; }
