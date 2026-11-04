@@ -7,8 +7,8 @@ Who does it: **Vlad, under vladztools@gmail.com** (`_product/docs/secrets.md`, A
 ## Part 1: in the Meta dashboard, with the agent driving Chrome
 
 1. **Developer account.** <https://developers.facebook.com/> logged in as the vladztools Facebook account. Clear the confirmation checkpoint if it shows.
-2. **The Page.** <https://www.facebook.com/pages/create>: name **Prudence** (taken: **Hey Prudence**), category "App page" or "Software"; add the logo later. Open the Page → set its **username** (Settings → Page setup → Username, or the "Create @username" link): it makes the link the seniors open, `https://m.me/<username>`, and goes in `MESSENGER_PAGE_LINK`. The **Page ID**: Page → About → Page transparency, or `Settings → Page details`.
-3. **The app.** My Apps → Create app → use case **"Engage with customers on Messenger from Meta"** (older dashboards: Other → Business). Name **Prudence** (refused: **Hey Prudence**; internal only), contact email vladztools@gmail.com. If a business portfolio is demanded, create one named after Vlad or **Hey Prudence**, never "Prudence" (refused on Nov 3).
+2. **The Page.** <https://www.facebook.com/pages/create>: the name **Prudence** is refused as "too broad", so the Page is **Hey Prudence** (created Nov 4, id `61596078607114`), category "App Page"; add the logo later. A fresh Page offers no **username** anywhere (Settings → Page setup has Name, Page access, Page type; About has Details, Links), so the link the seniors open is `https://m.me/<page id>`, which Messenger accepts just like a username, and that goes in `MESSENGER_PAGE_LINK`. The **Page ID** is the `id=` in the Page's address bar (`facebook.com/profile.php?id=…`).
+3. **The app.** My Apps → Create app: name **Hey Prudence**, contact email vladztools@gmail.com → Use cases → filter **Business messaging** → tick **"Engage with customers on Messenger from Meta"** → Business: "I don't want to connect a business portfolio yet" (no portfolio is needed for role holders) → Requirements (none) → **Create app**. Facebook asks the account password at this click (and again for the App Secret in step 5): Vlad types it, the agent never does.
 4. **Messenger API Setup**, in the app's left menu: **Generate access tokens** → Connect → tick the Page → Continue → Save → **Generate** next to the Page → copy the **Page access token** (shown once; regenerate if lost). Then **Add Subscriptions** → tick **messages** only (not `message_echoes`) → Confirm.
 5. **App Secret.** App settings → Basic → App secret → Show (Facebook asks the password) → copy. On the same page fill **Privacy policy URL** (`https://heyprudence.com/privacy` once it exists; the landing page URL meanwhile) and **Category**: both are needed to switch the app Live (step 8).
 6. **Verify token.** A random string of 20 characters or more: `openssl rand -hex 16`.
@@ -25,15 +25,15 @@ Stored with `make secrets-set NAME=value` (pasted from the clipboard, never type
 | `MESSENGER_PAGE_ID` | the Page ID | 2 |
 | `MESSENGER_APP_SECRET` | the App secret | 5 |
 | `MESSENGER_VERIFY_TOKEN` | the string invented in step 6 | 6 |
-| `MESSENGER_PAGE_LINK` | `https://m.me/<username>` (not secret; shown in Settings) | 2 |
+| `MESSENGER_PAGE_LINK` | `https://m.me/<page id>` (not secret; shown in Settings) | 2 |
 
 Optional: `MESSENGER_GRAPH_VERSION` (default `v26.0`), `MESSENGER_GROUP_MS` (how long Prudence waits after the last message of a burst, default 3000).
 
 ## Part 2: the webhook, 5 minutes, once the keys are on a server reachable over https
 
-1. A public https address in front of the server: the production host (`https://heyprudence.com` once its tunnel runs, `_product/docs/ops.md`) or a quick tunnel on the laptop, `cloudflared tunnel --url http://localhost:3000` (a random `trycloudflare.com` name that changes when the process ends).
+1. A public https address in front of the server: the production host (`https://heyprudence.com` once its tunnel runs, `_product/docs/ops.md`) or a quick tunnel on the laptop, `cloudflared tunnel --url http://localhost:3001` (a random `trycloudflare.com` name that changes when the process ends) in front of a second server instance, `PORT=3001 node --import=./lib/credentials.js src/server.js`, so the `make server` the other sessions drive is never restarted; the instance is restarted whenever a key is added, since credentials load at start.
 2. Messenger API Setup → **Configure webhooks** → Callback URL `https://<host>/api/messenger/webhook`, Verify token = `MESSENGER_VERIFY_TOKEN` → **Verify and save**. The server answers the handshake with the verify token alone, so this works before any message flows. If the subscription of step 4 did not stick, tick **messages** again here.
-3. **Test.** From Vlad's personal account (a Tester since step 7), open `https://m.me/<username>` and send "hello": the typing dots, then a reply within seconds. Then long-press one of the stranger's messages → More → **Forward** → Prudence; if the Page is not offered as a target, send a screenshot of the chat instead (same verdict, read by Muse Spark).
+3. **Test.** From Vlad's personal account (a Tester since step 7), open `https://m.me/<page id>` and send "hello": the typing dots, then a reply within seconds. Then long-press one of the stranger's messages → More → **Forward** → Prudence; if the Page is not offered as a target, send a screenshot of the chat instead (same verdict, read by Muse Spark).
 4. The first live delivery is compared with the assumptions in `_product/specs/messenger-channel.md` (Open questions): the attachment host and URL lifetime, the audio container of a voice message, and whether the Send API accepted the token in the `Authorization: Bearer` header (an error 190 or 104 on the first reply means it wants `?access_token=`: one-line change in `src/channels/messenger.js`).
 
 ## What the Page cannot do yet
