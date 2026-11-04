@@ -3,7 +3,7 @@
 // guardian answers, scam-report review, and the public examples.
 
 import { api } from "../api.js";
-import { t, ago, getLang, dateTime } from "../i18n.js";
+import { t, ago, getLang, dateTime, STRINGS } from "../i18n.js";
 import { $, $$, esc, verdictCard, readAloud, toast, pill, busy } from "../ui.js";
 import { openAsk } from "./mail.js";
 import { toWav16k } from "../audio.js";
@@ -94,7 +94,10 @@ const breachLookupState = (lookup) => {
   const when = ago(lookup.at);
   return lookup.found === 0 ? t("k_breach_looked_up_none", { when }) : lookup.found === 1 ? t("k_breach_looked_up_one", { when }) : t("k_breach_looked_up", { when, n: lookup.found });
 };
-const breachChecks = (options, chosen) => options.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}</label>`).join("");
+// What each breach leaked, in the person's words ("bank account number", not "IBAN"), and what it means (line 8).
+const leakWord = (kind) => STRINGS[getLang()][`leak_${String(kind).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`] || kind;
+const breachChecks = (options, chosen) => options.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}${b.leaked?.length ? `<span class="small"> · ${esc(t("k_breach_leaked", { what: b.leaked.map(leakWord).join(", ") }))}</span>` : ""}</label>`).join("")
+  + (options.length ? `<p class="small">${t("k_breach_meaning")}</p>` : "");
 const breachLookupBlock = (lookup) => `<p class="small">${esc(breachLookupState(lookup))}</p><p class="small">${t("k_breach_lookup_sub")}</p>
   <button id="breachLookup" class="btn btn-light-dark btn-big" type="button">${lookup ? t("k_breach_lookup_again") : t("k_breach_lookup")}</button>`;
 async function runBreachLookup(button) {
