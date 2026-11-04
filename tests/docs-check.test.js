@@ -252,7 +252,7 @@ test("7: stale advice is a warning with file and line; lines that explain the ch
   assert.deepEqual(messages(result), [
     "README.md:2: warning: stale: scripts/set-env.mjs is a deprecated shim; keys live in config/credentials.enc (see _product/docs/secrets.md)",
     "README.md:3: warning: stale: .env.example was renamed to config/credentials.example",
-    "README.md:4: warning: stale: docs/PRD.md named as the source of truth; _product/spec.md is",
+    "README.md:4: warning: stale: docs/archive/PRD.md named as the source of truth; _product/spec.md is",
   ]);
 });
 

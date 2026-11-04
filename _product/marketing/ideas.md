@@ -1,6 +1,6 @@
 # Ideas to make the demo land (prioritized)
 
-Impact and effort are judgments against the Nov 4 deadline. "Built" means in the repo today (see docs/STATUS.md); everything under "Feature ideas" is an idea, not built. Rules and rubric: [../research/hackathon.md](../research/hackathon.md).
+Impact and effort are judgments against the Nov 4 deadline. "Built" means in the repo today (see docs/archive/STATUS.md); everything under "Feature ideas" is an idea, not built. Rules and rubric: [../research/hackathon.md](../research/hackathon.md).
 
 ## Demo and submission ideas
 | # | Idea | Impact | Effort | Note |

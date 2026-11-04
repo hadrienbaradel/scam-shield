@@ -23,7 +23,7 @@ All times below are Eastern daylight time (UTC−4) on Oct 26 unless stated. The
 
 **Not code, used as data:**
 - The real scam emails in `testcases/` were received by Hadrien. They are redacted test cases, not code.
-- Public phishing datasets (Zenodo 8339691, an OpenPhish sample) were used for evaluation only. They are not in the repository (see [STATUS.md](STATUS.md)).
+- Public phishing datasets (Zenodo 8339691, an OpenPhish sample) were used for evaluation only. They are not in the repository (see [archive/STATUS.md](archive/STATUS.md)).
 
 **Third-party code (open source, labelled as the organizers ask):** the npm dependencies listed in `package.json` and the Android dependencies in `android/`, under their own licences.
 

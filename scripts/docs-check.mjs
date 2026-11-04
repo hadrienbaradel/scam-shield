@@ -23,7 +23,7 @@
 //   6 last-updated  spec.md has "Last updated: YYYY-MM-DD"; warning when older than the newest
 //                   commit touching _product/specs/ (git optional: no git, no warning)
 //   7 stale         old advice (warnings): scripts/set-env.mjs as the way to set keys,
-//                   .env.example, docs/PRD.md as the source of truth
+//                   .env.example, docs/archive/PRD.md as the source of truth
 //   8 architecture  README.md links docs/ARCHITECTURE.md, which has "Last updated: YYYY-MM-DD" and
 //                   names every file under lib/ and src/: by its own name (lessons.js or lessons) or,
 //                   inside a module folder such as lib/llm/, by the folder's name; files directly in
@@ -67,7 +67,7 @@ export const STALE_RULES = [
   {
     id: "prd-source-of-truth",
     test: (line) => /\bPRD(\.md)?\b/.test(line) && /source of truth/i.test(line),
-    message: "stale: docs/PRD.md named as the source of truth; _product/spec.md is",
+    message: "stale: docs/archive/PRD.md named as the source of truth; _product/spec.md is",
   },
 ];
 

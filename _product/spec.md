@@ -148,7 +148,7 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 - Trusted-contact matching by display name: a typed name is a claim, only the saved address or number counts (commit e2ae428).
 - Flagging mere mentions of gift cards, crypto or codes: the detector now flags asks, not keywords, so receipts and "we will never ask for your code" warnings are not scams (commit 9adcd29).
 - Showing confidence as a percentage on the card: certainty is said in words, because the model cannot back a precise number (`public/js/ui.js`; the `confidence` string in `i18n.js` is unused).
-- Google Safe Browsing / Web Risk: non-commercial licence only / paid. OPDB: paid licence. Hugging Face "IsThisSpam" model: no licence, and it detects spam, not scams (docs/STATUS.md licences).
+- Google Safe Browsing / Web Risk: non-commercial licence only / paid. OPDB: paid licence. Hugging Face "IsThisSpam" model: no licence, and it detects spam, not scams (docs/archive/STATUS.md licences).
 - Reddit or forum scraping for the threat feed: official RSS/Atom feeds only (`src/jobs/threatfeed.js`). Tuning rules on abuse.ch URLhaus data: forbidden by its terms.
 
 ## Non-goals

@@ -3,7 +3,7 @@
 > Superseded on 2026-10-27 by `_product/spec.md` (features, statuses, ideas); the measurements and decisions below stay as recorded.
 > Kept for history: update the spec and the feature files under `_product/specs/`, not this file.
 
-Where the project stands after the first build sprint (Oct 26–27), what has been measured, what was decided and why, and what is left before the hackathon deadline (**Nov 4, 9pm ET**). Product scope is in [PRD.md](PRD.md); setup in [../README.md](../README.md) and [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+Where the project stands after the first build sprint (Oct 26–27), what has been measured, what was decided and why, and what is left before the hackathon deadline (**Nov 4, 9pm ET**). Product scope is in [PRD.md](PRD.md); setup in [../../README.md](../../README.md) and [../GOOGLE_SETUP.md](../GOOGLE_SETUP.md).
 
 ## TL;DR
 

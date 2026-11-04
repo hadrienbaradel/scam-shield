@@ -1,6 +1,6 @@
 # Submission form and X post (drafts, Nov 4)
 
-Drafts for the Cerebral Valley submission form and the Most Viral post on X. Every number comes from [../../docs/STATUS.md](../../docs/STATUS.md), [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) (measurements) or the Nov 3 inbox gate; check the links on the day. Fill the `[…]` gaps after upload.
+Drafts for the Cerebral Valley submission form and the Most Viral post on X. Every number comes from [../../docs/archive/STATUS.md](../../docs/archive/STATUS.md), [../../docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) (measurements) or the Nov 3 inbox gate; check the links on the day. Fill the `[…]` gaps after upload.
 
 ## Form
 
@@ -72,7 +72,7 @@ The scams that reach a senior are the ones filters miss: well written, sent from
 
 Reliability seen from the client: from some networks we saw 10-second connection timeouts to api.meta.ai and a 408 from Muse Voice Transcribe. A senior cannot be left with a spinner, so when the API fails our rules answer, the verdict is marked as degraded and nothing in the mailbox is moved, and a circuit breaker pauses calls after three failures in a row. Outside Meta, Gmail's OAuth verification is the step that stands between us and a public launch.
 
-**Compared with other AI models your team has used for the same kind of work, how did Meta's models perform?** Hadrien's call. A fact that helps: on the 375 emails both tiers scored, the Contributor tier gave the same verdict as Standard on 96% of phishing and 94% of genuine mail, and neither called a genuine email Scam (`docs/STATUS.md`).
+**Compared with other AI models your team has used for the same kind of work, how did Meta's models perform?** Hadrien's call. A fact that helps: on the 375 emails both tiers scored, the Contributor tier gave the same verdict as Standard on 96% of phishing and 94% of genuine mail, and neither called a genuine email Scam (`docs/archive/STATUS.md`).
 
 **When your team chooses an AI model or coding tool, what matters most?** (suggestion) Accuracy on our own evaluation, structured output we can validate, how user data is handled (no training on it), then latency and price.
 
