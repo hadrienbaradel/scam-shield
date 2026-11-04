@@ -57,7 +57,7 @@ export function spokenAnswer(v) {
 // The strip is dashed: it is on the outer side. Decorative: the three
 // sentences under it say the same in text that follows the person's size.
 export function glassesDrawing() {
-  return `<svg class="gl-drawing" viewBox="0 0 358 156" aria-hidden="true" focusable="false" fill="none" stroke="#16283f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  return `<svg class="gl-drawing" viewBox="0 0 358 160" aria-hidden="true" focusable="false" fill="none" stroke="#16283f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path fill="#ffffff" d="M106 84H30C18 84 10 92 6 112C5 118 12 120 14 114C18 104 24 100 32 100H106Z"/>
         <path fill="#ffffff" d="M252 84H328C340 84 348 92 352 112C353 118 346 120 344 114C340 104 334 100 326 100H252Z"/>
         <rect fill="#eef4fb" x="104" y="76" width="68" height="56" rx="14"/>
@@ -76,8 +76,8 @@ export function glassesDrawing() {
         <text stroke="none" fill="#ffffff" font-size="19" font-weight="700" text-anchor="middle" x="84" y="36.5">1</text>
         <text stroke="none" fill="#ffffff" font-size="19" font-weight="700" text-anchor="middle" x="273" y="36.5">2</text>
         <text stroke="none" fill="#ffffff" font-size="19" font-weight="700" text-anchor="middle" x="320" y="36.5">3</text>
-        <text stroke="none" fill="#1a1a1a" font-size="19" font-weight="700" text-anchor="start" x="6" y="146">${esc(t("gl_arm_left"))}</text>
-        <text stroke="none" fill="#1a1a1a" font-size="19" font-weight="700" text-anchor="end" x="352" y="146">${esc(t("gl_arm_right"))}</text>
+        <text stroke="none" fill="#1a1a1a" font-size="19" font-weight="700" text-anchor="start" x="6" y="152">${esc(t("gl_arm_left"))}</text>
+        <text stroke="none" fill="#1a1a1a" font-size="19" font-weight="700" text-anchor="end" x="352" y="152">${esc(t("gl_arm_right"))}</text>
       </svg>`;
 }
 
