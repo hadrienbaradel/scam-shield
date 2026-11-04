@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setLang } from "../public/js/i18n.js";
 import { verdictCardHtml, unsureRowHtml, verdictWord, headlineOf } from "../public/js/views/card.js";
-import { movedThisWeek } from "../public/js/views/today.js";
+import { movedThisWeek, mailboxProblem } from "../public/js/views/today.js";
 
 // setLang records the language on <html>: a stand-in for these tests.
 globalThis.document ??= { documentElement: {} };
@@ -88,4 +88,21 @@ test("moved away this week: only the last seven days, never what she put back; n
   assert.deepEqual(movedThisWeek(list, now), { n: 2, week: true });
   assert.deepEqual(movedThisWeek([], now), { n: 0, week: true });
   assert.deepEqual(movedThisWeek([...list, { check: moved }], now), { n: 4, week: false });
+});
+
+test("the all-clear only when the mailbox was really checked within the last day", () => {
+  const now = Date.parse("2026-11-04T20:00:00Z");
+  const at = (h) => new Date(now - h * 3600000).toISOString();
+  const ok = { connected: true, needsReconnect: false, syncStatus: "ok", lastSyncAt: at(0.05), ready: true, push: true };
+  const p = (gmail, opts = {}) => mailboxProblem(gmail === undefined ? {} : { gmail }, { now, ...opts });
+  assert.equal(p(ok), null);
+  assert.equal(p({ ...ok, lastSyncAt: at(23) }), null);
+  assert.deepEqual(p(ok, { statusOk: false }), { kind: "error" }, "the status could not be read again");
+  assert.deepEqual(p({ ...ok, syncStatus: "error" }), { kind: "error" });
+  assert.deepEqual(p({ ...ok, lastSyncAt: null }), { kind: "error" }, "no last check: nothing to call clear");
+  assert.deepEqual(p({ ...ok, needsReconnect: true, connected: false }), { kind: "reconnect" });
+  assert.deepEqual(p({ ...ok, connected: false }), { kind: "reconnect" }, "no Google token at all");
+  assert.deepEqual(p(undefined), { kind: "reconnect" }, "no mailbox");
+  assert.deepEqual(p({ ...ok, ready: false }), { kind: "first" });
+  assert.deepEqual(p({ ...ok, lastSyncAt: at(25) }), { kind: "stale", at: at(25) });
 });

@@ -182,6 +182,8 @@ export const STRINGS = {
     td_moved: "{n} scams moved away this week", td_moved_one: "1 scam moved away this week",
     td_moved_note: "They sit in the Prudence folder. Nothing is deleted.", td_moved_note_one: "It sits in the Prudence folder. Nothing is deleted.",
     td_see_them: "See them", td_see_it: "See it",
+    // Instead of the all-clear when the last check of the mailbox is over a day old ({when}: a short date and time).
+    td_stale: "We could not check your email since {when}.",
     // --- messages and blocked (msg_*, blk_*) ---
     // Also read: v2_tab_today (the "Today" back link), box_inbox ("My inbox"),
     // box_careful ("Check first"), pill_scam, pill_careful, pill_safe (through
@@ -454,6 +456,7 @@ export const getLang = () => lang;
 export function t(key, vars = {}) {
   const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
+    td_stale: "Nous n'avons pas pu vérifier vos e-mails depuis le {when}.",
 }
 // The small chip under a reason on a verdict card: what that reason was
 // checked against, from the reason's evidence kind (lib/schema.js

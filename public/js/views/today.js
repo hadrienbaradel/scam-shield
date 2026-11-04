@@ -8,7 +8,9 @@
 //
 // Today, top to bottom: the greeting; the white card "1 message needs you"
 // with the gold "Look at it now", or the green all-clear followed by the
-// three Check choices; the "3 scams moved away this week" card (live only);
+// three Check choices (the all-clear only when the mailbox was checked
+// within the last day; otherwise a banner with Reconnect or Try again
+// stands in for it: mailboxProblem); the "3 scams moved away this week" card (live only);
 // "What Prudence protects" (live only: the demo has no mailbox or phone).
 // The status line of the old Today now lives in the email row of the list.
 
@@ -24,7 +26,8 @@ const demoDone = new Set(); // demo cards handled in this visit
 
 const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
 const enc = encodeURIComponent;
-const WEEK = 7 * 24 * 3600 * 1000;
+const DAY = 24 * 3600 * 1000;
+const WEEK = 7 * DAY;
 
 // The scams Prudence moved out of the inbox, for the "moved away this week"
 // card: messages is the Scam folder's list (/api/inbox?box=scam), each with
@@ -37,6 +40,26 @@ export function movedThisWeek(messages, now = Date.now()) {
   const when = (m) => Date.parse(m.date || m.check?.at || "");
   if (!moved.every((m) => Number.isFinite(when(m)))) return { n: moved.length, week: false };
   return { n: moved.filter((m) => now - when(m) < WEEK).length, week: true };
+}
+
+// Why Today cannot say "Nothing in your email needs you" right now, or null
+// when it can: a false all-clear is the one thing this screen must never
+// say. status: /api/status (its gmail block: connected, needsReconnect,
+// syncStatus, lastSyncAt, ready); statusOk: false when reading it again
+// failed. Kinds: "error" (the status could not be read, the last pass
+// failed, or there is no last check), "reconnect" (no Gmail, or Google wants
+// a new sign-in), "first" (the first pass is still running), "stale" (the
+// last check is more than a day old; at: its date).
+export function mailboxProblem(status, { statusOk = true, now = Date.now() } = {}) {
+  if (!statusOk) return { kind: "error" };
+  const g = status?.gmail;
+  if (!g || g.needsReconnect || g.connected === false) return { kind: "reconnect" };
+  if (!g.ready) return { kind: "first" };
+  if (g.syncStatus === "error") return { kind: "error" };
+  const at = Date.parse(g.lastSyncAt || "");
+  if (!Number.isFinite(at)) return { kind: "error" };
+  if (now - at > DAY) return { kind: "stale", at: g.lastSyncAt };
+  return null;
 }
 
 // Where the messages come from: the person's Gmail through the API.
@@ -59,6 +82,7 @@ function liveSource(status) {
         name: firstName(status.user?.name),
         guardian: active[0] || null,
         status: fresh?.user ? fresh : status,
+        statusOk: Boolean(fresh?.user),
         devices: devices.devices || [],
         checked: inbox.messages.filter((m) => m.check).length,
         moved: moved.n,
@@ -153,12 +177,19 @@ const greeting = () => {
   return t(h < 12 ? "v2_morning" : h < 18 ? "v2_afternoon" : "v2_evening", { name: S.info.name });
 };
 
-// Only when something is wrong with the mailbox (to reconnect, or the first
-// pass still running): syncLine's banner; the everyday "checked 2 minutes
-// ago" is said once, in the email row of "What Prudence protects".
-function warning() {
-  const g = S.status?.gmail;
-  return !S.source.demo && g && (g.needsReconnect || !g.ready) ? syncLine(S.status) : "";
+// What stands in for the all-clear when the mailbox could not be checked
+// (mailboxProblem): the words and the one way out, Reconnect or Try again.
+// The everyday "checked 2 minutes ago" is said once, in the email row of
+// "What Prudence protects", and on the all-clear.
+const since = (iso) => new Date(iso).toLocaleString(getLang() === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function problemBanner(p) {
+  if (!p) return "";
+  if (p.kind === "first") return `<div class="banner caution"><p>${esc(t("sync_first"))}</p></div>`;
+  if (p.kind === "reconnect") {
+    return `<div class="banner danger"><p>${esc(t("reconnect"))}</p><a class="btn btn-gold btn-big" href="/auth/google?mode=gmail">${esc(t("reconnect_btn"))}</a></div>`;
+  }
+  const words = p.kind === "stale" ? t("td_stale", { when: since(p.at) }) : t("sync_error");
+  return `<div class="banner caution"><p>${esc(words)}</p><button id="tdRetry" class="btn btn-navy btn-big" type="button">${esc(t("retry"))}</button></div>`;
 }
 
 // The card on top: what needs her (frame 1a) or the green all-clear (1b).
@@ -173,9 +204,8 @@ function topCard(n) {
       </section>`;
   }
   const g = S.status?.gmail;
-  // The first pass still running, or Gmail to reconnect: the banner above
-  // says so, and nothing can be called clear yet.
-  if (warning()) return "";
+  // The mailbox could not be checked: the banner above says so instead.
+  if (S.problem) return "";
   const when = !S.source.demo && g?.lastSyncAt ? t("td_checked", { when: ago(g.lastSyncAt) })
     : S.info.checked ? t("v2_checked", { n: S.info.checked }) : "";
   return `
@@ -224,11 +254,12 @@ function movedCard() {
 function drawToday({ focus = true } = {}) {
   const n = S.queue.length;
   const demo = S.source.demo;
+  S.problem = demo ? null : mailboxProblem(S.status, { statusOk: S.info.statusOk !== false });
   paint(`
     <div id="tdHome" class="v2 screen">
       ${demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : ""}
       <h1 class="screen-title">${esc(greeting())}</h1>
-      ${warning()}
+      ${problemBanner(S.problem)}
       ${topCard(n)}
       ${n === 0 && !demo ? choices() : ""}
       ${demo ? "" : movedCard()}
@@ -241,6 +272,7 @@ function drawToday({ focus = true } = {}) {
       ${demo ? "" : renderProtects(protectRows(S.status, { devices: S.info.devices }))}
     </div>`, { focus });
   $("#v2Look")?.addEventListener("click", () => openCard(0));
+  $("#tdRetry")?.addEventListener("click", () => renderToday(S.root, S.status));
   $("#v2Voice")?.addEventListener("click", (e) => busy(e.currentTarget, openVoicemail, t("checking")));
 }
 
