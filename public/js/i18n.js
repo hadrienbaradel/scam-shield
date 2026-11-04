@@ -421,6 +421,7 @@ export const STRINGS = {
     td_moved: "{n} arnaques écartées cette semaine", td_moved_one: "1 arnaque écartée cette semaine",
     td_moved_note: "Elles sont dans le dossier Prudence. Rien n'est supprimé.", td_moved_note_one: "Elle est dans le dossier Prudence. Rien n'est supprimé.",
     td_see_them: "Les voir", td_see_it: "La voir",
+    td_stale: "Nous n'avons pas pu vérifier vos e-mails depuis le {when}.",
     // --- messages and blocked (msg_*, blk_*) ---
     msg_title: "Mes messages", msg_filters: "Afficher",
     blk_title: "Bloqués",
@@ -471,7 +472,6 @@ export const getLang = () => lang;
 export function t(key, vars = {}) {
   const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
-    td_stale: "Nous n'avons pas pu vérifier vos e-mails depuis le {when}.",
 }
 // The small chip under a reason on a verdict card: what that reason was
 // checked against, from the reason's evidence kind (lib/schema.js
