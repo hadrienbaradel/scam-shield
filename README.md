@@ -81,7 +81,7 @@ As of 2026-11-04, measured by `make readme-numbers` (a row that names its own da
 
 **How it was built.** [CLAUDE.md](CLAUDE.md) and [_product/](_product/README.md) are the process two people and their agent sessions followed: the spec changes before the code ([_product/spec.md](_product/spec.md)), a team log says who works on what ([_product/log.md](_product/log.md)), one rule file per topic sits in `_product/docs/`, and `node scripts/docs-check.mjs` fails CI when the docs fall out of step with the code.
 
-**Reviewed by Muse Spark.** A pull request gets a Muse Spark review through the same LLM layer as the product (`make pr-review PR=<n>`, [scripts/pr-review.mjs](scripts/pr-review.mjs)), with Llama Prompt Guard 2 reading the diff first when its key is set; [PR #2](https://github.com/hadrienbaradel/scam-shield/pull/2) carries the reviewer's review of itself. The workflow posts one on every pull request once the repository secret `META_MODEL_API_KEY` is set.
+**Reviewed by Muse Spark.** A pull request gets a Muse Spark review through the same LLM layer as the product (`make pr-review PR=<n>`, [scripts/pr-review.mjs](scripts/pr-review.mjs)), with Llama Prompt Guard 2 reading the diff first when its key is set; its first review, of the pull request that added the reviewer, is in our earlier development repository, which stays private. The workflow posts one on every pull request once the repository secret `META_MODEL_API_KEY` is set.
 
 ## Quick start
 
