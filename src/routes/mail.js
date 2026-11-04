@@ -161,8 +161,9 @@ export default async function mailRoutes(app) {
   // "Check something else": pasted text from any channel. Words that hold
   // several turns ("Daniel: …" / "Me: …") are a conversation, judged as a
   // whole (_product/specs/messenger-channel.md, line 15): the other person's
-  // last turn is the message, the turns before it its thread history, and
-  // every link in the chat is looked at. An email stays one message.
+  // last turn is the message, the turns before it its thread history. The
+  // rules read the whole pasted chat (fullText: who typed "Me:" cannot be
+  // proven), and every link in it is looked at. An email stays one message.
   app.post("/api/check/text", checkLimit, async (request, reply) => {
     const { from = "", fromName = "", subject = "", body = "", channel = "email" } = request.body || {};
     if (!String(body).trim() && !String(subject).trim()) return reply.code(400).send({ error: "Paste the message text first." });
@@ -172,14 +173,15 @@ export default async function mailRoutes(app) {
     const chat = turns && conversationInput(turns, { channel: "social" });
     const message = chat
       ? { ...chat.message, from: String(from).slice(0, 200), fromName: String(fromName).slice(0, 200) || chat.message.fromName,
-        subject: String(subject).slice(0, 300), links: linksFromText(words), auth: "" }
+        subject: String(subject).slice(0, 300), links: linksFromText(words), auth: "", fullText: words }
       : { channel: kind, from: String(from).slice(0, 200), fromName: String(fromName).slice(0, 200), subject: String(subject).slice(0, 300),
         body: words, links: linksFromText(body), auth: "" };
     const { verdict, ctx } = await runCheck({ user: request.user, message, threadHistory: chat?.threadHistory || [] });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "pasted" });
     // The answer carries the whole conversation, so "Ask my trusted person"
     // can share all of it (it is never stored).
-    return { checkId: check.id, verdict, message: chat ? { ...message, body: words } : message, callBack: callBackFor(ctx, message) };
+    const { fullText, ...shown } = message;
+    return { checkId: check.id, verdict, message: fullText ? { ...shown, body: fullText } : message, callBack: callBackFor(ctx, message) };
   });
 
   // Screenshot or photo of a message: read by Muse Spark, never stored.
