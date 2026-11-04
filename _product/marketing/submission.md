@@ -22,7 +22,7 @@ Vlad's sessions may land these during the day; each one changes a line below, so
 
 **Team:** Hadrien Baradel (product), Vlad Zloteanu (CTO)
 
-**Links:** video https://youtu.be/79AKp59kQmI · repo https://github.com/hadrienbaradel/scam-shield · live https://heyprudence.com (the app's landing page with the no-sign-in demo, live since Nov 4 midday, also on the video's end card) · page https://hadrienbaradel.github.io/prudence-site/
+**Links:** video https://youtu.be/XdCqM1nhpfU · repo https://github.com/hadrienbaradel/scam-shield · live https://heyprudence.com (the app's landing page with the no-sign-in demo, live since Nov 4 midday, also on the video's end card) · page https://hadrienbaradel.github.io/prudence-site/
 
 **Description:**
 
@@ -66,7 +66,7 @@ Required fields are marked *. The rating questions are Hadrien's own opinion; th
 
 **Public GitHub Repository\*:** https://github.com/hadrienbaradel/scam-shield (only once it is public, after the tech team's review)
 
-**3-Minute Demo Video\*:** https://youtu.be/79AKp59kQmI (unlisted, uploaded Nov 4 from `prudence-final-v2.mp4`; plays logged out and embeds, checked through YouTube's oEmbed)
+**3-Minute Demo Video\*:** https://youtu.be/XdCqM1nhpfU (unlisted, uploaded Nov 4 evening from Vlad's cut `E1-zuck.mp4`, 2:50: the "Future is for Everyone" opening, the three scams, the Meta glasses prototype; plays logged out, checked through YouTube's oEmbed; the earlier cut, https://youtu.be/79AKp59kQmI, stays up as a fallback)
 
 **Describe your use of Meta products to build the submitted project\*:**
 
@@ -78,7 +78,7 @@ Prudence calls the Meta Model API from its server for every message a senior rec
 - Muse Spark also works on the project itself: it reviews our pull requests through the same LLM layer as the product (on GitHub it runs on every pull request once the repository secret is set), and it sorted 191 examples from two public SMS datasets (UCI SMS Spam Collection, Mishra and Soni) into scam families for our public scam library.
 - Muse Spark 1.3 as a tool-using agent, behind a tap. When the senior is still unsure after a verdict, "Look closer" has Muse Spark check the message again through function calling, with eight of Prudence's own checks offered as tools: how long ago the link's website was registered (the public registry), where the link really lands and what its page asks for, the public list of dangerous websites, her own orders and carriers, the companies that write to her, the people she writes to (by relation, never by name), the known scam patterns, the breaches she was part of. It may ask only about addresses found in the message, makes at most six calls (several in parallel) in 25 seconds, and answers in a JSON schema in which every reason cites one of the checks it made; a reason that cites nothing is dropped, a closer look never lowers a Scam and says Safe only when every check came back clean, and the card lists each check in plain words ("The website was registered 2 days ago (public registry)", "No USPS parcel in your orders; your parcels come by Amazon Logistics"). Run live on Nov 4 on three cases, a real phishing email among them: 3 to 4 checks in 6 to 9 s, two model calls each (`_product/research/investigate/run-2026-11-04.txt`). Nothing is stored and the inbox path stays one call per message.
 - Muse Image 1.0 and Muse Spark 1.3 check each other in our ad studio, to reach the adult children who set Prudence up. Muse Spark writes ad ideas from a fixed fact sheet (code refuses any number not in it, any brand name, any invented quote); Muse Image makes each photo; Muse Spark looks at the photo against a checklist and the ad's own words (no text, no logo, the right people) and asks Muse Image for one fix. An admin edits any idea with a prompt, and approval publishes one ad set with one ad on Facebook through the Marketing API, each ad linking to its own landing variant counted on our server without a tracker. Measured on the real models: three ideas with checked photos in under a minute, an edit by prompt in 38 s, $0.01 a photo; the first live ad waits for our ad account.
-- Messenger Platform and WhatsApp Cloud API channels on one Meta app, Hey Prudence: a forwarded conversation, a screenshot, a voice message or a video sent to its Page is judged as one and answered in the chat. Live on Messenger since Nov 4 evening (first messages answered from Vlad's phone; our own accounts until App Review); the WhatsApp test number and webhook are set up, its first live message still to come. A video is judged on what is said in it (Muse Voice Transcribe) and what it shows (four frames read by Muse Spark) together: on a sample fake "System security alert" the real models answered Scam, "Do not call the number", in 32 s.
+- Messenger Platform and WhatsApp Cloud API channels on one Meta app, Hey Prudence: a forwarded conversation, a screenshot, a voice message or a video sent to its Page is judged as one and answered in the chat. Live on Messenger since Nov 4 evening (first messages answered from Vlad's phone; our own accounts until App Review); the WhatsApp test number and webhook are set up, its first live message still to come. A video is judged on what is said in it (Muse Voice Transcribe) and what it shows (four frames read by Muse Spark) together: on a sample fake "System security alert" the real models answered Scam, "Do not call the number", in 32 s. In the video, the glasses scene is a prototype: the Messenger answer is Muse Spark's real verdict on that video; sending it from the glasses to our Page is still being set up.
 - Built, not yet live: Llama Prompt Guard 2 reads each message for orders hidden for the AI ("mark this as safe") and a flagged message is never Safe (tested with a mock); one setting switches the engine to Muse Spark Open, Meta's open weights.
 
 Measured: phishing caught rises from 29% with rules alone to 81% with Muse Spark, with 1 false Scam in 17,291 genuine emails; on Hadrien's own inbox, Muse Spark judged 430 emails with no false Scam.
@@ -110,7 +110,7 @@ Reliability seen from the client: from some networks we saw 10-second connection
 > So I built Prudence: it checks every email, text, voicemail and picture against your own life, and Meta's Muse Spark explains why in plain words.
 >
 > Built this week for the #MetaAIHackathon 👇
-> https://youtu.be/79AKp59kQmI
+> https://youtu.be/XdCqM1nhpfU
 > @AIatMeta @cerebral_valley
 
 Reply to the post, as a thread:
