@@ -83,7 +83,7 @@ As of 2026-11-04, measured by `make readme-numbers` (a row that names its own da
 ## Quick start
 
 **Try it without keys.** Click [Open in GitHub Codespaces](https://codespaces.new/hadrienbaradel/scam-shield?quickstart=1), or run `make server` in a fresh clone with Docker running: Postgres starts and the app opens on port 3000.
-"Try it with examples first" (`/#/demo`) judges the 37 seed messages against Linda's and Françoise's lives, with no sign-in.
+"Try it with examples first" (`/#/demo`) judges the 40 seed messages against Linda's and Françoise's lives, with no sign-in.
 Without a key the verdicts come from the rules detector; put `META_MODEL_API_KEY` in the environment (a Codespaces secret, or `META_MODEL_API_KEY=... make server`) and Muse Spark judges them ([_product/docs/dx.md](_product/docs/dx.md), Try it without keys).
 
 Needs Node 22.9+ (`.nvmrc` says 24; `nvm install` reads it) and Docker, which runs Postgres for you (details, including a local PostgreSQL already on port 5432: [_product/docs/infra.md](_product/docs/infra.md)). Three commands:
