@@ -88,7 +88,7 @@ Messenger channel (`_product/specs/messenger-channel.md`; the webhook answers 50
 (a Page access token of the Prudence Page, generated in the app's Messenger settings), `MESSENGER_PAGE_ID`, `MESSENGER_VERIFY_TOKEN` (any string,
 pasted again in Meta's webhook configuration), `MESSENGER_APP_SECRET` (required: every delivery is signature-checked and refused with 403
 until it is set), `MESSENGER_PAGE_LINK` (the Page's m.me address shown in Settings; not secret), optional `MESSENGER_GRAPH_VERSION`
-(default `v22.0`) and `MESSENGER_GROUP_MS` (how long Prudence waits after the last message of a burst before answering, default 3000).
+(default `v26.0`) and `MESSENGER_GROUP_MS` (how long Prudence waits after the last message of a burst before answering, default 3000).
 Prompt Guard 2 (`_product/specs/prompt-guard.md`; off without a key): `GROQ_API_KEY` or `HF_TOKEN` (Inference Providers permission, its account having accepted the model's licence), optional `PROMPT_GUARD_PROVIDER` (`auto`, `groq`, `hf`, `mock`, `off`), `PROMPT_GUARD_THRESHOLD` (0.8), `PROMPT_GUARD_TIMEOUT_MS` (3000).
 Observability (`_product/specs/observability.md`; nothing is sent or pinged without them): `ROLLBAR_ACCESS_TOKEN` (post_server_item; the deploy and read tokens are GitHub Actions secrets, not here), `HEARTBEAT_POLL_URL`, `HEARTBEAT_WATCH_URL`,
 `HEARTBEAT_THREATFEED_URL`, `HEARTBEAT_SCAMWATCH_URL`, `HEARTBEAT_RETENTION_URL` (secrets, pinged in production only; rotate them with the rest if the master key leaks), `HEARTBEAT_BACKUP_URL` (the host's daily dump; `make deploy` copies it into the host's `.env`), optional `APP_VERSION` (the image sets the git sha) and `TRUST_PROXY` (default `false`).
