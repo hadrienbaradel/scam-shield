@@ -94,6 +94,10 @@ test("redactExample keeps the evidence and removes what belongs to the recipient
   assert.equal(redactExample({ body: "Votre code de validation est 123456, ne le partagez pas" }).body, "Votre code de validation est [code], ne le partagez pas");
   assert.equal(redactExample({ body: "Enter the OTP 98-76-54 on the page" }).body, "Enter the OTP [code] on the page");
   assert.equal(redactExample({ body: "It's the 6-digit code you just received." }).body, "It's the 6-digit code you just received.", "a code only spoken of stays");
+  assert.equal(redactExample({ body: "Your codes: 123456 and 654321" }).body, "Your codes: [code] and 654321", "the plural");
+  assert.equal(redactExample({ body: "Enter code123456 now" }).body, "Enter code[code] now", "digits glued to the word");
+  assert.equal(redactExample({ body: "votre code de validation est 12 34 56 merci" }).body, "votre code de validation est [code] merci");
+  assert.equal(redactExample({ body: "The parcel was pinned to 2026 shelves" }).body, "The parcel was pinned to 2026 shelves", "a longer word is not the word");
 });
 
 test("validateEntry warns when the text may still carry a name; a warning blocks nothing", async () => {
