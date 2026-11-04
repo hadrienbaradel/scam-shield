@@ -81,15 +81,15 @@ function wire(el, status) {
   const key = params.get("signin") ? SIGNIN_MESSAGES[params.get("signin")] || "signin_error" : params.get("invite") ? "invite_expired" : null;
   if (key) for (const [b, s] of blocks(el)) { const p = b.querySelector(".l-banner"); p.textContent = s[key]; p.hidden = false; }
 
-  // Google sign-in not set up on this server: say so next to the one sign-in
-  // link (on a developer's computer it opens the local sign-in instead).
+  // Google sign-in not set up on this server: say so next to the two sign-in
+  // links (on a developer's computer they open the local sign-in instead).
   if (!status?.googleConfigured) {
     api("/auth/config").then((cfg) => {
       for (const [b, s] of blocks(el)) {
         const note = b.querySelector(".l-signin-note");
         note.textContent = s[cfg?.devSignin ? "local_signin_note" : "not_configured"];
         note.hidden = false;
-        if (!cfg?.devSignin) { const a = b.querySelector(".l-signin-link"); a.removeAttribute("href"); a.setAttribute("aria-disabled", "true"); }
+        if (!cfg?.devSignin) for (const a of b.querySelectorAll(".l-signin-link")) { a.removeAttribute("href"); a.setAttribute("aria-disabled", "true"); }
       }
     }).catch(() => {});
   }

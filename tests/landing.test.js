@@ -72,7 +72,7 @@ test("above the fold: the question, one sentence on what Prudence does, the demo
   assert.match(fr, /<h1 id="l-h1-fr">Ce message <span class="l-nowrap">est-il<\/span> vrai, pour vous&nbsp;\?<\/h1>/, "a no-break space keeps the question mark on its line");
   assert.match(fr, /href="#\/demo">.*Essayer avec la boîte de Françoise/);
   assert.match(fr, /href="#early-access-fr">.*Protéger les <span class="l-nowrap">e-mails<\/span> de mon parent/);
-  assert.equal(count(landing(), /\/auth\/google/g), 2, "one sign-in link per language, in the early-access section only");
+  assert.equal(count(landing(), /\/auth\/google/g), 4, "two sign-in links per language, in the early-access section only");
 });
 
 test("three example messages, each with the Scam card the app draws; senders and links are fictional and never clickable", () => {
@@ -132,6 +132,13 @@ test("the proof block carries the measured numbers with their source and its lim
   const proof = en.slice(en.indexOf('id="proof"'), en.indexOf('id="early-access"'));
   const rest = en.replace(proof, "");
   assert.doesNotMatch(rest, /\d%/, "percentages live in the proof block only");
+});
+
+test("already added: Sign in with Google, and a trusted person signs in without giving a mailbox", () => {
+  const en = blockOf("en");
+  assert.match(en, /<p>Already added\?<\/p>\s*<a class="l-btn l-btn-outline l-signin-link" href="\/auth\/google\?mode=gmail">Sign in with Google<\/a>\s*<a class="l-trusted l-signin-link" href="\/auth\/google\?mode=basic">I'm someone's trusted person: sign in<\/a>/);
+  assert.match(blockOf("fr"), /<a class="l-trusted l-signin-link" href="\/auth\/google\?mode=basic">Je suis la personne de confiance d'un proche&nbsp;: me connecter<\/a>/);
+  assert.match(readFileSync(new URL("../public/landing/landing.css", import.meta.url), "utf8"), /\.l-trusted \{[^}]*min-height: 64px/, "a 64 px tap target");
 });
 
 test("early access: the test-phase line, a labeled form that posts to /api/early-access, and the plain line without scripts", () => {

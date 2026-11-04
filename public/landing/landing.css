@@ -235,6 +235,9 @@ html.l-fr #landing .l-lang[data-lang="fr"][hidden] { display: block !important; 
 .l-signin { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px; }
 .l-signin > p:first-child { font-size: var(--t19); }
 .l-signin-note { font-size: var(--t19); color: var(--muted); }
+/* The trusted person's way in (sign-in without the mailbox): a plain link, 64px tall. */
+.l-trusted { display: inline-flex; align-items: center; min-height: 64px; color: var(--navy); font-size: var(--t19); font-weight: 700; text-underline-offset: 4px; }
+.l-trusted[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 .l-ea-box { flex: 1 1 480px; min-width: 0; }
 .l-form { display: flex; flex-direction: column; gap: 22px; padding: 28px; border: 2px solid var(--navy); border-radius: 22px; background: var(--surface); }
 .l-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
