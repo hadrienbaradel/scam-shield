@@ -28,6 +28,8 @@ Matching the sender to a Prudence account (no phone number on the senior's profi
 - Live, to record: the handshake from the App Dashboard, a forwarded text from an allowlisted phone replied within 5 s through the tunnel, a voice note transcribed (needs ffmpeg on the host).
 
 ## Implementation pointers
+Meta-side setup and the credentials handoff (who does what, the five key names, the webhook step): `docs/WHATSAPP_SETUP.md`.
+
 src/channels/whatsapp.js (parseWebhook, detectLanguage, formatReply, ffmpegToWav, mediaUrl, createWhatsAppChannel: downloadMedia, judge, sendText), src/routes/whatsapp.js (GET and POST /api/whatsapp/webhook, raw body for the signature, 403 without a valid signature or without the app secret, 200 before the work), src/server.js (registration; the webhook is exempt from the browser Origin check because the signature authenticates Meta), lib/muse.js checkMessage, extractFromImage and transcribeVoice reused unchanged, data/patterns/cards.json (fallback when Postgres is down) and the live cards. Keys: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` (required for deliveries), optional `WHATSAPP_GRAPH_VERSION` (`_product/docs/secrets.md`).
 
 ## Open questions

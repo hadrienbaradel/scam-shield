@@ -97,7 +97,7 @@ make test      # every suite (make check adds the coverage threshold: what CI ru
 `make` alone lists every command with a one-line help; `make doctor` says what is missing when something does not work.
 Deploying to the server (`make deploy`), its logs, backups and the shared database: [_product/docs/ops.md](_product/docs/ops.md).
 
-Without Google keys the app runs the public examples (`/#/demo`), and on your own computer a local sign-in opens every other screen (`/dev/signin`, [_product/specs/developer-sign-in.md](_product/specs/developer-sign-in.md)). To connect real Gmail, follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md): the Google Cloud project and Pub/Sub are already set up, and the OAuth client is a 5-minute console step. To switch on Muse Spark:
+Without Google keys the app runs the public examples (`/#/demo`), and on your own computer a local sign-in opens every other screen (`/dev/signin`, [_product/specs/developer-sign-in.md](_product/specs/developer-sign-in.md)). To connect real Gmail, follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md): the Google Cloud project and Pub/Sub are already set up, and the OAuth client is a 5-minute console step. To switch on Muse Spark: The WhatsApp channel's Meta-side steps (app, test number, token, webhook) are in [docs/WHATSAPP_SETUP.md](docs/WHATSAPP_SETUP.md).
 
 ```bash
 make secrets-set META_MODEL_API_KEY=...   # from dev.meta.ai; stored encrypted, never printed
