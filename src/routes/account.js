@@ -6,6 +6,7 @@ import { requireUser, endSession } from "../auth.js";
 import { config, googleConfigured, pubsubConfigured } from "../config.js";
 import { many, one, q } from "../db/pool.js";
 import { museConfigured, museModel, voiceConfigured } from "../../lib/muse.js";
+import { toolsConfigured } from "../../lib/llm/index.js";
 import { urlhausState } from "../links/resolver.js";
 import { subscribe } from "../notify/sse.js";
 import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp } from "../context/builder.js";
@@ -63,6 +64,8 @@ export default async function accountRoutes(app) {
       googleConfigured: googleConfigured(),
       museConfigured: museConfigured(),
       voiceConfigured: voiceConfigured(),
+      // "Look closer" under a verdict (_product/specs/investigate.md): a model that can call tools.
+      lookCloser: toolsConfigured(),
       // The "send it to Prudence" rows in Settings, one shape: is the channel on, and the link that opens it.
       whatsappConfigured: whatsappConfigured(),
       whatsappLink: whatsappLink(),

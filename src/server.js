@@ -29,6 +29,7 @@ import guardianRoutes from "./routes/guardians.js";
 import deviceRoutes from "./routes/devices.js";
 import adminRoutes from "./routes/admin.js";
 import demoRoutes from "./routes/demo.js";
+import investigateRoutes from "./routes/investigate.js";
 import dbRoutes from "./routes/db.js";
 import adminDbRoutes from "./routes/adminDb.js";
 import lessonRoutes from "./routes/lessons.js";
@@ -101,6 +102,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(deviceRoutes);
   await app.register(adminRoutes);
   await app.register(demoRoutes);
+  await app.register(investigateRoutes);
   await app.register(dbRoutes);
   await app.register(adminDbRoutes);
   await app.register(lessonRoutes);
