@@ -98,6 +98,19 @@ test("screenshot transcription sends the image and returns a checkable message",
   assert.equal(out.message.links[0].href, "https://usps-redeliver.top/pay");
 });
 
+test("a photographed letter is judged as a letter, as when it is pasted, never as a text message", async () => {
+  const capture = [];
+  fakeApi({ is_message: true, channel: "letter", platform: null, sender_name: "Medicare", sender: null, subject: "FINAL NOTICE",
+    body: "Your coverage ends today. Call 1-800-555-0199 and pay $49 in gift cards.", links: [] }, { capture });
+  const out = await extractFromImage({ imageBase64: "aGVsbG8=", mime: "image/png" });
+  assert.equal(out.message.channel, "letter");
+  fakeApi({ verdict: "scam", confidence: 0.95, headline: "Scam: a fake Medicare notice.", reasons: [{ text: "Gift cards.", evidence: "payment" }], action: "do_nothing",
+    action_text: "Throw the letter away. Do not call the number.", real_company_says: null, impersonated_brand: "Medicare", scam_type: null, matched_pattern_ids: [],
+    escalate_to_guardian: false, guardian_summary: "", language: "en" }, { capture });
+  await checkMessage({ locale: "en-US", message: out.message, personalContext: ctx });
+  assert.match(capture.at(-1).body.messages.at(-1).content, /"channel":"letter"/, "the model is told it is a letter");
+});
+
 test("the model never receives contacts' names, addresses or phones, only what bears on the message", () => {
   const c = compactContext(ctx, realChase);
   const sent = JSON.stringify(c);
