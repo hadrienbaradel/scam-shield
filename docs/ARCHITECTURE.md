@@ -97,7 +97,7 @@ Reading order for a newcomer: `lib/detector.js`, `lib/muse.js`, `src/sync/worker
 
 ## Data model
 
-Postgres, migrations `001_init.sql` to `012_glasses.sql`, applied files recorded in `schema_migrations`. Every per-person table cascades from `users`, so deleting an account is one `DELETE` once Google's grant is revoked.
+Postgres, migrations `001_init.sql` to `013_glasses.sql`, applied files recorded in `schema_migrations`. Every per-person table cascades from `users`, so deleting an account is one `DELETE` once Google's grant is revoked.
 
 | Table | Holds |
 |---|---|

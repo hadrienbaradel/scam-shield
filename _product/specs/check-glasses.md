@@ -56,7 +56,7 @@ No scene in the Nov 4 video (Hadrien, Oct 31). Phone walk: Check → "Do you hav
 - `public/js/views/check.js`: the fourth choice and the More ways row; `run` takes `backHref`, `backKey`, `note`, `afterVerdict`, `cardEnd`; `pictureJob`, `stopCheck`.
 - `public/js/protects.js`: `SCREENS`, the `glasses` row of `CRITERIA`, `hasGlasses`, `glassesChoice`, `glassesRow`, `handsFreeWays`; `public/js/main.js`: `DRAW`; `public/js/views/settings.js`: the `glasses` row; `public/js/views/pages.js`: the last step of `renderOnboarding`.
 - `public/js/i18n.js`: `gl_*`, `ck_glasses*`, `onb_glasses_*`, `score_glasses*`; `public/js/ui.js`: the `glasses` icon, `speak(text, lang, onEnd)`, `unlockSpeech`; `public/styles.css`: the last section.
-- `src/routes/account.js`: `user.glasses`, `messengerReceives`, `whatsappReceives` in `/api/status`, `PATCH /api/me`, `GET /prudence.vcf`; `src/routes/mail.js`: `context=conversation` on `/api/check/voice`; `lib/muse.js`: the `setting` line of the message block; `src/db/migrations/012_glasses.sql`: `users.glasses` (null, `none`, `have`, `ready`).
+- `src/routes/account.js`: `user.glasses`, `messengerReceives`, `whatsappReceives` in `/api/status`, `PATCH /api/me`, `GET /prudence.vcf`; `src/routes/mail.js`: `context=conversation` on `/api/check/voice`; `lib/muse.js`: the `setting` line of the message block; `src/db/migrations/013_glasses.sql`: `users.glasses` (null, `none`, `have`, `ready`).
 
 ## Open questions
 - Does "Hey Meta, send a photo to Hey Prudence on Messenger" reach a Page, or only people? Test on the pair; if not, line 8 keeps WhatsApp only.

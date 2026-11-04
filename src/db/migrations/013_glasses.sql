@@ -3,4 +3,4 @@
 -- 'none': said they have none; 'have': said they have a pair; 'ready': heard
 -- the test sentence in them. Read by the Check choice, the Settings row and
 -- the protection score.
-ALTER TABLE users ADD COLUMN glasses text CHECK (glasses IN ('none', 'have', 'ready'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS glasses text CHECK (glasses IN ('none', 'have', 'ready'));
