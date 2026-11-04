@@ -367,6 +367,9 @@ test("the public site is served at /public/, apart from the senior's app", opts,
   assert.equal(index.statusCode, 200);
   assert.match(index.headers["content-type"], /text\/html/);
   assert.match(index.body, /<title>Prudence scam database<\/title>/);
+  const bare = await get("/public");
+  assert.equal(bare.statusCode, 301, "the address as typed, without the slash, lands on the site");
+  assert.equal(bare.headers.location, "/public/");
   const js = await get("/public/db.js");
   assert.equal(js.statusCode, 200);
   assert.match(js.headers["content-type"], /javascript/);

@@ -110,6 +110,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(dbWatchRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
   // The public database's site (public/db/) at /public/: another interface of heyprudence, no session, never the senior's app.
+  app.get("/public", (request, reply) => reply.redirect("/public/", 301)); // the bare prefix is no route of the static plugin
   await app.register(fastifyStatic, { root: join(publicDir, "db"), prefix: "/public/", decorateReply: false, index: ["index.html"] });
 
   return app;
