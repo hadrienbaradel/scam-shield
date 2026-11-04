@@ -319,6 +319,51 @@ test("in French, every check and the answer are in French", async () => {
   assert.match(mock.calls[0].messages[0].content, /^<locale>fr-FR<\/locale>/);
 });
 
+test("every other result is said in plain words: a demo example's landing page, months and years, a company's real or other address, a saved sender, a lookup that fails", async () => {
+  const day = 86400000;
+  const message = { channel: "email", from: "alerts@chase-secure.example.com", fromName: "Chase", subject: "Your account", body: "Chase: confirm at https://chase-secure.example.com/x or https://old.example.net/y",
+    links: [{ href: "https://chase-secure.example.com/x" }, { href: "https://old.example.net/y" }, { href: "https://broken.example.org/z" }, { href: "http://10.0.0.1/admin" }] };
+  const registrationDate = async (d) => (d === "example.com" ? new Date(Date.now() - 400 * day) : d === "example.net" ? new Date(Date.now() - 4000 * day) : null);
+  const resolveLink = async (href) => {
+    if (href.includes("broken")) throw new Error("socket hang up");
+    throw Object.assign(new Error("refusing private network address"), { code: "EPRIVATE" });
+  };
+  mock.script(ask(["website_age", { domain: "chase-secure.example.com" }], ["website_age", { domain: "old.example.net" }], ["my_providers", { company: "Chase" }],
+    ["my_people", { name: null }], ["where_link_goes", { domain: "broken.example.org" }], ["where_link_goes", { domain: "10.0.0.1" }]),
+  answer("be_careful", [{ text: "x", check: 3 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ registrationDate, resolveLink }) });
+  assert.deepEqual(out.checks.map((c) => c.found), [
+    "The website example.com was registered 13 months ago (public registry)",
+    "The website example.net was registered 10 years ago (public registry)",
+    "Chase writes to you from chase.com; this message does not come from there",
+    "The sender is not one of your 3 trusted people",
+    "The link to broken.example.org could not be opened just now",
+    "The link to 10.0.0.1 was not opened: it points somewhere a website should not",
+  ]);
+  assert.deepEqual(out.checks.map((c) => c.flag), ["ok", "ok", "warn", "unknown", "unknown", "warn"]);
+  // The real Chase address, a sender Linda knows, her grandson's saved address, a demo page, a check that throws.
+  const C8 = ex("C8");
+  mock.script(ask(["my_providers", { company: "Chase" }], ["my_providers", { company: null }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const real = await investigate({ message: C8.message, personalContext: LINDA, first: CAREFUL, deps: deps() });
+  assert.deepEqual(real.checks.map((c) => c.found), ["Chase writes to you, and this message comes from its real address", "The sender is Chase, from its real address"]);
+  const fromEthan = { channel: "email", from: "ethan.miller@example-mail.test", fromName: "Ethan", body: "Photos from Sunday", links: [] };
+  mock.script(ask(["my_people", { name: null }], ["my_providers", { company: null }]), answer("safe", [{ text: "x", check: 1 }]));
+  const family = await investigate({ message: fromEthan, personalContext: LINDA, first: SAFE, deps: deps() });
+  assert.deepEqual(family.checks.map((c) => c.found), ["It comes from the saved address or number of your grandson", "The sender has written to you before"]);
+  const demo = { channel: "email", from: "x@shop.example.org", body: "See https://shop.example.org/a", links: [{ href: "https://shop.example.org/a" }] };
+  mock.script(ask(["where_link_goes", { domain: "shop.example.org" }], ["known_breach", { data: "password" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const page = await investigate({ message: demo, personalContext: LINDA, first: CAREFUL,
+    deps: deps({ exampleFacts: { "https://shop.example.org/a": { final_url: "https://pay.example.net/b", page_shows: "Page asking for card details" } } }) });
+  assert.deepEqual(page.checks.map((c) => c.found), ["Where the link goes: pay.example.net, Page asking for card details (example)", "A known breach leaked your password (a retail mailing list, 2024)"]);
+  assert.deepEqual(page.checks.map((c) => c.flag), ["warn", "warn"]);
+  mock.script(ask(["website_age", { domain: "shop.example.org" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const thrown = await investigate({ message: demo, personalContext: LINDA, first: CAREFUL, deps: deps({ registrationDate: () => { throw new Error("boom"); } }) });
+  assert.equal(thrown.checks[0].found, "This check could not be made just now", "a lookup that throws is one plain line, never the error");
+  mock.script(ask(["website_age", { domain: "http://203.0.113.9/login" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const bare = await investigate({ message: { channel: "sms", body: "Log in: http://203.0.113.9/login", links: [{ href: "http://203.0.113.9/login" }] }, personalContext: LINDA, first: CAREFUL, deps: deps() });
+  assert.deepEqual([bare.checks[0].found, bare.checks[0].flag], ["The link goes to 203.0.113.9, a bare number with no website name: no registry has it", "warn"]);
+});
+
 test("a model that writes null as a word is read as giving no value (seen live on Nov 4)", async () => {
   mock.script(ask(["my_orders_and_carriers", { carrier: " USPS ", shop: "null" }], ["my_providers", { company: "None" }]), answer("scam", [{ text: "x", check: 1 }]));
   const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
