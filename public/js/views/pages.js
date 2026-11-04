@@ -38,6 +38,7 @@ export async function renderLanding(root, status) {
 export async function renderOnboarding(root, status, refresh) {
   const { breachOptions } = await api("/api/context");
   const country = getLang() === "fr" ? "FR" : "US";
+  let lookup = null, found = [], ticked = new Set();
   const steps = [
     () => `<h2>${t("onb_name_q")}</h2><label>${t("onb_name_q")}<input id="obName" value="${esc(status.user.name || "")}" autocomplete="given-name"></label>
            <h2>${t("onb_lang_q")}</h2><div class="choice-row"><button class="btn btn-light-dark btn-big lang-btn${getLang() === "en" ? " chosen" : ""}" data-l="en-US">English</button><button class="btn btn-light-dark btn-big lang-btn${getLang() === "fr" ? " chosen" : ""}" data-l="fr-FR">Français</button></div>`,
@@ -47,7 +48,8 @@ export async function renderOnboarding(root, status, refresh) {
            <p class="reassure">${t("onb_mode_note")}</p>`,
     () => `<h2>${t("onb_people_q")}</h2><p>${t("onb_people_sub")}</p>${inviteForm()}<div id="inviteResult"></div>`,
     () => `<h2>${t("onb_breach_q")}</h2><p>${t("onb_breach_sub")}</p>
-           ${breachOptions.filter((b) => !b.country || b.country === country).map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}"> ${esc(breachLabel(b))}</label>`).join("")}`,
+           ${breachChecks([...found, ...breachOptions.filter((b) => !b.country || b.country === country)], ticked)}
+           ${breachLookupBlock(lookup)}`,
   ];
   let i = 0;
   const draw = () => {
@@ -56,6 +58,12 @@ export async function renderOnboarding(root, status, refresh) {
       <button class="btn btn-navy btn-big" id="obNext">${i === steps.length - 1 ? t("onb_done") : t("onb_next")}</button></div></section>`;
     $$(".lang-btn", root).forEach((b) => b.addEventListener("click", async () => { await api("/api/me", { method: "PATCH", body: { locale: b.dataset.l } }); await refresh(); }));
     if (i === 2) bindInviteForm(root);
+    $("#breachLookup")?.addEventListener("click", async (e) => {
+      ticked = new Set($$("input[name=breach]:checked", root).map((x) => x.value));
+      const out = await runBreachLookup(e.currentTarget);
+      if (out) { lookup = out.lookup; found = lookedUpBreaches(out.breaches); found.forEach((b) => ticked.add(b.id)); }
+      draw();
+    });
     $("#obBack")?.addEventListener("click", () => { i--; draw(); });
     $("#obNext").addEventListener("click", async () => {
       if (i === 0 && $("#obName").value.trim()) await api("/api/me", { method: "PATCH", body: { name: $("#obName").value.trim() } });
@@ -75,6 +83,32 @@ export async function renderOnboarding(root, status, refresh) {
 // Breach names come from the server in English; the one without a company
 // or a date is said in the person's language.
 const breachLabel = (b) => (b.id === "old-password" ? t("breach_old_password") : `${b.source} (${b.date})`);
+
+// The breach lookup (_product/specs/breach-exposure.md): looked-up
+// breaches (ids "xon-…" and "hibp-…") are listed ticked with the curated
+// ones and unticked like them; the state line and the one button are the
+// same in Settings and in the welcome's breach step; nothing is sent before the tap.
+const lookedUpBreaches = (breaches) => (breaches || []).filter((b) => /^(hibp|xon)-/.test(String(b.id || "")));
+const breachLookupState = (lookup) => {
+  if (!lookup) return t("k_breach_not_looked_up");
+  const when = ago(lookup.at);
+  return lookup.found === 0 ? t("k_breach_looked_up_none", { when }) : lookup.found === 1 ? t("k_breach_looked_up_one", { when }) : t("k_breach_looked_up", { when, n: lookup.found });
+};
+const breachChecks = (options, chosen) => options.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}</label>`).join("");
+const breachLookupBlock = (lookup) => `<p class="small">${esc(breachLookupState(lookup))}</p><p class="small">${t("k_breach_lookup_sub")}</p>
+  <button id="breachLookup" class="btn btn-light-dark btn-big" type="button">${lookup ? t("k_breach_lookup_again") : t("k_breach_lookup")}</button>`;
+async function runBreachLookup(button) {
+  return busy(button, async () => {
+    try {
+      const out = await api("/api/context/lookup-breaches", { method: "POST" });
+      toast(out.lookup.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
+      return out;
+    } catch (e) {
+      toast(t(e.data?.error === "lookup_wait" ? "k_breach_lookup_wait" : "k_breach_lookup_failed"), "danger");
+      return null;
+    }
+  }, t("k_breach_looking"));
+}
 
 function inviteForm() {
   return `<form id="inviteForm" class="stack">
@@ -232,7 +266,7 @@ export async function renderSettings(root, status, refresh) {
       <h3>${t("k_contacts")}</h3>${list("contact", context.trustedContacts, (c) => `${esc(c.name)} <span class="small">${esc(c.email)} · ${esc(c.relation || "")}</span>`)}
       <h3>${t("k_subs")}</h3>${list("subscription", context.subscriptions, (s) => esc(s))}
       <h3>${t("k_senders")}</h3>${list("sender", (context.knownSenders || []).slice(-40), (s) => `${esc(s.name)} <span class="small">${esc(s.email)}</span>`)}
-      <h3>${t("k_breaches")}</h3>${breachOptions.map((b) => `<label class="check"><input type="checkbox" name="breach" value="${esc(b.id)}" ${chosen.has(b.id) ? "checked" : ""}> ${esc(breachLabel(b))}</label>`).join("")}
+      <h3>${t("k_breaches")}</h3>${breachChecks([...lookedUpBreaches(context.breaches), ...breachOptions], chosen)}${breachLookupBlock(context.breachLookup)}
       <button id="rebuild" class="btn btn-light-dark btn-big">${t("k_rebuild")}</button>
     </section>
     <section class="card"><h2>${t("history_title")}</h2><p class="small">${t("history_lead")}</p>
@@ -253,6 +287,7 @@ export async function renderSettings(root, status, refresh) {
     await api("/api/context/breaches", { method: "PUT", body: { ids: $$("input[name=breach]:checked", root).map((x) => x.value) } });
     toast(t("saved"), "ok");
   }));
+  $("#breachLookup").addEventListener("click", async (e) => { if (await runBreachLookup(e.currentTarget)) renderSettings(root, status, refresh); });
   const fields = { provider: "providers", order: "orders", contact: "trustedContacts", subscription: "subscriptions", sender: "knownSenders" };
   $$("[data-forget]", root).forEach((b) => b.addEventListener("click", async () => {
     const kind = b.dataset.forget;
