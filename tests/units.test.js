@@ -458,15 +458,20 @@ test("breach rule: a social security number, a date of birth or the end of a car
 
 test("a breach the lookup found that is one of the well-known ones ticks that one, once", () => {
   const found = [
-    { id: "xon-BouyguesTelecom", source: "Bouygues Telecom", date: "2025", leaked: ["email"] },
-    { id: "xon-Bouygues", source: "bouygues telecom", date: "2025-07-23", leaked: ["name"] },
+    { id: "xon-BouyguesTelecom", source: "Bouygues Telecom", date: "2025", leaked: ["email", "date of birth"] },
+    { id: "xon-Bouygues", source: "bouygues telecom", date: "2025-07-23", leaked: ["name", "phone"] },
     { id: "xon-LeakyShop", source: "Leaky Shop", date: "2023", leaked: ["IBAN"] },
+    { id: "xon-LeakyShop", source: "Leaky Shop", date: "2023", leaked: ["old password"] },
   ];
   const known = (id) => KNOWN_BREACHES.find((k) => k.id === id);
   const existing = [{ id: "xon-Old", source: "Old", date: "2020", leaked: [] }, known("bouygues-2025"), known("free-2024")];
   const merged = mergeBreaches(found, existing);
   assert.deepEqual(merged.map((b) => b.id), ["bouygues-2025", "xon-LeakyShop", "free-2024"], "the twin once, the looked-up shop, the hand-ticked one; the stale looked-up one goes");
   assert.ok(merged[0].leaked.includes("IBAN"), "the well-known twin brings its own list of what leaked");
+  assert.deepEqual(merged[0].leaked, ["name", "address", "IBAN", "BIC", "email", "date of birth", "phone"], "and keeps every kind the lookup reported, from both entries that folded into it");
+  assert.deepEqual(merged[1].leaked, ["IBAN", "old password"], "two looked-up entries with one id merge their lists too");
+  assert.equal(breachLeaking({ breaches: merged }, "date of birth")?.id, "bouygues-2025", "a kind only the lookup reported still reaches the verdict");
+  assert.ok(Object.isFrozen(KNOWN_BREACHES[0]) || KNOWN_BREACHES[0].leaked.length === 4, "the list itself is untouched");
   assert.equal(curatedTwin({ source: "Bouygues Telecom", date: "2018" }), null, "another year is another breach");
   assert.equal(curatedTwin({ source: "a website you used", date: "unknown" }), null, "the old-password line is nobody's twin");
   assert.deepEqual(mergeBreaches([], existing).map((b) => b.id), ["bouygues-2025", "free-2024"], "nothing found: the hand-ticked ones stay");

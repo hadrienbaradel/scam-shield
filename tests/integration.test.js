@@ -214,6 +214,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     assert.deepEqual(breaches.map((b) => [b.id, b.source, b.date]), [["bouygues-2025", "Bouygues Telecom", "2025"], ["xon-LeakyShop", "Leaky Shop", "2023"]],
       "a found breach that is one of the well-known ones is that one, once; the other keeps its looked-up id");
     assert.ok(breaches[1].leaked.includes("IBAN"), "what leaked comes from the catalogue");
+    assert.ok(breaches[0].leaked.includes("BIC") && breaches[0].leaked.includes("email"), "the folded one keeps the list's kinds and adds the lookup's");
     const after = (await app.inject({ url: "/api/context", headers: h })).json();
     assert.equal(after.context.breachLookup.found, 2);
     assert.deepEqual((await app.inject({ url: "/api/status", headers: h })).json().breachLookup, { at: lookup.at, found: 2 }, "the status carries when and how many, for the protection score");
