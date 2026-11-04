@@ -234,10 +234,12 @@ label { font-size: 14px; }
 }
 .banner p { flex: 1 1 24ch; }
 .banner-info { background: var(--info-wash); border-color: var(--info); }
+/* In the empty middle of the top bar, never over a button below; clicks go
+   through it (it holds only words). */
 .toast {
-  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 20; max-width: min(92vw, 60ch);
-  padding: 9px 14px; border-radius: var(--radius); background: var(--navy); color: #ffffff;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); font-size: 14px;
+  position: fixed; left: 50%; top: 6px; transform: translateX(-50%); z-index: 20; max-width: min(92vw, 60ch);
+  padding: 7px 14px; border-radius: var(--radius); background: var(--navy); color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); font-size: 14px; pointer-events: none;
 }
 /* Fixed dark tones in both themes: white text keeps 5.5:1 (the dark theme's
    status colours are pale and would drop under 2.5:1). */
@@ -303,6 +305,12 @@ details pre { margin-top: 6px; padding: 8px; background: var(--surface-2); borde
 .ads-counts { font-weight: 600; }
 .ads-edit { display: grid; gap: 6px; }
 .ads-edit label { font-weight: 600; }
+.ads-edit-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.ads-applying { color: var(--info); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.ads-spin { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .ads-spin { animation: turn 1.6s linear infinite; }
+}
 @media (max-width: 820px) {
   .ads-card { grid-template-columns: minmax(0, 1fr); }
   .ads-photo { width: 100%; max-width: 360px; }

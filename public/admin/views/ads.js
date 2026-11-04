@@ -157,8 +157,11 @@ function card(a, net) {
   const f = (name) => `ad-${id}-${name}`;
   const label = a.words?.headline ? `"${a.words.headline}"` : `idea ${a.code}`;
   const live = ["published", "paused"].includes(a.status);
-  const publishOff = a.status !== "draft" ? "" : !net.configured ? networkOff(net) : "";
-  const canReject = ["draft", "failed", "published", "paused"].includes(a.status);
+  // While an edit or a publish runs, the card keeps its rows in place, disabled: nothing jumps.
+  const working = a.status === "editing" || a.status === "publishing";
+  const off = working ? " disabled" : "";
+  const publishOff = a.status === "editing" ? "Wait for the edit to finish." : a.status === "draft" && !net.configured ? networkOff(net) : "";
+  const canReject = ["draft", "failed", "published", "paused"].includes(a.status) || working;
   return `<article class="card ads-card" aria-label="Ad ${esc(label)}">
     <div class="ads-media">${photo(a)}</div>
     <div class="ads-body">
@@ -177,16 +180,19 @@ function card(a, net) {
       ${a.words ? `<p class="small"><a href="${esc(a.previewUrl)}" target="_blank" rel="noopener noreferrer">Preview the landing variant</a> <span class="muted">(opens in a new tab)</span></p>` : ""}
       ${live ? reviewBlock(a) : ""}
       ${live || a.counts?.visits || a.counts?.requests ? `<p class="ads-counts">${esc(`${plural(a.counts?.visits ?? 0, "visit")} · ${plural(a.counts?.requests ?? 0, "request")}`)}</p>` : ""}
-      ${a.canEdit ? `<div class="ads-edit">
-        <label for="${f("instruction")}">Change it with a prompt</label>
-        <textarea id="${f("instruction")}" rows="2" maxlength="${LIMITS.instruction}" data-focus="${f("instruction")}" placeholder="make the mother smile, warmer light"></textarea>
+      ${a.canEdit || working ? `<div class="ads-edit">
+        <div class="ads-edit-head">
+          <label for="${f("instruction")}">Change it with a prompt</label>
+          ${a.status === "editing" ? `<span class="ads-applying" role="status"><span class="ads-spin" aria-hidden="true">↻</span> Applying: ${esc(a.applying || "an edit")}</span>` : ""}
+        </div>
+        <textarea id="${f("instruction")}" rows="2" maxlength="${LIMITS.instruction}" data-focus="${f("instruction")}" placeholder="Say what to change: the photo, the light, the headline…"${off}></textarea>
         <div class="btn-row">
-          <button type="button" class="btn btn-ghost" data-act="edit" data-id="${id}" data-focus="${f("apply")}" aria-label="Apply the change to ${esc(label)}">Apply</button>
-          ${a.canUndo ? `<button type="button" class="btn btn-ghost" data-act="undo" data-id="${id}" data-focus="${f("undo")}" aria-label="Undo the last change to ${esc(label)}">Undo</button>` : ""}
+          <button type="button" class="btn btn-ghost" data-act="edit" data-id="${id}" data-focus="${f("apply")}" aria-label="Apply the change to ${esc(label)}"${off}>Apply</button>
+          ${a.canUndo || (working && a.earlier) ? `<button type="button" class="btn btn-ghost" data-act="undo" data-id="${id}" data-focus="${f("undo")}" aria-label="Undo the last change to ${esc(label)}"${off}>Undo</button>` : ""}
         </div></div>` : ""}
       <div class="ads-out"></div>
-      ${a.status === "draft" ? `<div class="btn-row">
-        <button type="button" class="btn" data-act="publish" data-id="${id}" data-focus="${f("publish")}"${publishOff ? ` disabled aria-describedby="${f("publish-off")}"` : ""}>Publish on ${esc(net.label || "Facebook")}${net.budgetLabel ? ` · ${esc(net.budgetLabel)}` : ""}</button>
+      ${a.status === "draft" || working ? `<div class="btn-row">
+        <button type="button" class="btn" data-act="publish" data-id="${id}" data-focus="${f("publish")}"${publishOff ? ` disabled aria-describedby="${f("publish-off")}"` : off}>${a.status === "publishing" ? `Publishing on ${esc(net.label || "Facebook")}…` : `Publish on ${esc(net.label || "Facebook")}${net.budgetLabel ? ` · ${esc(net.budgetLabel)}` : ""}`}</button>
         ${publishOff ? `<span class="muted small" id="${f("publish-off")}">${esc(publishOff)}</span>` : ""}
       </div>` : ""}
       ${live ? `<div class="btn-row">
@@ -196,8 +202,8 @@ function card(a, net) {
         <button type="button" class="btn btn-ghost" data-act="refresh" data-id="${id}" data-focus="${f("refresh")}">Refresh the review</button>
       </div>` : ""}
       ${canReject ? `<div class="btn-row ads-reject">
-        <div class="field"><label for="${f("reason")}">Reason</label><input id="${f("reason")}" maxlength="${LIMITS.reason}" size="28" data-focus="${f("reason")}"></div>
-        <button type="button" class="btn btn-ghost" data-act="reject" data-id="${id}" data-focus="${f("reject")}" aria-label="Reject ${esc(label)}">${live ? "Stop and reject" : "Reject"}</button>
+        <div class="field"><label for="${f("reason")}">Reason</label><input id="${f("reason")}" maxlength="${LIMITS.reason}" size="28" data-focus="${f("reason")}"${off}></div>
+        <button type="button" class="btn btn-ghost" data-act="reject" data-id="${id}" data-focus="${f("reject")}" aria-label="Reject ${esc(label)}"${off}>${live ? "Stop and reject" : "Reject"}</button>
       </div>` : ""}
     </div>
   </article>`;

@@ -218,6 +218,8 @@ function shape(r) {
     versions: r.versions,
     canEdit: workable,
     canUndo: workable && r.undo_to >= 1,
+    // There is a version to go back to (the page keeps Undo in place, disabled, while it works).
+    earlier: r.undo_to >= 1,
     words: r.words ?? null,
     check: r.photo_check ?? null,
     models: r.models ? models : null,
