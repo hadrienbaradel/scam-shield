@@ -13,16 +13,16 @@ const inLang = (lang, fn) => {
   try { setLang(lang); return fn(); } finally { setLang("en"); delete globalThis.document; }
 };
 
-test("Paste the words sends the words, where they came from as the channel and who sent them as a name, never as an address, and no subject", () => {
+test("Paste the words sends the words, where they came from as the channel and who she thinks sent them as her belief (claimedSender), never as the sender's name or address, and no subject", () => {
   assert.deepEqual(pasteRequest({ text: "Your parcel is waiting. Pay $1.99: https://usps-redeliver.test" }),
-    { channel: "sms", from: "", fromName: "", body: "Your parcel is waiting. Pay $1.99: https://usps-redeliver.test" },
+    { channel: "sms", from: "", fromName: "", claimedSender: "", body: "Your parcel is waiting. Pay $1.99: https://usps-redeliver.test" },
     "the defaults of frame 1i: I don't know, Text message");
   const where = Object.fromEntries(WHERE.map((w) => [w.key, pasteRequest({ text: "x", where: w.key }).channel]));
   assert.deepEqual(where, { sms: "sms", whatsapp: "whatsapp", facebook: "social", letter: "letter", other: "other" });
-  const who = Object.fromEntries(WHO.map((w) => [w.key, pasteRequest({ text: "x", who: w.key }).fromName]));
-  assert.deepEqual(who, { bank: "My bank", company: "A company", known: "Someone I know", unknown: "" });
-  assert.equal(inLang("fr", () => pasteRequest({ text: "x", who: "bank" }).fromName), "Ma banque", "in the senior's language");
-  assert.deepEqual(pasteRequest({ text: "x", who: "nobody", where: "fax" }), { channel: "sms", from: "", fromName: "", body: "x" }, "an unknown chip falls back to the defaults");
+  const who = Object.fromEntries(WHO.map((w) => [w.key, pasteRequest({ text: "x", who: w.key })]).map(([k, r]) => [k, [r.claimedSender, r.fromName, r.from]]));
+  assert.deepEqual(who, { bank: ["bank", "", ""], company: ["company", "", ""], known: ["known", "", ""], unknown: ["", "", ""] });
+  assert.deepEqual(inLang("fr", () => pasteRequest({ text: "x", who: "bank" })).claimedSender, "bank", "the same value in French: the chip's words never travel");
+  assert.deepEqual(pasteRequest({ text: "x", who: "nobody", where: "fax" }), { channel: "sms", from: "", fromName: "", claimedSender: "", body: "x" }, "an unknown chip falls back to the defaults");
 });
 
 test("a check that could not run says so in plain words with Try again; never fetch failed or a status code", () => {

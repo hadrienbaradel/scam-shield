@@ -165,8 +165,11 @@ export default async function mailRoutes(app) {
   // rules read the whole pasted chat (fullText: who typed "Me:" cannot be
   // proven), and every link in it is looked at. An email stays one message.
   app.post("/api/check/text", checkLimit, async (request, reply) => {
-    const { from = "", fromName = "", subject = "", body = "", channel = "email" } = request.body || {};
+    const { from = "", fromName = "", subject = "", body = "", channel = "email", claimedSender = "" } = request.body || {};
     if (!String(body).trim() && !String(subject).trim()) return reply.code(400).send({ error: "Paste the message text first." });
+    // "Who sent it?" is what the person believes, told to the model as such
+    // (lib/muse.js person_says), never the sender's name or address.
+    const claimed = ["bank", "company", "known"].includes(claimedSender) ? claimedSender : "";
     const kind = ["email", "sms", "whatsapp", "social", "letter", "other"].includes(channel) ? channel : "email";
     const words = String(body).slice(0, 6000);
     const turns = kind === "email" ? null : splitTurns(words, { selfNames: [request.user.name] });
@@ -176,6 +179,7 @@ export default async function mailRoutes(app) {
         subject: String(subject).slice(0, 300), links: linksFromText(words), auth: "", fullText: words }
       : { channel: kind, from: String(from).slice(0, 200), fromName: String(fromName).slice(0, 200), subject: String(subject).slice(0, 300),
         body: words, links: linksFromText(body), auth: "" };
+    if (claimed) message.claimedSender = claimed;
     const { verdict, ctx } = await runCheck({ user: request.user, message, threadHistory: chat?.threadHistory || [] });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "pasted" });
     // The answer carries the whole conversation, so "Ask my trusted person"

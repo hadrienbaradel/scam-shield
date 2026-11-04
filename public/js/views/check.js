@@ -34,6 +34,7 @@
 // Pure helpers, tested in tests/check-view.test.js:
 //   WHO, WHERE                 the chips of frame 1i and what each one sends
 //   pasteRequest({ text, who, where }) -> the body of POST /api/check/text
+//                                 (claimedSender "bank" | "company" | "known" | "")
 //   checkProblem(error, kind)  -> null (stopped), { signedOut: true }, or
 //                                 { key, retry }: the words for a failed check
 //                                 (kind "text", "image", "voice" or "eml")
@@ -49,9 +50,9 @@ import { openAsk } from "./mail.js";
 import { toWav16k } from "../audio.js";
 import { verdictCardHtml, unsureRowHtml, bindVerdictCard } from "./card.js";
 
-// "Who sent it?": what the senior says about the sender goes to the model as
-// the sender's name (POST /api/check/text treats `from` as an address or a
-// number, matched against her people, so a claim never goes there).
+// "Who sent it?": what the senior believes about the sender, sent as
+// claimedSender and told to the model as her unverified belief; never the
+// sender's name or address (the rules and her people read those).
 export const WHO = Object.freeze([
   { key: "bank", label: "ck_who_bank" },
   { key: "company", label: "ck_who_company" },
@@ -73,7 +74,7 @@ const DEFAULT_WHERE = "sms";
 export function pasteRequest({ text = "", who = DEFAULT_WHO, where = DEFAULT_WHERE } = {}) {
   const w = WHO.find((x) => x.key === who) || WHO.find((x) => x.key === DEFAULT_WHO);
   const c = WHERE.find((x) => x.key === where) || WHERE.find((x) => x.key === DEFAULT_WHERE);
-  return { channel: c.channel, from: "", fromName: w.none ? "" : t(w.label), body: String(text) };
+  return { channel: c.channel, from: "", fromName: "", claimedSender: w.none ? "" : w.key, body: String(text) };
 }
 
 export const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";

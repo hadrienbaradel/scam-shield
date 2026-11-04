@@ -3,8 +3,9 @@
 // 2026-11-03: POST /api/check/image answered 500 with the raw "fetch failed"
 // when Muse Spark could not be reached). The senior reads one plain
 // sentence, never the model's own error or a status code. Also what the
-// pasted text's "Where did you get it?" sends (protection-menu.md, frame 1i):
-// a place the route does not know is judged as an email. Needs Postgres
+// pasted text's "Where did you get it?" and "Who sent it?" send
+// (protection-menu.md, frame 1i): a place the route does not know is judged
+// as an email; who sent it is the person's belief, never the sender. Needs Postgres
 // (skipped without it); the model is the mock provider.
 import "./helpers/env.js";
 import { test, before, after, afterEach } from "node:test";
@@ -78,13 +79,43 @@ test("a pasted text keeps where it came from (a text, WhatsApp, Facebook, a lett
   for (const [sent, judged] of places) {
     mock.reset();
     mock.respondWith(() => CAREFUL);
-    const body = { channel: sent, from: "", fromName: "My bank", body: `Your account is locked (${sent} ${run}). Reply with your code.` };
+    const body = { channel: sent, from: "", fromName: "", claimedSender: "bank", body: `Your account is locked (${sent} ${run}). Reply with your code.` };
     const res = await app.inject({ method: "POST", url: "/api/check/text", headers: { cookie, origin: ORIGIN }, payload: body });
     assert.equal(res.statusCode, 200, res.body);
     assert.equal(res.json().message.channel, judged, `${sent} is judged as ${judged}`);
     assert.equal(res.json().verdict.source, "Mock LLM (mock-1)", `${sent}: the model answered, not the rules`);
     const prompt = JSON.stringify(mock.calls.at(-1)?.messages || []);
     assert.match(prompt, new RegExp(`\\\\"channel\\\\":\\\\"${judged}\\\\"`), `${sent}: the model is told the channel ${judged}`);
-    assert.match(prompt, /My bank/, `${sent}: the model hears who the senior says sent it`);
+    assert.match(prompt, /their bank \(their belief, not verified\)/, `${sent}: the model hears who the senior thinks sent it`);
+  }
+});
+
+test("Who sent it? reaches the model as the person's unverified belief, never as the sender: the stored message and the guardian's card keep no sender name, and an unknown value is dropped", db, async () => {
+  process.env.LLM_PROVIDER = "mock";
+  const user = await makeUser({ email: "linda.paste.who@example.test" });
+  const cookie = await sessionFor(user);
+  const run = Date.now();
+  const cases = [["bank", "It came from their bank (their belief, not verified)"], ["company", "It came from a company (their belief, not verified)"],
+    ["known", "It came from someone they know (their belief, not verified)"], ["boss", null], ["", null]];
+  for (const [claimedSender, said] of cases) {
+    mock.reset();
+    mock.respondWith(() => CAREFUL);
+    const res = await app.inject({ method: "POST", url: "/api/check/text", headers: { cookie, origin: ORIGIN },
+      payload: { channel: "sms", from: "", fromName: "", claimedSender, body: `Your card is blocked (${claimedSender} ${run}). Call us now.` } });
+    assert.equal(res.statusCode, 200, res.body);
+    const { message, checkId } = res.json();
+    assert.equal(message.fromName, "", `${claimedSender}: no sender name`);
+    assert.equal(message.from, "", `${claimedSender}: no sender address`);
+    assert.equal(message.claimedSender, said ? claimedSender : undefined, `${claimedSender}: kept only when it is one of the chips`);
+    const prompt = mock.calls.at(-1).messages[0].content;
+    assert.match(prompt, /"from_name":""/, `${claimedSender}: the model's From line stays empty`);
+    if (said) assert.ok(prompt.includes(`<person_says>${JSON.stringify(said)}</person_says>`), `${claimedSender}: ${prompt.slice(-300)}`);
+    else assert.doesNotMatch(prompt, /person_says/, `${claimedSender}: nothing is said`);
+    const row = (await many("SELECT sender_domain FROM checks WHERE id = $1", [checkId]))[0];
+    assert.equal(row.sender_domain, null, `${claimedSender}: the stored check has no sender`);
+    const { sharedFrom } = await import("../src/sync/worker.js");
+    const shared = sharedFrom(message, res.json().verdict, false);
+    assert.deepEqual([shared.fromName, shared.from], ["", ""], `${claimedSender}: the guardian's card shows no From`);
+    assert.ok(!JSON.stringify(shared).includes("claimedSender"), `${claimedSender}: the belief is not shared as a sender`);
   }
 });
