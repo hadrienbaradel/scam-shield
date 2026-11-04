@@ -2,13 +2,14 @@
 // Acceptance): the channel table in public/js/protects.js against the
 // feature statuses in _product/spec.md, the rows a senior sees with and
 // without a paired phone, the protection score's criteria against the
-// channel table and its count, the four tabs and the screens they light,
-// and the words of the redesign in English and French. No database.
+// channel table, its count and its Coming soon line, the four tabs and the
+// screens they light, and the words of the redesign in English and French.
+// No database.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { STRINGS, setLang } from "../public/js/i18n.js";
-import { CHANNELS, CRITERIA, TABS, SCREENS, protectRows, renderProtects, renderScore, scoreOf, screenFor } from "../public/js/protects.js";
+import { CHANNELS, CRITERIA, PENDING, TABS, SCREENS, protectRows, renderProtects, renderScore, scoreOf, pendingOf, screenFor } from "../public/js/protects.js";
 import { ICON_NAMES } from "../public/js/ui.js";
 
 const minutesAgo = (n) => new Date(Date.now() - n * 60000).toISOString();
@@ -90,7 +91,8 @@ test("every word of the channel table, the tabs and the new screens exists in En
   const used = new Set([
     ...CHANNELS.flatMap((c) => [c.name, ...c.states, ...c.verbs]),
     ...TABS.map((tab) => tab.label),
-    ...CRITERIA.flatMap((c) => [c.name, c.step]), "score_title", "score_full",
+    ...CRITERIA.flatMap((c) => [c.name, c.step]), "score_title", "score_full", "score_soon",
+    ...CHANNELS.filter((c) => c.status !== "built").map((c) => `score_pending_${c.key}`), ...PENDING.map((p) => p.name),
     "protect_title", "protect_soon", "protect_soon_label",
     ...REUSED,
     ...Object.keys(STRINGS.en).filter((k) => REDESIGN.test(k)),
@@ -227,22 +229,25 @@ test("no technical word in the protect strings or the redesign's words", () => {
 });
 
 // The protection score (protection-menu.md, line 2b). The senior's world in
-// five parts, each one either nothing yet or set up.
-const nobody = { status: null, devices: [], guardians: [], progress: null };
+// six parts, each one either nothing yet or set up.
+const nobody = { status: null, devices: [], guardians: [], progress: null, checks: [] };
 const thomas = { id: "g1", name: "Thomas", status: "active" };
 const oneLesson = { progress: {}, summary: { done: 1, total: 9, stars: 3, days: 1 } };
 const servers = { whatsappConfigured: true, whatsappLink: "https://wa.me/15550001111", messengerConfigured: true, messengerLink: "https://m.me/prudence.example" };
 const lookedUp = { breachLookup: { at: minutesAgo(1), found: 1 } }; // /api/status after "Look up my email address"
+// /api/checks after one voice message checked (src/routes/mail.js records it with the channel "voice").
+const voiceChecked = [{ id: "c2", channel: "email", verdict_value: "safe" }, { id: "c1", channel: "voice", verdict_value: "careful" }];
+// The score without its Coming soon line, for the cases about the count.
+const counted = ({ pending, ...rest }) => rest;
 
-test("the score counts what the senior can turn on today: every built channel but voice, never a Coming soon one", () => {
-  assert.deepEqual(CRITERIA.map((c) => c.key), ["email", "texts", "people", "learn", "breaches", "whatsapp", "facebook"], "the spec's order");
+test("the score counts what the senior can turn on today: every built channel, never a Coming soon one", () => {
+  assert.deepEqual(CRITERIA.map((c) => c.key), ["email", "texts", "people", "voice", "learn", "breaches", "whatsapp", "facebook"], "the spec's order");
   const byChannel = new Map(CRITERIA.filter((c) => c.channel).map((c) => [c.channel, c]));
   for (const c of CHANNELS) {
-    if (c.status === "built" && c.key !== "voice") assert.ok(byChannel.has(c.key), `${c.key}: built, so it has a criterion`);
+    if (c.status === "built") assert.ok(byChannel.has(c.key), `${c.key}: built, so it has a criterion`);
     if (c.status === "soon") assert.ok(!byChannel.has(c.key), `${c.key}: Coming soon, so it is never in the denominator`);
     if (c.status === "server") assert.equal(typeof byChannel.get(c.key)?.available, "function", `${c.key}: counted only where the server runs it`);
   }
-  assert.ok(!byChannel.has("voice"), "voice: nothing to set up, so nothing to count");
   for (const c of CRITERIA) {
     assert.ok(!c.channel || CHANNELS.some((ch) => ch.key === c.channel), `${c.key}: its channel exists`);
     assert.deepEqual([c.name, c.step], [`score_${c.key}`, `score_${c.key}_step`], `${c.key}: its words`);
@@ -250,49 +255,102 @@ test("the score counts what the senior can turn on today: every built channel bu
   }
 });
 
-test("a senior with nothing yet: 0 of 5, and the first step is her email", () => {
+test("a senior with nothing yet: 0 of 6, and the first step is her email", () => {
   const s = scoreOf(nobody);
-  assert.deepEqual(s, { on: 0, total: 5, next: { key: "email", step: "Connect my email", href: "/auth/google?mode=gmail", external: false } });
+  assert.deepEqual(counted(s), { on: 0, total: 6, next: { key: "email", step: "Connect my email", href: "/auth/google?mode=gmail", external: false } });
   assert.deepEqual(scoreOf(undefined), s, "no context at all is nothing yet");
   assert.equal(scoreOf({ ...nobody, status: { gmail: { ...linda.gmail, needsReconnect: true } } }).next.key, "email", "a mailbox Prudence cannot read is not on");
   assert.equal(scoreOf({ ...nobody, status: { gmail: { ...linda.gmail, connected: false } } }).on, 0, "a disconnected mailbox is not on");
 });
 
-test("with her email and her phone: 2 of 5, the next step is a trusted person, then a lesson, then the breach list", () => {
+test("with her email and her phone: 2 of 6, the next step is a trusted person, then a voice message, then a lesson, then the breach list", () => {
   const s = scoreOf({ ...nobody, status: linda, devices: [phone] });
-  assert.deepEqual([s.on, s.total], [2, 5]);
+  assert.deepEqual([s.on, s.total], [2, 6]);
   assert.deepEqual(s.next, { key: "people", step: "Add a trusted person", href: "#/settings/people", external: false });
   const invited = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [{ ...thomas, status: "pending" }] });
   assert.deepEqual([invited.on, invited.next.key], [2, "people"], "an invitation not accepted yet does not count");
   const withThomas = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas], progress: { summary: { done: 0 } } });
-  assert.deepEqual([withThomas.on, withThomas.next], [3, { key: "learn", step: "Start a lesson", href: "#/learn", external: false }]);
-  const lessonDone = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas], progress: oneLesson });
-  assert.deepEqual([lessonDone.on, lessonDone.next], [4, { key: "breaches", step: "Look up my email address", href: "#/settings/knows", external: false }]);
-  const nothingFound = scoreOf({ ...nobody, status: { ...linda, breachLookup: { at: minutesAgo(1), found: 0 } }, devices: [phone], guardians: [thomas], progress: oneLesson });
-  assert.deepEqual([nothingFound.on, nothingFound.next], [5, null], "a lookup that found no breach is an answer too, and counts");
+  assert.deepEqual([withThomas.on, withThomas.next], [3, { key: "voice", step: "Try a voice message", href: "#/check/voice", external: false }]);
+  const voiceDone = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: { summary: { done: 0 } } });
+  assert.deepEqual([voiceDone.on, voiceDone.next], [4, { key: "learn", step: "Start a lesson", href: "#/learn", external: false }]);
+  const lessonDone = scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson });
+  assert.deepEqual([lessonDone.on, lessonDone.next], [5, { key: "breaches", step: "Look up my email address", href: "#/settings/knows", external: false }]);
+  const nothingFound = scoreOf({ ...nobody, status: { ...linda, breachLookup: { at: minutesAgo(1), found: 0 } }, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson });
+  assert.deepEqual([nothingFound.on, nothingFound.next], [6, null], "a lookup that found no breach is an answer too, and counts");
   assert.equal(scoreOf({ ...nobody, status: { ...linda, breachLookup: null } }).on, 1, "never looked up: not on");
 });
 
-test("everything on, WhatsApp and Messenger run by the server: 7 of 7, no next step", () => {
-  const s = scoreOf({ status: { ...linda, ...lookedUp, ...servers }, devices: [phone], guardians: [thomas], progress: oneLesson });
-  assert.deepEqual(s, { on: 7, total: 7, next: null });
+test("everything on, WhatsApp and Messenger run by the server: 8 of 8, no next step", () => {
+  const s = scoreOf({ status: { ...linda, ...lookedUp, ...servers }, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson });
+  assert.deepEqual(counted(s), { on: 8, total: 8, next: null });
   const html = renderScore(s);
-  assert.match(html, /<h2 id="scoreTitle" class="score-title">All 7 protections on<\/h2>/);
+  assert.match(html, /<h2 id="scoreTitle" class="score-title">All 8 protections on<\/h2>/);
   assert.doesNotMatch(html, /<a /, "nothing left to do: no link");
-  assert.deepEqual(scoreOf({ status: { ...linda, ...lookedUp }, devices: [phone], guardians: [thomas], progress: oneLesson }), { on: 5, total: 5, next: null },
-    "a server without WhatsApp or Messenger: 5 of 5 is the full score");
+  assert.deepEqual(counted(scoreOf({ status: { ...linda, ...lookedUp }, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson })), { on: 6, total: 6, next: null },
+    "a server without WhatsApp or Messenger: 6 of 6 is the full score");
+});
+
+test("voice is on once she has checked one voice message, and not with none or when the checks could not be read", () => {
+  const voice = CRITERIA.find((c) => c.key === "voice");
+  assert.deepEqual([voice.channel, voice.href], ["voice", "#/check/voice"]);
+  assert.equal(voice.on({ checks: voiceChecked }), true, "one voice check among others");
+  assert.equal(voice.on({ checks: [{ id: "c9", channel: "voice" }] }), true);
+  for (const checks of [[], [{ id: "c3", channel: "email" }, { id: "c4", channel: "pasted" }, { id: "c5", channel: "screenshot" }, { id: "c6", channel: "sms" }], null, undefined, { checks: voiceChecked }, [null]]) {
+    assert.equal(voice.on({ checks }), false, `${JSON.stringify(checks)}: no voice check read, not on`);
+  }
+  const base = { ...nobody, status: linda, devices: [phone], guardians: [thomas] };
+  assert.equal(scoreOf({ ...base, checks: voiceChecked }).on - scoreOf({ ...base, checks: null }).on, 1, "the one voice check is one more protection on");
+  assert.equal(scoreOf({ ...base, checks: null }).total, 6, "unreadable checks still count voice in the total: it is one tap away");
+});
+
+test("the Coming soon line: the channels Coming soon on this server, then the pending list, never counted", () => {
+  assert.deepEqual(pendingOf({ status: linda }).map((p) => p.key), ["whatsapp", "facebook", "calls", "instagram", "voicemail"],
+    "a server without WhatsApp and Messenger");
+  assert.deepEqual(pendingOf({ status: { ...linda, ...servers } }).map((p) => p.key), ["calls", "instagram", "voicemail"],
+    "WhatsApp and Messenger run by the server are counted criteria and leave the line by themselves");
+  assert.deepEqual(pendingOf({ status: { ...linda, whatsappConfigured: "true", messengerConfigured: true } }).map((p) => p.key), ["whatsapp", "calls", "instagram", "voicemail"],
+    "the same flag as the list's row and the criterion: a non-boolean flag is Coming soon");
+  assert.deepEqual(pendingOf(undefined), pendingOf({ status: null }), "no context: every server channel is Coming soon");
+  assert.deepEqual(pendingOf({ status: linda }).map((p) => p.name), ["WhatsApp", "Messenger", "calls", "Instagram", "voicemail"]);
+  const s = scoreOf({ ...nobody, status: linda });
+  assert.deepEqual(s.pending, pendingOf({ status: linda }), "scoreOf carries the line");
+  assert.equal(s.total, 6, "nothing on the line is in the denominator");
+  for (const status of [linda, { ...linda, ...servers }]) {
+    const countedHere = CRITERIA.filter((c) => !c.available || c.available({ status })).map((c) => c.key);
+    for (const p of pendingOf({ status })) assert.ok(!countedHere.includes(p.key), `${p.key}: on the line, so not counted on this server`);
+  }
+});
+
+test("the pending list: frozen, nothing that has a channel row or a criterion, plain words in English and French", () => {
+  assert.deepEqual(PENDING.map((p) => p.key), ["instagram", "voicemail"]);
+  assert.ok(Object.isFrozen(PENDING));
+  const TECH = /\b(domain|domaine|api|oauth|token|jeton|sync|webhook|imap|smtp|dm)\b/i;
+  for (const p of PENDING) {
+    assert.ok(Object.isFrozen(p), `${p.key}: frozen`);
+    assert.equal(p.name, `score_pending_${p.key}`, `${p.key}: its words`);
+    assert.ok(!CHANNELS.some((c) => c.key === p.key), `${p.key}: a channel row would name it already`);
+    assert.ok(!CRITERIA.some((c) => c.key === p.key), `${p.key}: counted, so it leaves the list`);
+  }
+  const keys = [...CHANNELS.filter((c) => c.status !== "built").map((c) => `score_pending_${c.key}`), ...PENDING.map((p) => p.name), "score_soon"];
+  for (const k of keys) {
+    for (const l of ["en", "fr"]) {
+      const v = STRINGS[l][k];
+      assert.ok(typeof v === "string" && v.trim(), `${l}.${k} exists`);
+      assert.doesNotMatch(v, TECH, `${l}.${k}: "${v}"`);
+    }
+  }
 });
 
 test("a server running WhatsApp with an http address still counts it, but gives no link to it", () => {
   const whatsapp = CRITERIA.find((c) => c.key === "whatsapp");
   for (const bad of ["http://wa.me/15550001111", "javascript:alert(1)", "", null]) {
     const ctx = { ...nobody, status: { ...linda, whatsappConfigured: true, whatsappLink: bad } };
-    assert.deepEqual([scoreOf(ctx).on, scoreOf(ctx).total], [2, 6], `${bad}: counted, and on by itself`);
+    assert.deepEqual([scoreOf(ctx).on, scoreOf(ctx).total], [2, 7], `${bad}: counted, and on by itself`);
     assert.equal(whatsapp.href(ctx), null, `${bad}: no link to a strange address`);
   }
   assert.equal(whatsapp.href({ status: servers }), servers.whatsappLink);
   for (const flag of [false, "true", undefined]) {
-    assert.equal(scoreOf({ ...nobody, status: { ...linda, whatsappConfigured: flag, whatsappLink: servers.whatsappLink } }).total, 5, `${flag}: not counted`);
+    assert.equal(scoreOf({ ...nobody, status: { ...linda, whatsappConfigured: flag, whatsappLink: servers.whatsappLink } }).total, 6, `${flag}: not counted`);
   }
 });
 
@@ -300,9 +358,9 @@ test("the strip: a decorative gauge, the score in words and one link to the next
   const html = renderScore(scoreOf({ ...nobody, status: linda, devices: [phone] }));
   assert.match(html, /^<section class="score" aria-labelledby="scoreTitle">/);
   assert.match(html, /<svg class="score-gauge" viewBox="0 0 56 56" aria-hidden="true" focusable="false">/);
-  assert.match(html, />2\/5<\/text>/, "the count inside the gauge");
-  assert.match(html, /stroke-dasharray="40 100"/, "two fifths of the arc are gold");
-  assert.match(html, /<h2 id="scoreTitle" class="score-title">Protected: 2\u00a0of\u00a05<\/h2>/, "the count never splits over two lines");
+  assert.match(html, />2\/6<\/text>/, "the count inside the gauge");
+  assert.match(html, /stroke-dasharray="33 100"/, "two sixths of the arc are gold");
+  assert.match(html, /<h2 id="scoreTitle" class="score-title">Protected: 2\u00a0of\u00a06<\/h2>/, "the count never splits over two lines");
   assert.equal((html.match(/<a /g) || []).length, 1, "one link");
   assert.match(html, /<a class="score-step" href="#\/settings\/people">Add a trusted <span class="score-step-end">person<svg/, "the chevron stays with the last word");
   assert.doesNotMatch(html, /\sstyle=/, "no style attribute: the page's CSP allows only styles.css");
@@ -310,6 +368,22 @@ test("the strip: a decorative gauge, the score in words and one link to the next
   assert.doesNotMatch(renderScore(scoreOf(nobody)), /score-bar/, "at zero no gold at all, not even a dot");
   const out = renderScore({ on: 1, total: 2, next: { key: "x", step: "Open <it>", href: "https://wa.me/1", external: true } });
   assert.match(out, /<a class="score-step" href="https:\/\/wa.me\/1" target="_blank" rel="noopener">Open <span class="score-step-end">&lt;it&gt;<svg/, "another app opens in a new tab");
+  assert.doesNotMatch(out, /score-soon/, "nothing pending: no Coming soon line");
+});
+
+test("the strip's grey Coming soon line: one sentence under the count, none when nothing is pending", () => {
+  const html = renderScore(scoreOf({ ...nobody, status: linda, devices: [phone] }));
+  assert.match(html, /<p class="score-soon">Coming soon: WhatsApp, Messenger, calls, Instagram, voicemail<\/p>\s*<\/section>$/,
+    "the last thing in the strip, after the link");
+  assert.equal((html.match(/<a /g) || []).length, 1, "still one link: the line has nothing to tap");
+  const both = renderScore(scoreOf({ ...nobody, status: { ...linda, ...servers } }));
+  assert.match(both, /<p class="score-soon">Coming soon: calls, Instagram, voicemail<\/p>/);
+  const full = renderScore(scoreOf({ status: { ...linda, ...lookedUp, ...servers }, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson }));
+  assert.match(full, /All 8 protections on<\/h2>[\s\S]*class="score-soon"/, "the full score still names what is on the way");
+  assert.doesNotMatch(renderScore({ on: 8, total: 8, next: null, pending: [] }), /score-soon/, "the full score with nothing pending: no line");
+  assert.doesNotMatch(renderScore({ on: 8, total: 8, next: null }), /score-soon/, "a score without a pending list: no line");
+  assert.match(renderScore({ on: 0, total: 1, next: null, pending: [{ key: "x", name: "A <b>" }, { key: "y", name: " " }] }), /Coming soon: A &lt;b&gt;<\/p>/, "the names are escaped, an empty one dropped");
+  assert.doesNotMatch(html, /\sstyle=|%|danger|scam/i, "no style attribute, no percentage, no warning");
 });
 
 test("the strip in French", () => {
@@ -317,9 +391,11 @@ test("the strip in French", () => {
   try {
     setLang("fr");
     const html = renderScore(scoreOf(nobody));
-    assert.match(html, /Protections actives\u00a0: 0\u00a0sur\u00a05/);
+    assert.match(html, /Protections actives\u00a0: 0\u00a0sur\u00a06/);
     assert.match(html, />Connecter mes <span class="score-step-end">e-mails<svg/);
-    assert.match(renderScore(scoreOf({ status: { ...linda, ...lookedUp }, devices: [phone], guardians: [thomas], progress: oneLesson })), /Les 5 protections sont actives/);
+    assert.match(html, /<p class="score-soon">Bientôt\u00a0: WhatsApp, Messenger, appels, Instagram, messagerie vocale<\/p>/);
+    assert.match(renderScore(scoreOf({ status: { ...linda, ...lookedUp }, devices: [phone], guardians: [thomas], checks: voiceChecked, progress: oneLesson })), /Les 6 protections sont actives/);
+    assert.equal(scoreOf({ ...nobody, status: linda, devices: [phone], guardians: [thomas] }).next.step, "Essayer un message vocal");
   } finally {
     setLang("en");
     delete globalThis.document;

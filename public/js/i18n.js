@@ -187,16 +187,25 @@ export const STRINGS = {
     // --- protection score (score_*) ---
     // The strip under Today's greeting (protects.js CRITERIA, renderScore):
     // the title, the title at the full score, then per criterion its name and
-    // the words of the link that turns it on. Words, never a percentage; the
-    // count is held together by no-break spaces ("1 of 4" never splits).
+    // the words of the link that turns it on; then the grey line under the
+    // count (score_soon, {list}: the names joined with ", ") and the short
+    // name of each thing it lists (score_pending_<key>: a Coming soon channel
+    // of the list, or an item of protects.js PENDING), written to sit in the
+    // middle of one sentence and as short as the senior still recognises
+    // ("Messenger", "calls"): the line stays within two lines at Normal. Words, never a percentage; the count is held
+    // together by no-break spaces ("1 of 4" never splits).
     score_title: "Protected: {on} of {total}", score_full: "All {total} protections on",
     score_email: "Your email", score_email_step: "Connect my email",
     score_texts: "Your text messages", score_texts_step: "Add my phone",
     score_people: "A trusted person", score_people_step: "Add a trusted person",
+    score_voice: "Voice messages", score_voice_step: "Try a voice message",
     score_learn: "A first lesson", score_learn_step: "Start a lesson",
     score_breaches: "Your leaked details", score_breaches_step: "Look up my email address",
     score_whatsapp: "WhatsApp messages", score_whatsapp_step: "Open WhatsApp",
     score_facebook: "Facebook and Messenger", score_facebook_step: "Open Messenger",
+    score_soon: "Coming soon: {list}",
+    score_pending_whatsapp: "WhatsApp", score_pending_facebook: "Messenger", score_pending_calls: "calls",
+    score_pending_instagram: "Instagram", score_pending_voicemail: "voicemail",
     // --- today (td_*) ---
     // Also read: v2_morning, v2_afternoon, v2_evening (the greeting), v2_need_one,
     // v2_need_many, v2_look_one, v2_look, and the three Check choices ck_photo,
@@ -504,10 +513,14 @@ export const STRINGS = {
     score_email: "Votre e-mail", score_email_step: "Connecter mes e-mails",
     score_texts: "Vos messages texte", score_texts_step: "Ajouter mon téléphone",
     score_people: "Une personne de confiance", score_people_step: "Ajouter une personne de confiance",
+    score_voice: "Messages vocaux", score_voice_step: "Essayer un message vocal",
     score_learn: "Une première leçon", score_learn_step: "Commencer une leçon",
     score_breaches: "Vos données ayant fuité", score_breaches_step: "Chercher mon adresse e-mail",
     score_whatsapp: "Messages WhatsApp", score_whatsapp_step: "Ouvrir WhatsApp",
     score_facebook: "Facebook et Messenger", score_facebook_step: "Ouvrir Messenger",
+    score_soon: "Bientôt : {list}",
+    score_pending_whatsapp: "WhatsApp", score_pending_facebook: "Messenger", score_pending_calls: "appels",
+    score_pending_instagram: "Instagram", score_pending_voicemail: "messagerie vocale",
     // --- today (td_*) ---
     td_others: "Les {n} autres étaient sûrs.", td_others_one: "L'autre était sûr.",
     td_allclear: "Rien dans vos e-mails n'a besoin de vous", td_checked: "Vérifié {when}.",
