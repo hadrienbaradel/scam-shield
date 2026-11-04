@@ -46,8 +46,8 @@ test("the listener is OK while listening, Failing on an error, Off when not conf
 test("the schedule reads as the operator says it: every 2 min, every 12 h, every 24 h, every 6 h, continuous", () => {
   const { jobs } = jobsReport({ now: NOW });
   assert.deepEqual(jobs.map((j) => [j.id, j.schedule]),
-    [["poll", "every 2 min"], ["watch", "every 12 h"], ["threatfeed", "every 24 h"], ["retention", "every 6 h"], ["pubsub", "continuous"]]);
-  assert.deepEqual(jobs.map((j) => j.canRun), [true, true, true, true, false]);
+    [["poll", "every 2 min"], ["watch", "every 12 h"], ["threatfeed", "every 24 h"], ["scamwatch", "every 24 h"], ["retention", "every 6 h"], ["pubsub", "continuous"]]);
+  assert.deepEqual(jobs.map((j) => j.canRun), [true, true, true, true, true, false]);
   assert.ok(jobs.every((j) => j.name && j.what), "every job says what it does");
   assert.equal(scheduleLabel(90000), "every 90 s");
   // WORKER=0 in tests: every scheduled job is Off and nothing is due.

@@ -17,6 +17,7 @@ import { many, one, q } from "../db/pool.js";
 import { syncUser, usersToSync, clientFor, mapLimit } from "../sync/worker.js";
 import { pullGmailEvents } from "../google/pubsub.js";
 import { runThreatFeed, SOURCES } from "./threatfeed.js";
+import { runScamWatch, WATCH_SOURCES } from "./scamwatch.js";
 import { runRetention } from "./retention.js";
 import { ADDRESS, reportJobFailing, reportJobRecovered } from "../../lib/errorTracking.js";
 
@@ -93,6 +94,16 @@ export async function threatFeedRun({ fetchImpl } = {}) {
   return report;
 }
 
+// The scam watch reads the same way (src/jobs/scamwatch.js): each dead
+// source is one line under the recent errors, the run fails only when every
+// source failed, and a failed run keeps its counts. fetchImpl: tests.
+export async function scamWatchRun({ fetchImpl } = {}) {
+  const report = await runScamWatch({ fetchImpl });
+  for (const line of report.errors) note(line, "scamwatch");
+  if (report.errors.length >= WATCH_SOURCES.length) throw Object.assign(new Error(report.errors.join("; ")), { noted: true, result: report });
+  return report;
+}
+
 // Whose mailbox a Gmail push event is about: the backfilled mailbox with that
 // address and a live Google token, as renewWatches picks them. A local senior
 // (no token row, _product/specs/developer-sign-in.md) never gets one, and
@@ -134,6 +145,8 @@ export const JOBS = [
     kind: "interval", everyMs: 12 * HOUR, run: async () => ({ renewed: await renewWatches() }) }),
   job({ id: "threatfeed", name: "Threat feed", what: "Turns new IC3 and cybermalveillance.gouv.fr alerts into candidate scam cards",
     kind: "interval", everyMs: 24 * HOUR, run: () => threatFeedRun() }),
+  job({ id: "scamwatch", name: "Scam watch", what: "Reads the breach and scam-news feeds (Have I Been Pwned, IC3, CISA, NCSC, Europol, cybermalveillance, the security press, Which?, Mastodon) into watch items a reviewer approves before they are public",
+    kind: "interval", everyMs: 24 * HOUR, run: () => scamWatchRun() }),
   job({ id: "retention", name: "Retention", what: "Deletes old verdicts, sessions, outbox mail, cached answers and job runs; retires stale cards",
     kind: "interval", everyMs: 6 * HOUR, run: async () => {
       const counts = await runRetention();

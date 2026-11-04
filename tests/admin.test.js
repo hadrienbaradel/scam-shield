@@ -221,9 +221,9 @@ test("Jobs lists every piece of background work with its schedule and health, an
   const res = await get("/api/admin/jobs");
   assert.equal(res.statusCode, 200);
   const { jobs, runs, errors } = res.json();
-  assert.deepEqual(jobs.map((j) => j.id), ["poll", "watch", "threatfeed", "retention", "pubsub"]);
-  assert.deepEqual(jobs.map((j) => j.schedule), ["every 2 min", "every 12 h", "every 24 h", "every 6 h", "continuous"]);
-  assert.deepEqual(jobs.map((j) => j.canRun), [true, true, true, true, false]);
+  assert.deepEqual(jobs.map((j) => j.id), ["poll", "watch", "threatfeed", "scamwatch", "retention", "pubsub"]);
+  assert.deepEqual(jobs.map((j) => j.schedule), ["every 2 min", "every 12 h", "every 24 h", "every 24 h", "every 6 h", "continuous"]);
+  assert.deepEqual(jobs.map((j) => j.canRun), [true, true, true, true, true, false]);
   assert.ok(jobs.every((j) => j.name && j.what && ["interval", "loop"].includes(j.kind)), "each job says what it does");
   assert.ok(jobs.every((j) => j.health === "off" && j.running === false && j.nextDueAt === null), "WORKER=0: nothing is scheduled in the test process");
   assert.ok(Array.isArray(runs) && Array.isArray(errors));
