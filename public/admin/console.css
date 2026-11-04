@@ -219,10 +219,10 @@ section { display: grid; gap: 10px; }
 .btn-small { font-size: 13px; padding: 2px 9px; line-height: 18px; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-select, textarea {
+select, textarea, input:not([type="checkbox"]):not([type="radio"]) {
   font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
 }
-select { padding: 4px 8px; font-size: 14px; }
+select, input:not([type="checkbox"]):not([type="radio"]) { padding: 4px 8px; font-size: 14px; }
 textarea { width: 100%; padding: 8px 10px; font-family: var(--mono); font-size: 13px; line-height: 1.45; resize: vertical; }
 label { font-size: 14px; }
 .field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
