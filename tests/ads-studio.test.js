@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { getProvider } from "../lib/llm/index.js";
 import { TINY_JPEG } from "../lib/llm/mock.js";
 import { proposeIdeas, makePhoto, editIdea, checkPhoto, validateWords, PHOTO_COST_USD, modelLabel, IDEAS_SCHEMA, WORDS_SCHEMA } from "../lib/ads/studio.js";
-import { adPrompts, factNumbers, factsForModel, brandsIn, attributedQuotes, numbersIn, normalizeWords, ALLOWED_BRANDS } from "../lib/ads/guardrails.js";
+import { adPrompts, factNumbers, factsForModel, brandsIn, attributedQuotes, inFactSheet, numbersIn, normalizeWords, ALLOWED_BRANDS } from "../lib/ads/guardrails.js";
 
 const mock = getProvider("mock");
 const ENV = ["LLM_PROVIDER", "IMAGE_PROVIDER", "META_MODEL_API_KEY", "IMAGE_MODEL", "LLM_MODEL"];
@@ -67,6 +67,21 @@ test("an idea with a quote attributed to a person is refused; a scam's words in 
   }
   assert.deepEqual(attributedQuotes("Mom got a \"your account is locked, verify now\" email. Is that \"package on hold\" text real?"), []);
   assert.deepEqual(attributedQuotes("She said “ok”."), [], "two words are not a quote");
+});
+
+test("words the fact sheet itself quotes are not a person's quote (the trusted person's answers); an invented quote still is", async () => {
+  for (const said of ["You answer \"Scam, Real or I'll call you\" and it shows on their screen.", "One tap, then “scam, real  or I’ll call you.” on her screen."]) {
+    assert.deepEqual(validateWords(idea({ primary_text: said })), { ok: true, problems: [] }, said);
+  }
+  assert.ok(inFactSheet("Scam, Real or I'll call you"));
+  assert.ok(!inFactSheet("I love it, my mom is safe now"));
+  assert.deepEqual(validateWords(idea({ primary_text: "“I love it, my mom is safe now.”" })).problems, ["the main text quotes a person (“I love it, my mom is safe now.”): no quotes or testimonials"]);
+  assert.match(validateWords(idea({ primary_text: "“Scam, Real or I'll call you” — Linda" })).problems[0], /quotes a person/, "a fact's words put in a named person's mouth are still a testimonial");
+  mock.script({ ideas: [idea({ primary_text: "Your parent asks in one tap. You answer \"Scam, Real or I'll call you\" on their screen." })] });
+  const out = await proposeIdeas({ count: 1 });
+  assert.equal(out.ideas.length, 1, "kept, not dropped");
+  assert.deepEqual(out.dropped, []);
+  assert.equal(mock.calls.length, 1, "no rewrite asked");
 });
 
 test("an idea that says guaranteed, names a price, or plays on fear or shame is refused", () => {
