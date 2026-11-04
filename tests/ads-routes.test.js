@@ -89,6 +89,16 @@ test("the key New ideas names comes from the llm layer's own image resolver (IMA
   assert.deepEqual(modelsFrom(null), { words: null, image: null, configured: false, missing: [] });
 });
 
+test("the header names the words model with its version, as the cards do (Muse Spark 1.3, not Muse Spark)", async () => {
+  const llm = { llmConfigured: () => true, llmProviderName: () => "meta", llmLabel: () => "Muse Spark", llmModel: () => "muse-spark-1.3", imageConfigured: () => true, imageLabel: () => "Muse Image 1.0" };
+  const studio = { modelLabel: (id) => (id === "muse-spark-1.3" ? "Muse Spark 1.3" : `Muse Spark (${id})`) };
+  assert.equal(modelsFrom(llm, {}, studio).words, "Muse Spark 1.3");
+  assert.equal(modelsFrom(llm, {}, null).words, "Muse Spark", "without the studio, the provider's label");
+  assert.equal(modelsFrom(llm, {}, { modelLabel: () => { throw new Error("unknown"); } }).words, "Muse Spark");
+  assert.equal(modelsFrom(llm, {}, studio).image, "Muse Image 1.0");
+  assert.equal((await defaultModels(undefined, studio)).words.length > 0, true);
+});
+
 test("an edit that called only Muse Spark keeps the photo's and the check's labels (a null label never wipes one)", () => {
   const before = { words: "Muse Spark", image: "Muse Image 1.0", check: "Muse Spark", basedOn: 1 };
   assert.deepEqual(mergeModels(before, { words: "Muse Spark 1.3", image: null, check: null }), { words: "Muse Spark 1.3", image: "Muse Image 1.0", check: "Muse Spark" });
@@ -369,7 +379,9 @@ test("an edit by prompt answers at once, then adds a version; Undo brings back t
 
   const res = await post(`/api/admin/ads/${id}/edit`, { instruction: "  make the mother smile, warmer light " });
   assert.equal(res.statusCode, 202, res.body);
-  assert.equal((await adOf(id)).status, "editing");
+  const working = await adOf(id);
+  assert.deepEqual([working.status, working.applying, working.earlier], ["editing", "make the mother smile, warmer light", false],
+    "the card shows the instruction it is applying");
   assert.equal((await post(`/api/admin/ads/${id}/edit`, { instruction: "again" })).statusCode, 409, "one edit at a time");
   assert.equal((await post(`/api/admin/ads/${id}/publish`)).statusCode, 409, "no publish during an edit");
   assert.equal((await post(`/api/admin/ads/${id}/undo`)).statusCode, 409);
@@ -381,7 +393,7 @@ test("an edit by prompt answers at once, then adds a version; Undo brings back t
   assert.ok(call.words.headline.startsWith("Your mother's email"));
   assert.deepEqual(call.photo.bytes, jpeg(1), "the current photo goes to the edit");
   let ad = await adOf(id);
-  assert.deepEqual([ad.status, ad.version, ad.versions, ad.canUndo], ["draft", 2, 2, true]);
+  assert.deepEqual([ad.status, ad.version, ad.versions, ad.canUndo, ad.earlier, ad.applying], ["draft", 2, 2, true, true, null]);
   assert.match(ad.words.headline, /\(edited\)$/);
   assert.equal(ad.instruction, "make the mother smile, warmer light");
   assert.equal(ad.check.summary, "Checked by Muse Spark: nothing to fix");

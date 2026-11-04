@@ -62,6 +62,8 @@ export async function adsIdle() {
 // The ads a job of this process works on: id -> "drafting" | "editing" | "publishing".
 const jobs = new Map();
 export const jobOf = (id) => jobs.get(id) ?? null;
+// The instruction an edit of this process is applying, by ad id: the card shows it.
+const applying = new Map();
 const BUSY_LINE = {
   drafting: "Muse Spark and Muse Image are still making this idea",
   editing: "Muse Spark and Muse Image are still editing this idea",
@@ -114,9 +116,18 @@ export async function importOptional(url) {
   }
 }
 
+// The words model's full label with its version ("Muse Spark 1.3", as the
+// cards name it) through the studio's modelLabel; the provider's label otherwise.
+function wordsLabel(llm, studio) {
+  try {
+    if (typeof studio?.modelLabel === "function" && typeof llm.llmModel === "function") return studio.modelLabel(llm.llmModel());
+  } catch { /* an unknown provider: its plain label below */ }
+  return llm.llmLabel();
+}
+
 // The models that write, draw and check, by their labels, and whether New
 // ideas can run, through the llm layer's own resolvers (IMAGE_PROVIDER=muse is meta).
-export function modelsFrom(llm, env = process.env) {
+export function modelsFrom(llm, env = process.env, studio = null) {
   if (!llm) return { words: null, image: null, configured: false, missing: [] };
   const hasImages = typeof llm.imageConfigured === "function";
   const wordsOk = llm.llmConfigured();
@@ -126,20 +137,20 @@ export function modelsFrom(llm, env = process.env) {
   if (!wordsOk) missing.push(PROVIDER_KEYS[llm.llmProviderName()]);
   if (hasImages && !imageOk) missing.push(PROVIDER_KEYS[imageProvider]);
   return {
-    words: llm.llmLabel(),
+    words: wordsLabel(llm, studio),
     image: typeof llm.imageLabel === "function" ? llm.imageLabel() : null,
     configured: wordsOk && imageOk,
     missing: [...new Set(missing.filter(Boolean))],
   };
 }
-export const defaultModels = async (url = MODULES.llm) => modelsFrom(await importOptional(url));
+export const defaultModels = async (url = MODULES.llm, studio = null) => modelsFrom(await importOptional(url), process.env, studio);
 
 async function resolveDeps(app, given, modules) {
   const d = given || app.adsDeps || {};
   return {
     studio: "studio" in d ? d.studio : await importOptional(modules.studio),
     network: "network" in d ? d.network : (await importOptional(modules.networks))?.getNetwork("facebook") ?? null,
-    models: "models" in d ? d.models : () => defaultModels(modules.llm),
+    models: "models" in d ? d.models : (studio) => defaultModels(modules.llm, studio),
   };
 }
 
@@ -152,7 +163,7 @@ function networkInfo(n) {
 }
 
 async function modelsInfo(d) {
-  const m = { words: null, image: null, configured: false, missing: [], ...(await (typeof d.models === "function" ? d.models() : d.models)) };
+  const m = { words: null, image: null, configured: false, missing: [], ...(await (typeof d.models === "function" ? d.models(d.studio) : d.models)) };
   return { ...m, installed: Boolean(d.studio), configured: Boolean(d.studio) && Boolean(m.configured) };
 }
 
@@ -286,7 +297,7 @@ export default async function adsRoutes(app, opts = {}) {
       const [ads, photos, models] = await Promise.all([store.listAds({ held: new Set(jobs.keys()) }), store.photosToday(), modelsInfo(d)]);
       const each = Number(d.studio?.PHOTO_COST_USD ?? PHOTO_COST_USD);
       return {
-        ads,
+        ads: ads.map((a) => ({ ...a, applying: applying.get(a.id) ?? null })),
         today: { photos, costUsd: Math.round(photos * each * 100) / 100 },
         network: networkInfo(d.network),
         models,
@@ -352,23 +363,28 @@ export default async function adsRoutes(app, opts = {}) {
       if (!ad) return conflict(reply, found, "Only a draft can be edited");
 
       const { signal } = controller;
+      applying.set(ad.id, instruction.value);
       background(request.log, [ad.id], "editing", async () => {
-        let out;
         try {
-          out = await d.studio.editIdea({ words: ad.words, photo: photoOf(ad), instruction: instruction.value, signal });
-        } catch (e) {
-          await store.editFailed(ad.id, plainError(e, "The edit could not be made.", signal.aborted));
-          return;
+          let out;
+          try {
+            out = await d.studio.editIdea({ words: ad.words, photo: photoOf(ad), instruction: instruction.value, signal });
+          } catch (e) {
+            await store.editFailed(ad.id, plainError(e, "The edit could not be made.", signal.aborted));
+            return;
+          }
+          const kept = await store.addVersion(ad.id, {
+            words: out.words ?? ad.words,
+            photo: out.photo ?? photoOf(ad),
+            check: out.check ?? ad.photo_check,
+            models: mergeModels(ad.models, out.models),
+            instruction: instruction.value,
+            photosMade: out.photosMade ?? 0,
+          }, { from: ["editing"] });
+          if (!kept) await store.noteError(ad.id, `The edit "${instruction.value.slice(0, 80)}" finished after the idea had moved on (it is ${await store.statusOf(ad.id)}): it was not kept.`);
+        } finally {
+          applying.delete(ad.id);
         }
-        const kept = await store.addVersion(ad.id, {
-          words: out.words ?? ad.words,
-          photo: out.photo ?? photoOf(ad),
-          check: out.check ?? ad.photo_check,
-          models: mergeModels(ad.models, out.models),
-          instruction: instruction.value,
-          photosMade: out.photosMade ?? 0,
-        }, { from: ["editing"] });
-        if (!kept) await store.noteError(ad.id, `The edit "${instruction.value.slice(0, 80)}" finished after the idea had moved on (it is ${await store.statusOf(ad.id)}): it was not kept.`);
       });
       return reply.code(202).send({ id: ad.id, status: "editing" });
     });
