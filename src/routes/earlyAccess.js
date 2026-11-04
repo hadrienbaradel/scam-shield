@@ -5,7 +5,10 @@
 // language; 10 a minute from one place. A malformed address gets one plain
 // line in the page's language; a second request for the same address gets
 // the same answer as the first and stores nothing more. The server mails
-// nobody: we add the address as a tester by hand. Behind the admin
+// nobody: we add the address as a tester by hand. A request sent from an
+// ad's landing variant (/a/<code>, src/routes/adLanding.js) also keeps that
+// ad's code, when such an ad exists (_product/specs/ad-studio.md, line 8);
+// the first request's code stays, like the rest of it. Behind the admin
 // console's two guards, the list of requests newest first and "Mark added".
 
 import { requireUser, requireAdmin } from "../auth.js";
@@ -18,6 +21,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // hyphens with a dot, ending in letters. Only what passes is stored.
 const EMAIL = /^[a-z0-9._+'-]{1,64}@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const WHOSE = ["parent", "mine"];
+const VARIANT = /^[a-z0-9]{8}$/;
 const text = (v, max) => String(v ?? "").trim().slice(0, max);
 
 const LINES = {
@@ -44,6 +48,10 @@ export function normalizeEmail(v) {
   return email.length <= 254 && EMAIL.test(email) ? email : null;
 }
 
+// The landing variant a request came from (an ads.code), or nothing: anything
+// else in the field is ignored, never refused.
+export const variantOf = (v) => (typeof v === "string" && VARIANT.test(v) ? v : null);
+
 // The request as stored, or the field that stops it.
 export function parseRequest(body) {
   const lang = languageOf(body?.language);
@@ -60,8 +68,10 @@ export default async function earlyAccessRoutes(app) {
   app.post("/api/early-access", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const { request: r, field, error } = parseRequest(request.body);
     if (!r) return reply.code(400).send({ error, field });
-    await q(`INSERT INTO early_access_requests (email, whose, name, note, language) VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (email) DO NOTHING`, [r.email, r.whose, r.name, r.note, r.language]);
+    // The variant is kept only when an ad has that code (the subquery is null otherwise).
+    await q(`INSERT INTO early_access_requests (email, whose, name, note, language, variant)
+             VALUES ($1, $2, $3, $4, $5, (SELECT code FROM ads WHERE code = $6))
+             ON CONFLICT (email) DO NOTHING`, [r.email, r.whose, r.name, r.note, r.language, variantOf(request.body.variant)]);
     return { ok: true, email: r.email };
   });
 

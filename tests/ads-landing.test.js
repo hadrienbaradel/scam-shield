@@ -8,7 +8,8 @@
 // anything else is the site's plain 404 for a visitor, an admin previews any
 // ad; visits are counted, but never robots, link previewers, previews,
 // admins or HEAD; no fbclid, no cookie, no-store and the security headers of
-// /. The Postgres parts skip without a database.
+// /. Early access keeps a real ad's code only, and the first one. The
+// Postgres parts skip without a database.
 import "./helpers/env.js";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -19,6 +20,7 @@ import { runInNewContext } from "node:vm";
 import Fastify from "fastify";
 import { renderVariant } from "../src/ads/landingVariant.js";
 import adLandingRoutes, { countsAsVisit, ROBOT } from "../src/routes/adLanding.js";
+import { variantOf } from "../src/routes/earlyAccess.js";
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
 import { one } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
@@ -221,6 +223,13 @@ test("a visit is a person's GET: robots, link previewers, previews, admins and H
   assert.equal(countsAsVisit({ method: "HEAD", userAgent: chrome }), false);
 });
 
+test("the early-access variant is an ad's code or nothing", () => {
+  assert.equal(variantOf("k3v9q2xa"), "k3v9q2xa");
+  for (const bad of ["K3V9Q2XA", "k3v9q2x", "k3v9q2xab", "k3v9q2x!", " k3v9q2xa", "", null, undefined, 12345678, ["k3v9q2xa"]]) {
+    assert.equal(variantOf(bad), null, JSON.stringify(bad));
+  }
+});
+
 // ------------------------------------------------------------- the routes ---
 
 const ORIGIN = "http://localhost:3999";
@@ -347,6 +356,33 @@ test("the page follows public/index.html: read once, read again when it changes"
     await mini.close();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("early access keeps the variant of a real ad only, and a duplicate request keeps its first", withDb, async () => {
+  await makeAd("ea1ad001", "published");
+  await makeAd("ea1ad002", "published");
+  const post = (payload, ip) => app.inject({ method: "POST", url: "/api/early-access", headers: { origin: ORIGIN }, payload, remoteAddress: ip });
+  const variantOfRow = async (email) => (await one("SELECT variant FROM early_access_requests WHERE email = $1", [email])).variant;
+
+  const first = await post({ email: "ad-child@gmail.com", whose: "parent", language: "en", variant: "ea1ad001" }, "10.9.0.1");
+  assert.deepEqual(first.json(), { ok: true, email: "ad-child@gmail.com" });
+  assert.equal(await variantOfRow("ad-child@gmail.com"), "ea1ad001");
+
+  const again = await post({ email: "AD-child@gmail.com", whose: "mine", variant: "ea1ad002" }, "10.9.0.2");
+  assert.equal(again.body, first.body, "the same answer");
+  assert.equal(await variantOfRow("ad-child@gmail.com"), "ea1ad001", "the first ad stays");
+
+  for (const [i, variant] of ["zz9zz9zz", "EA1AD001", "ea1ad001'--", "", 12345678].entries()) {
+    const email = `no-ad-${i}@gmail.com`;
+    const res = await post({ email, whose: "parent", variant }, "10.9.0.3");
+    assert.equal(res.statusCode, 200, `${variant}: ignored, never refused`);
+    assert.equal(await variantOfRow(email), null, String(variant));
+  }
+  const plainForm = await app.inject({ method: "POST", url: "/api/early-access", remoteAddress: "10.9.0.4",
+    headers: { origin: ORIGIN, "content-type": "application/x-www-form-urlencoded" }, payload: "email=form-ad%40gmail.com&whose=parent&language=en&variant=ea1ad002" });
+  assert.equal(plainForm.statusCode, 200, plainForm.body);
+  assert.equal(await variantOfRow("form-ad@gmail.com"), "ea1ad002", "a plain form post carries it too");
+  assert.equal(await variantOfRow("no-ad-0@gmail.com"), null);
 });
 
 test("/ is unchanged: the landing file as it is, with no variant field", withDb, async () => {
