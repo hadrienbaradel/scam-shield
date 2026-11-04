@@ -127,8 +127,8 @@ export default async function investigateRoutes(app) {
   // stands on the rules' answer for a failing model (degraded, not kept by the
   // demo check either), so the next tap tries again.
   const demoLook = async (e, log) => {
-    const first = await demoVerdict(e);
     try {
+      const first = await demoVerdict(e);
       const out = await investigate({
         message: e, threadHistory: e.threadHistory || [], linkInspection: e.mockLinkInspection || {}, locale: e.locale,
         personalContext: demoProfile(e), patternCards: DEMO_CARDS,
@@ -145,14 +145,21 @@ export default async function investigateRoutes(app) {
     const e = demoExample(request.body?.id);
     if (!e) return reply.code(404).send({ error: "unknown example" });
     if (!investigateConfigured()) return unavailable(reply);
-    let job = demoLooks.get(e.id);
-    if (!job) {
-      job = demoLook(e, request.log);
-      demoLooks.set(e.id, job);
-      job.then((r) => { if (!r.keep && demoLooks.get(e.id) === job) demoLooks.delete(e.id); });
-    }
-    const r = await job;
+    const r = await sharedJob(demoLooks, e.id, () => demoLook(e, request.log)).catch(() => ({ failed: true }));
     if (r.failed) return failed(reply);
     return r.out;
   });
+}
+
+// One job per key, shared while it runs: started once, its promise kept at once
+// so a second caller awaits the same one, then dropped when its result says not
+// to keep it or when it fails; the failure is handled here, never left unhandled.
+export function sharedJob(jobs, key, start) {
+  const running = jobs.get(key);
+  if (running) return running;
+  const job = Promise.resolve().then(start);
+  jobs.set(key, job);
+  const drop = () => { if (jobs.get(key) === job) jobs.delete(key); };
+  job.then((r) => { if (!r?.keep) drop(); }, drop);
+  return job;
 }

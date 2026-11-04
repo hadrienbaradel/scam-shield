@@ -11,7 +11,7 @@ import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
 import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { detect } from "../lib/detector.js";
-import { messageFrom, historyFrom } from "../src/routes/investigate.js";
+import { messageFrom, historyFrom, sharedJob } from "../src/routes/investigate.js";
 import { inspectMessageLinks, registrationDate as registrationDate2 } from "../src/links/resolver.js";
 import { contextFor, liveCards, runCheck } from "../src/sync/checker.js";
 import { buildApp } from "../src/server.js";
@@ -813,6 +813,21 @@ test("two viewers tapping the same example at once share one look: the second wa
   assert.deepEqual(a.json(), b.json());
   assert.equal(a.json().verdict, "scam");
   assert.equal(mock.calls.length, 3, "one first verdict and one look of two rounds, for both viewers");
+});
+
+test("a shared demo job is started once, kept or dropped by its result, and a failing one is dropped and never left unhandled", async () => {
+  const jobs = new Map();
+  let started = 0;
+  const failing = () => { started++; throw new Error("boom"); };
+  const a = sharedJob(jobs, "k", failing);
+  assert.equal(sharedJob(jobs, "k", failing), a, "a second caller shares the running job");
+  await assert.rejects(a, /boom/);
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual([started, jobs.has("k")], [1, false], "started once, then dropped");
+  assert.deepEqual(await sharedJob(jobs, "kept", async () => ({ keep: true, out: 1 })), { keep: true, out: 1 });
+  await sharedJob(jobs, "dropped", async () => ({ keep: false }));
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual([jobs.has("kept"), jobs.has("dropped")], [true, false]);
 });
 
 test("a look that cannot run answers 502 with one plain sentence, never the model's own words", async () => {
