@@ -187,7 +187,7 @@ export function lookCloserHtml(state = {}, ids = "v2") {
   if (state.busy) return `<p class="vcard-checks-busy" role="status">${icon("search", 26)}<span>${esc(t("inv_busy"))}</span></p>`;
   // The server cannot look closer at all (503): said once, no Try again.
   if (state.unavailable) return `<p id="${p}ChecksTitle" class="vcard-checks-note" tabindex="-1">${esc(t("inv_unavailable"))}</p>`;
-  if (state.failed || !state.result) {
+  if (!state.result) {
     return `<p id="${p}ChecksTitle" class="banner caution vcard-checks-note" tabindex="-1">${esc(t("inv_failed"))}</p>
       <button id="${p}CloserRetry" class="btn btn-gold btn-big" type="button">${esc(t("inv_try_again"))}</button>`;
   }
@@ -230,14 +230,10 @@ export async function runLookCloser(root, { ids = "v2", send, onResult } = {}) {
   }
   if (!box.isConnected) return; // the card is gone: a late answer is dropped
   box.innerHTML = lookCloserHtml(state, p);
-  if (state.unavailable) button?.remove();
-  else if (state.failed) {
-    if (button) button.hidden = true;
-    $(`#${p}CloserRetry`, box)?.addEventListener("click", () => runLookCloser(root, { ids: p, send, onResult }));
-  } else {
-    button?.remove();
-    onResult?.(state.result);
-  }
+  // One look per card: the button goes whatever came back; a failure brings its own Try again.
+  button?.remove();
+  if (state.failed) $(`#${p}CloserRetry`, box)?.addEventListener("click", () => runLookCloser(root, { ids: p, send, onResult }));
+  else if (state.result) onResult?.(state.result);
   $(`#${p}ChecksTitle`, box)?.focus();
 }
 

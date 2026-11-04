@@ -208,7 +208,7 @@ test("tapping Look closer: the button waits, the answer replaces the busy line, 
   const send = async () => { calls++; if (calls === 1) throw new Error("502"); return LOOK; };
   await runLookCloser(page2, { ids: "v2", send });
   assert.ok(page2.el("v2Checks").innerHTML.includes("Try again"));
-  assert.equal(page2.el("v2Closer").hidden, true);
+  assert.equal(page2.el("v2Closer").removed, true, "the button goes once; the failure brings its own Try again");
   await page2.el("v2CloserRetry").listeners.click();
   await new Promise((r) => setImmediate(r));
   assert.equal(calls, 2);
