@@ -19,5 +19,6 @@
   // container's Postgres; BASE_URL defaults to the forwarded address (src/config.js, defaultBaseUrl).
   "postAttachCommand": "make server",
   "forwardPorts": [3000],
-  "portsAttributes": { "3000": { "label": "Prudence", "onAutoForward": "openPreview" } }
+  // A browser tab, not the editor's preview pane: the app's CSP (frame-ancestors 'none') refuses to be framed.
+  "portsAttributes": { "3000": { "label": "Prudence", "onAutoForward": "openBrowser" } }
 }
