@@ -12,8 +12,11 @@ import { requireUser, requireAdmin } from "../auth.js";
 import { q, many, one } from "../db/pool.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-// One @, no space or bracket, a domain of dotted labels ending in letters.
-const EMAIL = /^[^\s@<>()[\]\\,;:"]+@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+// An allowlist, checked on the lower-cased address: a local part of letters,
+// digits and . _ + ' - only (never ? & = % / or anything a mailto link or a
+// header could read), one @, a host of labels of letters, digits and
+// hyphens with a dot, ending in letters. Only what passes is stored.
+const EMAIL = /^[a-z0-9._+'-]{1,64}@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const WHOSE = ["parent", "mine"];
 const text = (v, max) => String(v ?? "").trim().slice(0, max);
 

@@ -20,8 +20,11 @@ import { runRetention } from "../src/jobs/retention.js";
 test("the address is stored lower-cased and trimmed; a malformed one is refused", () => {
   assert.equal(normalizeEmail("  Linda.Smith@Gmail.COM "), "linda.smith@gmail.com");
   assert.equal(normalizeEmail("linda+prudence@googlemail.com"), "linda+prudence@googlemail.com");
+  assert.equal(normalizeEmail("Mary-Jo.O'Brien_2@mail.example.co.uk"), "mary-jo.o'brien_2@mail.example.co.uk", "letters, digits and . _ + ' - pass");
   for (const bad of ["", "   ", "linda", "linda@", "@gmail.com", "linda gmail.com", "linda@gmail", "linda@@gmail.com", "linda smith@gmail.com",
-    "<linda@gmail.com>", "linda@gmail.c", "linda@-gmail.com", `${"a".repeat(250)}@gmail.com`, null, undefined, 42, { email: "x@y.com" }]) {
+    "<linda@gmail.com>", "linda@gmail.c", "linda@-gmail.com", `${"a".repeat(250)}@gmail.com`, null, undefined, 42, { email: "x@y.com" },
+    "linda?cc=boss@gmail.com", "linda&bcc=x@gmail.com", "linda=x@gmail.com", "linda%0abcc@gmail.com", "a/b@gmail.com", "linda!@gmail.com",
+    "linda@gmail.com?subject=hi", "linda@gmail.com%0D%0Abcc:x@evil.test", "linda@gmail_com.com", "linda@gmail.com.", "élodie@gmail.com"]) {
     assert.equal(normalizeEmail(bad), null, `${JSON.stringify(bad)} is not an address`);
   }
 });
@@ -115,6 +118,16 @@ test("a malformed address is refused with a plain line and stores nothing", opts
   assert.deepEqual([whose.statusCode, whose.json().field], [400, "whose"]);
   const text = await post("/api/early-access", "linda@gmail.com", { "content-type": "text/plain" }, "10.1.2.11");
   assert.deepEqual([text.statusCode, text.json().field], [400, "body"]);
+  assert.equal(await count(), 0);
+});
+
+test("an address carrying ?, &, =, % or / is refused with 400, so nothing a mailto link could read is ever stored", opts, async () => {
+  await pool.query("TRUNCATE early_access_requests");
+  for (const [i, email] of ["linda?cc=boss@gmail.com", "linda%0abcc@gmail.com", "linda&bcc=x@gmail.com", "linda=x@gmail.com", "a/b@gmail.com", "linda@gmail.com?subject=hi"].entries()) {
+    const res = await post("/api/early-access", { email, whose: "parent" }, {}, `10.1.5.${i + 1}`);
+    assert.equal(res.statusCode, 400, `${email}: ${res.body}`);
+    assert.equal(res.json().field, "email");
+  }
   assert.equal(await count(), 0);
 });
 

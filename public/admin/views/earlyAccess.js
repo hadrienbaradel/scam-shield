@@ -3,7 +3,8 @@
 // Google sign-in is in its test phase we add each address by hand as a
 // test user, write to the person ourselves (the server mails nobody), then
 // mark the request added; it is deleted 90 days after that, an open one
-// stays. Name and note are the visitor's words: escaped, never trusted.
+// stays. The address, name and note are the visitor's words: shown as
+// escaped text, never built into a link.
 
 import { api, $, $$, esc, chipRaw, timeEl, num, toast, busy, isBusy, cap, words } from "../console.js";
 
@@ -50,7 +51,7 @@ function row(r) {
   const email = r.email || "";
   return `<tr>
     <td class="nowrap">${timeEl(pick(r, "created_at"))}</td>
-    <td class="wrap">${email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>` : "–"}</td>
+    <td class="wrap mono">${esc(email || "–")}</td>
     <td class="nowrap">${esc(WHOSE[r.whose] || r.whose || "–")}</td>
     <td class="wrap">${esc(r.name || "–")}</td>
     <td class="wrap">${esc(r.note || "–")}</td>
