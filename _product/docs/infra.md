@@ -1,4 +1,4 @@
-Keywords: docker, compose, infra, database, postgres, ci, github actions, deploy, prod, ansible, volumes, test database, TEST_DB_SUFFIX
+Keywords: docker, compose, infra, database, postgres, ci, github actions, npm audit, gitleaks, dependabot, deploy, prod, ansible, volumes, test database, TEST_DB_SUFFIX
 
 # Infrastructure
 
@@ -39,12 +39,32 @@ on first use by `tests/helpers/db.js` through the maintenance database `postgres
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request (superseded runs are cancelled). Job `node`: Node from `.nvmrc` with
-the npm cache, `npm ci`, the dev compose Postgres (`docker compose -f .infra/dev/docker-compose.yml up -d --wait`, `PG_USER=postgres`),
-`make check` (master key not tracked, all tests, line coverage >= 93%), `make score`, `coverage/lcov.info` as an artifact. Job
-`android`: JDK 17, Gradle cache, `./gradlew assembleDebug testDebugUnitTest`, the debug APK as an artifact. No secret is configured:
-the tests set their own environment, and `make score` runs with `CREDENTIALS_FILE` pointing at a file that does not exist.
-Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
+`.github/workflows/ci.yml` runs on every push and pull request, and by hand (Actions → CI → Run workflow); a newer run on the same
+ref cancels the older one. The token is read-only (`permissions: contents: read`, plus `pull-requests: read` for the secret scan), and
+no checkout leaves it on disk. GitHub's own `actions/*` ride their current major tag; third-party actions are pinned to a commit, the
+version in a trailing comment, and Dependabot bumps the pin (security updates now, version updates once the limit below is raised;
+`gradle/actions` stays on v5: v6's cache is a proprietary component).
+Three jobs, each one a gate:
+
+- `node`: Node from `.nvmrc` with the npm cache, `npm ci`, then `npm audit --audit-level=high` (a high or critical advisory in any
+  installed package fails the run; moderate and low ones are printed, not gated), the dev compose Postgres
+  (`docker compose -f .infra/dev/docker-compose.yml up -d --wait`, `PG_USER=postgres`), `make check` (master key not tracked, all
+  tests, line coverage >= 93%), `make score`, `coverage/lcov.info` as an artifact. Nov 4: no high or critical advisory; three
+  moderate ones (`glob` and `minimatch` under `@fastify/static`), whose only offered fix is a downgrade to `@fastify/static` 6.
+- `secrets`: gitleaks 8.30.1 (`gitleaks/gitleaks-action`, the default rules plus `.gitleaks.toml`) on a checkout with the whole
+  history. A push is scanned over the commits it adds, a pull request over its commits, a run by hand over every commit of every
+  branch. The whole history was scanned by hand on Nov 1 (placeholders and test values only) and on Nov 4 with 8.30.1 (one hit,
+  the fake credentials of the Rollbar scrubbing test, now allowlisted in `.gitleaks.toml` with its reason; clean after); a new false
+  positive gets its own entry there. A real finding fails the run, and the key is rotated, never un-leaked
+  (`_product/docs/secrets.md`).
+- `android`: JDK 17, Gradle cache, `./gradlew assembleDebug testDebugUnitTest`, the debug APK as an artifact.
+
+No repository secret is configured: the tests set their own environment, `make score` runs with `CREDENTIALS_FILE` pointing at a
+file that does not exist, and gitleaks uses the run's automatic token. Dependabot (`.github/dependabot.yml`: npm and GitHub Actions,
+weekly) has `open-pull-requests-limit: 0`, which turns version updates off so no stream of version pull requests lands while the
+judges look (Nov 5-8); security updates are not bound by it. Raise the limit after judging. Once the repo is public, Hadrien (admin;
+Vlad's account has push rights only) turns on CodeQL default setup, secret-scanning push protection, and Dependabot alerts with
+security updates. Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
 `.github/workflows/release.yml` runs on a pushed `v*` tag (`make release`): job `apk`, on a read-only token, builds as CI does (JDK 17, the Gradle cache, `./gradlew assembleDebug`); job `publish`, the only one that can write, publishes a GitHub release with generated notes and `prudence-<tag>-android-debug.apk`; its third-party actions are pinned to commit SHAs, the version in a comment (`_product/docs/git.md`, Releases).
 
 ## Production: the OVH host

@@ -1,4 +1,4 @@
-Keywords: secrets, credentials, master.key, env, api key, token, google client json, account, register, meta app, developer account
+Keywords: secrets, credentials, master.key, env, api key, token, google client json, account, register, meta app, developer account, gitleaks, leak
 
 # Secrets
 
@@ -52,6 +52,12 @@ credentials; empty or unset ones are filled from the file. That is what keeps th
 shared database (`tests/shared-database.test.js`). Tests never load the credentials (the autoload is off under `node --test`;
 `tests/helpers/env.js` sets its own values). A missing `config/credentials.enc` is a no-op; a present file without a usable key stops
 the process with one line naming the fix. `CREDENTIALS_FILE` and `MASTER_KEY_FILE` move the files (tests, mounted secrets).
+
+## Scanning
+
+gitleaks scans every push and pull request in CI (job `secrets`, false positives in `.gitleaks.toml`; `_product/docs/infra.md`, CI); once
+the repo is public, secret-scanning push protection (Hadrien, admin) also refuses a push that carries a known key format. A key that
+reached a commit is rotated at once (below): a red scan, a rewritten history or a deleted branch does not un-leak it.
 
 ## If the master key leaks
 

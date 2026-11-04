@@ -1,17 +1,24 @@
-# Scam Shield CI: the Node suite against the same compose Postgres as `make server`, and
-# the Android companion's debug APK (a separate job, so a Gradle problem never blocks the
-# Node one). No secret is needed: the tests set their own environment (tests/helpers/env.js),
-# and `make score` runs with the credentials autoload pointed at a file that does not exist.
+# Scam Shield CI: the Node suite against the same compose Postgres as `make server`, a secret scan
+# of the git history, and the Android companion's debug APK (three jobs, so a Gradle problem never
+# blocks the Node one). No repository secret is needed: the tests set their own environment
+# (tests/helpers/env.js), `make score` runs with the credentials autoload pointed at a file that
+# does not exist, and gitleaks uses the run's automatic token. _product/docs/infra.md, CI.
 # Badge: https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg
 name: CI
 
 on:
   push:
   pull_request:
+  workflow_dispatch: # Actions → CI → Run workflow: the secret scan then reads every commit
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# Least privilege: the token reads the code and nothing else, unless a job says otherwise.
+# GitHub's own actions (actions/*) ride their major tag; third-party ones are pinned to a commit.
+permissions:
+  contents: read
 
 jobs:
   node:
@@ -25,12 +32,16 @@ jobs:
       DATABASE_URL: postgres://postgres@127.0.0.1:5432/scam_shield
       TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/scam_shield_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: npm audit (a high or critical advisory fails the run)
+        run: npm audit --audit-level=high
       - name: Postgres (the dev compose file, waits for healthy)
         run: docker compose -f .infra/dev/docker-compose.yml up -d --wait
       - name: make check (master.key not tracked, all tests, coverage threshold)
@@ -41,7 +52,7 @@ jobs:
           CREDENTIALS_FILE: ${{ github.workspace }}/config/ci-has-no-credentials.enc
       - name: Coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
           path: coverage/lcov.info
@@ -49,6 +60,24 @@ jobs:
       - name: Postgres logs
         if: failure()
         run: docker compose -f .infra/dev/docker-compose.yml logs postgres
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # the action lists a pull request's commits
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the whole history: a push is scanned over its commits, a run by hand over all
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITLEAKS_VERSION: "8.30.1" # pinned: .gitleaks.toml needs 8.25.1+, the action's default is older
+          GITLEAKS_ENABLE_COMMENTS: false # read-only token: a finding fails the job and shows in its summary
 
   android:
     name: Android debug APK
@@ -58,16 +87,19 @@ jobs:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+      # v5, not v6: v6's cache is a proprietary component under Gradle's terms of use.
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Build the debug APK and run the unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon assembleDebug testDebugUnitTest
       - name: Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scam-shield-companion-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk

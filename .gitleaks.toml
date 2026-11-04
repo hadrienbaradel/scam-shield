@@ -1,0 +1,12 @@
+# gitleaks: the default rules, plus one allowlist entry per false positive, each with its reason.
+# Read by the `secrets` job in .github/workflows/ci.yml and by a scan by hand (_product/docs/infra.md, CI).
+# Global [[allowlists]] need gitleaks 8.25.1 or later; CI pins its version (GITLEAKS_VERSION).
+minVersion = "v8.25.1"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake credentials (a Basic auth header, a cookie, an OAuth code) that the Rollbar test sends to prove they are scrubbed"
+targetRules = ["generic-api-key"]
+paths = ['''^tests/observability\.test\.js$''']
