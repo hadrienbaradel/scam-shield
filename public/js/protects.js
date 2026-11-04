@@ -44,7 +44,7 @@ const GMAIL_SIGN_IN = "/auth/google?mode=gmail";
 // The server's address for its WhatsApp number or Messenger Page (wa.me,
 // m.me), or null when it is not an https address: a strange address gives
 // no button rather than a strange one, on the list and on the score.
-const httpsLink = (v) => {
+export const httpsLink = (v) => {
   const s = String(v || "");
   return /^https:\/\/[^\s"'<>]+$/.test(s) ? s : null;
 };
@@ -158,6 +158,9 @@ export function renderProtects(rows, { heading = true } = {}) {
 // Coming soon channel never has one (the full score must always be
 // reachable): it is named on the strip's Coming soon line instead (PENDING,
 // pendingOf, below).
+// Whether the person said they have a pair of Meta glasses (users.glasses,
+// null, "none", "have" or "ready").
+export const hasGlasses = (status) => ["have", "ready"].includes(status?.user?.glasses);
 // A row: key; channel (the CHANNELS key it stands for, when it is one); name
 // and step (i18n keys: what it is, the words of the link that turns it on);
 // href (where that link goes, or a function of ctx for a server's address);
@@ -198,6 +201,12 @@ export const CRITERIA = Object.freeze([
   // so a lookup that found nothing counts: the answer is what protects.
   { key: "breaches", name: "score_breaches", step: "score_breaches_step", href: "#/settings/knows",
     on: (ctx) => Boolean(ctx.status?.breachLookup?.at) },
+  // Meta glasses (check-glasses.md, line 18): counted only for someone who said
+  // they have a pair, so the full score stays reachable without one; on once
+  // they heard the test sentence in them.
+  { key: "glasses", name: "score_glasses", step: "score_glasses_step", href: "#/check/glasses/setup",
+    available: (ctx) => hasGlasses(ctx.status),
+    on: (ctx) => ctx.status?.user?.glasses === "ready" },
   serverCriterion("whatsapp"),
   serverCriterion("facebook"),
 ].map((c) => Object.freeze(c)));
@@ -296,6 +305,38 @@ export function renderScore({ on, total, next, pending = [] }) {
     </section>`;
 }
 
+// ---------------------------------------------------------------- glasses --
+// Where Meta glasses appear outside their own screens (check-glasses.md, lines
+// 1, 2, 8 and 16), one answer each, from /api/status.
+
+// The choice on Check: its words and where it goes. inMore: the person said
+// they have none, so it waits in More ways.
+export function glassesChoice(status) {
+  const g = status?.user?.glasses;
+  return g === "ready"
+    ? { label: "ck_glasses_use", href: "#/check/glasses", inMore: false }
+    : { label: "ck_glasses", href: "#/check/glasses/setup", inMore: g === "none" };
+}
+
+// The Settings row: a pair not tested yet, or none, reads "Not set up", so a
+// change of mind is one tap.
+export function glassesRow(status) {
+  return status?.user?.glasses === "ready"
+    ? { name: "gl_row", state: "gl_row_ready", verb: "gl_row_use", href: "#/check/glasses" }
+    : { name: "gl_row", state: "gl_row_none", verb: "gl_row_setup", href: "#/check/glasses/setup" };
+}
+
+// "Without touching your phone": only where Prudence really receives a message
+// (a channel with its app secret, /api/status), never a dead button.
+export function handsFreeWays(status) {
+  const ways = [];
+  const page = status?.messengerReceives === true ? httpsLink(status.messengerLink) : null;
+  if (page) ways.push({ key: "messenger", verb: "gl_free_messenger", href: page, external: true, say: "gl_free_messenger_say" });
+  // whatsappLink exists only with the number, which the contact card needs too.
+  if (status?.whatsappReceives === true && httpsLink(status.whatsappLink)) ways.push({ key: "whatsapp", verb: "gl_free_contact", href: "/prudence.vcf", external: false, say: "gl_free_whatsapp_say" });
+  return ways;
+}
+
 // ------------------------------------------------------------------- tabs --
 // The bottom tab bar of the signed-in senior (PrudenceTabs.dc.html), in order;
 // on a computer the same four are top links. label: i18n key; icon: ui.js.
@@ -322,6 +363,10 @@ export const SCREENS = Object.freeze([
   { route: "#/check/photo", view: "check-photo", tab: "check" },
   { route: "#/check/voice", view: "check-voice", tab: "check" },
   { route: "#/check/more", view: "check-more", tab: "check" },
+  { route: "#/check/glasses", view: "check-glasses", tab: "check" },
+  { route: "#/check/glasses/setup", view: "check-glasses-setup", tab: "check" },
+  { route: "#/check/glasses/look", view: "check-glasses-look", tab: "check" },
+  { route: "#/check/glasses/listen", view: "check-glasses-listen", tab: "check" },
   { route: "#/learn", view: "learn", tab: "learn" },
   { route: "#/blocked", view: "blocked", tab: "blocked", mail: true },
   { route: "#/settings", view: "settings", tab: null },

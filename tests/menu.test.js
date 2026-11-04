@@ -84,7 +84,7 @@ const REUSED = [
   "settings_title", "v2_tab_people", "mode_move", "mode_move_sub", "mode_label", "mode_label_sub", "size_q", "size_1", "size_2", "size_3",
   "lang_q", "knows_title", "history_title", "delete_btn", "phone_title", "people_title", "saved",
 ];
-const REDESIGN = /^(protect_|score_|td_|msg_|blk_|ck_|lh_|set_)|^(tab_blocked|nav_tabs_label|nav_top_label)$/;
+const REDESIGN = /^(protect_|score_|td_|msg_|blk_|ck_|gl_|lh_|set_)|^(tab_blocked|nav_tabs_label|nav_top_label)$/;
 const placeholders = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 test("every word of the channel table, the tabs and the new screens exists in English and in French", () => {
@@ -241,7 +241,7 @@ const voiceChecked = [{ id: "c2", channel: "email", verdict_value: "safe" }, { i
 const counted = ({ pending, ...rest }) => rest;
 
 test("the score counts what the senior can turn on today: every built channel, never a Coming soon one", () => {
-  assert.deepEqual(CRITERIA.map((c) => c.key), ["email", "texts", "people", "voice", "learn", "breaches", "whatsapp", "facebook"], "the spec's order");
+  assert.deepEqual(CRITERIA.map((c) => c.key), ["email", "texts", "people", "voice", "learn", "breaches", "glasses", "whatsapp", "facebook"], "the spec's order");
   const byChannel = new Map(CRITERIA.filter((c) => c.channel).map((c) => [c.channel, c]));
   for (const c of CHANNELS) {
     if (c.status === "built") assert.ok(byChannel.has(c.key), `${c.key}: built, so it has a criterion`);
@@ -410,6 +410,7 @@ test("four tabs, and every senior screen lights the tab the design gives it", ()
   const cases = {
     "": "today", "#/": "today", "#/today": "today", "#/messages": "today",
     "#/check": "check", "#/check/paste": "check", "#/check/photo": "check", "#/check/voice": "check", "#/check/more": "check",
+    "#/check/glasses": "check", "#/check/glasses/setup": "check", "#/check/glasses/look": "check", "#/check/glasses/listen": "check",
     "#/learn": "learn", "#/learn/parcel-fee": "learn", "#/blocked": "blocked",
     "#/settings": null, "#/settings/people": null, "#/settings/phone": null, "#/settings/knows": null, "#/settings/did": null, "#/settings/delete": null,
     "#/people": null,

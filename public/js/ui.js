@@ -19,7 +19,8 @@ export const verdictClass = (v) => (v === "scam" ? "danger" : v === "be_careful"
 // Names: gear, check, check-circle, careful, circle-slash, mail, chat, mic,
 // whatsapp, messenger, phone, camera, clipboard, image, home, search, book,
 // chevron-left, chevron-right, chevron-down, arrow-right, person, send,
-// speaker, trash, sign-out, star, folder, bell, globe, list, clock, lock, stop.
+// speaker, trash, sign-out, star, folder, bell, globe, list, clock, lock, stop,
+// glasses.
 const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
@@ -57,6 +58,8 @@ const ICONS = {
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   // "Stop" on the reading screen (frame 1k): a filled square.
   stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',
+  // Meta glasses on Check (check-glasses.md, line 1).
+  glasses: '<rect x="2.5" y="9" width="8" height="7" rx="2.5"/><rect x="13.5" y="9" width="8" height="7" rx="2.5"/><path d="M10.5 11.5c1-.8 2-.8 3 0"/><path d="M2.5 11L1.5 8"/><path d="M21.5 11l1-3"/>',
 };
 export const ICON_NAMES = Object.freeze(Object.keys(ICONS));
 export function icon(name, size = 24, width = 2) {
@@ -113,13 +116,27 @@ export async function busy(button, fn, label) {
 
 // Reads text aloud in French ("fr", "fr-FR") or English (anything else), a
 // little slower than the default; a new reading stops the one before. Does
-// nothing where the browser cannot speak.
-export function speak(text, lang) {
-  if (!text || !("speechSynthesis" in window)) return;
+// nothing where the browser cannot speak. onEnd, if given, runs when the
+// reading ends or fails, and right away where the browser cannot speak; a
+// browser may also never call it (Safari on iPhone), so a caller that must go
+// on keeps its own timer.
+export function speak(text, lang, onEnd) {
+  if (!text || !("speechSynthesis" in window)) { onEnd?.(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(String(text));
   u.rate = 0.92;
   u.lang = String(lang || "").startsWith("fr") ? "fr-FR" : "en-US";
+  if (onEnd) { u.onend = onEnd; u.onerror = onEnd; }
+  speechSynthesis.speak(u);
+}
+
+// Safari on iPhone speaks only after a first reading started inside a tap:
+// called in the tap, for a sentence that comes later (after the microphone
+// prompt, after a check).
+export function unlockSpeech() {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(" ");
+  u.volume = 0;
   speechSynthesis.speak(u);
 }
 

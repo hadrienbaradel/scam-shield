@@ -38,6 +38,7 @@ export async function renderOnboarding(root, status, refresh) {
   const { breachOptions } = await api("/api/context");
   const country = getLang() === "fr" ? "FR" : "US";
   let lookup = null, found = [], ticked = new Set();
+  const glasses = status.user.glasses;
   const steps = [
     () => `<h2>${t("onb_name_q")}</h2><label>${t("onb_name_q")}<input id="obName" value="${esc(status.user.name || "")}" autocomplete="given-name"></label>
            <h2>${t("onb_lang_q")}</h2><div class="choice-row"><button class="btn btn-light-dark btn-big lang-btn${getLang() === "en" ? " chosen" : ""}" data-l="en-US">English</button><button class="btn btn-light-dark btn-big lang-btn${getLang() === "fr" ? " chosen" : ""}" data-l="fr-FR">Français</button></div>`,
@@ -49,6 +50,10 @@ export async function renderOnboarding(root, status, refresh) {
     () => `<h2>${t("onb_breach_q")}</h2><p>${t("onb_breach_sub")}</p>
            ${breachChecks([...found, ...breachOptions.filter((b) => !b.country || b.country === country)], ticked)}
            ${breachLookupBlock(lookup)}`,
+    // Meta glasses (check-glasses.md, line 17): nothing ticked, so Next without a choice saves nothing.
+    () => `<h2>${t("onb_glasses_q")}</h2>
+           <label class="choice"><input type="radio" name="glasses" value="have"${glasses === "have" ? " checked" : ""}><span><strong>${t("onb_glasses_yes")}</strong></span></label>
+           <label class="choice"><input type="radio" name="glasses" value="none"${glasses === "none" ? " checked" : ""}><span><strong>${t("onb_glasses_no")}</strong></span></label>`,
   ];
   let i = 0;
   const draw = () => {
@@ -68,7 +73,13 @@ export async function renderOnboarding(root, status, refresh) {
       if (i === 0 && $("#obName").value.trim()) await api("/api/me", { method: "PATCH", body: { name: $("#obName").value.trim() } });
       if (i === 1) await api("/api/me", { method: "PATCH", body: { actMode: $("input[name=mode]:checked").value } });
       if (i === 3) {
-        await api("/api/context/breaches", { method: "PUT", body: { ids: $$("input[name=breach]:checked", root).map((x) => x.value) } });
+        ticked = new Set($$("input[name=breach]:checked", root).map((x) => x.value));
+        await api("/api/context/breaches", { method: "PUT", body: { ids: [...ticked] } });
+      }
+      if (i === 4) {
+        const chosen = $("input[name=glasses]:checked", root)?.value;
+        // A pair already tested stays tested; Yes makes the score offer the test.
+        if (chosen && !(chosen === "have" && glasses === "ready")) await api("/api/me", { method: "PATCH", body: { glasses: chosen } });
         await api("/api/me", { method: "PATCH", body: { onboarded: true } });
         location.hash = "#/inbox";
         return refresh();
