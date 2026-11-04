@@ -1401,8 +1401,8 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .td-choices { display: flex; flex-direction: column; gap: 12px; }
 .td-count { flex: none; color: var(--muted); font-size: var(--t19); font-weight: 700; white-space: nowrap; }
 .td-head .btn-listen { margin-left: auto; }
-/* The card's answer bar holds one verb now (Throw it away, or Call <name>):
-   the full width, icon and word on one line. */
+/* The card's answer bar holds one verb now (Throw it away, Call <name>, or
+   on a Safe card Keep it): the full width, icon and word on one line. */
 .v2-actions.td-dock { grid-template-columns: minmax(0, 1fr); }
 .td-dock .v2-action { flex-direction: row; gap: 12px; min-height: 72px; font-size: var(--t22); }
 
