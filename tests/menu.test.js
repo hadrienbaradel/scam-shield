@@ -15,15 +15,16 @@ const linda = { gmail: { connected: true, needsReconnect: false, syncStatus: "ok
 const phone = { id: "d1", name: "Linda's phone", created_at: minutesAgo(9000), last_seen_at: minutesAgo(5) };
 const byKey = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
 
-test("the channels come in the spec's order: email, texts and voice built, Messenger from the server, WhatsApp and calls coming soon", () => {
+test("the channels come in the spec's order: email, texts and voice built, WhatsApp and Messenger from the server, calls coming soon", () => {
   assert.deepEqual(CHANNELS.map((c) => c.key), ["email", "texts", "voice", "whatsapp", "facebook", "calls"]);
-  assert.deepEqual(CHANNELS.map((c) => c.status), ["built", "built", "built", "soon", "server", "soon"]);
+  assert.deepEqual(CHANNELS.map((c) => c.status), ["built", "built", "built", "server", "server", "soon"]);
   for (const c of CHANNELS) {
     assert.ok(ICON_NAMES.includes(c.icon), `${c.key}: icon "${c.icon}" exists in ui.js`);
     assert.equal(c.status === "soon", c.verbs.length === 0, `${c.key}: a Coming soon row has no verb, the others have one`);
   }
-  const fb = CHANNELS.find((c) => c.key === "facebook");
-  assert.deepEqual([fb.configuredBy, fb.linkBy], ["messengerConfigured", "messengerLink"], "the /api/status fields that turn Messenger on");
+  const read = Object.fromEntries(CHANNELS.filter((c) => c.status === "server").map((c) => [c.key, [c.configuredBy, c.linkBy]]));
+  assert.deepEqual(read, { whatsapp: ["whatsappConfigured", "whatsappLink"], facebook: ["messengerConfigured", "messengerLink"] },
+    "the /api/status fields that turn WhatsApp and Messenger on (names agreed with the channel sessions)");
 });
 
 // The Features table of _product/spec.md: | Feature | Status | One-line spec | Details |.
@@ -46,18 +47,20 @@ const FEATURE_ROW = {
   email: /^Gmail connection and scanning$/,
   texts: /^Android SMS companion$/,
   voice: /^Check something else \(text, picture, voice note, \.eml\)$/,
-  whatsapp: /^WhatsApp\b/, // "WhatsApp: forward it to Prudence"
   calls: /^(Your )?phone calls?\b|^Calls?\b|^Call protection\b/i,
 };
 
-// Facebook and Messenger is not held to the spec table: whether it is on is
-// read from the server (/api/status messengerConfigured), because the
-// Prudence Page only exists where its keys are set; the next test covers it.
+// WhatsApp and Facebook and Messenger are not held to the spec table: whether
+// they are on is read from the server (/api/status whatsappConfigured,
+// messengerConfigured), because the Prudence number and Page exist only where
+// their keys are set; the Messenger and WhatsApp test below covers them. The
+// static channels are: phone calls (the only static Coming soon row) and the
+// three built ones, which must stay Built in the spec.
 test("a static channel is Coming soon exactly when its feature is not Built in _product/spec.md", () => {
   const rows = featureRows();
   assert.ok(rows.length > 10, "the Features table was read");
   const fixed = CHANNELS.filter((c) => c.status !== "server");
-  assert.deepEqual(fixed.map((c) => c.key), ["email", "texts", "voice", "whatsapp", "calls"]);
+  assert.deepEqual(fixed.map((c) => c.key), ["email", "texts", "voice", "calls"]);
   assert.deepEqual(Object.keys(FEATURE_ROW).sort(), fixed.map((c) => c.key).sort(), "every static channel has its row rule");
   for (const c of fixed) {
     const found = rows.filter((r) => FEATURE_ROW[c.key].test(r.name));
@@ -114,7 +117,7 @@ test("Linda without a phone: her email is on, her texts need the app, voice is o
   assert.equal(r.texts.on, false);
   assert.deepEqual([r.texts.verb, r.texts.href], ["Add my phone", "#/settings/phone"]);
   assert.deepEqual([r.voice.state, r.voice.verb, r.voice.href], ["Send one any time", "Check a voice message", "#/check/voice"]);
-  for (const k of ["whatsapp", "facebook", "calls"]) { // facebook: no messengerConfigured in Linda's status
+  for (const k of ["whatsapp", "facebook", "calls"]) { // no whatsappConfigured or messengerConfigured in Linda's status
     assert.equal(r[k].soon, true);
     assert.equal(r[k].verb, null, `${k}: no verb`);
     assert.equal(r[k].href, null, `${k}: nowhere to go`);
@@ -123,23 +126,29 @@ test("Linda without a phone: her email is on, her texts need the app, voice is o
   assert.deepEqual(protectRows(linda, { devices: [] }), rows, "an empty phone list is no phone");
 });
 
-test("Messenger is on only when the server says so, and its button opens Messenger in a new tab", () => {
-  const link = "https://m.me/prudence.example";
-  for (const st of [linda, { ...linda, messengerConfigured: false, messengerLink: link }, { ...linda, messengerConfigured: "true", messengerLink: link }]) {
-    const fb = byKey(protectRows(st)).facebook;
-    assert.deepEqual([fb.soon, fb.verb, fb.href], [true, null, null], "absent, false or not a boolean: Coming soon");
-    assert.equal(fb.label, "Facebook and Messenger, coming soon, no action");
+test("WhatsApp and Messenger are on only when the server says so, and their button opens the app in a new tab", () => {
+  const cases = [
+    ["whatsapp", "whatsappConfigured", "whatsappLink", "https://wa.me/15550001111", "WhatsApp messages", "Forward any message to Prudence on WhatsApp", "Open WhatsApp"],
+    ["facebook", "messengerConfigured", "messengerLink", "https://m.me/prudence.example", "Facebook and Messenger", "Send any message to Prudence on Messenger", "Open Messenger"],
+  ];
+  for (const [key, flag, linkField, link, name, state, verb] of cases) {
+    for (const st of [linda, { ...linda, [flag]: false, [linkField]: link }, { ...linda, [flag]: "true", [linkField]: link }, { ...linda, [flag]: null, [linkField]: null }]) {
+      const r = byKey(protectRows(st))[key];
+      assert.deepEqual([r.soon, r.verb, r.href], [true, null, null], `${key}: a missing, false or non-boolean flag is Coming soon`);
+      assert.equal(r.label, `${name}, coming soon, no action`);
+    }
+    const on = byKey(protectRows({ ...linda, [flag]: true, [linkField]: link }))[key];
+    assert.deepEqual([on.soon, on.on, on.state, on.verb, on.href, on.external], [false, true, state, verb, link, true], `${key} on`);
+    const html = renderProtects(protectRows({ ...linda, [flag]: true, [linkField]: link }));
+    assert.ok(html.includes(`<a class="btn btn-outline" href="${link}" target="_blank" rel="noopener">${verb}</a>`), `${key}: the link button`);
+    assert.equal((html.match(/class="row-card row-soon"/g) || []).length, 2, `${key} on: the two other rows stay Coming soon`);
+    for (const bad of ["javascript:alert(1)", "http://wa.me/x", "https://x\" onclick=\"y", "", undefined]) {
+      const r = byKey(protectRows({ ...linda, [flag]: true, [linkField]: bad }))[key];
+      assert.deepEqual([r.on, r.verb, r.href], [true, null, null], `${key} ${String(bad)}: on, but no button to a strange address`);
+    }
   }
-  const on = byKey(protectRows({ ...linda, messengerConfigured: true, messengerLink: link })).facebook;
-  assert.deepEqual([on.soon, on.on, on.state, on.verb, on.href, on.external],
-    [false, true, "Send any message to Prudence on Messenger", "Open Messenger", link, true]);
-  const html = renderProtects(protectRows({ ...linda, messengerConfigured: true, messengerLink: link }));
-  assert.match(html, /<a class="btn btn-outline" href="https:\/\/m\.me\/prudence\.example" target="_blank" rel="noopener">Open Messenger<\/a>/);
-  assert.equal((html.match(/class="row-card row-soon"/g) || []).length, 2, "WhatsApp and calls stay Coming soon");
-  for (const bad of ["javascript:alert(1)", "http://m.me/x", "", undefined]) {
-    const r = byKey(protectRows({ ...linda, messengerConfigured: true, messengerLink: bad })).facebook;
-    assert.deepEqual([r.on, r.verb, r.href], [true, null, null], `${String(bad)}: on, but no button to a strange address`);
-  }
+  const both = renderProtects(protectRows({ ...linda, whatsappConfigured: true, whatsappLink: cases[0][3], messengerConfigured: true, messengerLink: cases[1][3] }));
+  assert.equal((both.match(/class="row-card row-soon"/g) || []).length, 1, "with both on, only phone calls is Coming soon");
 });
 
 test("Linda with her phone paired: the texts row names it and offers Change", () => {

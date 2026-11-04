@@ -16,8 +16,9 @@ import { esc, icon } from "./ui.js";
 //   app never reads the spec at run time);
 // - "server": on only when /api/status says this server runs it (the boolean
 //   named by configuredBy, the link to open named by linkBy), Coming soon
-//   otherwise. Facebook and Messenger: the Prudence Page exists only where
-//   its keys are set (_product/specs/facebook-messenger.md).
+//   otherwise: the Prudence WhatsApp number and the Prudence Page exist only
+//   where their keys are set. A field the server does not send counts as
+//   false.
 // name, states and verbs are the i18n keys a row of this channel can show
 // (protect_* in i18n.js); icon is a name for icon() in ui.js.
 export const CHANNELS = Object.freeze([
@@ -27,7 +28,8 @@ export const CHANNELS = Object.freeze([
   { key: "texts", status: "built", icon: "chat", name: "protect_texts",
     states: ["protect_texts_on", "protect_texts_on_phone", "protect_texts_none"], verbs: ["protect_texts_change", "protect_texts_add"] },
   { key: "voice", status: "built", icon: "mic", name: "protect_voice", states: ["protect_voice_state"], verbs: ["protect_voice_verb"] },
-  { key: "whatsapp", status: "soon", icon: "whatsapp", name: "protect_whatsapp", states: ["protect_whatsapp_line"], verbs: [] },
+  { key: "whatsapp", status: "server", configuredBy: "whatsappConfigured", linkBy: "whatsappLink", icon: "whatsapp", name: "protect_whatsapp",
+    states: ["protect_whatsapp_line", "protect_whatsapp_on"], verbs: ["protect_whatsapp_verb"] },
   { key: "facebook", status: "server", configuredBy: "messengerConfigured", linkBy: "messengerLink", icon: "messenger", name: "protect_facebook",
     states: ["protect_facebook_line", "protect_facebook_on"], verbs: ["protect_facebook_verb"] },
   { key: "calls", status: "soon", icon: "phone", name: "protect_calls", states: ["protect_calls_line"], verbs: [] },
@@ -63,9 +65,9 @@ function textsRow(devices) {
 }
 
 // A channel the server runs (status "server"): its row, or null while this
-// server does not run it. The link opens in a new tab (Messenger's m.me
-// address); anything but an https address gives no button rather than a
-// strange one.
+// server does not run it. The link opens in a new tab (WhatsApp's wa.me or
+// Messenger's m.me address); anything but an https address gives no button
+// rather than a strange one.
 function serverRow(c, status) {
   if (status?.[c.configuredBy] !== true) return null;
   const link = String(status[c.linkBy] || "");
