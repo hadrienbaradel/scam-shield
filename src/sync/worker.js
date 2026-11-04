@@ -9,7 +9,7 @@ import { many, one, q, pool } from "../db/pool.js";
 import { gmailClient, ensureLabels, normalizeMessage } from "../google/gmail.js";
 import { accessTokenFor } from "../google/tokens.js";
 import { ReauthNeeded } from "../google/oauth.js";
-import { buildContext, lookupBreaches, lookedUp } from "../context/builder.js";
+import { buildContext, lookupBreaches, mergeBreaches } from "../context/builder.js";
 import { decideAction, applyDecision, audit } from "./actions.js";
 import { runCheck, recordCheck } from "./checker.js";
 import { publish } from "../notify/sse.js";
@@ -120,7 +120,7 @@ export async function rebuildContext({ user, client }) {
   if (previous?.breachLookup) {
     try {
       const { source, breaches } = await lookupBreaches(profileEmail, { hibpKey: config.hibpKey });
-      ctx.breaches = [...breaches, ...(ctx.breaches || []).filter((b) => !lookedUp(b))];
+      ctx.breaches = mergeBreaches(breaches, ctx.breaches);
       ctx.breachLookup = { at: new Date().toISOString(), source, found: breaches.length };
     } catch (e) { console.warn(`[breach lookup] ${e.message}`); }
   }

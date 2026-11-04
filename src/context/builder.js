@@ -186,6 +186,24 @@ const normName = (name) => String(name || "").toLowerCase().replace(/[^a-z0-9]/g
 // Looked-up breaches carry their list as a prefix; the curated ones do not.
 export const lookedUp = (b) => /^(hibp|xon)-/.test(String(b?.id || ""));
 
+// A breach the lookup found that is one of the well-known ones (same company,
+// same year: "Bouygues Telecom" 2025 from the list is bouygues-2025) ticks
+// that one instead of standing next to it twice, and brings its own list of
+// what leaked; the rest keep their looked-up ids. The merged list: what was
+// found first, then the breaches ticked by hand that are not among them (a
+// looked-up breach the fresh lookup no longer finds goes; breach-exposure.md line 3).
+const sourceKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+export const curatedTwin = (b) => KNOWN_BREACHES.find((k) => k.id !== "old-password" && sourceKey(k.source) === sourceKey(b?.source) && String(b?.date || "").slice(0, 4) === k.date) || null;
+export function mergeBreaches(found, existing = []) {
+  const folded = [];
+  const ids = new Set();
+  for (const b of found || []) {
+    const x = curatedTwin(b) || b;
+    if (!ids.has(x.id)) { ids.add(x.id); folded.push(x); }
+  }
+  return [...folded, ...(existing || []).filter((b) => !lookedUp(b) && !ids.has(b.id))];
+}
+
 // Have I Been Pwned's search by email: needs a paid key (Core 1: 10 requests a minute).
 export async function hibpBreaches(email, apiKey, { fetchImpl = fetch } = {}) {
   if (!apiKey) return [];

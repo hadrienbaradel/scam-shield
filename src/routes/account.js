@@ -8,7 +8,7 @@ import { many, one, q } from "../db/pool.js";
 import { museConfigured, museModel, voiceConfigured } from "../../lib/muse.js";
 import { urlhausState } from "../links/resolver.js";
 import { subscribe } from "../notify/sse.js";
-import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp } from "../context/builder.js";
+import { KNOWN_BREACHES, forgetItem, lookupBreaches, lookedUp, mergeBreaches } from "../context/builder.js";
 import { loadContext } from "../sync/checker.js";
 import { clientFor, rebuildContext, syncUser } from "../sync/worker.js";
 import { revokeAndForget, tokenStatus } from "../google/tokens.js";
@@ -167,7 +167,7 @@ export default async function accountRoutes(app) {
       }
       const row = await one("SELECT data FROM contexts WHERE user_id = $1", [request.user.id]);
       const ctx = row?.data || { userName: request.user.name, knownSenders: [], knownLinkDomains: [], providers: [], orders: [], breaches: [], trustedContacts: [], subscriptions: [] };
-      ctx.breaches = [...result.breaches, ...(ctx.breaches || []).filter((b) => !lookedUp(b))];
+      ctx.breaches = mergeBreaches(result.breaches, ctx.breaches);
       ctx.breachLookup = { at: new Date().toISOString(), source: result.source, found: result.breaches.length };
       await q(`INSERT INTO contexts (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [request.user.id, ctx]);
       await audit(request.user.id, "breach_lookup", { found: result.breaches.length, source: result.source });
