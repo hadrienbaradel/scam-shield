@@ -3,10 +3,13 @@
 // French block); js/main.js decides, from /api/status and the address, whether
 // it or the app shows, and calls:
 //
-//   showLanding(status)  no one signed in and no #/demo route: the landing
-//                        shows, in the app's language (getLang()); the first
-//                        call wires the language buttons, the sign-in notes,
-//                        the library count and the two forms.
+//   showLanding(status)  no one signed in and no #/demo route: whatever the
+//                        app drew is emptied first, then the landing shows, in
+//                        the app's language (getLang()); the first call wires
+//                        the language buttons, the sign-in notes, the library
+//                        count and the two forms. When a session ended with the
+//                        page open (its landing already removed), the page
+//                        reloads at / instead, so nothing of the app stays.
 //   hideLanding(signedIn) the app shows; a signed-in person's landing is
 //                        removed from the page, a visitor's stays for the Back
 //                        button (#/demo, then back to /).
@@ -20,26 +23,29 @@
 import { api } from "../js/api.js";
 import { STRINGS, setLang, getLang, t } from "../js/i18n.js";
 
-const html = document.documentElement;
+const html = () => document.documentElement;
 const root = () => document.getElementById("landing");
 const view = () => document.getElementById("view");
 const isRoute = () => location.hash.startsWith("#/");
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
 let wired = false;
 
-export const landingAnchor = () => Boolean(root()) && !html.classList.contains("in-app") && !isRoute();
+export const landingAnchor = () => Boolean(root()) && !html().classList.contains("in-app") && !isRoute();
 
 export function hideLanding(signedIn) {
-  html.classList.add("in-app");
+  html().classList.add("in-app");
   view().hidden = false;
   if (signedIn) root()?.remove();
 }
 
 export function showLanding(status) {
+  // Signed out: nothing of the person's screens stays in the page, even hidden.
+  const v = view();
+  v.innerHTML = "";
+  v.hidden = true;
   const el = root();
-  if (!el) return;
-  html.classList.remove("in-app");
-  view().hidden = true;
+  if (!el) { location.replace("/"); return; }
+  html().classList.remove("in-app");
   // No one is signed in: a hint left from an ended session would hide the
   // landing at the next visit for nothing.
   if (/(?:^|;\s*)prudence_in=/.test(document.cookie)) document.cookie = "prudence_in=; Max-Age=0; path=/; SameSite=Lax";
@@ -48,7 +54,7 @@ export function showLanding(status) {
 }
 
 function showLanguage(l) {
-  html.classList.toggle("l-fr", l === "fr");
+  html().classList.toggle("l-fr", l === "fr");
   for (const b of root().querySelectorAll(".l-lang")) b.hidden = b.dataset.lang !== l;
 }
 

@@ -69,9 +69,9 @@ test("above the fold: the question, one sentence on what Prudence does, the demo
   assert.match(en, /<a class="l-door l-door-outline" href="#early-access">.*Protect my parent's email.*Early access, usually within a day\./);
   assert.ok(en.includes('id="early-access"'), "the outline door scrolls to the form");
   const fr = blockOf("fr");
-  assert.match(fr, /<h1 id="l-h1-fr">Ce message est-il vrai, pour vous \?<\/h1>/);
+  assert.match(fr, /<h1 id="l-h1-fr">Ce message <span class="l-nowrap">est-il<\/span> vrai, pour vous&nbsp;\?<\/h1>/, "a no-break space keeps the question mark on its line");
   assert.match(fr, /href="#\/demo">.*Essayer avec la boîte de Françoise/);
-  assert.match(fr, /href="#early-access-fr">.*Protéger les e-mails de mon parent/);
+  assert.match(fr, /href="#early-access-fr">.*Protéger les <span class="l-nowrap">e-mails<\/span> de mon parent/);
   assert.equal(count(landing(), /\/auth\/google/g), 2, "one sign-in link per language, in the early-access section only");
 });
 
@@ -85,7 +85,7 @@ test("three example messages, each with the Scam card the app draws; senders and
       assert.match(e, /<div class="v2-card vcard danger">/, "the app's card");
       assert.match(e, /<p class="vcard-word"><span class="vcard-mark" aria-hidden="true"><svg[^>]*>.*<\/svg><\/span>(Scam|Arnaque)<\/p>/, "the word with its icon, never the color alone");
       assert.ok(count(e, /class="vcard-fact"/g) >= 2, "the reasons in plain words");
-      assert.ok(count(e, /class="v2-chip">(Checked:|Vérifié :) /g) >= 2, "each reason says what was checked");
+      assert.ok(count(e, /class="v2-chip">(Checked:|Vérifié&nbsp;:) /g) >= 2, "each reason says what was checked");
       assert.match(e, /class="vcard-next"/, "what to do instead");
       assert.doesNotMatch(e, /<a\s/, "nothing in a message is a link");
       for (const m of e.matchAll(/<b class="l-msg-link">([^<]+)<\/b>/g)) assert.match(m[1], /\.test\//, `${m[1]} is on a reserved .test name`);
@@ -255,4 +255,57 @@ test("deleting the account clears the hint too", withDb, async () => {
   const gone = await app.inject({ method: "DELETE", url: "/api/account", headers: { cookie: `ss_sid=${sid.value}; prudence_in=1`, origin: ORIGIN } });
   assert.equal(gone.statusCode, 200);
   assert.equal(cookieOf(gone, "prudence_in")?.value, "");
+});
+
+// --------------------------------------- landing/landing.js on a fake page --
+
+// The few parts of the page landing.js touches: <html>'s classes, #view,
+// #landing (gone once a signed-in person's app removed it), the cookie, the address.
+function fakePage() {
+  const classes = new Set();
+  const page = {
+    replaced: [], removed: false, landingThere: true,
+    view: { innerHTML: "", hidden: false },
+    landing: { querySelectorAll: () => [], querySelector: () => null, addEventListener: () => {}, remove: () => { page.removed = true; page.landingThere = false; } },
+  };
+  globalThis.document = {
+    cookie: "",
+    documentElement: { classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), contains: (c) => classes.has(c) }, lang: "en" },
+    getElementById: (id) => (id === "view" ? page.view : id === "landing" && page.landingThere ? page.landing : null),
+  };
+  globalThis.location = { hash: "", search: "", replace: (u) => page.replaced.push(u) };
+  globalThis.fetch = () => new Promise(() => {}); // the library count never answers here
+  page.classes = classes;
+  return page;
+}
+
+test("signed out after a session ended with the page open: nothing of the app stays, the page comes back clean at /", async () => {
+  const page = fakePage();
+  const { showLanding, hideLanding, landingAnchor } = await import("../public/landing/landing.js");
+  // A signed-in senior: the app drew her inbox and removed the landing.
+  page.classes.add("in-app");
+  hideLanding(true);
+  page.view.innerHTML = "<section>Linda's inbox: Your slippers are on the way</section>";
+  assert.ok(page.removed, "a signed-in person's landing leaves the page");
+  assert.equal(page.view.hidden, false);
+  // Her session ends (sign-out elsewhere, expiry, Delete my account) and the next draw finds no one.
+  showLanding({ googleConfigured: true });
+  assert.equal(page.view.innerHTML, "", "her inbox is emptied, not merely hidden");
+  assert.equal(page.view.hidden, true);
+  assert.deepEqual(page.replaced, ["/"], "no landing left in this page: it reloads at /");
+
+  // A visitor back from the demo: the demo is emptied and the landing shows again.
+  const visitor = fakePage();
+  visitor.classes.add("in-app");
+  hideLanding(false);
+  visitor.view.innerHTML = "<section>Example: this is Linda's day</section>";
+  assert.equal(visitor.removed, false, "a visitor's landing stays for the Back button");
+  showLanding({ googleConfigured: true });
+  assert.equal(visitor.view.innerHTML, "");
+  assert.equal(visitor.view.hidden, true);
+  assert.equal(visitor.classes.has("in-app"), false, "the landing shows");
+  assert.deepEqual(visitor.replaced, [], "no reload needed");
+  assert.equal(landingAnchor(), true, "a place on the landing is left to the browser");
+  location.hash = "#/demo";
+  assert.equal(landingAnchor(), false, "a route is the router's");
 });

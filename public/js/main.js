@@ -274,6 +274,8 @@ async function refresh(reroute = true) {
   status = await api("/api/status");
   applyPrefs();
   renderChrome();
+  // The session ended with the page open: no live events for no one.
+  if (!status.user && stream) { stream.close(); stream = null; }
   if (status.user && !stream) {
     stream = events({
       check: () => refreshLists(),
