@@ -59,6 +59,10 @@ gitleaks scans every push and pull request in CI (job `secrets`, false positives
 the repo is public, secret-scanning push protection (Hadrien, admin) also refuses a push that carries a known key format. A key that
 reached a commit is rotated at once (below): a red scan, a rewritten history or a deleted branch does not un-leak it.
 
+## GitHub Actions secrets
+
+Workflows never read `config/credentials.enc` (no master key on GitHub) and never hold a key in their files: a key a workflow needs is a repository secret, set by the repository owner (Hadrien; on a personal-account repository only the owner can) in Settings → Secrets and variables → Actions, and passed to one step as `${{ secrets.NAME }}`. `META_MODEL_API_KEY` there lets the pull-request reviewer (`.github/workflows/pr-review.yml`) call Muse Spark; `GROQ_API_KEY`, optional, turns on Prompt Guard 2 for the diff. Without them the reviewer skips with a notice, and `make pr-review PR=<n>` does the same review from a laptop with the credentials. A key rotated in the credentials (below) is replaced in its secret too.
+
 ## If the master key leaks
 
 Anyone with the key and the public repo history can read every version of `config/credentials.enc`, and history cannot be unleaked.

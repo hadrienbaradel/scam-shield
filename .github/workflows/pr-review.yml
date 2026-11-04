@@ -1,0 +1,48 @@
+# Every pull request from a branch of this repository gets a Muse Spark review through Prudence's own LLM
+# layer (scripts/pr-review.mjs), posted as one comment: advice, never a gate (a "needs changes" verdict
+# leaves the job green; only a broken run fails it). Llama Prompt Guard 2 reads the diff first when the
+# GROQ_API_KEY secret exists. Secrets are set by the repository owner (Settings > Secrets and variables >
+# Actions), never written here; without META_MODEL_API_KEY the job prints a notice and skips. Pull requests
+# from forks are skipped: they never receive secrets. From a laptop: make pr-review PR=<n> (_product/docs/git.md).
+name: PR review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: Muse Spark review
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Review the pull request and post it as a comment
+        env:
+          META_MODEL_API_KEY: ${{ secrets.META_MODEL_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # No master key here: the keys come from the secrets above, not from config/credentials.enc.
+          CREDENTIALS_FILE: ${{ github.workspace }}/config/ci-has-no-credentials.enc
+        run: |
+          if [ -z "$META_MODEL_API_KEY" ]; then
+            echo "::notice title=Muse Spark review skipped::The repository secret META_MODEL_API_KEY is not set (Settings > Secrets and variables > Actions, by the repository owner). From a laptop: make pr-review PR=$PR_NUMBER"
+            exit 0
+          fi
+          node scripts/pr-review.mjs --pr "$PR_NUMBER" --post
