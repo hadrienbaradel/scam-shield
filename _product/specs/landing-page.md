@@ -1,5 +1,5 @@
 # Landing page: heyprudence.com for people who do not know Prudence yet
-Status: Planned · Raised by Vlad, 2026-11-04 · Decided by Vlad 2026-11-04 (start from Hadrien's `prudence-site` page; the adult child is the reader; the demo and an early-access request are the two doors, since Google sign-in is still in its test phase) · Last updated: 2026-11-04
+Status: Partial (the early-access request and its console page are built; the page waits for Hadrien's file) · Raised by Vlad, 2026-11-04 · Decided by Vlad 2026-11-04 (start from Hadrien's `prudence-site` page; the adult child is the reader; the demo and an early-access request are the two doors, since Google sign-in is still in its test phase) · Last updated: 2026-11-04
 
 ## Why
 heyprudence.com is live since Nov 4 and is the link judges, journalists and families open. Signed out, the root shows the app's one-screen welcome, which assumes the visitor already knows Prudence. A visitor should understand in a minute what Prudence does for a parent, see it judge messages that look real, and leave with one of two things done: the demo tried, or early access asked for. The public database is the other reason to come and to link to us: a lookup, the library, the week's breaches.
@@ -23,7 +23,8 @@ Not in the Nov 4 video (rendered). For judges and the X post: open heyprudence.c
 A blog, pricing, a newsletter, analytics or any tracker, an app subdomain (the app keeps `/`), Google verification itself, mailing the early-access requester (Resend later), A/B tests, a sign-in button for strangers while the client is in its test phase.
 
 ## Acceptance
-- `tests/landing.test.js`: `/` without a session answers 200 with the landing landmarks (the question, both buttons, three example cards, the lookup form to `/public/#/suspects`, the library and watch links, the footer links) and no script from another origin; the early-access route stores a request, answers the same line for a duplicate, refuses a malformed address, rate-limits, the console list is admins only, retention deletes a request 90 days after it was marked added.
+- `tests/landing.test.js`: `/` without a session answers 200 with the landing landmarks (the question, both buttons, three example cards, the lookup form to `/public/#/suspects`, the library and watch links, the footer links) and no script from another origin.
+- `tests/early-access.test.js` (built Nov 4): a request is stored once, a duplicate gets the same answer and stores nothing more, a malformed address or one carrying `?`, `%`, `&`, `=` or `/` is 400, the rate limit stores nothing, the console list and Mark added are admins only, retention deletes a request 90 days after it was marked added and keeps open ones.
 - Headless Chrome at 1280 and 360 px in both languages: no horizontal overflow, zero console errors (the harness outside the repo); noted in the Done line.
 - Reading check: one person outside the team says what the page asks them to do.
 
