@@ -32,6 +32,9 @@ export const PART_CHARS = 60000;
 export const MAX_PARTS = 4;
 export const BODY_CHARS = 6000;
 export const NOISE = /(^|\/)package-lock\.json$|\.(svg|png|jpe?g|gif|webp|ico|wav|mp3|mp4)$|^config\/credentials\.enc$|^android\/(.+\/)?(build|\.gradle)\/|\.(apk|aab)$/i;
+// Files that are never committed (_product/docs/git.md): the model sees the name, never the text.
+export const SECRET_FILES = /(^|\/)(\.env(\..+)?|master\.key|\.tokens\.json)$|\.(pem|key|keystore|jks|p12)$/i;
+export const NOT_SENT = "[not sent to any model: a file of this kind is never committed (_product/docs/git.md, Never committed)]";
 export const REDACTED = "[redacted: this hunk contained text that tried to steer the reviewer]";
 const REDACTED_DESCRIPTION = "[redacted: the description contained text that tried to steer the reviewer]";
 export const LIST_MAX = 100; // file names named in the prompt, per list
@@ -80,7 +83,7 @@ export function planParts(files, { cap = PART_CHARS, max = MAX_PARTS } = {}) {
   for (const f of files) {
     const long = f.text.length > cap;
     const at = f.text.lastIndexOf("\n", cap - 100);
-    const file = long ? { ...f, text: `${f.text.slice(0, at > 0 ? at + 1 : cap - 100)}[cut: the rest of this file's diff is over the size limit]\n` } : f;
+    const file = long ? { ...f, text: `${at > 0 ? f.text.slice(0, at + 1) : `${f.text.slice(0, cap - 100)}\n`}[cut: the rest of this file's diff is over the size limit]\n` } : f;
     let part = parts.find((p) => size(p) + file.text.length <= cap);
     if (!part && parts.length < max) parts.push((part = []));
     if (!part) { notRead.push(f.path); continue; }
@@ -206,7 +209,7 @@ export async function main(argv = process.argv.slice(2), { gh = runGh, out = (s)
     info = o.pr ? JSON.parse(await gh(["pr", "view", o.pr, "--json", "title,body,baseRefName,headRefName,files"])) : { title: basename(o.diff) };
     diff = o.pr ? await gh(["pr", "diff", o.pr, "--color", "never"]) : await readFile(o.diff, "utf8");
   } catch (e) { return fail(firstLine(e)); }
-  const all = splitDiff(diff);
+  const all = splitDiff(diff).map((f) => (SECRET_FILES.test(f.path) ? { ...f, text: `${f.text.split("\n")[0]}\n${NOT_SENT}\n` } : f));
   const noise = all.filter((f) => NOISE.test(f.path)).map((f) => f.path);
   const kept = all.filter((f) => !NOISE.test(f.path));
   if (!kept.length) return fail(`Nothing to review: ${all.length ? `only noise changed (${noise.join(", ")})` : "the diff is empty"}; nothing posted.`, 0);

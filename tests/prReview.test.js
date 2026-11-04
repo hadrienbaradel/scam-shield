@@ -14,7 +14,7 @@ import { getProvider } from "../lib/llm/index.js";
 import { mockGuard } from "../lib/promptGuard/mock.js";
 import { guardBreaker } from "../lib/promptGuard/index.js";
 import {
-  splitDiff, planParts, buildPrompt, verdictOf, composeReview, main, NOISE, REDACTED, SYSTEM, PART_CHARS, MAX_PARTS,
+  splitDiff, planParts, buildPrompt, verdictOf, composeReview, main, NOISE, NOT_SENT, REDACTED, SYSTEM, PART_CHARS, MAX_PARTS,
 } from "../scripts/pr-review.mjs";
 
 const script = new URL("../scripts/pr-review.mjs", import.meta.url).pathname;
@@ -90,6 +90,20 @@ test("noise never reaches the model: lock file, images, sounds, the encrypted cr
   assert.match(sent, /Not shown \(noise, or over the size limit\): package-lock\.json, public\/logo\.svg/);
 });
 
+test("a file that is never committed (master key, .env, private keys) reaches the model by name, never by content", async () => {
+  mock.script(ANSWER);
+  const diff = fileDiff("config/master.key", ["not-a-real-key-test-fixture"]) + fileDiff(".env", ["SOME_SETTING=not-a-real-value"])
+    + fileDiff("deploy/server.pem", ["not-a-real-pem"]) + fileDiff("lib/example.js", ["export const answer = 42;"]);
+  assert.equal(await main(["--diff", fixture("secret.diff", diff)], io()), 0);
+  const sent = mock.calls[0].messages[0].content;
+  for (const path of ["config/master.key", ".env", "deploy/server.pem"]) {
+    assert.ok(sent.includes(`diff --git a/${path} b/${path}\n${NOT_SENT}\n`), path);
+  }
+  for (const text of ["not-a-real-key", "not-a-real-value", "not-a-real-pem"]) assert.ok(!sent.includes(text), text);
+  assert.match(sent, /\+export const answer = 42;/);
+  assert.match(NOT_SENT, /never committed/);
+});
+
 test("a big pull request goes in at most 4 requests of about 60,000 characters, split by file; what does not fit is named", () => {
   const file = (path, chars) => ({ path, text: `diff --git a/${path} b/${path}\n${`+${"a".repeat(99)}\n`.repeat(Math.ceil(chars / 100))}` });
   const plan = planParts([file("a.js", 35000), file("b.js", 35000), file("c.js", 35000), file("d.js", 35000), file("e.js", 35000), file("small.md", 1000)]);
@@ -102,6 +116,9 @@ test("a big pull request goes in at most 4 requests of about 60,000 characters, 
   assert.deepEqual(huge.cut, ["huge.js"]);
   assert.ok(huge.parts[0][0].text.length <= PART_CHARS);
   assert.match(huge.parts[0][0].text, /\+a+\n\[cut: the rest of this file's diff is over the size limit\]\n$/);
+  const minified = planParts([{ path: "min.js", text: "x".repeat(90000) }]).parts[0][0].text;
+  assert.match(minified, /x\n\[cut: the rest of this file's diff is over the size limit\]\n$/, "a line without an end is cut, then the marker on its own line");
+  assert.ok(minified.length <= PART_CHARS);
   const say = (p) => composeReview({ answers: ["Nothing found.\nVerdict: ready"], plan: p, shield: { ran: false, flagged: [], failed: 0, total: 0 }, label: "Muse Spark", model: "muse-spark-1.3", pr: "7" });
   assert.match(say(plan), /^> Partial review, 1 file not read \(at most 4 requests of about 60k characters\): `e\.js`\./);
   assert.match(say(huge), /^> Partial review, 0 files not read and 1 cut short \(at most 4 requests of about 60k characters\): `huge\.js`\./);
