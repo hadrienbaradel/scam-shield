@@ -125,11 +125,13 @@ export async function startPublish(id) {
 }
 
 // publishing -> published (or paused, when the ad was created paused).
-// Idempotent: a retry after a write that did land finds its own ad number.
+// Idempotent: a retry after a write that did land finds its own ad number,
+// but never a row that was set aside (a reason) or kept with a warning (an error).
 export async function publishDone(id, { network, external, budget, review }, { paused = false } = {}) {
   return Boolean(await one(`UPDATE ads SET status = $6, network = $2, external = $3, budget = $4, review = $5, error = NULL,
                                            published_at = coalesce(published_at, now()), updated_at = now()
-                            WHERE id = $1 AND (status = 'publishing' OR (status IN ('published', 'paused') AND external->>'adId' = $7))
+                            WHERE id = $1 AND rejected_reason IS NULL
+                              AND (status = 'publishing' OR (status IN ('published', 'paused') AND external->>'adId' = $7 AND error IS NULL))
                             RETURNING id`, [id, network, external, budget, review, paused ? "paused" : "published", String(external?.adId ?? "")]));
 }
 

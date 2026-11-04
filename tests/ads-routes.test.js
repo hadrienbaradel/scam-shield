@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import Fastify from "fastify";
 import adsRoutes, { adsIdle, landingBase, plainError, importOptional, defaultModels, modelsFrom, mergeModels, jobOf, retried, LIMITS } from "../src/routes/ads.js";
+import * as store from "../src/ads/store.js";
 import { newCode, createDrafting, STALE_MINUTES } from "../src/ads/store.js";
 
 // ---------------------------------------------------------------- pure ---
@@ -992,4 +993,132 @@ test("a studio module that is installed but broken answers 500, never 'not insta
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------- review round 3 ---
+
+// Wraps pool.query: `rule(text, params, n)` answers "before" (throw without
+// running), "after" (run it, then throw: the write landed, its answer was lost) or nothing.
+function faultyPool(rule) {
+  const real = pool.query;
+  const counts = new Map();
+  pool.query = async function (text, params) {
+    const key = typeof text === "string" ? text : text?.text;
+    const n = (counts.get(key) || 0) + 1;
+    counts.set(key, n);
+    const how = typeof key === "string" ? rule(key, params, n) : null;
+    if (how === "before") throw new Error("connection reset (before)");
+    const out = await real.call(pool, text, params);
+    if (how === "after") throw new Error("connection reset (after the write landed)");
+    return out;
+  };
+  return () => { pool.query = real; };
+}
+const KEEP_AD = "UPDATE ads SET status = $7";
+const PUBLISH_DONE = "UPDATE ads SET status = $6";
+// A network whose ad is made after another server set the row aside.
+function setAsideMeanwhile(over = {}) {
+  const network = fakeNetwork(over);
+  const publish = network.publish;
+  network.publish = async (args) => {
+    await pool.query("UPDATE ads SET status = 'rejected', rejected_reason = 'by another server' WHERE status = 'publishing'");
+    return publish(args);
+  };
+  return network;
+}
+const rowOf = async (id) => (await pool.query("SELECT status, error, external, rejected_reason, review FROM ads WHERE id = $1", [id])).rows[0];
+
+test("a kept ad stays kept when its write landed but the answer was lost: the retry never turns it back into a clean 'published'", opts, async () => {
+  const network = setAsideMeanwhile();
+  useDeps({ network });
+  const [id] = await drafts(1);
+  const restore = faultyPool((t, p, n) => (t.includes(KEEP_AD) && n === 1 ? "after" : null));
+  try {
+    await post(`/api/admin/ads/${id}/publish`);
+    await adsIdle();
+  } finally { restore(); }
+  const r = await rowOf(id);
+  assert.deepEqual([r.status, r.rejected_reason, r.review.state, r.external.adId], ["paused", "by another server", "paused", "1202000001"]);
+  assert.match(r.error, /created, then paused at once/);
+  assert.equal(network.calls.setStatus.length, 1, "paused once, not again on the retry");
+
+  // The pause failed: the warning survives the retry.
+  const failing = setAsideMeanwhile({ async setStatus() { throw new Error("Facebook did not answer"); } });
+  useDeps({ network: failing });
+  const [other] = await drafts(1);
+  const restore2 = faultyPool((t, p, n) => (t.includes(KEEP_AD) && n === 1 ? "after" : null));
+  try {
+    await post(`/api/admin/ads/${other}/publish`);
+    await adsIdle();
+  } finally { restore2(); }
+  const live = await rowOf(other);
+  assert.equal(live.status, "published");
+  assert.match(live.error, /could not be paused: pause it in Ads Manager now/);
+});
+
+test("publishDone finds its own ad number after a lost answer, but never a row set aside or kept with a warning", opts, async () => {
+  const { network } = useDeps();
+  const [id] = await drafts(1);
+  const restore = faultyPool((t, p, n) => (t.includes(PUBLISH_DONE) && n === 1 ? "after" : null));
+  try {
+    await post(`/api/admin/ads/${id}/publish`);
+    await adsIdle();
+  } finally { restore(); }
+  const r = await rowOf(id);
+  assert.deepEqual([r.status, r.external.adId, network.calls.setStatus.length], ["published", "1202000001", 0], "the retry found its own write");
+
+  const record = { network: "facebook", external: { adId: "1202000001" }, budget: null, review: { state: "in_review" } };
+  await pool.query("UPDATE ads SET status = 'paused', error = 'kept with a warning' WHERE id = $1", [id]);
+  assert.equal(await store.publishDone(id, record), false, "a warning is never erased");
+  await pool.query("UPDATE ads SET status = 'paused', error = NULL, rejected_reason = 'set aside' WHERE id = $1", [id]);
+  assert.equal(await store.publishDone(id, record), false, "a set-aside row is never made live again");
+});
+
+test("the ad's own row is written before the campaign's: three failed campaign writes never cost the ad its ids", opts, async () => {
+  const { network } = useDeps();
+  const [id] = await drafts(1);
+  const logged = [];
+  const consoleError = console.error;
+  console.error = (...a) => logged.push(a.join(" "));
+  const restore = faultyPool((t) => (t.includes("INSERT INTO ad_campaigns") ? "before" : null));
+  try {
+    await post(`/api/admin/ads/${id}/publish`);
+    await adsIdle();
+  } finally { restore(); console.error = consoleError; }
+  const r = await rowOf(id);
+  assert.deepEqual([r.status, r.external.adId, r.external.campaignId], ["published", "1202000001", "cmp-1"]);
+  assert.equal(network.calls.publish.length, 1);
+  assert.equal((await one("SELECT count(*)::int AS n FROM ad_campaigns")).n, 0);
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /campaign cmp-1 on Facebook was not stored/);
+});
+
+test("no network call starts after the server began shutting down: a queued publish goes back to draft, stopped", opts, async () => {
+  useDeps();
+  const [a, b] = await drafts(2);
+  const other = await buildApp({ logger: false });
+  const hold = gate();
+  let closing = false;
+  const startedWhileClosing = [];
+  const network = fakeNetwork();
+  const publish = network.publish;
+  network.publish = async (args) => {
+    startedWhileClosing.push(closing);
+    if (startedWhileClosing.length === 1) await hold.wait();
+    return publish(args);
+  };
+  other.adsDeps = { studio: fakeStudio(), network, models: MODELS };
+  const send = (id) => other.inject({ method: "POST", url: `/api/admin/ads/${id}/publish`, headers: { origin: ORIGIN, ...adminHeaders }, payload: {} });
+  assert.equal((await send(a)).statusCode, 202);
+  assert.equal((await send(b)).statusCode, 202);
+  await new Promise((r) => setTimeout(r, 50));
+  closing = true;
+  const closed = other.close();
+  await new Promise((r) => setTimeout(r, 20));
+  hold.open();
+  await closed;
+  assert.deepEqual(startedWhileClosing, [false], "only the one already under way");
+  assert.equal((await rowOf(a)).status, "published");
+  const queued = await rowOf(b);
+  assert.deepEqual([queued.status, queued.error], ["draft", "Stopped: the server was shutting down. Try again."]);
 });

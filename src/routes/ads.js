@@ -206,13 +206,20 @@ const photoOf = (ad) => (ad?.photo ? { bytes: ad.photo, mime: ad.photo_mime || "
 
 // ---- Publishing ------------------------------------------------------------------
 
-async function publishJob({ ad, net, network, log }) {
+const STOPPED = "Stopped: the server was shutting down. Try again.";
+
+async function publishJob({ ad, net, network, log, signal }) {
   let out;
   let campaignId;
   try {
     // Set aside while it waited for the network (elsewhere): nothing is sent.
     if ((await store.statusOf(ad.id)) !== "publishing") return;
     campaignId = await store.getCampaign(net.name);
+    // The server began shutting down while this one waited: no network call starts after that.
+    if (signal?.aborted) {
+      await store.publishFailed(ad.id, STOPPED);
+      return;
+    }
     out = await network.publish({
       name: `Prudence ${ad.code} v${ad.version}`,
       words: ad.words,
@@ -238,17 +245,25 @@ async function publishJob({ ad, net, network, log }) {
     budget: out.budget ?? null,
     review: { state: paused ? "paused" : "in_review", effectiveStatus: out.status ?? null, reasons: [], checkedAt: new Date().toISOString() },
   };
+  // The ad's own row first, tried three times. Once publishDone has said the
+  // row moved on, it is never called again in this publish: a retry only
+  // finishes keeping the ad (and pauses it on the network at most once).
+  let movedOn = false;
+  let stopped = null;
   try {
     await retried(async () => {
-      if (out.campaignCreated && out.campaignId) await store.saveCampaign(net.name, String(out.campaignId));
-      if (await store.publishDone(ad.id, record, { paused })) return;
-      // The row moved on while the network made the ad: pause it there and keep it, never untracked.
-      let stopped = true;
-      try {
-        await network.setStatus({ adId, adsetId, status: "PAUSED" });
-      } catch (e) {
-        stopped = false;
-        log.error({ adId, err: plainError(e) }, "ad studio: a set-aside ad could not be paused");
+      if (!movedOn) {
+        if (await store.publishDone(ad.id, record, { paused })) return;
+        movedOn = true;
+      }
+      if (stopped === null) {
+        try {
+          await network.setStatus({ adId, adsetId, status: "PAUSED" });
+          stopped = true;
+        } catch (e) {
+          stopped = false;
+          log.error({ adId, err: plainError(e) }, "ad studio: a set-aside ad could not be paused");
+        }
       }
       await store.keepAd(ad.id, { ...record, review: { ...record.review, state: stopped ? "paused" : record.review.state } }, stopped
         ? { status: "paused", error: `Set aside while ${net.label} was making it: the ad was created, then paused at once. Check it in Ads Manager.` }
@@ -259,6 +274,17 @@ async function publishJob({ ad, net, network, log }) {
     const line = `ad studio: ad ${adId} (ad set ${adsetId}, campaign ${record.external.campaignId}) is on ${net.label} but row ${ad.id} could not be written: ${plainError(e)}`;
     log.error(line);
     console.error(line);
+  }
+
+  // Then the one campaign, apart: its failure is only logged (the ad's row already names it).
+  if (out.campaignCreated && out.campaignId) {
+    try {
+      await retried(() => store.saveCampaign(net.name, String(out.campaignId)));
+    } catch (e) {
+      const line = `ad studio: campaign ${out.campaignId} on ${net.label} was not stored, the next publish may make another: ${plainError(e)}`;
+      log.error(line);
+      console.error(line);
+    }
   }
 }
 
@@ -415,7 +441,7 @@ export default async function adsRoutes(app, opts = {}) {
       // Held from the click, through the wait for the network, to the stored result.
       const network = d.network;
       const log = request.log;
-      background(log, [ad.id], "publishing", () => serial(net.name, () => publishJob({ ad, net, network, log })));
+      background(log, [ad.id], "publishing", () => serial(net.name, () => publishJob({ ad, net, network, log, signal: controller.signal })));
       return reply.code(202).send({ id: ad.id, status: "publishing" });
     });
 
