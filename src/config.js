@@ -88,6 +88,8 @@ export const config = {
   // abuse.ch URLhaus lookups (fair use, not-for-profit): host names only.
   abusechKey: env.ABUSECH_AUTH_KEY || "",
   adminEmails: list(env.ADMIN_EMAILS),
+  // The operator and the contact point named on the public database (_product/specs/public-database.md, line 7).
+  publicDb: { operator: env.PUBLIC_DB_OPERATOR || "Prudence (Scam Shield), Hadrien Baradel and Vlad Zloteanu", contact: env.PUBLIC_DB_CONTACT || "https://github.com/hadrienbaradel/scam-shield/issues" },
   pollSeconds: Number(env.SYNC_POLL_SECONDS || 120),
   worker: !workerOff(env),
   workerOff: workerOff(env),

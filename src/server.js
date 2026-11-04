@@ -13,6 +13,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
+import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { config, describeDatabase, googleConfigured } from "./config.js";
 import { initErrorTracking, errorTrackingOn, reportError, flushErrorTracking } from "../lib/errorTracking.js";
@@ -28,6 +29,8 @@ import guardianRoutes from "./routes/guardians.js";
 import deviceRoutes from "./routes/devices.js";
 import adminRoutes from "./routes/admin.js";
 import demoRoutes from "./routes/demo.js";
+import dbRoutes from "./routes/db.js";
+import adminDbRoutes from "./routes/adminDb.js";
 import lessonRoutes from "./routes/lessons.js";
 import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
@@ -97,11 +100,15 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(deviceRoutes);
   await app.register(adminRoutes);
   await app.register(demoRoutes);
+  await app.register(dbRoutes);
+  await app.register(adminDbRoutes);
   await app.register(lessonRoutes);
   await app.register(whatsappRoutes);
   await app.register(messengerRoutes);
   await app.register(dbWatchRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
+  // The public database's site (public/db/) at /public/: another interface of heyprudence, no session, never the senior's app.
+  await app.register(fastifyStatic, { root: join(publicDir, "db"), prefix: "/public/", decorateReply: false, index: ["index.html"] });
 
   return app;
 }
