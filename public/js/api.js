@@ -4,11 +4,14 @@ export class ApiError extends Error {
   constructor(status, data) { super(data?.message || data?.error || `Request failed (${status})`); this.status = status; this.data = data; }
 }
 
-export async function api(path, { method = "GET", body, form } = {}) {
+// signal: an AbortSignal (Stop on the Check reading screen); an aborted call
+// rejects with the browser's AbortError, not an ApiError.
+export async function api(path, { method = "GET", body, form, signal } = {}) {
   const res = await fetch(path, {
     method, credentials: "same-origin",
     headers: body !== undefined ? { "content-type": "application/json" } : {},
     body: form || (body !== undefined ? JSON.stringify(body) : undefined),
+    signal,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, data);

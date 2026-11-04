@@ -1542,3 +1542,101 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .msg-links { display: flex; flex-direction: column; gap: 8px; font-size: var(--t19); }
 .msg-links .link-list { margin: 0; padding-left: 1.2em; }
 .msg-open .trusted { margin: 0; }
+
+/* --- redesign: check (check.js) --- */
+/* Check something (frames 1g to 1n): the three choices, Paste the words,
+   the screenshot and voice screens, the reading screen, the verdict. Built on
+   the shared components (.screen, .btn-choice, .chip, .btn-back,
+   .btn-listen, .banner, .row-card) and the verdict card (.vcard); only what
+   they do not cover is here.
+
+     .ck-screen       every Check screen (a .screen.is-snug)
+     .ck-choices      frame 1g: 14px between the choices, as on the canvas;
+                      .is-largest (frame 1h) tightens it so the three
+                      choices stay above the tab bar
+     .ck-text         the paste box: 150px, 2px grey border, 18px corners,
+                      22px words
+     .ck-question     a question and its chips, 10px apart
+     .ck-problem      a sentence saying what went wrong, 22px (on .banner)
+     .ck-preview      the 240px striped box the picture sits in while read
+     .ck-wait         the ring (or the amber mark) and the line beside it
+     .ck-wait-title   "Reading your picture…", 28px bold
+     .ck-ring         the 56px ring, navy with one grey quarter; it turns,
+                      slowly, only when the person allows motion
+     .ck-mark         the 56px amber circle of "The check could not run"
+     .ck-ask-panel    where "Ask <name>" draws its panel */
+
+.ck-choices { gap: 14px; }
+.ck-choices .screen-lead { margin-bottom: 6px; }
+/* Largest (frame 1h): the three choices stay above the tab bar. */
+.ck-choices.is-largest { gap: 8px; margin-top: -8px; }
+.ck-choices.is-largest .screen-lead { margin-bottom: 0; }
+.ck-choices.is-largest .btn-choice.is-hero { padding-top: 10px; padding-bottom: 10px; }
+.ck-choices.is-largest .btn-choice:not(.is-hero) { min-height: 72px; }
+.ck-photo .screen-lead { margin-bottom: 8px; }
+
+.ck-text {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  margin: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 2px solid var(--field);
+  border-radius: 18px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--t22);
+  line-height: 1.4;
+  resize: none;
+}
+.ck-text::placeholder { color: var(--muted); opacity: 1; }
+.ck-question { display: flex; flex-direction: column; gap: 10px; }
+.ck-question .section-title { margin: 0; }
+.ck-go { margin-top: 4px; }
+
+.ck-problem { margin: 0; font-size: var(--t22); line-height: 1.4; }
+.ck-problem[hidden] { display: none; }
+
+.ck-preview {
+  height: 240px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: repeating-linear-gradient(135deg, var(--surface) 0 12px, var(--ground) 12px 24px);
+}
+.ck-preview img { display: block; max-width: 100%; max-height: 240px; object-fit: contain; }
+.ck-preview img[hidden] { display: none; }
+.ck-wait { display: flex; align-items: center; gap: 14px; }
+.ck-wait-title { margin: 0; font-size: var(--t28); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.ck-ring {
+  flex: none;
+  box-sizing: border-box;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--navy);
+  border-right-color: var(--line);
+  border-radius: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ck-ring { animation: ck-turn 3s linear infinite; }
+}
+@keyframes ck-turn { to { transform: rotate(360deg); } }
+.ck-mark {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--careful);
+  border-radius: 50%;
+  background: var(--careful-wash);
+  color: var(--careful);
+}
+.ck-stop { margin-top: 8px; }
+
+.ck-more .row-card .row-name { margin: 0; }
+.ck-more .row-card .row-state { display: block; }
+.ck-ask-panel:empty { display: none; }

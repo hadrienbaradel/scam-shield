@@ -7,6 +7,7 @@ import { $, esc, focusHeading, icon, signOut } from "./ui.js";
 import { TABS, screenFor } from "./protects.js";
 import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
 import { renderLanding, renderOnboarding, renderCheck, renderPeople, renderSettings, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
+import { renderCheckScreen } from "./views/check.js";
 import { renderToday, onTodayEvent } from "./views/today.js";
 import { renderLearn } from "./views/learn.js";
 
@@ -228,11 +229,11 @@ const DRAW = {
   today: (root) => renderToday(root, status),
   messages: (root) => renderMessages(root, status),
   blocked: (root) => renderBlocked(root, status),
-  check: (root) => renderCheck(root, status),
-  "check-paste": (root) => renderCheck(root, status),
-  "check-photo": (root) => renderCheck(root, status),
-  "check-voice": (root) => renderCheck(root, status),
-  "check-more": (root) => renderCheck(root, status),
+  check: (root) => renderCheckScreen(root, status, { step: "choices" }),
+  "check-paste": (root) => renderCheckScreen(root, status, { step: "paste" }),
+  "check-photo": (root) => renderCheckScreen(root, status, { step: "photo" }),
+  "check-voice": (root) => renderCheckScreen(root, status, { step: "voice" }),
+  "check-more": (root) => renderCheckScreen(root, status, { step: "more" }),
   learn: (root) => renderLearn(root, status),
   settings: (root) => withSignOut(root, renderSettings(root, status, refresh)),
   "settings-people": (root) => renderPeople(root),

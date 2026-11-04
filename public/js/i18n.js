@@ -226,6 +226,15 @@ export const STRINGS = {
     ck_unsure: "Still unsure?", ck_send_prudence: "Send it to Prudence",
     ck_send_note: "A person at Prudence, or a deeper automatic check, looks at it and answers on Today within a day.",
     ck_back_today: "Go back to Today", ck_doubt: "I still have a doubt",
+    // Added by the Check screens (js/views/check.js), which also read ch_whatsapp,
+    // voice_lead, voice_btn, voice_heard, voice_none, voice_unreadable,
+    // voice_needs_muse, photo_none, photo_needs_muse, eml_lead, v2_read, retry.
+    ck_listening: "Listening to your message…",
+    ck_paste_empty: "Paste the words in the box first.",
+    ck_photo_unreadable: "We could not use this picture. Please choose a screenshot or another photo.",
+    ck_eml_none: "We could not read an email in this file. Please choose another one.",
+    ck_failed: "The check could not run just now.",
+    ck_failed_note: "Please try again in a minute. Until then, do not use its links or reply to it.",
     // --- learn (lh_*) ---
     // Also read: learn_title ("Learn to spot them."), learn_lead ("One minute at a
     // time."), learn_to_try, learn_minutes_one ("1 minute"), learn_start,
@@ -459,6 +468,12 @@ export const STRINGS = {
     ck_unsure: "Encore un doute\u00a0?", ck_send_prudence: "L'envoyer à Prudence",
     ck_send_note: "Une personne de Prudence, ou une vérification automatique plus poussée, l'examine et vous répond sur Aujourd'hui en moins d'une journée.",
     ck_back_today: "Revenir à Aujourd'hui", ck_doubt: "J'ai encore un doute",
+    ck_listening: "Écoute de votre message…",
+    ck_paste_empty: "Collez d'abord le texte dans la case.",
+    ck_photo_unreadable: "Nous ne pouvons pas utiliser cette image. Choisissez une capture d'écran ou une autre photo.",
+    ck_eml_none: "Nous n'avons pas pu lire d'e-mail dans ce fichier. Choisissez-en un autre.",
+    ck_failed: "La vérification n'a pas pu se faire pour l'instant.",
+    ck_failed_note: "Réessayez dans une minute. D'ici là, n'utilisez pas ses liens et n'y répondez pas.",
     // --- learn (lh_*) ---
     lh_first_star: "Votre première étoile est à une minute", lh_badges_to_earn: "{n} badges à gagner, un par leçon",
     lh_badges_left: "Encore {n} badges à gagner", lh_badges_left_one: "Encore {n} badge à gagner",
