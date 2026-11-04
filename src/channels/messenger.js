@@ -49,9 +49,21 @@ export const MAX_VIDEO_SECONDS = 180;
 // since the group started (Muse Spark's own budget is 20 s, so the whole
 // stays under about 60 s).
 export const RETRY_WITHIN_MS = 35000;
-const retryable = (v) => Boolean(v?.degraded && /time ?out|timed out|abort|\b5\d\d\b/i.test(String(v.error || "")));
-// The API's error text for the log, without any quoted model output.
-const errorText = (v) => (v?.degraded && v.error ? String(v.error).replace(/"[^"]*"|'[^']*'/g, "…").slice(0, 200) : null);
+// A degraded verdict's error as a fixed category, never its text: a parse or
+// schema error can quote the model's answer, which can echo the message
+// (line 9: nothing of it is kept, the log included).
+export function errorCategory(v) {
+  if (!v?.degraded || !v.error) return null;
+  const e = String(v.error);
+  if (/time ?out|timed out|abort/i.test(e)) return "timeout";
+  if (/^(schema|after guardrail|answered in)\b/i.test(e)) return "schema";
+  if (/JSON|Unexpected (token|end|non-whitespace)|position \d/i.test(e)) return "parse";
+  const status = e.split(":")[0].match(/\b([1-5]\d\d)\b/);
+  if (status) return `http_${status[1]}`;
+  if (/fetch failed|network|socket|ECONN\w*|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|EPIPE/i.test(e)) return "network";
+  return "other";
+}
+const retryable = (v) => /^(timeout|http_5\d\d)$/.test(errorCategory(v) || "");
 // Assumption: a video comes as type "video" with its url on video.xx.fbcdn.net
 // (or another Meta CDN host below), checked on the first live delivery.
 // Assumption: attachment URLs are on Meta's CDN, seen as scontent.xx.fbcdn.net,
@@ -344,7 +356,7 @@ export function createMessengerChannel({
     // A picture, voice or video: Muse Spark timing out or failing on its side
     // gets one more try while there is time.
     if (readable.some((i) => i.type !== "text") && retryable(verdict) && now() - t0 < retryWithinMs) {
-      stats.retried = errorText(verdict);
+      stats.retried = errorCategory(verdict);
       verdict = await ask();
     }
     const reply = formatReply(verdict, { lang, transcript: transcripts.join(" "), saysKey: videoWords ? "saysVideo" : "says" }).slice(0, maxReplyChars);
@@ -366,7 +378,7 @@ export function createMessengerChannel({
       const sent = await sendText(g.from, withheld ? wordsFor(lang).failed : out.text);
       log.info?.({
         ids, types: items.map((i) => i.type), lang, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null,
-        error: errorText(out.verdict), withheld, ms: now() - started, ...stats,
+        error: errorCategory(out.verdict), withheld, ms: now() - started, ...stats,
       }, "messenger check answered");
       return { ids, lang, verdict: out.verdict?.verdict || null, reply: withheld ? wordsFor(lang).failed : out.text, sent };
     } catch (e) {

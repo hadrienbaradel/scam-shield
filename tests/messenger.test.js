@@ -17,7 +17,7 @@ import Fastify from "fastify";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker, buildUserPrompt, extractFromImage } from "../lib/muse.js";
 import {
-  attachmentUrl, createMessengerChannel, DEFAULT_GRAPH_VERSION, messengerConfig, messengerConfigured, messengerLink, parseWebhook, webhookActive,
+  attachmentUrl, createMessengerChannel, DEFAULT_GRAPH_VERSION, errorCategory, messengerConfig, messengerConfigured, messengerLink, parseWebhook, webhookActive,
 } from "../src/channels/messenger.js";
 import { createLimiter, ffmpegToWav, ffmpegVideo, ffprobeBeside, frameTimes, VIDEO_FORMATS, WORDS } from "../src/channels/whatsapp.js";
 import messengerRoutes from "../src/routes/messenger.js";
@@ -705,7 +705,7 @@ test("a degraded Safe never goes out: the failure wording instead, a degraded Sc
   assert.deepEqual(meta.replies(), [WORDS.en.failed], "the rules' Safe is withheld");
   assert.equal(verdictCalls().length, 1, "not a timeout or a 5xx: asked once");
   const [, line] = logs.find(([m]) => m === "messenger check answered");
-  assert.deepEqual([line.verdict, line.withheld, line.error, line.source], ["safe", true, "schema: verdict missing", "detector (Mock LLM unavailable)"]);
+  assert.deepEqual([line.verdict, line.withheld, line.error, line.source], ["safe", true, "schema", "detector (Mock LLM unavailable)"]);
   assert.deepEqual(line.attachments, [{ type: "image", contentType: "image/jpeg", bytes: pic.length }]);
   assert.ok(!JSON.stringify(logs).includes("Sunday"), "no content in the log");
   // A degraded Scam still goes out, from the rules, saying so.
@@ -722,6 +722,23 @@ test("a degraded Safe never goes out: the failure wording instead, a degraded Sc
   assert.match(off.replies()[0], /^🟢 Safe/);
 });
 
+test("a degraded verdict's error is logged as a category only, never words of the message it may quote", async () => {
+  const meta = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  mock.script(read("message", { sender_name: "Mom", body: "See you Sunday for lunch at Rosalind's, love you" }),
+    new Error("Unexpected token S, Sunday lunch at Rosalind's is not valid JSON"));
+  logs.length = 0;
+  await send(channelWith(meta), attach("image", { url: IMG }));
+  const [, line] = logs.find(([m]) => m === "messenger check answered");
+  assert.equal(line.error, "parse");
+  for (const words of ["Sunday", "Rosalind", "lunch", "Unexpected"]) assert.ok(!JSON.stringify(logs).includes(words), words);
+  const cat = (error) => errorCategory({ degraded: true, error });
+  assert.deepEqual(
+    ["The operation was aborted due to timeout", "Muse Spark 503: overloaded at Rosalind's", "Meta API 429: slow down", "schema: verdict missing", "answered in fr", "fetch failed", "Rosalind said no", ""].map(cat),
+    ["timeout", "http_503", "http_429", "schema", "schema", "network", "other", null],
+  );
+  assert.equal(errorCategory({ verdict: "safe" }), null, "not degraded: nothing to log");
+});
+
 test("a picture, voice or video check that Muse Spark times out on or fails on its side is asked once more while there is time", async () => {
   const meta = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
   mock.script(read("message", { sender_name: "Mom", body: "See you Sunday for lunch, love you" }), new Error("The operation was aborted due to timeout"), verdict("safe"));
@@ -731,7 +748,7 @@ test("a picture, voice or video check that Muse Spark times out on or fails on i
   assert.match(meta.replies()[0], /^🟢 Safe/);
   assert.match(meta.replies()[0], /Checked with Mock LLM\.$/, "Muse Spark's own answer the second time");
   const [, line] = logs.find(([m]) => m === "messenger check answered");
-  assert.deepEqual([line.retried, line.error, line.withheld], ["The operation was aborted due to timeout", null, false]);
+  assert.deepEqual([line.retried, line.error, line.withheld], ["timeout", null, false]);
   // A 5xx is retried too; the second failure gives up (here withheld, being Safe).
   mock.reset();
   mock.script(read("message", { body: "See you Sunday for lunch, love you" }), new Error("Muse Spark 503: overloaded"), new Error("Muse Spark 503: overloaded"));
