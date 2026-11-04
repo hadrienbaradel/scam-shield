@@ -131,6 +131,29 @@ test("Muse Spark may ask only about website addresses in the message's links; ot
   assert.equal(out.verdict, "scam");
 });
 
+test("the tools' parameters stay inside OpenAI's strict subset (no maxLength), and lengths are refused in code", async () => {
+  const allowed = new Set(["type", "properties", "required", "additionalProperties", "description", "enum", "items"]);
+  const walk = (schema, path) => {
+    for (const [k, v] of Object.entries(schema)) {
+      assert.ok(allowed.has(k), `${path}.${k} is outside the strict subset`);
+      if (k === "properties") for (const [name, sub] of Object.entries(v)) walk(sub, `${path}.${name}`);
+    }
+  };
+  for (const t of TOOLS) {
+    walk(t.parameters, t.name);
+    assert.equal(t.strict, true);
+    assert.deepEqual([...t.parameters.required].sort(), Object.keys(t.parameters.properties).sort(), `${t.name}: strict wants every property required`);
+  }
+  let tool = "";
+  mock.script(ask(["website_age", { domain: `${"a".repeat(250)}.usps-hold.test` }], ["my_providers", { company: "C".repeat(61) }], ["my_providers", { company: "USPS" }]),
+    (req) => { tool = req.messages.filter((m) => m.role === "tool").map((m) => m.content).join("\n"); return answer("scam", [{ text: "x", check: 1 }]); });
+  const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  assert.equal(out.checks.length, 1);
+  assert.equal(out.refused, 2);
+  assert.match(tool, /\$\.domain: longer than 253/);
+  assert.match(tool, /\$\.company: longer than 60/);
+});
+
 test("where a link lands is opened with the resolver's guard, never for a message the first check calls a Scam, and the landing address may be checked next", async () => {
   const message = { channel: "sms", from: "+1 555 0100", body: "Your parcel: https://bit.ly/abc123 pay now", links: [{ href: "https://bit.ly/abc123", text: "https://bit.ly/abc123" }] };
   const opened = [];
