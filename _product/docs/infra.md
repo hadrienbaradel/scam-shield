@@ -45,6 +45,7 @@ the npm cache, `npm ci`, the dev compose Postgres (`docker compose -f .infra/dev
 `android`: JDK 17, Gradle cache, `./gradlew assembleDebug testDebugUnitTest`, the debug APK as an artifact. No secret is configured:
 the tests set their own environment, and `make score` runs with `CREDENTIALS_FILE` pointing at a file that does not exist.
 Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
+`.github/workflows/release.yml` runs on a pushed `v*` tag (`make release`): job `apk`, on a read-only token, builds as CI does (JDK 17, the Gradle cache, `./gradlew assembleDebug`); job `publish`, the only one that can write, publishes a GitHub release with generated notes and `prudence-<tag>-android-debug.apk`; its third-party actions are pinned to commit SHAs, the version in a comment (`_product/docs/git.md`, Releases).
 
 ## Production: the OVH host
 

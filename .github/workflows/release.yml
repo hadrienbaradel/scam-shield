@@ -1,0 +1,57 @@
+# Release: a pushed vX.Y.Z tag (make release VERSION=vX.Y.Z, _product/docs/git.md, Releases) becomes a
+# GitHub release with generated notes and the Android companion's debug APK, built as ci.yml builds it.
+# No tests here: make release only tags a commit whose CI run passed. The build runs with a read-only
+# token; only the publish job, which runs no project code, can write. Third-party actions are pinned.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Debug APK named after the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      - name: Build the debug APK, named after the tag
+        working-directory: android
+        run: |
+          chmod +x gradlew && ./gradlew --no-daemon assembleDebug
+          mv app/build/outputs/apk/debug/*.apk "../prudence-${GITHUB_REF_NAME}-android-debug.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: prudence-${{ github.ref_name }}-android-debug.apk
+          if-no-files-found: error
+
+  publish:
+    name: GitHub release with the APK
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          name: Prudence ${{ github.ref_name }}
+          body: "Debug build of the Prudence companion app; the web app runs from the repo, see the [README](https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}#readme)."
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: prudence-${{ github.ref_name }}-android-debug.apk
+          fail_on_unmatched_files: true

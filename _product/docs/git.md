@@ -1,4 +1,4 @@
-Keywords: commit, branch, git, pr, merge, main, pull --rebase, push
+Keywords: commit, branch, git, pr, merge, main, pull --rebase, push, release, tag, version, apk
 
 # Git rules
 
@@ -23,6 +23,10 @@ Area is the part of the product or repo (Engine, Sync, Guardians, Android, Spec,
 - Since Oct 29 both of us commit on `main` in small steps (before that, `vlad/product-first` was merged by Hadrien): claim the task in `_product/log.md` first, `git pull --rebase` before every commit, push each commit at once. A branch (`<name>/<topic>`) only for work that would leave `main` broken for more than an hour; it comes back through a PR.
 - `git pull --rebase` before you start, before every commit and after any cut session. The log's tables are append-mostly: a conflict there keeps both sides' rows.
 - A PR says what changed for the user and names the spec rows it touches.
+
+## Releases
+
+A release is an annotated tag `vX.Y.Z` (`vX.Y.Z-rc1` for a trial, published as a pre-release) cut from a green `main` with `make release VERSION=vX.Y.Z`, which refuses on uncommitted changes, on another branch, when `main` differs from `origin/main`, when the tag exists, and until the latest CI run for HEAD has passed. The pushed tag runs `.github/workflows/release.yml`: it builds the Android companion's debug APK as CI does (no tests: CI ran them on that commit) and publishes the GitHub release "Prudence vX.Y.Z" with GitHub's generated notes and `prudence-vX.Y.Z-android-debug.apk` attached; the web app is not packaged, it runs from the repository at that tag (README). `v1.0.0` is the state submitted to the hackathon. A published tag is never moved: a bad release is deleted (`gh release delete vX.Y.Z --yes --cleanup-tag`) and the next number is cut.
 
 ## Never committed
 

@@ -9,7 +9,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help install setup doctor deps server dev start test coverage check score score-muse \
         db-up db-down db-destroy db-create db-migrate db-logs db-shell db-test-clean gate \
-        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell db-dump db-prod-url \
+        prod-build prod-smoke deploy logs prod-status prod-shell backup-now backup-pull backup-restore db-prod-shell db-dump db-prod-url release \
         clean clean-all \
         secrets-init secrets-set secrets-unset secrets-edit secrets-keys secrets-check secrets-import secrets-rotate
 
@@ -241,6 +241,32 @@ prod-smoke: ## Run the prod compose locally on port 3100 with throwaway data, cu
 	[ $$status -eq 0 ] || $$smoke logs --tail=40 app; \
 	$$smoke down -v --remove-orphans >/dev/null 2>&1; \
 	if [ $$status -eq 0 ]; then echo "prod smoke OK (stopped, throwaway data removed)"; else echo "prod smoke FAILED"; exit $$status; fi
+
+##@ Release  (vX.Y.Z tags on a green main; .github/workflows/release.yml publishes each with the Android APK)
+
+# _product/docs/git.md, Releases. CI_ON_HEAD turns the latest CI run for HEAD (gh run list --json)
+# into "passed" or the one line saying why make release refuses.
+GITHUB_REPO := hadrienbaradel/scam-shield
+CI_ON_HEAD  := .[0] | if . == null then "No CI run for HEAD yet: wait for it to start, then make release again" \
+  elif .status != "completed" then "CI is still running on HEAD (\(.url)): gh run watch, then make release again" \
+  elif .conclusion != "success" then "CI ended in \(.conclusion) on HEAD (\(.url)): fix main first" else "passed" end
+
+release: ## Tag a green main and publish it: make release VERSION=v1.2.3 (clean tree, main = origin/main, CI passed on HEAD)
+	@echo "$(VERSION)" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$$' || { echo "Name the version: make release VERSION=v1.2.3 (or v1.2.3-rc1, published as a pre-release)"; exit 1; }
+	@command -v gh >/dev/null || { echo "make release reads CI through the GitHub CLI: brew install gh, then gh auth login"; exit 1; }
+	@[ -z "$$(git status --porcelain --untracked-files=no)" ] || { echo "Uncommitted changes: commit and push them first (a release is HEAD as pushed)"; exit 1; }
+	@[ "$$(git symbolic-ref --short -q HEAD)" = main ] || { echo "Releases are cut from main: git switch main && git pull --rebase"; exit 1; }
+	@git fetch --quiet origin main || { echo "git fetch origin main failed: check the network and your GitHub access"; exit 1; }
+	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" ] || { echo "main is not origin/main: git pull --rebase, git push, wait for CI, then make release again"; exit 1; }
+	@if git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/$(VERSION)" >/dev/null; then \
+	  echo "$(VERSION) exists already: pick the next number (git tag --list 'v*')"; exit 1; fi
+	@ci=$$(gh run list --repo $(GITHUB_REPO) --workflow ci.yml --commit "$$(git rev-parse HEAD)" --limit 1 --json status,conclusion,url --jq '$(CI_ON_HEAD)') \
+	  || { echo "gh could not read the CI runs: gh auth status"; exit 1; }; \
+	[ "$$ci" = passed ] || { echo "$$ci"; exit 1; }
+	@git tag -a "$(VERSION)" -m "Prudence $(VERSION)"
+	@git push --quiet origin "refs/tags/$(VERSION)" || { git tag -d "$(VERSION)" >/dev/null; echo "Pushing $(VERSION) failed (the local tag is removed): check your GitHub access, then make release again"; exit 1; }
+	@echo "$(VERSION) tagged at $$(git rev-parse --short HEAD) and pushed; the Release workflow attaches the APK in a few minutes (gh run watch):"
+	@echo "https://github.com/$(GITHUB_REPO)/releases/tag/$(VERSION)"
 
 ##@ Ops
 
