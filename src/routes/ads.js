@@ -6,14 +6,20 @@
 // plain line). Publish moves the ad `draft -> publishing` in one UPDATE, so
 // a second click gets 409 and nothing reaches the network twice; the
 // network calls run one at a time per network, so the one Prudence
-// campaign is created once. A failure goes back to draft with the
-// network's plain line, never a token.
+// campaign is created once. A failure before the network made the ad goes
+// back to draft with the network's plain line, never a token; once the
+// network has made it, the row never goes back to draft (a second click
+// would pay twice). Each job holds its ads in an in-process registry while
+// it runs (queued publishes included): a held ad is never read as
+// interrupted, and Edit, Undo and Reject wait for it (409).
 //
 // The models and the network sit behind a seam: `deps` (an option of the
 // plugin) or `app.adsDeps`, each of { studio, network, models } optional;
 // otherwise lib/ads/studio.js, lib/ads/networks/index.js (Facebook) and
-// lib/llm/index.js are imported on first use. A piece that is not
-// installed answers 503 with a plain line, and the list says so.
+// lib/llm/index.js are imported on first use (dynamically: the routes were
+// built before them). Only that very module being absent reads as "not
+// installed" (503 with a plain line, and the list says so); any other
+// import error is a 500, logged with its message.
 
 import { requireUser, requireAdmin } from "../auth.js";
 import { config } from "../config.js";
@@ -32,9 +38,11 @@ const PROVIDER_KEYS = { meta: "META_MODEL_API_KEY", openai: "OPENAI_API_KEY", an
 // site (a laptop or a Codespace is never a place to send an ad's visitors).
 export const landingBase = (c = config) => (c.production && c.baseUrl.startsWith("https://") ? c.baseUrl : LANDING);
 
-// A failure as one plain line: no token, no secret in a query string, 300 characters at most.
-export function plainError(e, fallback = "Something went wrong.") {
-  if (e?.name === "AbortError") return "Stopped: the server was shutting down. Try again.";
+// A failure as one plain line: no token, no secret in a query string, 300
+// characters at most. `stopped`: this server's shutdown cut the work (read
+// from the controller's signal, whatever a layer renamed the error to).
+export function plainError(e, fallback = "Something went wrong.", stopped = false) {
+  if (stopped) return "Stopped: the server was shutting down. Try again.";
   const text = String(e?.message || e || "").trim() || fallback;
   return text
     .replace(/\bEA[A-Za-z0-9]{20,}/g, "[hidden]")
@@ -50,8 +58,23 @@ const pending = new Set();
 export async function adsIdle() {
   while (pending.size) await Promise.allSettled([...pending]);
 }
-function background(log, fn) {
-  const p = Promise.resolve().then(fn).catch((e) => log.error({ err: e }, "ad studio background task failed")).finally(() => pending.delete(p));
+
+// The ads a job of this process works on: id -> "drafting" | "editing" | "publishing".
+const jobs = new Map();
+export const jobOf = (id) => jobs.get(id) ?? null;
+const BUSY_LINE = {
+  drafting: "Muse Spark and Muse Image are still making this idea",
+  editing: "Muse Spark and Muse Image are still editing this idea",
+  publishing: "This idea is being published right now",
+};
+
+// A background job holding `ids` until it ends; `release(id)` lets one go earlier.
+function background(log, ids, kind, fn) {
+  for (const id of ids) jobs.set(id, kind);
+  const release = (id) => { if (jobs.get(id) === kind) jobs.delete(id); };
+  const p = Promise.resolve().then(() => fn(release))
+    .catch((e) => log.error({ err: e }, "ad studio background task failed"))
+    .finally(() => { for (const id of ids) release(id); pending.delete(p); });
   pending.add(p);
 }
 
@@ -63,32 +86,45 @@ function serial(key, fn) {
   return run;
 }
 
+// A store write after the network made the ad: three tries in all.
+export async function retried(fn, waits = [100, 400]) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) {
+      if (i >= waits.length) throw e;
+      await new Promise((r) => setTimeout(r, waits[i]));
+    }
+  }
+}
+
 // ---- The seam --------------------------------------------------------------
 
-// A module that may not exist yet: its namespace, or null.
+export const MODULES = {
+  studio: new URL("../../lib/ads/studio.js", import.meta.url).href,
+  networks: new URL("../../lib/ads/networks/index.js", import.meta.url).href,
+  llm: new URL("../../lib/llm/index.js", import.meta.url).href,
+};
+
+// A module that may not be installed yet: its namespace, or null when that
+// very module is missing. Anything else (a module it imports is missing, a
+// syntax error, a throw while loading) is thrown, so the route answers 500.
 export async function importOptional(url) {
-  try { return await import(url); } catch { return null; }
+  try { return await import(url); } catch (e) {
+    if (e?.code === "ERR_MODULE_NOT_FOUND" && e.url === url) return null;
+    throw e;
+  }
 }
 
-async function defaultStudio() {
-  return importOptional(new URL("../../lib/ads/studio.js", import.meta.url).href);
-}
-
-async function defaultNetwork() {
-  const mod = await importOptional(new URL("../../lib/ads/networks/index.js", import.meta.url).href);
-  try { return mod?.getNetwork?.("facebook") ?? null; } catch { return null; }
-}
-
-// The models that write, draw and check, by their labels, and whether New ideas can run.
-export async function defaultModels() {
-  const llm = await importOptional(new URL("../../lib/llm/index.js", import.meta.url).href);
+// The models that write, draw and check, by their labels, and whether New
+// ideas can run, through the llm layer's own resolvers (IMAGE_PROVIDER=muse is meta).
+export function modelsFrom(llm, env = process.env) {
   if (!llm) return { words: null, image: null, configured: false, missing: [] };
   const hasImages = typeof llm.imageConfigured === "function";
   const wordsOk = llm.llmConfigured();
   const imageOk = hasImages && llm.imageConfigured();
+  const imageProvider = typeof llm.imageProviderName === "function" ? llm.imageProviderName() : String(env.IMAGE_PROVIDER || "meta").trim().toLowerCase();
   const missing = [];
   if (!wordsOk) missing.push(PROVIDER_KEYS[llm.llmProviderName()]);
-  if (hasImages && !imageOk) missing.push(PROVIDER_KEYS[String(process.env.IMAGE_PROVIDER || "meta").trim().toLowerCase()]);
+  if (hasImages && !imageOk) missing.push(PROVIDER_KEYS[imageProvider]);
   return {
     words: llm.llmLabel(),
     image: typeof llm.imageLabel === "function" ? llm.imageLabel() : null,
@@ -96,19 +132,21 @@ export async function defaultModels() {
     missing: [...new Set(missing.filter(Boolean))],
   };
 }
+export const defaultModels = async (url = MODULES.llm) => modelsFrom(await importOptional(url));
 
-async function resolveDeps(app, given) {
+async function resolveDeps(app, given, modules) {
   const d = given || app.adsDeps || {};
   return {
-    studio: "studio" in d ? d.studio : await defaultStudio(),
-    network: "network" in d ? d.network : await defaultNetwork(),
-    models: "models" in d ? d.models : defaultModels,
+    studio: "studio" in d ? d.studio : await importOptional(modules.studio),
+    network: "network" in d ? d.network : (await importOptional(modules.networks))?.getNetwork("facebook") ?? null,
+    models: "models" in d ? d.models : () => defaultModels(modules.llm),
   };
 }
 
 function networkInfo(n) {
   if (!n) return { name: "facebook", label: "Facebook", installed: false, configured: false, missing: [], budgetLabel: null };
   let budgetLabel = null;
+  // Read on every call: the label changes once the network knows the ad account's currency.
   try { budgetLabel = n.settings?.()?.budgetLabel ?? null; } catch { /* a bad ADS_* value: the label stays empty */ }
   return { name: n.name || "facebook", label: n.label || "Facebook", installed: true, configured: Boolean(n.configured()), missing: n.missingKeys?.() || [], budgetLabel };
 }
@@ -148,18 +186,82 @@ function droppedLine(proposal, j) {
 }
 
 const stripBasedOn = (models) => { const { basedOn, ...rest } = models || {}; return rest; };
+// The labels of the models that made a version: one the edit did not call (null) keeps its earlier label.
+export const mergeModels = (before, after) => ({
+  ...stripBasedOn(before),
+  ...Object.fromEntries(Object.entries(after || {}).filter(([, v]) => v != null)),
+});
 const photoOf = (ad) => (ad?.photo ? { bytes: ad.photo, mime: ad.photo_mime || "image/jpeg" } : null);
+
+// ---- Publishing ------------------------------------------------------------------
+
+async function publishJob({ ad, net, network, log }) {
+  let out;
+  let campaignId;
+  try {
+    // Set aside while it waited for the network (elsewhere): nothing is sent.
+    if ((await store.statusOf(ad.id)) !== "publishing") return;
+    campaignId = await store.getCampaign(net.name);
+    out = await network.publish({
+      name: `Prudence ${ad.code} v${ad.version}`,
+      words: ad.words,
+      photo: photoOf(ad),
+      link: `${landingBase()}/a/${ad.code}`,
+      campaignId,
+    });
+  } catch (e) {
+    // The campaign was made before a later step failed: keep it, so the next publish reuses it.
+    if (e?.campaignCreated && e?.campaignId) {
+      await store.saveCampaign(net.name, String(e.campaignId)).catch((err) => log.error({ err }, "ad campaign not stored"));
+    }
+    await store.publishFailed(ad.id, plainError(e, `${net.label} refused the ad.`));
+    return;
+  }
+
+  // The ad exists on the network from here: the row never goes back to draft.
+  const { campaignId: cid, adsetId, creativeId, adId, imageHash, adsManagerUrl } = out;
+  const paused = String(out.status || "").toUpperCase() === "PAUSED";
+  const record = {
+    network: net.name,
+    external: { campaignId: cid ?? campaignId, adsetId, creativeId, adId, imageHash, adsManagerUrl },
+    budget: out.budget ?? null,
+    review: { state: paused ? "paused" : "in_review", effectiveStatus: out.status ?? null, reasons: [], checkedAt: new Date().toISOString() },
+  };
+  try {
+    await retried(async () => {
+      if (out.campaignCreated && out.campaignId) await store.saveCampaign(net.name, String(out.campaignId));
+      if (await store.publishDone(ad.id, record, { paused })) return;
+      // The row moved on while the network made the ad: pause it there and keep it, never untracked.
+      let stopped = true;
+      try {
+        await network.setStatus({ adId, adsetId, status: "PAUSED" });
+      } catch (e) {
+        stopped = false;
+        log.error({ adId, err: plainError(e) }, "ad studio: a set-aside ad could not be paused");
+      }
+      await store.keepAd(ad.id, { ...record, review: { ...record.review, state: stopped ? "paused" : record.review.state } }, stopped
+        ? { status: "paused", error: `Set aside while ${net.label} was making it: the ad was created, then paused at once. Check it in Ads Manager.` }
+        : { status: "published", error: `Set aside while ${net.label} was making it, and it could not be paused: pause it in Ads Manager now.` });
+    });
+  } catch (e) {
+    // Loud, with the ids an admin needs in Ads Manager, never a token. The row stays `publishing`.
+    const line = `ad studio: ad ${adId} (ad set ${adsetId}, campaign ${record.external.campaignId}) is on ${net.label} but row ${ad.id} could not be written: ${plainError(e)}`;
+    log.error(line);
+    console.error(line);
+  }
+}
 
 // ---- Routes --------------------------------------------------------------------
 
 export default async function adsRoutes(app, opts = {}) {
   const controller = new AbortController();
   app.addHook("onClose", async () => { controller.abort(); await adsIdle(); });
+  const modules = { ...MODULES, ...opts.modules };
 
   app.register(async (adm) => {
     adm.addHook("preHandler", requireUser);
     adm.addHook("preHandler", requireAdmin);
-    const deps = () => resolveDeps(app, opts.deps);
+    const deps = () => resolveDeps(app, opts.deps, modules);
 
     // The ad, or the reply already sent (404).
     async function adOr404(request, reply) {
@@ -173,10 +275,15 @@ export default async function adsRoutes(app, opts = {}) {
       const status = (await store.statusOf(ad.id)) ?? ad.status;
       return reply.code(409).send({ error: `${line} (it is ${status}).`, status });
     }
+    // 409 while a job of this process works on the ad; null otherwise.
+    function held(reply, id) {
+      const kind = jobs.get(id);
+      return kind ? reply.code(409).send({ error: `${BUSY_LINE[kind]}: wait for it to finish.`, status: kind }) : null;
+    }
 
     adm.get("/api/admin/ads", async () => {
       const d = await deps();
-      const [ads, photos, models] = await Promise.all([store.listAds(), store.photosToday(), modelsInfo(d)]);
+      const [ads, photos, models] = await Promise.all([store.listAds({ held: new Set(jobs.keys()) }), store.photosToday(), modelsInfo(d)]);
       const each = Number(d.studio?.PHOTO_COST_USD ?? PHOTO_COST_USD);
       return {
         ads,
@@ -199,26 +306,32 @@ export default async function adsRoutes(app, opts = {}) {
 
       const rows = await store.createDrafting({ brief: brief.value, count: count.value, createdBy: request.user.email });
       const { signal } = controller;
-      background(request.log, async () => {
+      background(request.log, rows.map((r) => r.id), "drafting", async (release) => {
         let proposal;
         try {
           proposal = await d.studio.proposeIdeas({ brief: brief.value || undefined, count: count.value, signal });
         } catch (e) {
-          await Promise.all(rows.map((r) => store.markFailed(r.id, plainError(e, "Muse Spark could not write the ideas."))));
+          await Promise.all(rows.map((r) => store.markFailed(r.id, plainError(e, "Muse Spark could not write the ideas.", signal.aborted))));
           return;
         }
         const ideas = Array.isArray(proposal?.ideas) ? proposal.ideas : [];
         await Promise.all(rows.map(async (row, i) => {
-          const words = ideas[i];
-          if (!words) return store.markFailed(row.id, droppedLine(proposal, i - ideas.length));
           try {
-            const made = await d.studio.makePhoto({ words, signal });
-            await store.addVersion(row.id, {
+            const words = ideas[i];
+            if (!words) return await store.markFailed(row.id, droppedLine(proposal, i - ideas.length));
+            let made;
+            try {
+              made = await d.studio.makePhoto({ words, signal });
+            } catch (e) {
+              return await store.markFailed(row.id, plainError(e, "The photo could not be made.", signal.aborted));
+            }
+            const kept = await store.addVersion(row.id, {
               words, photo: made.photo, check: made.check ?? null, photosMade: made.photosMade ?? 0,
               models: { words: proposal.model ?? null, image: made.models?.image ?? null, check: made.models?.check ?? null },
             }, { from: ["drafting"] });
-          } catch (e) {
-            await store.markFailed(row.id, plainError(e, "The photo could not be made."));
+            if (!kept) await store.noteError(row.id, `This idea was finished after it had moved on (it is ${await store.statusOf(row.id)}): its words and photo were not kept.`);
+          } finally {
+            release(row.id);
           }
         }));
       });
@@ -230,6 +343,7 @@ export default async function adsRoutes(app, opts = {}) {
       if (instruction.error) return reply.code(400).send({ error: instruction.error, field: "instruction" });
       const found = await adOr404(request, reply);
       if (!found) return reply;
+      if (held(reply, found.id)) return reply;
       const d = await deps();
       if (!d.studio) return reply.code(503).send({ error: notInstalled("idea writer (lib/ads/studio.js)") });
       const models = await modelsInfo(d);
@@ -238,20 +352,23 @@ export default async function adsRoutes(app, opts = {}) {
       if (!ad) return conflict(reply, found, "Only a draft can be edited");
 
       const { signal } = controller;
-      background(request.log, async () => {
+      background(request.log, [ad.id], "editing", async () => {
+        let out;
         try {
-          const out = await d.studio.editIdea({ words: ad.words, photo: photoOf(ad), instruction: instruction.value, signal });
-          await store.addVersion(ad.id, {
-            words: out.words ?? ad.words,
-            photo: out.photo ?? photoOf(ad),
-            check: out.check ?? ad.photo_check,
-            models: { ...stripBasedOn(ad.models), ...(out.models || {}) },
-            instruction: instruction.value,
-            photosMade: out.photosMade ?? 0,
-          }, { from: ["editing"] });
+          out = await d.studio.editIdea({ words: ad.words, photo: photoOf(ad), instruction: instruction.value, signal });
         } catch (e) {
-          await store.editFailed(ad.id, plainError(e, "The edit could not be made."));
+          await store.editFailed(ad.id, plainError(e, "The edit could not be made.", signal.aborted));
+          return;
         }
+        const kept = await store.addVersion(ad.id, {
+          words: out.words ?? ad.words,
+          photo: out.photo ?? photoOf(ad),
+          check: out.check ?? ad.photo_check,
+          models: mergeModels(ad.models, out.models),
+          instruction: instruction.value,
+          photosMade: out.photosMade ?? 0,
+        }, { from: ["editing"] });
+        if (!kept) await store.noteError(ad.id, `The edit "${instruction.value.slice(0, 80)}" finished after the idea had moved on (it is ${await store.statusOf(ad.id)}): it was not kept.`);
       });
       return reply.code(202).send({ id: ad.id, status: "editing" });
     });
@@ -259,6 +376,7 @@ export default async function adsRoutes(app, opts = {}) {
     adm.post("/api/admin/ads/:id/undo", async (request, reply) => {
       const found = await adOr404(request, reply);
       if (!found) return reply;
+      if (held(reply, found.id)) return reply;
       const out = await store.undo(found.id);
       if (!out) return conflict(reply, found, "Nothing to undo: there is no earlier version, or the idea is busy");
       return { id: out.id, version: out.version, status: "draft" };
@@ -267,6 +385,7 @@ export default async function adsRoutes(app, opts = {}) {
     adm.post("/api/admin/ads/:id/publish", async (request, reply) => {
       const found = await adOr404(request, reply);
       if (!found) return reply;
+      if (held(reply, found.id)) return reply;
       const d = await deps();
       const net = networkInfo(d.network);
       if (!net.installed) return reply.code(503).send({ error: notInstalled("Facebook publisher (lib/ads/networks/)") });
@@ -277,36 +396,10 @@ export default async function adsRoutes(app, opts = {}) {
         await store.publishFailed(ad.id, "This idea has no photo: edit it to make one, then publish.");
         return reply.code(409).send({ error: "This idea has no photo: edit it to make one, then publish." });
       }
-
+      // Held from the click, through the wait for the network, to the stored result.
       const network = d.network;
-      background(request.log, () => serial(net.name, async () => {
-        try {
-          const campaignId = await store.getCampaign(net.name);
-          const out = await network.publish({
-            name: `Prudence ${ad.code} v${ad.version}`,
-            words: ad.words,
-            photo: photoOf(ad),
-            link: `${landingBase()}/a/${ad.code}`,
-            campaignId,
-          });
-          if (out.campaignCreated && out.campaignId) await store.saveCampaign(net.name, out.campaignId);
-          const { campaignId: cid, adsetId, creativeId, adId, imageHash, adsManagerUrl } = out;
-          const paused = String(out.status || "").toUpperCase() === "PAUSED";
-          await store.publishDone(ad.id, {
-            network: net.name,
-            external: { campaignId: cid ?? campaignId, adsetId, creativeId, adId, imageHash, adsManagerUrl },
-            budget: out.budget ?? null,
-            review: { state: paused ? "paused" : "in_review", effectiveStatus: out.status ?? null, reasons: [], checkedAt: new Date().toISOString() },
-          });
-          if (paused) await store.setRunning(ad.id, false);
-        } catch (e) {
-          // The campaign was made before a later step failed: keep it, so the next publish reuses it.
-          if (e?.campaignCreated && e?.campaignId) {
-            await store.saveCampaign(net.name, String(e.campaignId)).catch((err) => request.log.error({ err }, "ad campaign not stored"));
-          }
-          await store.publishFailed(ad.id, plainError(e, `${net.label} refused the ad.`));
-        }
-      }));
+      const log = request.log;
+      background(log, [ad.id], "publishing", () => serial(net.name, () => publishJob({ ad, net, network, log })));
       return reply.code(202).send({ id: ad.id, status: "publishing" });
     });
 
@@ -354,6 +447,7 @@ export default async function adsRoutes(app, opts = {}) {
       if (reason.error) return reply.code(400).send({ error: reason.error, field: "reason" });
       const ad = await adOr404(request, reply);
       if (!ad) return reply;
+      if (held(reply, ad.id)) return reply;
       // A live ad stops on the network before it is set aside.
       if (ad.status === "published" && ad.external?.adId) {
         const d = await deps();

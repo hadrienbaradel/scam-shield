@@ -12,7 +12,12 @@ import assert from "node:assert/strict";
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
 import { one, many } from "../src/db/pool.js";
 import { buildApp } from "../src/server.js";
-import { adsIdle, landingBase, plainError, importOptional, defaultModels, LIMITS } from "../src/routes/ads.js";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import Fastify from "fastify";
+import adsRoutes, { adsIdle, landingBase, plainError, importOptional, defaultModels, modelsFrom, mergeModels, jobOf, retried, LIMITS } from "../src/routes/ads.js";
 import { newCode, createDrafting, STALE_MINUTES } from "../src/ads/store.js";
 
 // ---------------------------------------------------------------- pure ---
@@ -43,15 +48,52 @@ test("a failure reads as one plain line with no token in it", () => {
   assert.match(plainError(new Error("token EAAGm0PX4ZCpsBAOabcdefghijklmnopqrstuv in the text")), /token \[hidden\] in the text/);
   assert.equal(plainError(new Error("x".repeat(1000))).length, 300);
   assert.equal(plainError(null, "Muse Spark could not write the ideas."), "Muse Spark could not write the ideas.");
-  assert.match(plainError(Object.assign(new Error("aborted"), { name: "AbortError" })), /shutting down/);
 });
 
-test("a module that is not installed yet loads as nothing; the models say which key New ideas needs", async () => {
+test("the shutdown line comes from the server's own signal, not from the error's name (a layer may rewrap an abort)", () => {
+  assert.equal(plainError(new Error("Muse Spark request was cancelled"), "x", true), "Stopped: the server was shutting down. Try again.");
+  assert.equal(plainError(Object.assign(new Error("The operation was aborted"), { name: "AbortError" }), "x", false), "The operation was aborted",
+    "an abort the server did not ask for (a model's own timeout) keeps its words");
+});
+
+test("a module that is not installed yet loads as nothing; a broken one is an error, never 'not installed'", async () => {
   assert.equal(await importOptional(new URL("../lib/ads/not-a-module.js", import.meta.url).href), null);
+  const dir = await mkdtemp(join(tmpdir(), "ads-import-"));
+  try {
+    await writeFile(join(dir, "imports-missing.mjs"), 'import "./guardrails-not-there.mjs";\nexport const x = 1;\n');
+    await writeFile(join(dir, "syntax.mjs"), "export const = ;\n");
+    await writeFile(join(dir, "throws.mjs"), 'throw new Error("META_ADS_DAILY_BUDGET is not a number");\n');
+    await assert.rejects(importOptional(pathToFileURL(join(dir, "imports-missing.mjs")).href), (e) => e.code === "ERR_MODULE_NOT_FOUND" && /guardrails-not-there/.test(e.message),
+      "a module it imports is missing: that is a bug in the module, not 'not installed'");
+    await assert.rejects(importOptional(pathToFileURL(join(dir, "syntax.mjs")).href), SyntaxError);
+    await assert.rejects(importOptional(pathToFileURL(join(dir, "throws.mjs")).href), /is not a number/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
   const m = await defaultModels();
   assert.equal(m.configured, false, "no META_MODEL_API_KEY in the tests");
   assert.deepEqual(m.missing, ["META_MODEL_API_KEY"]);
   assert.equal(typeof m.words, "string");
+});
+
+test("the key New ideas names comes from the llm layer's own image resolver (IMAGE_PROVIDER=muse is META_MODEL_API_KEY)", () => {
+  const llm = (imageProvider, { wordsOk = true, imageOk = false } = {}) => ({
+    llmConfigured: () => wordsOk, llmProviderName: () => "openai", llmLabel: () => "GPT",
+    imageConfigured: () => imageOk, imageLabel: () => "Muse Image 1.0",
+    imageProviderName: () => ({ muse: "meta", "openai-compatible": "openai" }[imageProvider] || imageProvider),
+  });
+  assert.deepEqual(modelsFrom(llm("muse"), { IMAGE_PROVIDER: "muse" }).missing, ["META_MODEL_API_KEY"], "the alias, resolved by the layer");
+  assert.deepEqual(modelsFrom(llm("openai-compatible"), { IMAGE_PROVIDER: "openai-compatible" }).missing, ["OPENAI_API_KEY"]);
+  assert.deepEqual(modelsFrom(llm("meta", { wordsOk: false })).missing, ["OPENAI_API_KEY", "META_MODEL_API_KEY"], "the words' key, then the photos'");
+  assert.deepEqual(modelsFrom(llm("meta", { imageOk: true })), { words: "GPT", image: "Muse Image 1.0", configured: true, missing: [] });
+  assert.deepEqual(modelsFrom(null), { words: null, image: null, configured: false, missing: [] });
+});
+
+test("an edit that called only Muse Spark keeps the photo's and the check's labels (a null label never wipes one)", () => {
+  const before = { words: "Muse Spark", image: "Muse Image 1.0", check: "Muse Spark", basedOn: 1 };
+  assert.deepEqual(mergeModels(before, { words: "Muse Spark 1.3", image: null, check: null }), { words: "Muse Spark 1.3", image: "Muse Image 1.0", check: "Muse Spark" });
+  assert.deepEqual(mergeModels(before, { words: "Muse Spark", image: "Muse Image 1.1", check: "Muse Spark" }), { words: "Muse Spark", image: "Muse Image 1.1", check: "Muse Spark" });
+  assert.deepEqual(mergeModels(null, undefined), {});
 });
 
 // ------------------------------------------------------------- the routes ---
@@ -700,4 +742,217 @@ test("the defaults load the studio and the network when they are installed, and 
   assert.deepEqual(Object.keys(data).sort(), ["ads", "landing", "models", "network", "today"]);
   assert.equal(data.network.name, "facebook");
   assert.equal(data.models.configured, false, "no model key in the tests");
+});
+
+// ---------------------------------------------------- review round 1 ---
+
+// Wraps one method of a fake so it waits on a gate first.
+function gated(fake, method) {
+  const g = gate();
+  const real = fake[method];
+  fake[method] = async (...args) => { await g.wait(); return real.apply(fake, args); };
+  return g;
+}
+const age = (id, minutes) => pool.query(`UPDATE ads SET updated_at = now() - make_interval(mins => $2) WHERE id = $1`, [id, minutes]);
+
+test("a queued publish older than the floor still reads as publishing while this process holds it; Reject, Edit and Undo wait (409)", opts, async () => {
+  const network = fakeNetwork();
+  const hold = gated(network, "publish");
+  useDeps({ network });
+  const ids = await drafts(3);
+  for (const id of ids) assert.equal((await post(`/api/admin/ads/${id}/publish`)).statusCode, 202);
+  for (const id of ids) await age(id, STALE_MINUTES + 5);
+  const before = (await list()).ads;
+  assert.deepEqual(before.map((a) => [a.status, a.interrupted]), [["publishing", null], ["publishing", null], ["publishing", null]], "queued, never interrupted");
+  assert.deepEqual(ids.map(jobOf), ["publishing", "publishing", "publishing"]);
+  const third = ids[2];
+  const refused = await post(`/api/admin/ads/${third}/reject`, { reason: "Changed my mind." });
+  assert.equal(refused.statusCode, 409);
+  assert.equal(refused.json().error, "This idea is being published right now: wait for it to finish.");
+  assert.equal((await post(`/api/admin/ads/${third}/edit`, { instruction: "x" })).statusCode, 409);
+  assert.equal((await post(`/api/admin/ads/${third}/undo`)).statusCode, 409);
+  assert.equal((await post(`/api/admin/ads/${third}/publish`)).statusCode, 409);
+  hold.open();
+  await adsIdle();
+  assert.deepEqual((await list()).ads.map((a) => a.status), ["published", "published", "published"]);
+  assert.equal(network.calls.publish.length, 3);
+  assert.equal(jobOf(third), null, "let go once stored");
+});
+
+test("a queued publish set aside elsewhere before its turn never reaches the network", opts, async () => {
+  const network = fakeNetwork();
+  const hold = gated(network, "publish");
+  useDeps({ network });
+  const [a, b] = await drafts(2);
+  await post(`/api/admin/ads/${a}/publish`);
+  await post(`/api/admin/ads/${b}/publish`);
+  await pool.query("UPDATE ads SET status = 'rejected', rejected_reason = 'by another server' WHERE id = $1", [b]);
+  hold.open();
+  await adsIdle();
+  assert.equal(network.calls.publish.length, 1, "only the first");
+  assert.deepEqual([(await adOf(a)).status, (await adOf(b)).status], ["published", "rejected"]);
+});
+
+test("an ad the network made after its row moved on is paused there and kept with its ids, never untracked", opts, async () => {
+  const network = fakeNetwork();
+  const publish = network.publish;
+  network.publish = async (args) => {
+    await pool.query("UPDATE ads SET status = 'rejected', rejected_reason = 'by another server' WHERE status = 'publishing'");
+    return publish(args);
+  };
+  useDeps({ network });
+  const [id] = await drafts(1);
+  await post(`/api/admin/ads/${id}/publish`);
+  await adsIdle();
+  const ad = await adOf(id);
+  assert.deepEqual(network.calls.setStatus, [{ adId: "1202000001", adsetId: "as-1", status: "PAUSED" }]);
+  assert.equal(ad.status, "paused");
+  assert.equal(ad.external.adId, "1202000001");
+  assert.equal(ad.review.state, "paused");
+  assert.match(ad.error, /created, then paused at once/);
+
+  // The pause fails too: the row says it is live, and what to do.
+  const failing = fakeNetwork({ async setStatus() { throw new Error("Facebook did not answer"); } });
+  const publish2 = failing.publish;
+  failing.publish = async (args) => {
+    await pool.query("UPDATE ads SET status = 'rejected' WHERE status = 'publishing'");
+    return publish2(args);
+  };
+  useDeps({ network: failing });
+  const [other] = await drafts(1);
+  await post(`/api/admin/ads/${other}/publish`);
+  await adsIdle();
+  const live = await adOf(other);
+  assert.deepEqual([live.status, live.external.adId], ["published", "1202000001"]);
+  assert.match(live.error, /could not be paused: pause it in Ads Manager now/);
+});
+
+test("once the network made the ad, a store failure never puts the card back to Draft: the write is tried again, else the row stays publishing and the ids are logged", opts, async () => {
+  // A blip: the first write fails, the second lands.
+  let blips = 0;
+  const network = fakeNetwork();
+  const publish = network.publish;
+  network.publish = async (args) => ({ ...(await publish(args)), budget: { toJSON: () => { if (blips++ === 0) throw new Error("connection reset"); return { daily: 5, currency: "USD", days: 7 }; } } });
+  useDeps({ network });
+  const [id] = await drafts(1);
+  await post(`/api/admin/ads/${id}/publish`);
+  await adsIdle();
+  assert.equal((await adOf(id)).status, "published");
+  assert.deepEqual((await adOf(id)).budget, { daily: 5, currency: "USD", days: 7 });
+  assert.equal(network.calls.publish.length, 1);
+
+  // Down for good: the row stays publishing, never draft; the ids are logged without a token.
+  const broken = fakeNetwork();
+  const publishB = broken.publish;
+  broken.publish = async (args) => ({ ...(await publishB(args)), budget: { daily: 5n } });
+  useDeps({ network: broken });
+  const [stuck] = await drafts(1);
+  const logged = [];
+  const consoleError = console.error;
+  console.error = (...a) => logged.push(a.join(" "));
+  try {
+    await post(`/api/admin/ads/${stuck}/publish`);
+    await adsIdle();
+  } finally {
+    console.error = consoleError;
+  }
+  const ad = await adOf(stuck);
+  assert.equal(ad.status, "publishing", "never back to draft: a second click would pay twice");
+  assert.equal((await post(`/api/admin/ads/${stuck}/publish`)).statusCode, 409);
+  assert.equal(broken.calls.publish.length, 1);
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], new RegExp(`ad 1202000001 \\(ad set as-1, campaign cmp-1\\) is on Facebook but row ${stuck} could not be written`));
+  assert.ok(!/EAA|token=/.test(logged[0]));
+
+  let tries = 0;
+  await assert.rejects(retried(async () => { tries++; throw new Error("down"); }, [1, 1]), /down/);
+  assert.equal(tries, 3, "three tries in all");
+});
+
+test("a words-only edit keeps the photo's and the check's model labels", opts, async () => {
+  useDeps();
+  const [id] = await drafts(1);
+  useDeps({ studio: fakeStudio({ async editIdea({ words, photo }) { return { words: { ...words, headline: "Shorter" }, photo, check: null, changed: { words: true, photo: false }, models: { words: "Muse Spark 1.3", image: null, check: null }, photosMade: 0 }; } }) });
+  await post(`/api/admin/ads/${id}/edit`, { instruction: "shorter headline" });
+  await adsIdle();
+  const ad = await adOf(id);
+  assert.deepEqual([ad.version, ad.words.headline], [2, "Shorter"]);
+  assert.deepEqual(ad.models, { words: "Muse Spark 1.3", image: "Muse Image 1.0", check: "Muse Spark" });
+  assert.deepEqual(ad.check, CHECK, "the check of the photo it kept");
+});
+
+test(`an edit or a draft still running after ${STALE_MINUTES} minutes is not interrupted; a result that lands after the idea moved on says so instead of vanishing`, opts, async () => {
+  assert.equal(STALE_MINUTES, 15, "longer than the slowest edit (about 7 minutes)");
+  const studio = fakeStudio();
+  const editing = gated(studio, "editIdea");
+  useDeps({ studio });
+  const [id] = await drafts(1);
+  await post(`/api/admin/ads/${id}/edit`, { instruction: "evening light" });
+  await age(id, STALE_MINUTES + 5);
+  const ad = await adOf(id);
+  assert.deepEqual([ad.status, ad.interrupted, ad.canEdit], ["editing", null, false]);
+  const again = await post(`/api/admin/ads/${id}/edit`, { instruction: "x" });
+  assert.equal(again.statusCode, 409);
+  assert.equal(again.json().error, "Muse Spark and Muse Image are still editing this idea: wait for it to finish.");
+  assert.equal((await post(`/api/admin/ads/${id}/undo`)).statusCode, 409);
+  assert.equal((await post(`/api/admin/ads/${id}/reject`, { reason: "x" })).statusCode, 409);
+  await pool.query("UPDATE ads SET status = 'rejected' WHERE id = $1", [id]); // another server set it aside
+  editing.open();
+  await adsIdle();
+  const after = await adOf(id);
+  assert.deepEqual([after.status, after.version], ["rejected", 1]);
+  assert.equal(after.error, 'The edit "evening light" finished after the idea had moved on (it is rejected): it was not kept.');
+
+  const drafting = fakeStudio();
+  const photo = gated(drafting, "makePhoto");
+  useDeps({ studio: drafting });
+  const res = await post("/api/admin/ads/ideas", { count: 1 });
+  const [late] = res.json().ids;
+  await age(late, STALE_MINUTES + 5);
+  assert.deepEqual([(await adOf(late)).status, jobOf(late)], ["drafting", "drafting"]);
+  assert.equal((await post(`/api/admin/ads/${late}/reject`, { reason: "x" })).statusCode, 409);
+  await pool.query("UPDATE ads SET status = 'rejected' WHERE id = $1", [late]);
+  photo.open();
+  await adsIdle();
+  assert.equal((await adOf(late)).error, "This idea was finished after it had moved on (it is rejected): its words and photo were not kept.");
+});
+
+test("a server that shuts down during an edit says so, even when the model layer renamed the abort", opts, async () => {
+  useDeps();
+  const [id] = await drafts(1);
+  const other = await buildApp({ logger: false });
+  other.adsDeps = {
+    studio: fakeStudio({ editIdea: ({ signal }) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("Muse Spark request was cancelled")))) }),
+    network: fakeNetwork(),
+    models: MODELS,
+  };
+  const res = await other.inject({ method: "POST", url: `/api/admin/ads/${id}/edit`, headers: { origin: ORIGIN, ...adminHeaders }, payload: { instruction: "warmer light" } });
+  assert.equal(res.statusCode, 202, res.body);
+  await other.close();
+  const ad = await adOf(id);
+  assert.deepEqual([ad.status, ad.error], ["draft", "Stopped: the server was shutting down. Try again."]);
+});
+
+test("a studio module that is installed but broken answers 500, never 'not installed'; a missing one is 'not installed'", opts, async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ads-broken-"));
+  const make = async (modules) => {
+    const f = Fastify({ logger: false });
+    f.addHook("onRequest", async (request) => { request.user = { isAdmin: true, email: "admin@example.test" }; });
+    await f.register(adsRoutes, { modules });
+    return f;
+  };
+  try {
+    await writeFile(join(dir, "studio.mjs"), 'import "./guardrails-not-there.mjs";\n');
+    const broken = await make({ studio: pathToFileURL(join(dir, "studio.mjs")).href });
+    const res = await broken.inject({ url: "/api/admin/ads" });
+    assert.equal(res.statusCode, 500);
+    await broken.close();
+    const missing = await make({ studio: pathToFileURL(join(dir, "nothing.mjs")).href, networks: pathToFileURL(join(dir, "nothing.mjs")).href });
+    const ok = await missing.inject({ url: "/api/admin/ads" });
+    assert.equal(ok.statusCode, 200, ok.body);
+    assert.deepEqual([ok.json().models.installed, ok.json().network.installed], [false, false]);
+    await missing.close();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
