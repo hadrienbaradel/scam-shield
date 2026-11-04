@@ -1396,7 +1396,9 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
    Today
      .td-choices      "Check something yourself": the title and the three
                       choices, 12px apart
-     .td-count        "2 of 3" between the back link and Listen, 19px bold grey
+     .td-head         the card screen's row: back, .td-count ("2 of 3", 19px
+                      bold grey) and Listen pushed to the right
+     .td-dock         the answer bar with its one verb, full width
    The verdict card (js/views/card.js), on .v2-card for the slide to throw
      .vcard           white, 4px border in the verdict colour (.danger,
                       .caution, .ok), 26px corners, 20px padding, 14px gaps
@@ -1409,9 +1411,12 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
                       .vcard-note (19px grey); .vcard-doubt the folded button */
 
 .td-choices { display: flex; flex-direction: column; gap: 12px; }
-.td-choices .btn-choice { font-weight: 700; }
 .td-count { flex: none; color: var(--muted); font-size: var(--t19); font-weight: 700; white-space: nowrap; }
-.screen-head .btn-listen { margin-left: auto; }
+.td-head .btn-listen { margin-left: auto; }
+/* The card's answer bar holds one verb now (Throw it away, or Call <name>):
+   the full width, icon and word on one line. */
+.v2-actions.td-dock { grid-template-columns: minmax(0, 1fr); }
+.td-dock .v2-action { flex-direction: row; gap: 12px; min-height: 72px; font-size: var(--t22); }
 
 .v2-card.vcard {
   gap: 14px;
@@ -1447,7 +1452,6 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .vcard.danger .vcard-fact { background: var(--scam-wash); }
 .vcard.caution .vcard-fact { background: var(--careful-wash); }
 .vcard.ok .vcard-fact { background: var(--safe-wash); }
-.vcard-fact .v2-chip { font-size: var(--t19); }
 .vcard-small { color: var(--muted); font-size: var(--t19); line-height: 1.4; }
 .vcard .vcard-fold { align-self: flex-start; min-height: 64px; margin-top: -4px; padding: 0; font-size: var(--t19); }
 .vcard-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--ground); }

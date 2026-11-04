@@ -1,41 +1,68 @@
-// The senior app, mobile first (V2 mockups): "Today" says whether anything
-// needs the person, then one message at a time with two big buttons. A
-// slide to the left is only a shortcut for "Throw it away", and every
-// action can be undone on the next screen. The same screens run on the
-// person's own Gmail and on the public demo (Linda or Françoise).
+// The senior app, mobile first: "Today" (2026-11-04 redesign, frames 1a to
+// 1d of _product/design/2026-11-04-redesign/claude-design/) says whether
+// anything needs the person, then one message at a time with the verdict
+// card of frames 1l to 1n (js/views/card.js). A slide to the left is only a
+// shortcut for "Throw it away", and every action can be undone on the next
+// screen. The same screens run on the person's own Gmail and on the public
+// demo (Linda or Françoise).
+//
+// Today, top to bottom: the greeting; the white card "1 message needs you"
+// with the gold "Look at it now", or the green all-clear followed by the
+// three Check choices; the "3 scams moved away this week" card (live only);
+// "What Prudence protects" (live only: the demo has no mailbox or phone).
+// The status line of the old Today now lives in the email row of the list.
 
 import { api } from "../api.js";
-import { t, getLang, evidenceWords } from "../i18n.js";
-import { $, esc, verdictClass, readAloud, toast, busy, focusHeading } from "../ui.js";
+import { t, getLang, ago } from "../i18n.js";
+import { $, esc, icon, readAloud, toast, busy, focusHeading } from "../ui.js";
 import { syncLine } from "./mail.js";
+import { protectRows, renderProtects } from "../protects.js";
+import { verdictCardHtml, unsureRowHtml, bindVerdictCard } from "./card.js";
 
 let S = null; // the screen state: source, info, queue, index, details, last action
 const demoDone = new Set(); // demo cards handled in this visit
 
 const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
-// The badge already says "Scam": the headline need not start with it again.
-const headlineOf = (h) => String(h || "").replace(/^(scam|be careful|safe|arnaque|prudence|attention|sans danger|vigilance)\s*:\s*/i, "").replace(/^./, (c) => c.toUpperCase());
 const enc = encodeURIComponent;
-// Under a reason, what it was checked against ("Checked: who sent it"), from
-// the reason's evidence kind; nothing when the kind is unknown or missing.
-const chip = (r) => { const w = evidenceWords(r?.evidence); return w ? `<span class="v2-chip">${esc(w)}</span>` : ""; };
+const WEEK = 7 * 24 * 3600 * 1000;
+
+// The scams Prudence moved out of the inbox, for the "moved away this week"
+// card: messages is the Scam folder's list (/api/inbox?box=scam), each with
+// its date (when it arrived) and its check. Put back by the person: not
+// counted. When every moved message has a date, only the last seven days
+// count (week: true); otherwise all of them (week: false), and the card
+// must not say "this week".
+export function movedThisWeek(messages, now = Date.now()) {
+  const moved = (messages || []).filter((m) => m?.check?.action === "moved" && !m.check.restored);
+  const when = (m) => Date.parse(m.date || m.check?.at || "");
+  if (!moved.every((m) => Number.isFinite(when(m)))) return { n: moved.length, week: false };
+  return { n: moved.filter((m) => now - when(m) < WEEK).length, week: true };
+}
 
 // Where the messages come from: the person's Gmail through the API.
 function liveSource(status) {
   return {
     demo: false,
     async load() {
-      const [inbox, scam, people] = await Promise.all([
+      const [inbox, scam, people, devices, fresh] = await Promise.all([
         api("/api/inbox?box=inbox&fresh=1"),
         api("/api/inbox?box=scam").catch(() => ({ messages: [] })),
         api("/api/guardians").catch(() => ({ guardians: [] })),
+        api("/api/devices").catch(() => ({ devices: [] })),
+        // The status the page was drawn with grows old (lastSyncAt): a live
+        // refresh reads it again for "Checked 2 minutes ago" and the list.
+        api("/api/status").catch(() => null),
       ]);
       const active = (people.guardians || []).filter((g) => g.status === "active");
+      const moved = movedThisWeek(scam.messages);
       return {
         name: firstName(status.user?.name),
         guardian: active[0] || null,
+        status: fresh?.user ? fresh : status,
+        devices: devices.devices || [],
         checked: inbox.messages.filter((m) => m.check).length,
-        moved: scam.messages.filter((m) => m.check?.action === "moved" && !m.check.restored).length,
+        moved: moved.n,
+        movedWeek: moved.week,
         queue: inbox.messages
           .filter((m) => m.check && m.check.verdict !== "safe" && !m.check.restored && m.check.feedback !== "not_scam")
           .map((m) => ({ id: m.id, fromName: m.fromName, from: m.from, subject: m.subject })),
@@ -103,18 +130,19 @@ function paint(html, { focus = true } = {}) {
 const stale = (n) => n !== painted || !S.root.isConnected || S.root.dataset.view !== "today";
 
 export async function renderToday(root, status, { demo = false, quiet = false } = {}) {
-  S = { root, status, source: demo ? demoSource() : liveSource(status), index: 0, details: new Map(), open: { why: false, body: false } };
-  const n = paint(`<div class="v2"><p class="v2-wait">${t("please_wait")}</p></div>`, { focus: false });
+  S = { root, status, source: demo ? demoSource() : liveSource(status), index: 0, details: new Map(), open: { body: false } };
+  const n = paint(`<div class="v2 screen"><p class="v2-wait">${t("please_wait")}</p></div>`, { focus: false });
   try {
     S.info = await S.source.load();
   } catch (e) {
     if (stale(n)) return;
-    paint(`<div class="v2">${status.gmail ? syncLine(status) : ""}<p class="banner danger">${esc(e.status === 409 ? t("reconnect") : t("sync_error"))}</p>
-      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`, { focus: false });
+    paint(`<div class="v2 screen">${status.gmail ? syncLine(status) : ""}<p class="banner danger">${esc(e.status === 409 ? t("reconnect") : t("sync_error"))}</p>
+      <button id="v2Retry" class="btn btn-navy btn-big" type="button">${t("retry")}</button></div>`, { focus: false });
     $("#v2Retry", root)?.addEventListener("click", () => renderToday(root, status, { demo }));
     return;
   }
   if (stale(n)) return;
+  if (S.info.status) S.status = S.info.status;
   S.queue = S.info.queue;
   S.total = S.queue.length;
   drawToday({ focus: !quiet });
@@ -125,34 +153,92 @@ const greeting = () => {
   return t(h < 12 ? "v2_morning" : h < 18 ? "v2_afternoon" : "v2_evening", { name: S.info.name });
 };
 
+// Only when something is wrong with the mailbox (to reconnect, or the first
+// pass still running): syncLine's banner; the everyday "checked 2 minutes
+// ago" is said once, in the email row of "What Prudence protects".
+function warning() {
+  const g = S.status?.gmail;
+  return !S.source.demo && g && (g.needsReconnect || !g.ready) ? syncLine(S.status) : "";
+}
+
+// The card on top: what needs her (frame 1a) or the green all-clear (1b).
+function topCard(n) {
+  if (n > 0) {
+    const others = Math.max(0, (Number(S.info.checked) || 0) - n);
+    return `
+      <section class="hero-card" aria-labelledby="tdNeed">
+        <h2 id="tdNeed" class="hero-title">${esc(n === 1 ? t("v2_need_one") : t("v2_need_many", { n }))}</h2>
+        ${others ? `<p class="hero-text">${esc(others === 1 ? t("td_others_one") : t("td_others", { n: others }))}</p>` : ""}
+        <button id="v2Look" class="btn btn-gold btn-big" type="button">${esc(n === 1 ? t("v2_look_one") : t("v2_look"))} ${icon("chevron-right", 26, 2.5)}</button>
+      </section>`;
+  }
+  const g = S.status?.gmail;
+  // The first pass still running, or Gmail to reconnect: the banner above
+  // says so, and nothing can be called clear yet.
+  if (warning()) return "";
+  const when = !S.source.demo && g?.lastSyncAt ? t("td_checked", { when: ago(g.lastSyncAt) })
+    : S.info.checked ? t("v2_checked", { n: S.info.checked }) : "";
+  return `
+      <section class="allclear" aria-labelledby="tdClear">
+        <div class="allclear-head">
+          <span class="allclear-mark" aria-hidden="true">${icon("check", 32, 3)}</span>
+          <h2 id="tdClear" class="allclear-title">${esc(t("td_allclear"))}</h2>
+        </div>
+        ${when ? `<p class="allclear-text">${esc(when)}</p>` : ""}
+      </section>`;
+}
+
+// "Check something yourself" (frame 1b): the three Check choices, the
+// screenshot in gold. Links: the Check screens own what happens next.
+function choices() {
+  return `
+      <section class="td-choices" aria-labelledby="tdCheck">
+        <h2 id="tdCheck" class="section-title">${esc(t("td_check_yourself"))}</h2>
+        <a class="btn btn-choice is-compact btn-gold" href="#/check/photo">${icon("camera", 32)}<span>${esc(t("ck_photo"))}</span></a>
+        <a class="btn btn-choice is-compact" href="#/check/paste">${icon("clipboard", 28)}<span>${esc(t("ck_paste"))}</span></a>
+        <a class="btn btn-choice is-compact" href="#/check/voice">${icon("mic", 28)}<span>${esc(t("ck_voice"))}</span></a>
+      </section>`;
+}
+
+// What Prudence moved out of the way: "this week" only when the count is
+// the last seven days (movedThisWeek), the older words otherwise.
+function movedCard() {
+  const n = S.info.moved;
+  if (!n) return "";
+  const one = n === 1;
+  const title = S.info.movedWeek ? (one ? t("td_moved_one") : t("td_moved", { n })) : t("v2_moved", { n });
+  return `
+      <section class="row-card" aria-labelledby="tdMoved">
+        <div class="row-head">
+          <span class="row-icon is-danger">${icon("circle-slash", 24, 2.5)}</span>
+          <div class="row-text">
+            <span id="tdMoved" class="row-name">${esc(title)}</span>
+            ${S.info.movedWeek ? `<span class="row-state">${esc(one ? t("td_moved_note_one") : t("td_moved_note"))}</span>` : ""}
+          </div>
+        </div>
+        <a class="btn btn-outline" href="#/blocked">${esc(one ? t("td_see_it") : t("td_see_them"))}</a>
+      </section>`;
+}
+
 // focus: false for a live refresh, so new mail never pulls focus away.
 function drawToday({ focus = true } = {}) {
   const n = S.queue.length;
-  const g = S.info.guardian;
+  const demo = S.source.demo;
   paint(`
-    <div class="v2">
-      ${S.source.demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : syncLine(S.status)}
-      <h1 class="v2-hello">${esc(greeting())}</h1>
-      ${n === 0 ? `
-        <section class="v2-status ok" aria-label="${t("v2_status_label")}">
-          ${icon("shieldCheck", 60)}
-          <p class="v2-status-big">${t("v2_safe")}</p>
-          <p>${t("v2_checked", { n: S.info.checked })}</p>
-        </section>` : `
-        <section class="v2-status" aria-label="${t("v2_status_label")}">
-          <p class="v2-status-big">${esc(n === 1 ? t("v2_need_one") : t("v2_need_many", { n }))}</p>
-          <p>${t("v2_checked", { n: S.info.checked })} ${t("v2_one_at_a_time")}</p>
-          <button id="v2Look" class="btn btn-gold v2-big" type="button">${esc(n === 1 ? t("v2_look_one") : t("v2_look"))} ${icon("next", 26)}</button>
-        </section>`}
-      ${S.info.moved ? `<p class="v2-line">${icon("folder", 26)} ${esc(t("v2_moved", { n: S.info.moved }))}</p>` : ""}
-      ${g ? `<p class="v2-line"><span class="v2-avatar" aria-hidden="true">${esc(firstName(g.name).charAt(0))}</span> ${esc(t("v2_trusted", { name: firstName(g.name) }))}</p>`
-    : S.source.demo ? "" : `<p class="v2-line"><a href="#/people">${t("v2_no_trusted")}</a></p>`}
+    <div id="tdHome" class="v2 screen">
+      ${demo ? `<p class="v2-demo">${t("v2_demo_note")}</p>` : ""}
+      <h1 class="screen-title">${esc(greeting())}</h1>
+      ${warning()}
+      ${topCard(n)}
+      ${n === 0 && !demo ? choices() : ""}
+      ${demo ? "" : movedCard()}
       ${S.info.voicemail ? `
         <section class="v2-voice" aria-labelledby="v2VoiceTitle">
           <h2 id="v2VoiceTitle" class="v2-voice-title">${icon("speaker", 26)} ${t("v2_voicemail_title")}</h2>
           <audio controls preload="none" src="${VOICEMAIL_URL()}"></audio>
           <button id="v2Voice" class="btn btn-navy v2-big" type="button">${t("v2_voicemail_check")}</button>
         </section>` : ""}
+      ${demo ? "" : renderProtects(protectRows(S.status, { devices: S.info.devices }))}
     </div>`, { focus });
   $("#v2Look")?.addEventListener("click", () => openCard(0));
   $("#v2Voice")?.addEventListener("click", (e) => busy(e.currentTarget, openVoicemail, t("checking")));
@@ -173,17 +259,17 @@ async function openVoicemail() {
 
 async function openCard(i) {
   S.index = Math.max(0, Math.min(i, S.queue.length - 1));
-  S.open = { why: false, body: false };
+  S.open = { body: false };
   const item = S.queue[S.index];
   if (!item) return drawToday();
-  const n = paint(`<div class="v2">${cardHeader()}<div class="v2-card caution"><p class="v2-badge">${t("checking")}</p><p>${t("please_wait")}</p></div></div>`, { focus: false });
+  const n = paint(`<div class="v2 screen is-snug">${cardHeader()}<div class="v2-card vcard caution"><p class="vcard-word">${t("checking")}</p><p class="vcard-small">${t("please_wait")}</p></div></div>`, { focus: false });
   bindHeader();
   try {
     if (!S.details.has(item.id)) S.details.set(item.id, await S.source.open(item));
   } catch (e) {
     if (stale(n)) return;
-    paint(`<div class="v2">${cardHeader()}<p class="banner danger">${esc(e.message)}</p>
-      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`, { focus: false });
+    paint(`<div class="v2 screen is-snug">${cardHeader()}<p class="banner danger">${esc(e.message)}</p>
+      <button id="v2Retry" class="btn btn-navy btn-big" type="button">${t("retry")}</button></div>`, { focus: false });
     bindHeader();
     $("#v2Retry").addEventListener("click", () => openCard(S.index));
     return;
@@ -199,89 +285,64 @@ function position() {
   return { i: S.total - S.queue.length + S.index + 1, n: S.total };
 }
 
+// Back, the count and Listen on one row (frame 1l); at the larger sizes
+// Listen moves to its own line on the right instead of spilling.
 function cardHeader() {
-  return `<header class="v2-head">
-      <a class="v2-back" href="${S.source.demo ? "#/demo" : "#/"}" id="v2Back">${icon("back", 24)} ${t("v2_today")}</a>
-      <span class="v2-count" aria-label="${esc(t("v2_of_label", position()))}">${esc(t("v2_of", position()))}</span>
-      <button id="v2Read" class="v2-read" type="button" aria-label="${t("v2_read")}">${icon("speaker", 24)} <span aria-hidden="true">${t("v2_read_short")}</span></button>
-    </header>`;
+  return `<div class="screen-head td-head">
+      <a class="btn-back" href="${S.source.demo ? "#/demo" : "#/today"}" id="v2Back">${icon("chevron-left", 28, 2.5)}${t("v2_today")}</a>
+      <span class="td-count" aria-label="${esc(t("v2_of_label", position()))}">${esc(t("v2_of", position()))}</span>
+      <button id="v2Read" class="btn-listen" type="button" aria-label="${t("v2_read")}">${icon("speaker", 26)}<span aria-hidden="true">${t("v2_read_short")}</span></button>
+    </div>`;
 }
 
 function bindHeader() {
   $("#v2Back")?.addEventListener("click", (e) => { e.preventDefault(); drawToday(); });
 }
 
-// keep: a selector to give focus back to after an in-place redraw (the
-// "Why we think so" toggle), instead of jumping to the heading.
-function drawCard({ keep = null } = {}) {
+function drawCard() {
   const item = S.queue[S.index];
   const d = S.details.get(item.id);
   const v = d.verdict || {};
   // No verdict (a check still running or a broken answer) is never shown
-  // as Safe: say so, keep the links out of reach, offer to try again.
+  // as Safe: card.js draws "We could not check this message yet"; the
+  // links stay out of reach and the person can try again.
   if (!["safe", "be_careful", "scam"].includes(v.verdict)) {
-    paint(`<div class="v2">${cardHeader()}
-      <article class="v2-card caution"><p class="v2-badge">${t("checking")}</p>
-        <h1 class="v2-headline">${t("v2_unknown_title")}</h1><p class="v2-fact">${t("v2_unknown_note")}</p></article>
-      <button id="v2Retry" class="btn btn-navy v2-big" type="button">${t("retry")}</button></div>`);
+    paint(`<div class="v2 screen is-snug">${cardHeader()}
+      ${verdictCardHtml({ verdict: v })}
+      <button id="v2Retry" class="btn btn-navy btn-big" type="button">${t("retry")}</button></div>`);
     bindHeader();
     $("#v2Read")?.remove();
     $("#v2Retry").addEventListener("click", () => { S.details.delete(item.id); openCard(S.index); });
     return;
   }
   const scam = v.verdict === "scam";
+  const safe = v.verdict === "safe";
   const g = S.info.guardian;
-  const reasons = v.reasons || [];
-  const m = d.message || {};
-  const word = v.verdict === "scam" ? t("pill_scam") : v.verdict === "be_careful" ? t("pill_careful") : t("pill_safe");
-  // A message using a family member's name: calling them on the number
-  // already saved is the safest step, whatever the verdict.
+  // The one verb in the answer bar. A message using a family member's name:
+  // calling them on the number already saved is the safest step, whatever
+  // the verdict. A Safe message (the demo judges live, a voicemail): keeping
+  // it, never a red "Throw it away" under a green card. Otherwise: throw it.
   const primary = d.callBack
     ? `<a class="btn btn-navy v2-action" href="tel:${esc(String(d.callBack.phone).replace(/[^\d+]/g, ""))}">${icon("phone", 28)} ${esc(t("v2_call", { name: firstName(d.callBack.name) }))}</a>`
+    : safe ? `<button id="v2Keep" class="btn btn-gold v2-action" type="button">${icon("check", 28, 3)} ${t("v2_keep")}</button>`
     : `<button id="v2Throw" class="btn btn-danger v2-action" type="button">${icon("trash", 28)} ${t("v2_throw")}</button>`;
-  const second = g
-    ? `<button id="v2Ask" class="btn btn-gold v2-action" type="button">${icon("ask", 28)} ${esc(t("v2_ask", { name: firstName(g.name) }))}</button>`
-    : `<a class="btn btn-gold v2-action" href="#/people">${icon("ask", 28)} ${t("v2_add_trusted")}</a>`;
+  const quietThrow = d.callBack || safe;
+  const quietKeep = d.callBack || !safe;
   paint(`
-    <div class="v2">
+    <div class="v2 screen is-snug">
       ${cardHeader()}
-      <div class="v2-stack">
-        <article id="v2Card" class="v2-card ${verdictClass(v.verdict)}" aria-labelledby="v2Headline">
-          <p class="v2-badge"><span class="v2-badge-dot" aria-hidden="true">${icon(scam ? "alert" : v.verdict === "be_careful" ? "careful" : "check", 34)}</span>${esc(word)}</p>
-          <h1 id="v2Headline" class="v2-headline">${esc(headlineOf(v.headline))}</h1>
-          ${v.action_text ? `<p class="v2-next">${esc(v.action_text)}</p>` : ""}
-          ${reasons[0] ? `<p class="v2-fact">${esc(reasons[0].text)}${chip(reasons[0])}</p>` : ""}
-          ${reasons[1] ? `<p class="v2-fact v2-fact-box">${esc(reasons[1].text)}${chip(reasons[1])}</p>` : ""}
-          <div class="v2-more">
-            <button id="v2Why" class="btn btn-light-dark" type="button" aria-expanded="${S.open.why}">${t("v2_why")}</button>
-            <button id="v2Body" class="btn btn-light-dark" type="button" aria-expanded="${S.open.body}">${S.open.body ? t("v2_hide") : t("v2_show")}</button>
-          </div>
-          <div id="v2WhyBox" ${S.open.why ? "" : "hidden"}>
-            <ul class="why-list">${reasons.map((r) => `<li>${esc(r.text)}${chip(r)}</li>`).join("")}</ul>
-            ${v.real_company_says ? `<p class="note">${esc(v.real_company_says)}</p>` : ""}
-            <p class="small">${esc(t("checked_by", { source: v.source || "Prudence" }))}</p>
-          </div>
-          <div id="v2BodyBox" ${S.open.body ? "" : "hidden"}>
-            ${m.audio ? `<audio controls preload="none" src="${esc(m.audio)}"></audio>` : ""}
-            <p class="mail-meta">${esc(m.fromName || "")} &lt;${esc(m.from || "")}&gt;</p>
-            ${m.subject ? `<p><strong>${esc(m.subject)}</strong></p>` : ""}
-            <pre class="mail-body">${esc(m.body || "")}</pre>
-          </div>
-        </article>
-      </div>
-      <div class="v2-actions">${primary}${second}</div>
+      ${verdictCardHtml({ verdict: v, message: d.message || null, callBack: d.callBack, open: S.open, ids: "v2" })}
+      <div class="v2-actions td-dock">${primary}</div>
       ${d.callBack ? `<p class="v2-hint">${esc(t("v2_call_note", { name: firstName(d.callBack.name) }))}</p>` : ""}
-      ${d.callBack ? `<button id="v2Throw" class="btn btn-light-dark v2-quiet" type="button">${t("v2_throw")}</button>` : ""}
-      <button id="v2Keep" class="btn btn-light-dark v2-quiet" type="button">${t("v2_keep")}</button>
-    </div>`, { focus: !keep });
-  if (keep) $(keep)?.focus();
+      ${quietThrow ? `<button id="v2Throw" class="btn btn-outline btn-big" type="button">${t("v2_throw")}</button>` : ""}
+      ${quietKeep ? `<button id="v2Keep" class="btn btn-outline btn-big" type="button">${t("v2_keep")}</button>` : ""}
+      ${unsureRowHtml({ verdict: v.verdict, guardianName: g ? firstName(g.name) : "", folded: v.verdict === "safe", ids: "v2" })}
+    </div>`);
   bindHeader();
+  bindVerdictCard(S.root, { ids: "v2", onBody: (open) => { S.open.body = open; }, onAsk: () => drawAsk() });
   $("#v2Read").addEventListener("click", () => readAloud(v));
-  $("#v2Why").addEventListener("click", () => { S.open.why = !S.open.why; drawCard({ keep: "#v2Why" }); });
-  $("#v2Body").addEventListener("click", () => { S.open.body = !S.open.body; drawCard({ keep: "#v2Body" }); });
   $("#v2Throw")?.addEventListener("click", (e) => busy(e.currentTarget, doThrow));
-  $("#v2Ask")?.addEventListener("click", () => drawAsk());
-  $("#v2Keep").addEventListener("click", (e) => busy(e.currentTarget, doKeep));
+  $("#v2Keep")?.addEventListener("click", (e) => busy(e.currentTarget, doKeep));
   if (scam) enableSlide($("#v2Card"));
 }
 
@@ -330,20 +391,20 @@ const doKeep = () => act("kept");
 function drawDone(last) {
   const more = S.queue.length > 0;
   paint(`
-    <div class="v2">
+    <div class="v2 screen">
       <section class="v2-done-note" role="status">
-        <h1 class="v2-done-title">${icon("check", 26)} ${last.kind === "thrown" ? t("v2_thrown") : t("v2_kept")}</h1>
+        <h1 class="v2-done-title">${icon("check", 26, 3)} ${last.kind === "thrown" ? t("v2_thrown") : t("v2_kept")}</h1>
         <p>${last.kind === "thrown" ? t("v2_thrown_note") : t("v2_kept_note")}</p>
-        <button id="v2Undo" class="btn v2-undo" type="button">${icon("undo", 22)} ${t("v2_undo")}</button>
+        <button id="v2Undo" class="btn v2-undo" type="button">${UNDO} ${t("v2_undo")}</button>
       </section>
       ${more ? `
-        <button id="v2Next" class="btn btn-gold v2-big" type="button">${t("v2_next")} ${icon("next", 26)}</button>` : `
+        <button id="v2Next" class="btn btn-gold btn-big" type="button">${t("v2_next")} ${icon("chevron-right", 26, 2.5)}</button>` : `
         <section class="v2-all-done" aria-label="${t("v2_all_done")}">
-          <span class="v2-big-check" aria-hidden="true">${icon("check", 64)}</span>
+          <span class="v2-big-check" aria-hidden="true">${icon("check", 64, 3)}</span>
           <h2>${t("v2_all_done")}</h2>
           <p>${t("v2_all_done_note")}</p>
         </section>`}
-      <button id="v2Today" class="btn btn-navy v2-big" type="button">${t("v2_back_to_today")}</button>
+      <button id="v2Today" class="btn btn-navy btn-big" type="button">${t("v2_back_to_today")}</button>
     </div>`);
   const n = painted;
   $("#v2Undo")?.addEventListener("click", (e) => busy(e.currentTarget, async () => {
@@ -363,10 +424,10 @@ function drawAsk() {
   const g = S.info.guardian;
   const name = firstName(g.name);
   paint(`
-    <div class="v2">
-      <header class="v2-head"><button id="v2AskBack" class="v2-back" type="button">${icon("back", 24)} ${t("v2_back_message")}</button></header>
-      <h1 class="v2-hello">${esc(t("v2_ask", { name }))}</h1>
-      <p>${esc(t("v2_ask_preview", { name }))}</p>
+    <div class="v2 screen is-snug">
+      <div class="screen-head"><button id="v2AskBack" class="btn-back" type="button">${icon("chevron-left", 28, 2.5)}${t("v2_back_message")}</button></div>
+      <h1 class="screen-title">${esc(t("v2_ask", { name }))}</h1>
+      <p class="screen-lead">${esc(t("v2_ask_preview", { name }))}</p>
       <div class="shared-card">
         <p class="mail-meta">${esc(item.fromName || item.from || "")}</p>
         <p><strong>${esc(d.verdict.headline || "")}</strong></p>
@@ -374,8 +435,8 @@ function drawAsk() {
       </div>
       <label class="check"><input type="checkbox" id="v2IncludeText"> ${t("ask_include_text")}</label>
       <div id="v2AskOut" aria-live="polite"></div>
-      <button id="v2Text" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${esc(t("v2_ask_text", { name }))}</button>
-      <button id="v2Email" class="btn btn-light-dark v2-quiet" type="button">${esc(t("v2_ask_email"))}</button>
+      <button id="v2Text" class="btn btn-gold btn-big" type="button">${icon("chat", 26)} ${esc(t("v2_ask_text", { name }))}</button>
+      <button id="v2Email" class="btn btn-outline btn-big" type="button">${esc(t("v2_ask_email"))}</button>
     </div>`);
   $("#v2AskBack").addEventListener("click", () => drawCard());
   const n = painted;
@@ -397,12 +458,12 @@ function drawAsk() {
         <p><strong>${esc(t("v2_text_ready", { name }))}</strong></p>
         <pre class="mail-body">${esc(msg.body)}</pre>
         ${S.source.demo ? `
-          <button id="v2DemoOpen" class="btn btn-gold v2-big" type="button">${icon("message", 26)} ${t("v2_open_messages")}</button>
+          <button id="v2DemoOpen" class="btn btn-gold btn-big" type="button">${icon("chat", 26)} ${t("v2_open_messages")}</button>
           <p id="v2DemoNote" class="small" hidden>${t("v2_demo_text")}</p>` : `
-          <a class="btn btn-gold v2-big" href="${esc(sms)}">${icon("message", 26)} ${t("v2_open_messages")}</a>
-          ${wa ? `<a class="btn btn-light-dark v2-big" href="${esc(wa)}" target="_blank" rel="noopener">${t("v2_open_whatsapp")}</a>` : ""}
+          <a class="btn btn-gold btn-big" href="${esc(sms)}">${icon("chat", 26)} ${t("v2_open_messages")}</a>
+          ${wa ? `<a class="btn btn-outline btn-big" href="${esc(wa)}" target="_blank" rel="noopener">${t("v2_open_whatsapp")}</a>` : ""}
           ${digits ? "" : `<p class="small">${esc(t("v2_no_phone", { name }))}</p>`}`}
-        <button id="v2Copy" class="btn btn-light-dark" type="button">${t("v2_copy")}</button>
+        <button id="v2Copy" class="btn btn-outline btn-big" type="button">${t("v2_copy")}</button>
       </div>`;
     $("#v2Text").hidden = true;
     $("#v2DemoOpen")?.addEventListener("click", () => { $("#v2DemoNote").hidden = false; $("#v2DemoNote").focus?.(); });
@@ -419,26 +480,11 @@ function drawAsk() {
   $("#v2Email").addEventListener("click", once("email"));
 }
 
-// Live updates: a new check or an answer refreshes "Today" when it is on screen.
+// Live updates: a new check or an answer refreshes "Today" when its home
+// screen is up (never a card or the Ask screen the person is reading).
 export function onTodayEvent() {
-  if (S && !S.source.demo && S.root.isConnected && S.root.dataset.view === "today" && $("#v2Look, .v2-status", S.root)) renderToday(S.root, S.status, { quiet: true });
+  if (S && !S.source.demo && S.root.isConnected && S.root.dataset.view === "today" && $("#tdHome", S.root)) renderToday(S.root, S.status, { quiet: true });
 }
 
-// Inline stroke icons (no emoji, no icon font); decorative, hidden from screen readers.
-const PATHS = {
-  shieldCheck: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
-  next: '<path d="M9 6l6 6-6 6"/>', back: '<path d="M15 18l-6-6 6-6"/>', left: '<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>',
-  speaker: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/>',
-  alert: '<path d="M12 3l9.5 16.5h-19L12 3z"/><path d="M12 10v4"/><path d="M12 17.5v.01"/>',
-  careful: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5v.01"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>',
-  ask: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M17 8h5"/><path d="M19.5 5.5v5"/>',
-  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
-  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
-  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-  message: '<path d="M4 5h16v11H8l-4 4z"/>',
-};
-function icon(name, size = 24) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || ""}</svg>`;
-}
+// "Undo" has no icon in ui.js yet: its arrow is drawn here, as before.
+const UNDO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
