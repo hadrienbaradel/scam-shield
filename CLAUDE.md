@@ -16,7 +16,7 @@ Open the rule file whose keywords match what you are about to touch; each starts
 |---|---|---|
 | A feature, an idea, a change request, research, "is it done?" | spec first, ideas lifecycle, challenge, research, definition of done | `_product/docs/product-process.md` |
 | Starting a task, finishing it, handing something off, resuming after a cut session | log, claim, in progress, to do, handoff, pull --rebase | `_product/docs/product-process.md` (The team log) |
-| Commits, branches, PRs | small commits, push often, branch, never committed | `_product/docs/git.md` |
+| Commits, branches, PRs, releases | small commits, push often, branch, never committed, pr review, release, tag | `_product/docs/git.md` |
 | Tests, coverage, the quality gate | test, coverage, threshold, ratchet, score, mock llm, TEST_DB_SUFFIX | `_product/docs/testing.md` |
 | Scripts, make targets, local setup, the README quick start | make, help, doctor, scripts, layout, dx | `_product/docs/dx.md` |
 | Postgres, Docker, compose, CI, deployment | infra, docker, compose, postgres, test database, ci, github actions, deploy, prod, ansible | `_product/docs/infra.md` |
