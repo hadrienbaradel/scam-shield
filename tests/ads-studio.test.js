@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { getProvider } from "../lib/llm/index.js";
 import { TINY_JPEG } from "../lib/llm/mock.js";
-import { proposeIdeas, makePhoto, editIdea, checkPhoto, validateWords, PHOTO_COST_USD, modelLabel, IDEAS_SCHEMA, WORDS_SCHEMA } from "../lib/ads/studio.js";
+import { proposeIdeas, makePhoto, editIdea, checkPhoto, validateWords, PHOTO_COST_USD, modelLabel, IDEAS_SCHEMA, WORDS_SCHEMA, CHECK_RETRY_TIMEOUT_MS, noAnswer } from "../lib/ads/studio.js";
 import { adPrompts, factNumbers, factsForModel, brandsIn, attributedQuotes, inFactSheet, numbersIn, normalizeWords, parentsNamed, ALLOWED_BRANDS } from "../lib/ads/guardrails.js";
 
 const mock = getProvider("mock");
@@ -272,8 +272,9 @@ test("the photo: a problem left after the one fix is named on the card, and ther
 });
 
 test("the photo is kept when the check cannot run or the fix is refused: the card says so and a person decides", async () => {
-  mock.script(new Error("Meta Model API 503: busy"));
+  mock.script(new Error("Meta Model API 503: busy"), new Error("Meta Model API 503: busy"));
   const unchecked = await makePhoto({ words: idea() });
+  assert.equal(mock.calls.length, 2, "a 503 is asked once more, then the card says it was not checked");
   assert.ok(unchecked.photo.bytes.equals(TINY_JPEG));
   assert.deepEqual(unchecked.check, { pass: false, problems: ["not checked: Meta Model API 503: busy"], fixed: [], summary: "Not checked: Mock LLM did not answer", model: "Mock LLM" });
   mock.reset();
@@ -308,6 +309,35 @@ test("the photo check reads the ad's words beside the photo brief; a photo of an
   await checkPhoto({ photo: PHOTO, words: idea({ headline: "<b>Dad</b>" }) });
   assert.ok(textOf(mock.calls[2]).includes(`"headline":"\\u003cb\\u003eDad\\u003c/b\\u003e"`), "the words are escaped data too");
   assert.ok(!textOf(mock.calls[2]).includes("<b>"));
+});
+
+test("a photo check Muse Spark does not answer (timeout, network, 5xx, not JSON) is asked once more with a fresh 45 s limit; an abort or a 4xx is not", async () => {
+  mock.script(Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }), pass);
+  assert.equal((await checkPhoto({ photo: PHOTO, words: idea() })).pass, true);
+  assert.equal(mock.calls.length, 2);
+  assert.notEqual(mock.calls[1].signal, mock.calls[0].signal, "a fresh deadline");
+  assert.equal(CHECK_RETRY_TIMEOUT_MS, 45_000);
+  mock.reset();
+  mock.script("Sorry, the photo did not load.", pass);
+  assert.equal((await makePhoto({ words: idea() })).check.summary, "Checked by Mock LLM: no problem found");
+  assert.equal(mock.calls.length, 2, "an answer that is not JSON is asked once more");
+  mock.reset();
+  mock.script(Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET" } }), new Error("Meta Model API 502: bad gateway"));
+  await assert.rejects(checkPhoto({ photo: PHOTO, words: idea() }), { message: "Meta Model API 502: bad gateway" }, "twice without an answer: the error stands");
+  assert.equal(mock.calls.length, 2, "only once more");
+  mock.reset();
+  mock.script(new Error("Meta Model API 400: image too large"), pass);
+  assert.equal((await makePhoto({ words: idea() })).check.summary, "Not checked: Mock LLM did not answer");
+  assert.equal(mock.calls.length, 1, "a 4xx says the same thing twice: not retried");
+  mock.reset();
+  const stop = new AbortController();
+  stop.abort();
+  const aborted = () => Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
+  mock.script(aborted(), aborted(), pass, pass);
+  await assert.rejects(checkPhoto({ photo: PHOTO, words: idea(), signal: stop.signal }), { name: "AbortError" });
+  await assert.rejects(makePhoto({ words: idea(), signal: stop.signal }), { name: "AbortError" }, "the flow stops too");
+  assert.equal(mock.calls.length, 2, "one call each, never a retry after an abort");
+  assert.equal(noAnswer(new Error("Muse Spark answered with something")), false);
 });
 
 test("checkPhoto alone returns the card's check; without a photo it says so", async () => {
