@@ -55,6 +55,14 @@ export default async function accountRoutes(app) {
     }
   });
 
+  // Whether her address was looked up in the breach list, and when: what the
+  // protection score's "breaches" criterion reads (protects.js CRITERIA,
+  // breach-exposure.md); { at, found }, or null before the first tap.
+  const breachLookupOf = async (userId) => {
+    const l = (await one("SELECT data->'breachLookup' AS lookup FROM contexts WHERE user_id = $1", [userId]))?.lookup;
+    return l?.at ? { at: l.at, found: Number(l.found) || 0 } : null;
+  };
+
   app.get("/api/status", async (request) => {
     const u = request.user;
     const gmail = u ? await one("SELECT sync_status, sync_error, last_sync_at, backfill_done, watch_expiration FROM gmail_state WHERE user_id = $1", [u.id]) : null;
@@ -77,6 +85,7 @@ export default async function accountRoutes(app) {
       gmail: gmail && { connected: tokens?.status === "ok", needsReconnect: tokens?.status === "reauth_needed", syncStatus: gmail.sync_status,
         lastSyncAt: gmail.last_sync_at, ready: gmail.backfill_done, push: Boolean(gmail.watch_expiration && gmail.watch_expiration > new Date()) },
       isGuardian: u ? Boolean(await one("SELECT 1 FROM guardianships WHERE guardian_id = $1 AND status = 'active' LIMIT 1", [u.id])) : false,
+      breachLookup: u ? await breachLookupOf(u.id) : null,
     };
   });
 

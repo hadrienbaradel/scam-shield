@@ -190,6 +190,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
   const h = { cookie: await sessionFor(user), origin: ORIGIN };
   const fresh = (await app.inject({ url: "/api/context", headers: h })).json();
   assert.equal(fresh.context.breachLookup, undefined, "nothing looked up before the tap");
+  assert.equal((await app.inject({ url: "/api/status", headers: h })).json().breachLookup, null, "the status says so too (the protection score reads it)");
   const realFetch = globalThis.fetch;
   let listCalls = 0;
   let listDown = false;
@@ -214,6 +215,7 @@ test("HTTP: the breach lookup runs only on the senior's tap, lists what it found
     assert.ok(breaches[0].leaked.includes("IBAN"), "what leaked comes from the catalogue");
     const after = (await app.inject({ url: "/api/context", headers: h })).json();
     assert.equal(after.context.breachLookup.found, 1);
+    assert.deepEqual((await app.inject({ url: "/api/status", headers: h })).json().breachLookup, { at: lookup.at, found: 1 }, "the status carries when and how many, for the protection score");
     assert.equal(after.context.breaches[0].id, "xon-BouyguesTelecom");
     const events = (await app.inject({ url: "/api/audit", headers: h })).json().events;
     assert.ok(events.some((e) => e.event === "breach_lookup"), "the lookup is in What Prudence did");

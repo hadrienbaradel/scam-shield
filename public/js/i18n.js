@@ -194,6 +194,7 @@ export const STRINGS = {
     score_texts: "Your text messages", score_texts_step: "Add my phone",
     score_people: "A trusted person", score_people_step: "Add a trusted person",
     score_learn: "A first lesson", score_learn_step: "Start a lesson",
+    score_breaches: "Your leaked details", score_breaches_step: "Look up my email address",
     score_whatsapp: "WhatsApp messages", score_whatsapp_step: "Open WhatsApp",
     score_facebook: "Facebook and Messenger", score_facebook_step: "Open Messenger",
     // --- today (td_*) ---
@@ -491,6 +492,7 @@ export const STRINGS = {
     score_texts: "Vos messages texte", score_texts_step: "Ajouter mon téléphone",
     score_people: "Une personne de confiance", score_people_step: "Ajouter une personne de confiance",
     score_learn: "Une première leçon", score_learn_step: "Commencer une leçon",
+    score_breaches: "Vos données ayant fuité", score_breaches_step: "Chercher mon adresse e-mail",
     score_whatsapp: "Messages WhatsApp", score_whatsapp_step: "Ouvrir WhatsApp",
     score_facebook: "Facebook et Messenger", score_facebook_step: "Ouvrir Messenger",
     // --- today (td_*) ---
