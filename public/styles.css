@@ -1,8 +1,22 @@
 /* Prudence web app: one calm, high-contrast look for people 60+.
    Written 2026-10-27 from the Claude Design mockups: verdict first, solid
    red only for Scam, colour always paired with a word, 64px main buttons,
-   no small print. The root font size is set by js/main.js from the
-   person's text-size choice (19px × 1, 1.2 or 1.4). */
+   no small print. Re-skinned 2026-11-04 to the redesign canvas
+   (_product/design/2026-11-04-redesign/claude-design/): the header with one
+   Settings button, four tabs, and the shared components at the end of this
+   file ("2026-11-04 redesign: shared components").
+
+   Text sizes. The person picks Normal, Larger or Largest (user.textScale 1,
+   1.2, 1.4); js/main.js applyPrefs() turns it into two values:
+   - the root font size, 19px x textScale: everything in rem grows with it.
+     This is the canvas's --s (its calc(22px * var(--s)) is calc(22rem / 19)
+     here; the --t19 ... --t36 tokens below spell the canvas sizes). Body
+     text, cards, buttons and titles are in rem.
+   - --u on <body>, 1, 1.1 or 1.2 (the canvas's --u): the header and the tab
+     bar are in calc(Npx * var(--u)), so at Largest their labels grow by a
+     fifth, not two fifths, and never wrap or get cut (frame 1c).
+   --s is set on <body> too (= textScale), for a value copied from the
+   canvas as calc(Npx * var(--s)); prefer the rem tokens. */
 
 /* Atkinson Hyperlegible Next, drawn by the Braille Institute for low-vision
    readers (letters that cannot be mistaken: I l 1, O 0, rn m). Self-hosted,
@@ -48,6 +62,15 @@
   --focus-ring: #ffbf47;
   --round: 16px;
   --round-small: 12px;
+  --soon: #e6eaef;          /* the grey of every Coming soon row and button */
+  /* The canvas's type sizes at Normal, in rem so they follow the text size. */
+  --t19: 1rem;              /* states, pills, sub-lines */
+  --t22: calc(22rem / 19);  /* body, row names, buttons */
+  --t24: calc(24rem / 19);  /* big choice buttons */
+  --t26: calc(26rem / 19);  /* card headlines */
+  --t28: calc(28rem / 19);  /* the Today card title */
+  --t32: calc(32rem / 19);  /* screen titles */
+  --t36: calc(36rem / 19);  /* the verdict word */
   --type: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, "Segoe UI", system-ui, sans-serif;
 }
 
@@ -75,53 +98,90 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ------------------------------------------------------------ header -- */
 
+/* PrudenceHeader: navy, 16px all round, the gold 44px check circle and
+   "Prudence" on the left; on the right the senior's one Settings button (gear
+   and the word, 64px, white 2px outline, gold when Settings is open), or the
+   language button (signed out, demo), or plain links (trusted person, admin).
+   Sizes in px x --u: see "Text sizes" at the top. */
 .topbar {
   background: var(--navy);
   color: var(--surface);
-  padding: 0.85rem 1.5rem;
+  padding: 16px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
+  gap: 10px 16px;
 }
 
-.brand { display: flex; align-items: center; gap: 0.75rem; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 a.brand { color: var(--surface); text-decoration: none; }
+.brand-words { min-width: 0; }
 
 .shield {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   flex: none;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--gold);
   color: var(--navy-deep);
-  font-size: 1.5rem;
+  font-size: 1.5rem; /* the text tick of privacy.html and terms.html */
   font-weight: 700;
 }
 
-.brand-name { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.15; }
-.brand-sub { margin: 0.1rem 0 0; color: #dbe6f2; font-size: 0.85rem; }
+.brand-name { margin: 0; font-size: calc(22px * var(--u, 1)); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.brand-sub { margin: 0.15rem 0 0; color: #dbe6f2; font-size: 1rem; }
 
-.top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
-.who { color: #dbe6f2; font-size: 0.85rem; }
+.top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.who { color: #dbe6f2; font-size: 1rem; }
+.who:empty { display: none; }
 
-.nav { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .nav-link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0.4rem 0.9rem;
-  border-radius: 10px;
+  min-height: 64px;
+  padding: 0 14px;
+  border-radius: 16px;
   color: var(--surface);
+  font-size: calc(19px * var(--u, 1));
   font-weight: 700;
+  white-space: nowrap;
   text-decoration: none;
 }
 .nav-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .nav-link.active { background: var(--gold); color: var(--navy-deep); }
 .nav-link.active:hover { text-decoration: none; background: var(--gold-hover); }
+
+/* The senior's Settings button: a link that looks like the canvas's button. */
+.top-settings {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 0 14px;
+  border: 2px solid var(--surface);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--surface);
+  font-size: calc(19px * var(--u, 1));
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.top-settings svg { flex: none; }
+.top-settings:hover { background: rgba(255, 255, 255, 0.12); }
+.top-settings.is-active { background: var(--gold); border-color: var(--gold); color: var(--navy-deep); }
+.top-settings.is-active:hover { background: var(--gold-hover); border-color: var(--gold-hover); }
+.topbar .top-signout { min-height: 64px; font-size: calc(19px * var(--u, 1)); }
+/* js/main.js fitHeader: when the brand and the button cannot share the line. */
+.topbar.is-tight .brand-name { font-size: 22px; }
+.topbar.is-tight .top-settings { gap: 6px; padding: 0 10px; font-size: 19px; }
+.topbar.is-tighter .brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .badge {
   padding: 0.3rem 0.75rem;
@@ -156,7 +216,7 @@ a.brand { color: var(--surface); text-decoration: none; }
   padding: 1.5rem;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--round);
+  border-radius: 18px;
 }
 .card.narrow { max-width: 760px; margin: 1rem auto; }
 .card h1 { margin: 0.2rem 0 0.6rem; font-size: 1.75rem; }
@@ -185,19 +245,20 @@ a.brand { color: var(--surface); text-decoration: none; }
   min-height: 52px;
   padding: 0.6rem 1.2rem;
   border: 2px solid transparent;
-  border-radius: 14px;
+  border-radius: 16px;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
 }
-.btn-big { width: 100%; min-height: 64px; padding: 0.8rem 1.4rem; font-size: 1.05rem; }
+/* The canvas's main button: full width, 64px, 22px bold (gold, outline or red). */
+.btn-big { width: 100%; min-height: 64px; padding: 10px 18px; font-size: var(--t22); line-height: 1.2; }
 .btn-sub { display: block; font-size: 0.85rem; font-weight: 400; }
 
 .btn-navy { background: var(--navy); color: var(--surface); }
 .btn-navy:hover { background: var(--navy-deep); }
-.btn-gold { background: var(--gold); color: var(--navy-deep); }
-.btn-gold:hover { background: var(--gold-hover); }
+.btn-gold { background: var(--gold); border-color: var(--gold); color: var(--navy-deep); }
+.btn-gold:hover { background: var(--gold-hover); border-color: var(--gold-hover); }
 .btn-light { background: var(--surface); color: var(--navy); }
 .btn-light-dark { background: var(--surface); color: var(--navy); border-color: var(--navy); }
 .btn-light-dark:hover { background: var(--navy-wash); }
@@ -237,17 +298,29 @@ textarea { resize: vertical; }
 fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(--line); border-radius: var(--round-small); }
 
 .check { display: flex; align-items: center; gap: 0.75rem; min-height: 48px; font-weight: 400; }
+/* A radio card (frame 1q): 2px grey border, 14px corners; the chosen one has
+   a navy border on the navy wash, and a drawn 28px radio (navy ring, navy
+   dot) instead of the browser's. Words: .choice-name (22px bold) and
+   .choice-sub (19px) in the new screens; the older <strong> + <br> markup
+   reads the same. */
 .choice {
   display: flex;
   align-items: flex-start;
-  gap: 0.9rem;
+  gap: 12px;
+  min-height: 64px;
   margin: 0.7rem 0;
-  padding: 1rem;
+  padding: 12px 14px;
+  background: var(--surface);
   border: 2px solid var(--line);
-  border-radius: var(--round-small);
+  border-radius: 14px;
   font-weight: 400;
   cursor: pointer;
 }
+.choice:has(input:checked) { background: var(--navy-wash); border-color: var(--navy); }
+.choice strong,
+.choice-name { font-size: var(--t22); font-weight: 700; line-height: 1.25; }
+.choice-text { display: flex; flex-direction: column; gap: 2px; }
+.choice-sub { font-size: 1rem; line-height: 1.35; }
 .check input,
 .choice input {
   display: inline-block;
@@ -257,6 +330,18 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   margin: 0.1rem 0 0;
   accent-color: var(--navy);
 }
+.choice input[type="radio"] {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin: 2px 0 0;
+  padding: 0;
+  background: var(--surface);
+  border: 3px solid var(--navy);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.choice input[type="radio"]:checked { background: var(--navy); box-shadow: inset 0 0 0 5px var(--navy-wash); }
 
 .paste-box { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .paste-box summary { padding: 0.6rem 0; font-weight: 700; font-size: 1.05rem; cursor: pointer; }
@@ -449,8 +534,10 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 /* ------------------------------------- V2: mobile first, one at a time -- */
 /* The senior's screens are one phone-width column, also on a computer. */
 
-.v2-app .main { max-width: 560px; }
-.v2-app .footer { max-width: 560px; }
+.v2-app .main { max-width: 560px; padding: 20px 16px 24px; }
+.v2-app .footer { max-width: 560px; padding: 0 16px 24px; font-size: 1rem; }
+/* The page ends above the tab bar (--tabbar-h: its measured height, 0 when hidden). */
+.has-tabbar .footer { padding-bottom: calc(var(--tabbar-h, 80px) + 24px); }
 .v2-app .two-col { grid-template-columns: minmax(0, 1fr); }
 
 .v2 { display: flex; flex-direction: column; gap: 1.1rem; }
@@ -625,7 +712,7 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   box-shadow: 0 -8px 24px rgba(15, 29, 47, 0.12);
 }
 /* --tabbar-h is the tab bar's measured height (js/main.js): labels may wrap. */
-.has-tabbar .v2-actions { bottom: var(--tabbar-h, calc(72px + env(safe-area-inset-bottom))); padding-bottom: 0.75rem; }
+.has-tabbar .v2-actions { bottom: var(--tabbar-h, calc(80px + env(safe-area-inset-bottom))); padding-bottom: 0.75rem; }
 .v2-action { flex-direction: column; gap: 0.3rem; min-height: 88px; border-radius: 20px; font-size: 1.05rem; }
 .v2-hint { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: var(--muted); font-size: 1rem; text-align: center; }
 .v2-quiet { width: 100%; }
@@ -650,40 +737,50 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
 .v2-big-check { width: 120px; height: 120px; display: grid; place-items: center; border-radius: 50%; background: var(--safe-wash); border: 4px solid var(--safe); color: var(--safe); }
 .v2-text-ready { display: flex; flex-direction: column; gap: 0.7rem; }
 
-/* Bottom tab bar on phones; on a computer the top links do the same job.
-   Equal columns for however many tabs there are (four for the senior, two in
-   the demo); at the larger text sizes a label wraps to two lines, and a word
-   too long for its quarter (French "Aujourd'hui") breaks rather than spills. */
+/* PrudenceTabs: the bottom tab bar on phones (four tabs for the senior, two
+   in the demo); on a computer the top links do the same job. Each tab is as
+   wide as its word (flex 1 1 auto, one line), not a quarter, so French
+   "Aujourd'hui" and "Bloqués" stay whole (frame 1d). 80px tall, a 28px icon
+   over a 19px x --u bold label; the current tab is navy with a 4px gold line
+   on top, the others #4a4a4a. Where the words cannot fit (js/main.js
+   fitTabbar), .is-tight drops the labels to 19px, then .is-wrap lets one
+   break rather than spill. */
 .tabbar {
   position: fixed;
   right: 0;
   bottom: 0;
   left: 0;
   z-index: 15;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 0 4px env(safe-area-inset-bottom);
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
 .tabbar a {
-  min-height: 72px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 0.25rem 2px;
+  gap: 4px;
+  padding: 6px 4px 8px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: calc(19px * var(--u, 1));
   font-weight: 700;
   line-height: 1.15;
+  white-space: nowrap;
   text-align: center;
   text-decoration: none;
 }
-.tabbar span { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
+.tabbar svg { flex: none; }
 .tabbar a[aria-current="page"] { color: var(--navy); box-shadow: inset 0 4px 0 var(--gold); }
+.tabbar.is-tight a { font-size: 19px; }
+.tabbar.is-wrap a { white-space: normal; }
+.tabbar.is-wrap span { max-width: 100%; overflow-wrap: anywhere; }
 
 @media (min-width: 701px) {
   .tabbar { display: none !important; }
@@ -691,20 +788,17 @@ fieldset { margin: 0.8rem 0; padding: 0.6rem 1rem 0.8rem; border: 2px solid var(
   .v2-actions { border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; }
 }
 @media (max-width: 700px) {
+  /* On a phone the senior's header is the brand and the Settings button, on one line. */
   .v2-app .nav-tabbed,
   .v2-app .brand-sub { display: none; }
-  .v2-app .topbar { flex-wrap: nowrap; padding: 0.6rem 1rem; }
-  .v2-app .shield { width: 40px; height: 40px; font-size: 1.2rem; }
-  .v2-app .brand-name { font-size: min(1.15rem, 5.4vw); }
-  /* Sign out / FR in the bar: readable, but the bar never spills at Largest. */
+  .v2-app .topbar { flex-wrap: nowrap; }
+  /* FR / EN (signed out, demo) in the bar: readable, but the bar never spills at Largest. */
   .v2-app .topbar .btn { min-height: 48px; padding: 0 0.8rem; font-size: min(1rem, 4.6vw); }
-  .v2-app .main { padding-bottom: 6.5rem; }
-  .v2-app .footer { padding-bottom: 6rem; }
 }
 /* While the answer bar is up, the page ends above it (and above the tabs). */
 /* --dock-h is the bar's measured height (labels may wrap to two lines). */
 .v2-docked .footer { padding-bottom: calc(var(--dock-h, 150px) + 1.5rem); }
-.v2-docked.has-tabbar .footer { padding-bottom: calc(var(--dock-h, 150px) + var(--tabbar-h, calc(72px + env(safe-area-inset-bottom))) + 1.5rem); }
+.v2-docked.has-tabbar .footer { padding-bottom: calc(var(--dock-h, 150px) + var(--tabbar-h, calc(80px + env(safe-area-inset-bottom))) + 1.5rem); }
 @media (min-width: 701px) { .v2-docked.has-tabbar .footer { padding-bottom: calc(var(--dock-h, 150px) + 1.5rem); } }
 
 /* ------------------------------------------------- narrow + a11y bits -- */
@@ -934,3 +1028,361 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .learn-confetti { display: none; }
 }
+
+/* --- 2026-11-04 redesign: shared components --- */
+/* The pieces the redesigned screens are built from, with the canvas's values
+   (_product/design/2026-11-04-redesign/claude-design/Prudence Redesign.dc.html,
+   frames 1a to 1s). Sizes in rem through the --t tokens follow the person's
+   text size (see "Text sizes" at the top); paddings, corners and icons stay in
+   px as on the canvas. Icons: icon(name, size, width) in js/ui.js; the verdict
+   pill: verdictPill(verdict) in js/ui.js; "What Prudence protects":
+   renderProtects() in js/protects.js. No style attributes: the CSP allows
+   only this file.
+
+   Screen frame
+     .screen          the column's content: a flex column, 20px between blocks
+     .screen.is-snug  16px between blocks (Check, Learn, sub-screens)
+     .screen-head     a back link and Listen on one row, Listen to the right
+     .screen-title    h1, 32px bold, line-height 1.15
+     .screen-lead     the sentence under a title, 22px
+     .section-title   h2 inside a screen ("What Prudence protects", "Still
+                      unsure?", "Who sent it?"), 22px bold
+   Rows (Today, Settings, "What Prudence protects")
+     .row-card        white card, 1px #d8dee6 border, 18px corners, 16px
+                      padding, 12px between its parts; a .btn inside spans
+                      the full width
+     .row-head        the 44px icon and the words, 12px apart
+     .row-icon        44px navy-wash circle with a navy 24px icon; .is-danger
+                      (red on #fef3f2, the "scams moved away" row), .is-grey
+                      (Coming soon), .is-text (the "Aa" of Text size)
+     .row-text        name over state, 4px apart
+     .row-title       name and a pill on one line (Coming soon rows)
+     .row-name        22px bold
+     .row-state       19px; an icon first (icon("check-circle", 20, 2.5)) is
+                      the green "on" mark
+     .row-soon        on a .row-card: the flat grey Coming soon row, no
+                      border, #4a4a4a words, nothing to tap
+     .pill-soon       the "Coming soon" tag: 19px bold, 2px #8a97a8 outline
+   Buttons (with .btn)
+     .btn-big         the main button: full width, 64px, 22px (with .btn-gold
+                      for the one gold verb of a screen)
+     .btn-outline     white, 2px navy, navy words, 64px, 22px
+     .btn-danger-outline  white, 2px red, red words (Delete my account)
+     .btn-choice      a big left-aligned choice, icon then label: 88px, 22px
+                      corners, 24px words, navy outline (with .btn-gold:
+                      gold); .is-hero 120px with .btn-choice-label and
+                      .btn-choice-sub (19px) inside (frame 1g); .is-compact:
+                      64px, 16px corners, 22px words (Today, frame 1b; gold
+                      is 80px there)
+     .btn-link        the underlined text button ("More ways"), 64px tall
+     .btn-back        "‹ Today", "‹ Check", "‹ Settings": 22px bold navy, no
+                      border, 64px tall; icon("chevron-left", 28, 2.5) first
+     .btn-listen      the round-ended "Listen" button: 64px, 19px bold
+   Chips (with or without .btn: they are <button>s)
+     .chip-row        wrapped chips, 10px apart
+     .chip            64px pill, 2px navy outline, 22px bold; .is-on or
+                      aria-pressed="true": navy, white words, a drawn tick
+                      first (frame 1i)
+     .chip-small      56px, 19px words (the My messages filters, frame 1e)
+   Verdicts and cards
+     .pill-verdict    icon and word in a pill, 19px bold, 999px corners;
+                      .is-careful (amber outline), .is-safe (green outline),
+                      .is-scam (solid red, white words)
+     .hero-card       Today's card: white, 2px navy border, 22px corners,
+                      20px padding; .hero-title (28px) and .hero-text (22px)
+     .allclear        the green all-clear card (3px green, 22px corners);
+                      .allclear-head, .allclear-mark (the 56px white circle
+                      with icon("check", 32, 3)), .allclear-title (26px),
+                      .allclear-text (19px)
+     .soon-button     a verb that is not built yet (frame 1m): flat grey,
+                      64px, the label left and .pill-soon right; give it
+                      aria-disabled="true", nothing happens on tap
+   Lists
+     .msg-list        the white list card of My messages (frame 1e); one
+                      .msg-row per message: .msg-from (22px bold), .msg-line
+                      (19px), a .pill-verdict, the chevron at the right
+*/
+
+.screen { display: flex; flex-direction: column; gap: 20px; }
+.screen.is-snug { gap: 16px; }
+.screen p { margin: 0; }
+.screen-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.screen-title { margin: 0; font-size: var(--t32); font-weight: 700; line-height: 1.15; }
+.screen-lead { margin: 0; font-size: var(--t22); line-height: 1.4; }
+.section-title { margin: 0 0 2px; font-size: var(--t22); font-weight: 700; line-height: 1.2; }
+
+/* Rows */
+.protects { display: flex; flex-direction: column; gap: 10px; }
+.row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+.row-card > .btn { width: 100%; }
+.row-card > .choice { margin: 0; }
+.row-head { display: flex; align-items: flex-start; gap: 12px; }
+.row-head.is-centered { align-items: center; }
+.row-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--navy-wash);
+  color: var(--navy);
+}
+.row-icon.is-danger { background: var(--scam-wash); color: var(--scam); }
+.row-icon.is-grey { background: var(--line); color: var(--muted); }
+.row-icon.is-text { font-size: 20px; font-weight: 700; line-height: 1; }
+.row-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.row-name { font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.row-state { display: flex; align-items: flex-start; gap: 6px; font-size: var(--t19); line-height: 1.35; }
+.row-state > svg { flex: none; margin-top: 0.2em; color: var(--safe); }
+.row-soon { flex-direction: row; align-items: flex-start; background: var(--soon); border-color: var(--soon); color: var(--muted); cursor: default; }
+.pill-soon {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 2px solid var(--field);
+  border-radius: 999px;
+  font-size: var(--t19);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Buttons */
+.btn-outline { min-height: 64px; padding: 10px 16px; background: var(--surface); border-color: var(--navy); color: var(--navy); font-size: var(--t22); line-height: 1.2; }
+.btn-outline:hover { background: var(--navy-wash); }
+.btn-danger-outline { min-height: 64px; padding: 10px 16px; background: var(--surface); border-color: var(--scam); color: var(--scam); font-size: var(--t22); line-height: 1.2; }
+.btn-danger-outline:hover { background: var(--scam-wash); }
+.btn svg { flex: none; }
+
+.btn-choice {
+  display: flex;
+  justify-content: flex-start;
+  gap: 16px;
+  width: 100%;
+  min-height: 88px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-color: var(--navy);
+  border-radius: 22px;
+  color: var(--navy);
+  font-size: var(--t24);
+  line-height: 1.2;
+  text-align: left;
+}
+.btn-choice:hover { background: var(--navy-wash); }
+.btn-choice.btn-gold { background: var(--gold); border-color: var(--gold); color: var(--navy-deep); }
+.btn-choice.btn-gold:hover { background: var(--gold-hover); border-color: var(--gold-hover); }
+.btn-choice.is-hero { min-height: 120px; padding: 16px 20px; }
+.btn-choice-words { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.btn-choice-label { font-size: var(--t24); font-weight: 700; line-height: 1.2; }
+.btn-choice-sub { font-size: var(--t19); font-weight: 400; line-height: 1.3; }
+.btn-choice.is-compact { gap: 14px; min-height: 64px; padding: 10px 18px; border-radius: 16px; font-size: var(--t22); }
+.btn-choice.is-compact.btn-gold { min-height: 80px; padding: 12px 18px; border-radius: 18px; }
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 64px;
+  padding: 0 8px;
+  background: none;
+  border: 0;
+  color: var(--navy);
+  font-size: var(--t19);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  min-height: 64px;
+  padding: 0 12px 0 0;
+  background: none;
+  border: 0;
+  color: var(--navy);
+  font-size: var(--t22);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+.btn-listen {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 0 18px;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: var(--t19);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn-listen:hover { background: var(--navy-wash); }
+
+/* Chips */
+.chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip-row.is-small { gap: 8px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 0 20px;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: var(--t22);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip:hover { background: var(--navy-wash); }
+.chip { max-width: 100%; overflow-wrap: anywhere; }
+.chip.is-on,
+.chip[aria-pressed="true"] { background: var(--navy); color: var(--surface); }
+/* The chosen chip's tick, drawn here so a chip is never chosen by colour alone. */
+.chip.is-on::before,
+.chip[aria-pressed="true"]::before {
+  content: "";
+  flex: none;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.chip-small { min-height: 56px; padding: 0 18px; font-size: var(--t19); }
+.chip-small.is-on::before,
+.chip-small[aria-pressed="true"]::before { width: 20px; height: 20px; }
+
+/* Verdicts */
+.pill-verdict {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 12px 4px 8px;
+  border: 2px solid;
+  border-radius: 999px;
+  font-size: var(--t19);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.pill-verdict svg { flex: none; }
+.pill-verdict.is-careful { background: var(--careful-wash); border-color: var(--careful); color: var(--careful-ink); }
+.pill-verdict.is-careful svg { color: var(--careful); }
+.pill-verdict.is-safe { background: var(--safe-wash); border-color: var(--safe); color: var(--safe-ink); }
+.pill-verdict.is-safe svg { color: var(--safe); }
+.pill-verdict.is-scam { background: var(--scam); border-color: var(--scam); color: var(--surface); }
+
+/* Today's cards */
+.hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: var(--surface);
+  border: 2px solid var(--navy);
+  border-radius: 22px;
+}
+.hero-title { margin: 0; font-size: var(--t28); font-weight: 700; line-height: 1.2; }
+.hero-text { margin: 0; font-size: var(--t22); line-height: 1.4; }
+.allclear {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background: var(--safe-wash);
+  border: 3px solid var(--safe);
+  border-radius: 22px;
+  color: var(--safe-ink);
+}
+.allclear-head { display: flex; align-items: center; gap: 12px; }
+.allclear-mark {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 3px solid var(--safe);
+  border-radius: 50%;
+  color: var(--safe);
+}
+.allclear-title { margin: 0; font-size: var(--t26); font-weight: 700; line-height: 1.2; }
+.allclear-text { margin: 0; font-size: var(--t19); line-height: 1.4; }
+
+/* A verb that is not built yet: grey, flat, the Coming soon tag at the right. */
+.soon-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 16px;
+  background: var(--soon);
+  border: 0;
+  border-radius: 16px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: var(--t22);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: default;
+}
+.soon-button { flex-wrap: wrap; }
+.soon-button > span:first-child { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.soon-button svg,
+.soon-button .pill-soon { flex: none; }
+
+/* My messages: one white card, one row per message. */
+.msg-list { display: flex; flex-direction: column; margin: 0; padding: 4px 16px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+.msg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 14px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.msg-list > :last-child .msg-row,
+.msg-list > .msg-row:last-child { border-bottom: 0; }
+.msg-row > svg { flex: none; color: var(--navy); }
+.msg-words { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.msg-from { font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.msg-line { font-size: var(--t19); line-height: 1.35; overflow-wrap: anywhere; }
+
+/* Interim: the old Settings page ends with Sign out (js/main.js withSignOut). */
+.settings-signout { margin-top: 6px; }

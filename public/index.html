@@ -14,15 +14,18 @@
 </head>
 <body>
 <a class="skip-link" href="#view" id="skipLink">Skip to content</a>
+<!-- The header and the tab bar are filled by js/main.js (renderChrome): the
+     senior sees the brand and one Settings button, and four tabs at the bottom
+     on a phone (2026-11-04 redesign, PrudenceHeader and PrudenceTabs). -->
 <header class="topbar">
   <a class="brand" href="#/">
-    <div class="shield" aria-hidden="true">✓</div>
-    <div><p class="brand-name">Prudence</p><p class="brand-sub" id="tagline"></p></div>
+    <div class="shield" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+    <div class="brand-words"><p class="brand-name">Prudence</p><p class="brand-sub" id="tagline"></p></div>
   </a>
-  <div class="top-actions"><span id="who" class="who"></span><nav id="nav" class="nav" aria-label="Main"></nav></div>
+  <div class="top-actions"><span id="who" class="who"></span><nav id="nav" class="nav" aria-label="Top menu"></nav></div>
 </header>
 <main id="view" class="main" tabindex="-1"></main>
-<nav id="tabbar" class="tabbar" aria-label="Main" hidden></nav>
+<nav id="tabbar" class="tabbar" aria-label="Main menu" hidden></nav>
 <footer class="footer"><p id="footerText"></p><p><a id="privacyLink" href="/privacy.html"></a> · <a id="termsLink" href="/terms.html"></a></p></footer>
 <script type="module" src="/js/main.js"></script>
 </body>
