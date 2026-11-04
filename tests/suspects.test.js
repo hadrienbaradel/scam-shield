@@ -139,3 +139,132 @@ test("the seed: a website two demo entries used is reported twice; a number two 
   assert.equal(lookupSuspect(entries, "messaging-service@post.xero.com", { now: NOW }).reports, 0, "a real sending platform's address is no suspect");
   assert.equal(lookupSuspect(entries, "chronopost-colis.test", { now: NOW }), null, "the demo's .test hosts are never listed");
 });
+
+// ------------------------------------------------------------- the routes ---
+import { before, after } from "node:test";
+import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
+import { one } from "../src/db/pool.js";
+import { buildApp } from "../src/server.js";
+
+const ORIGIN = "http://localhost:3999";
+const hasDb = await dbAvailable();
+const opts = { skip: hasDb ? false : "Postgres test database not available" };
+let app;
+before(async () => { if (!hasDb) return; await resetDb(); app = await buildApp({ logger: false }); });
+after(async () => { await app?.close(); await pool.end(); });
+
+const get = (url, headers = {}) => app.inject({ url, headers });
+const post = (url, payload, headers = {}, remoteAddress = undefined) => app.inject({ method: "POST", url, headers: { origin: ORIGIN, ...headers }, payload, remoteAddress });
+const NOTICE = { indicator: "calendar.adecco-hrjobs.com", name: "Jean Dupont", email: "jean@adecco-hrjobs.com",
+  url: "http://localhost:3999/public/#/suspects?q=calendar.adecco-hrjobs.com", reason: "Our calendar host was abused in August; it has been cleaned since.", goodFaith: true };
+
+test("the public lookup: 400 without a usable q, the seed's website and number with their entries, nothing for an unknown address", opts, async () => {
+  assert.equal((await get("/api/public/suspects")).statusCode, 400);
+  assert.match((await get("/api/public/suspects?q=%20")).json().error, /website, a sender address or a phone number/);
+  assert.equal((await get("/api/public/suspects?q=chase")).statusCode, 400, "a bare word");
+  assert.match((await get("/api/public/suspects?q=chronopost-colis.test")).json().error, /reserved and private addresses never are/);
+  const site = await get(`/api/public/suspects?q=${encodeURIComponent("https://calendar.adecco-hrjobs.com/x")}`);
+  assert.equal(site.statusCode, 200, site.body);
+  const s = site.json();
+  assert.deepEqual([s.indicator, s.reports, s.contested, s.removed, s.removedAt], [{ kind: "domain", value: "calendar.adecco-hrjobs.com" }, 2, false, false, null]);
+  assert.ok(s.weight > 0 && s.firstSeen <= s.lastSeen, "weighted by age against today's clock");
+  assert.deepEqual(Object.keys(s.entries[0]).sort(), ["brand", "channel", "country", "family", "first_seen", "id", "last_seen"], "the table's fields, never the message");
+  const number = (await get(`/api/public/suspects?q=${encodeURIComponent("+1 (555) 0177")}`)).json();
+  assert.ok(number.reports >= 2, `the sender of two demo cases: ${number.reports}`);
+  const none = (await get("/api/public/suspects?q=nobody@nowhere-at-all.com")).json();
+  assert.deepEqual([none.reports, none.weight, none.firstSeen, none.entries], [0, 0, null, []], "nothing reported: no verdict, no entry");
+});
+
+test("a notice: each missing element is named, no Origin no post, 202 with an id and a status URL, the listing contested at once, nothing to contest when nothing is listed, 5 a minute from one place", opts, async () => {
+  const cases = [
+    ["not json", "body", /JSON notice/],
+    [{ ...NOTICE, indicator: "" }, "indicator", /website, address or number it is about/],
+    [{ ...NOTICE, indicator: "chase" }, "indicator", /not a website/],
+    [{ ...NOTICE, name: " " }, "name", /your name/],
+    [{ ...NOTICE, email: "" }, "email", /email address/],
+    [{ ...NOTICE, email: "not-an-address" }, "email", /does not look like an address/],
+    [{ ...NOTICE, url: "" }, "url", /URL of the listing/],
+    [{ ...NOTICE, reason: "   " }, "reason", /reason/],
+    [{ ...NOTICE, goodFaith: "yes" }, "goodFaith", /good-faith statement/],
+    [{ ...NOTICE, goodFaith: false }, "goodFaith", /good-faith statement/],
+  ];
+  for (const [i, [payload, missing, re]] of cases.entries()) {
+    const res = await post("/api/public/suspects/contest", payload, typeof payload === "string" ? { "content-type": "text/plain" } : {}, `10.0.1.${i + 1}`);
+    assert.equal(res.statusCode, 400, `${missing}: ${res.body}`);
+    assert.equal(res.json().missing, missing);
+    assert.match(res.json().error, re);
+  }
+  assert.equal((await app.inject({ method: "POST", url: "/api/public/suspects/contest", payload: NOTICE })).statusCode, 403, "no Origin, no post");
+  assert.equal((await one("SELECT count(*)::int AS n FROM suspect_contests")).n, 0, "nothing stored so far");
+
+  const res = await post("/api/public/suspects/contest", NOTICE, {}, "10.0.2.1");
+  assert.equal(res.statusCode, 202, res.body);
+  const { id, status, statusUrl } = res.json();
+  assert.equal(status, "open");
+  assert.equal(statusUrl, `/api/public/suspects/contest/${id}`);
+  const row = await one("SELECT * FROM suspect_contests WHERE id = $1", [id]);
+  assert.deepEqual([row.indicator_kind, row.indicator, row.name, row.email, row.url, row.reason, row.good_faith, row.status, row.decision, row.decided_at],
+    ["domain", "calendar.adecco-hrjobs.com", "Jean Dupont", "jean@adecco-hrjobs.com", NOTICE.url, NOTICE.reason, true, "open", null, null]);
+  const listing = (await get("/api/public/suspects?q=CALENDAR.adecco-hrjobs.com")).json();
+  assert.deepEqual([listing.contested, listing.removed, listing.reports], [true, false, 2], "contested at once; the count stays until a decision");
+  const st = await get(statusUrl);
+  assert.equal(st.statusCode, 200);
+  assert.deepEqual(st.json(), { id, status: "open", decision: null, createdAt: row.created_at.toISOString(), decidedAt: null }, "the status, never the notice");
+  assert.equal((await get("/api/public/suspects/contest/not-a-uuid")).statusCode, 404);
+  assert.equal((await get("/api/public/suspects/contest/00000000-0000-0000-0000-000000000000")).statusCode, 404);
+
+  const nothing = await post("/api/public/suspects/contest", { ...NOTICE, indicator: "nobody@nowhere-at-all.com" }, {}, "10.0.2.2");
+  assert.equal(nothing.statusCode, 400);
+  assert.deepEqual([nothing.json().missing, /Nothing is listed/.test(nothing.json().error)], ["listing", true]);
+
+  const phone = await post("/api/public/suspects/contest", { ...NOTICE, indicator: "+1 (555) 0177" }, {}, "10.0.2.3");
+  assert.equal(phone.statusCode, 202, phone.body);
+  assert.deepEqual(await one("SELECT indicator_kind, indicator FROM suspect_contests WHERE id = $1", [phone.json().id]), { indicator_kind: "phone", indicator: "+15550177" }, "stored normalised");
+  assert.equal((await get(`/api/public/suspects?q=${encodeURIComponent("1.555.0177")}`)).json().contested, true, "found on its last 9 digits however it is written");
+
+  for (let i = 0; i < 5; i++) assert.equal((await post("/api/public/suspects/contest", NOTICE, {}, "10.0.3.1")).statusCode, 202);
+  assert.equal((await post("/api/public/suspects/contest", NOTICE, {}, "10.0.3.1")).statusCode, 429, "5 a minute from one place");
+  assert.equal((await post("/api/public/suspects/contest", NOTICE, {}, "10.0.3.2")).statusCode, 202, "another place goes on");
+});
+
+test("the admin queue: admins only, open first with counts, a decision needs a status and a text, Dismiss keeps the listing, Uphold removes it, each once", opts, async () => {
+  await pool.query("TRUNCATE suspect_contests");
+  const admin = await makeUser({ email: "admin@example.test", name: "Vlad" });
+  const adminHeaders = { cookie: await sessionFor(admin) };
+  const senior = await makeUser({ email: "not-admin-suspects@example.test" });
+  const seniorHeaders = { cookie: await sessionFor(senior) };
+  assert.equal((await get("/api/admin/db/contests")).statusCode, 401);
+  assert.equal((await get("/api/admin/db/contests", seniorHeaders)).statusCode, 403);
+
+  const first = (await post("/api/public/suspects/contest", NOTICE, {}, "10.0.5.1")).json().id;
+  const second = (await post("/api/public/suspects/contest", { ...NOTICE, indicator: "+1 555-0177", name: "<b>Pat</b>", reason: "<script>alert(1)</script> it is my own number, spoofed" }, {}, "10.0.5.2")).json().id;
+  const list = (await get("/api/admin/db/contests", adminHeaders)).json();
+  assert.deepEqual(list.counts, { open: 2, upheld: 0, dismissed: 0 });
+  assert.deepEqual(list.contests.map((c) => c.id), [second, first], "open ones newest first");
+  const c2 = list.contests[0];
+  assert.deepEqual([c2.indicator_kind, c2.indicator, c2.name, c2.email, c2.url, c2.reason, c2.good_faith, c2.status],
+    ["phone", "+15550177", "<b>Pat</b>", NOTICE.email, NOTICE.url, "<script>alert(1)</script> it is my own number, spoofed", true, "open"], "the reviewer reads the notice; stored as text, escaping is the page's job");
+
+  assert.equal((await post(`/api/admin/db/contests/${first}/decide`, { status: "nope", decision: "x" }, adminHeaders)).statusCode, 400);
+  assert.match((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed" }, adminHeaders)).json().error, /decision text/);
+  assert.equal((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed", decision: "x" }, seniorHeaders)).statusCode, 403);
+  assert.deepEqual((await post(`/api/admin/db/contests/${first}/decide`, { status: "dismissed", decision: "Two entries from August and September name this host with their dates; the listing stays." }, adminHeaders)).json(), { ok: true });
+  const site = (await get("/api/public/suspects?q=calendar.adecco-hrjobs.com")).json();
+  assert.deepEqual([site.contested, site.removed, site.reports], [false, false, 2], "dismissed: the listing stays, contested no more");
+  const st = (await get(`/api/public/suspects/contest/${first}`)).json();
+  assert.equal(st.status, "dismissed");
+  assert.match(st.decision, /listing stays/);
+  assert.ok(st.decidedAt, "the person who contested reads the decision and its reason");
+  assert.equal((await post(`/api/admin/db/contests/${first}/decide`, { status: "upheld", decision: "again" }, adminHeaders)).statusCode, 404, "decided already");
+
+  assert.deepEqual((await post(`/api/admin/db/contests/${second}/decide`, { status: "upheld", decision: "A spoofed number: whoever owns it is a victim too." }, adminHeaders)).json(), { ok: true });
+  const number = (await get(`/api/public/suspects?q=${encodeURIComponent("+1 555 0177")}`)).json();
+  assert.deepEqual([number.contested, number.removed, number.reports, number.weight, number.entries], [false, true, 0, 0, []], "upheld: removed, no count, no entries");
+  assert.ok(number.removedAt);
+  const again = await post("/api/public/suspects/contest", { ...NOTICE, indicator: "+1 555-0177" }, {}, "10.0.5.3");
+  assert.equal(again.statusCode, 400);
+  assert.match(again.json().error, /removed after a contest already/);
+  assert.deepEqual((await get("/api/admin/db/contests", adminHeaders)).json().counts, { open: 0, upheld: 1, dismissed: 1 });
+  assert.equal((await post("/api/admin/db/contests/not-a-uuid/decide", { status: "upheld", decision: "x" }, adminHeaders)).statusCode, 404);
+  assert.equal((await post("/api/admin/db/contests/00000000-0000-0000-0000-000000000000/decide", { status: "upheld", decision: "x" }, adminHeaders)).statusCode, 404);
+});

@@ -17,6 +17,7 @@ export async function resetDb() {
                     sessions, oauth_states, audit_log, outbox, job_runs, lesson_progress, library_submissions CASCADE`);
   await pool.query("DELETE FROM pattern_cards");
   await pool.query("TRUNCATE watch_items");
+  await pool.query("TRUNCATE suspect_contests");
   await migrate();
 }
 
