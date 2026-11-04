@@ -499,7 +499,10 @@ test("tools: the mock scripts tool calls, records the tools offered, and says wh
   assert.deepEqual(first.toolCalls, [{ id: "call_mock_1_1", name: "website_age", arguments: { domain: "a.test" } }, { id: "mine", name: "scam_patterns", arguments: {} }]);
   assert.equal(first.text, "Let me check.");
   assert.deepEqual(mock.calls[0].tools, [TOOL]);
-  const second = await mock.complete({ messages: [], tools: [TOOL] });
+  const live = [{ role: "user", content: "m" }];
+  const second = await mock.complete({ messages: live, tools: [TOOL] });
+  live.push({ role: "tool", toolCallId: "x", content: "later" });
+  assert.equal(mock.calls[1].messages.length, 1, "each call keeps its own turn, not the caller's array as it grows");
   assert.deepEqual(second.toolCalls, [], "words, with tools offered");
   assert.equal(second.text, '{"verdict":"scam"}');
   mock.script("plain");
