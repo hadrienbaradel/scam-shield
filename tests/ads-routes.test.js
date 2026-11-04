@@ -7,7 +7,7 @@
 // Reject, the photo's bytes and headers, today's photos and cost, rows a
 // restart cut, visits and requests per variant. Skipped without Postgres.
 import "./helpers/env.js";
-import { test, before, after, beforeEach } from "node:test";
+import { test, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
 import { one, many } from "../src/db/pool.js";
@@ -139,11 +139,19 @@ const list = async () => (await get("/api/admin/ads")).json();
 const adOf = async (id) => (await list()).ads.find((a) => a.id === id);
 
 // A gate a fake call waits on, opened by the test.
+// Every gate is opened after its test too, so a failed assertion never leaves a job waiting for the next test.
+const gates = [];
 function gate() {
   let open;
   const p = new Promise((r) => { open = r; });
-  return { wait: () => p, open };
+  const g = { wait: () => p, open };
+  gates.push(g);
+  return g;
 }
+afterEach(async () => {
+  for (const g of gates.splice(0)) g.open();
+  await adsIdle();
+});
 
 const jpeg = (n) => Buffer.from([0xff, 0xd8, 0xff, 0xe0, n, n, n, 0xff, 0xd9]);
 const WORDS = (i) => ({
@@ -446,15 +454,21 @@ test("Publish happens once under two clicks: one network call, the other click g
   const [id] = await drafts(1);
   const { code } = await adOf(id);
 
-  const [a, b] = await Promise.all([post(`/api/admin/ads/${id}/publish`), post(`/api/admin/ads/${id}/publish`)]);
-  assert.deepEqual([a.statusCode, b.statusCode].sort(), [202, 409]);
-  const refused = [a, b].find((r) => r.statusCode === 409).json();
-  assert.equal(refused.status, "publishing");
-  assert.match(refused.error, /Only a draft can be published, once \(it is publishing\)/);
-  assert.equal((await adOf(id)).status, "publishing");
-  assert.equal((await post(`/api/admin/ads/${id}/publish`)).statusCode, 409, "a third click too");
-  hold.open();
-  await adsIdle();
+  try {
+    const [a, b] = await Promise.all([post(`/api/admin/ads/${id}/publish`), post(`/api/admin/ads/${id}/publish`)]);
+    assert.deepEqual([a.statusCode, b.statusCode].sort(), [202, 409]);
+    const refused = [a, b].find((r) => r.statusCode === 409).json();
+    assert.equal(refused.status, "publishing");
+    // Refused by the atomic move, or earlier by the job the first click started: either way nothing more is sent.
+    assert.match(refused.error, /^(Only a draft can be published, once \(it is publishing\)\.|This idea is being published right now: wait for it to finish\.)$/);
+    assert.equal((await adOf(id)).status, "publishing");
+    const third = await post(`/api/admin/ads/${id}/publish`);
+    assert.equal(third.statusCode, 409, "a third click too");
+    assert.equal(third.json().error, "This idea is being published right now: wait for it to finish.");
+  } finally {
+    hold.open();
+    await adsIdle();
+  }
 
   assert.equal(network.calls.publish.length, 1, "one ad on Facebook");
   const call = network.calls.publish[0];
