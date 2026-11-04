@@ -6,7 +6,7 @@
 **Secondary user:** the trusted person (son, granddaughter, caregiver) who gets a one-tap "Scam / Real / I'll call you" request and only ever sees what the senior chose to share.
 **Hackathon context:** Meta Global AI Developer Hackathon 2026 (Cerebral Valley), Indie track, "Build for Your World"; due Wednesday Nov 4, 2026, 9:00 PM ET with a 3-minute demo video, a public GitHub repo and every teammate registered. Team: Hadrien Baradel (product, built everything so far), Vlad Zloteanu (joining as CTO).
 
-Last updated: 2026-11-01
+Last updated: 2026-11-04
 
 ## Principles
 - Demo-first: every feature must be showable in the 3-minute video. If it cannot be shown, it is cut or deferred.
@@ -42,6 +42,7 @@ Statuses: **Idea** (raised, not decided) Â· **Planned** (decided, not started) Â
 | Admin console (health, background jobs, users) | Built | `/admin/`, admins only, separate from the senior app: one health line per dependency, every background job with its last run, next due, health and Run now (runs kept 30 days), every user with Gmail and sync state and counts, scam-report review; never a message's text or a verdict's words. | [specs/admin-console.md](specs/admin-console.md) |
 | Developer sign-in (local, without Google) | Built | On the developer's own computer, without Google keys, the welcome buttons open a local sign-in page (`/dev/signin`): sign in as a local test person or create one (as anyone while Google keys are absent), the same session as Google's, admin console included; never in production, loopback only. | [specs/developer-sign-in.md](specs/developer-sign-in.md) |
 | Observability: errors, heartbeats, health | Built (unverified live) | Errors and job failures reach Rollbar with no personal data, each job pings a heartbeat, /api/health tests Postgres and names the version. | [specs/observability.md](specs/observability.md) |
+| What Prudence protects (the menu) | Planned | Four tabs and a Settings button; a list of every channel (email, texts, voice messages, WhatsApp, Facebook and Messenger, calls) with its state in words, one button, "Coming soon" where nothing is built yet; Check something opens on "Take a screenshot", "Paste the words", "Send a voice message"; "Send it to Prudence" under a verdict; Learn shows its stars from zero. | [specs/protection-menu.md](specs/protection-menu.md) |
 | Settings and onboarding | Planned | One Settings screen with everything Prudence is connected to, each with its state and one action; a short skippable onboarding the first time; every new capability adds its own entry and step. | [details](specs/settings-and-onboarding.md) |
 
 ## Ideas (not yet planned)
@@ -49,7 +50,7 @@ Discussed = a conversation between Hadrien and Vlad ("no", or date + with whom);
 
 | Idea | Where it came from | Discussed | One line | Details |
 |---|---|---|---|---|
-| Second opinion: "Something feels off? Ask." | Vlad, 2026-10-27 | no | Send a screenshot or forward a message and get a verdict from the service or from a trusted human (son, daughter); two paths, automated and human-in-the-loop. | [specs/second-opinion.md](specs/second-opinion.md) |
+| Second opinion: "Send it to Prudence" | Vlad, 2026-10-27; 2026-11-04 (the button under every verdict) | 2026-11-04, Vlad: a Coming soon button in the menu round, the back office still open | Still unsure after a verdict: "Ask Thomas" or "Send it to Prudence", where a person on the Prudence side or a deeper automatic check answers on Today within a day; three paths, the model, the family, Prudence. | [specs/second-opinion.md](specs/second-opinion.md) |
 | Pressure coach / "negotiate for me" | Vlad, 2026-10-27 | no | "Is this a good offer? Am I being pressured?" guidance, possibly from recorded audio (a call, a doorstep pitch) with real-time advice. | [specs/pressure-coach.md](specs/pressure-coach.md) |
 | Micro-learning (gamified anti-scam lessons) | Vlad, 2026-10-27 | 2026-10-29, decided by Vlad (Hadrien: object in the log) | Planned 2026-10-29 as the feature "Micro-learning (Learn tab)": YAML lessons with scam characters, stars, badges, days in a row, progress in the account; a lesson drawn from the senior's own flagged message stays an idea (below). | [specs/micro-learning.md](specs/micro-learning.md) |
 | Breach exposure | Vlad, 2026-10-27 | no | Show which breaches included the senior's data (HIBP and breach news: impots.gouv, health data) and feed it into lessons and the verdict context. | [specs/breach-exposure.md](specs/breach-exposure.md) |

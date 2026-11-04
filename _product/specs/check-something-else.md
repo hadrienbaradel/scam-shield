@@ -19,6 +19,9 @@ Scams arrive by text, WhatsApp, pop-up and letter too. The senior (or the family
 12. Muse Voice Transcribe writes the words down whenever Meta's key is set, whatever model judges; otherwise the selected provider does if it can (an OpenAI-style endpoint's `/audio/transcriptions`, model `LLM_TRANSCRIBE_MODEL`, default `whisper-1`); Claude cannot. With none of them, the voice button is replaced by "Checking voice messages needs Meta's Muse Voice Transcribe, which is not switched on here yet." ("La vérification des messages vocaux nécessite Muse Voice Transcribe de Meta, qui n'est pas encore activé ici.").
 13. When the transcription fails (a refused key, too many requests, a server error, no answer within 30 s), the senior sees "We could not listen to this recording right now. Please try again in a minute." (in English, on the French page too); nothing is judged or kept.
 
+## Planned change (2026-11-04, `protection-menu.md` line 5)
+The page opens on three big choices before any form: "Take a screenshot and send it" first (on a phone the photos or the camera, the same picture path as line 2), then "Paste the words" and "Send a voice message"; the email file goes behind "More ways". Under a verdict: "Ask Thomas" and "Send it to Prudence" (`second-opinion.md`).
+
 ## Demo path
 Paste "USPS: your package is on hold. Pay a $1.99 redelivery fee" with a link, show the red card; or drop a screenshot of a bank text and show the transcription turning into a verdict (needs the Muse key); or choose the "Grandma, it's me, I had an accident" voicemail file: the words appear under a red card (video 1:47–2:05, needs the Meta key). The seeded 15 s "it's Ethan" voicemail in demo mode is not built (Hadrien's row in `_product/log.md`).
 

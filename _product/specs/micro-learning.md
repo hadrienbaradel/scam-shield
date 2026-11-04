@@ -50,6 +50,7 @@ Rules checked by `lib/lessons.js` (and `make lessons-check`): the fields above a
 - Days in a row: counted on days with at least one lesson finished (the person's own date, sent by the app); shown only from 2 days and while the last day is yesterday, today or later; a gap starts again at 1, silently; a result dated before the last recorded day leaves the streak alone.
 - The progress line reads "3 of 8 lessons · 7 stars · 2 days in a row".
 - Left out on purpose: timers, leaderboards, levels, hearts or lives, anything that goes down.
+- Visible from zero (Vlad, 2026-11-04, `protection-menu.md` line 7): three empty drawn stars on every lesson card, the badges still to earn in grey, "Your first star is one minute away" instead of "0 of 8 lessons · 0 stars"; today the game only appears after the first lesson.
 
 ## Demo path
 After the USPS scene (video 0:57), 15 seconds: Linda taps Learn → "The $1.99 parcel trap" with Mr. Tiny Fee → one question, the right answer, confetti and a star → "Mr. Tiny Fee goes home empty-handed." → the rule. Caption: "One minute a day, built from the scams that reach her." Record at phone width with text size Largest.

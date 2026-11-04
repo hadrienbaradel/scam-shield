@@ -1,12 +1,12 @@
-# Second opinion: "Something feels off? Ask."
-Status: Idea · Raised by Vlad, 2026-10-27 · Discussed: no · Last updated: 2026-10-27
+# Second opinion: "Send it to Prudence"
+Status: Idea · Raised by Vlad, 2026-10-27 · Discussed: 2026-11-04 (Vlad: the button ships as Coming soon in the menu round, `protection-menu.md` line 6) · Last updated: 2026-11-04
 
 ## Why
 Many scams never reach the inbox the app watches: a letter, a phone call, a Facebook message. The senior's instinct ("something feels off") deserves a one-step outlet that answers either with the service or with a human they trust. The built "Check something" and "Ask my trusted person" features are the two halves; this idea makes "Ask" the front door.
 
 ## Behavior (proposals)
 1. Anywhere, the senior can say "Something feels off? Ask." and send a screenshot, a photo of a letter, or forward an email to a Scam Shield address; they get the same plain verdict card back.
-2. Two paths, chosen by the senior or by the verdict: automated (Muse Spark + the life context, seconds) and human-in-the-loop (the trusted son or daughter sees exactly what was shared and answers Scam / Real / I'll call you).
+2. Three paths, chosen by the senior: automated (Muse Spark + the life context, seconds), the family (the trusted son or daughter sees exactly what was shared and answers Scam / Real / I'll call you), and Prudence itself: "Send it to Prudence" hands the message to a person on the Prudence side and/or a deeper automatic pass (the whole life context, the links followed, a slower model), who answer on Today within a day in the same plain words (Vlad, 2026-11-04).
 3. A verdict that is not Safe, or a low-certainty one, offers the human path with one tap; the family member's answer replaces or confirms the card.
 4. Forwarding to an address (e.g. ask@…) works without opening the app; the reply comes by email in the same plain words.
 5. Nothing sent for a second opinion is stored beyond the verdict, and no human reads it unless the senior chose the human path (Privacy by default).
