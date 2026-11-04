@@ -526,6 +526,37 @@ test("small words are right: 2 months at 60 days, 2 years at 730, every scam cou
   assert.equal(decideAnswer({ answer: answer("scam", [{ text: "x", check: " 1 " }]), checks: [{ n: 1, flag: "warn" }], first: SCAM, fallback, fr: false }).verdict, "scam");
 });
 
+test("a call that can only be refused never takes one of the six slots, and the same question spelt differently is one check", async () => {
+  const short = { channel: "sms", body: "See https://bit.ly/x1 and https://usps-hold.test/pay", links: [{ href: "https://bit.ly/x1" }, { href: "https://usps-hold.test/pay" }] };
+  const resolveLink = async () => ({ final_url: "https://landing.example.org/", redirects: ["https://landing.example.org/"], page_shows: null });
+  mock.script(ask(["where_link_goes", { domain: "bit.ly" }]),
+    // landing.example.org may be checked now, but no link of the message goes there to open: refused before taking a slot.
+    ask(["where_link_goes", { domain: "landing.example.org" }], ["website_age", { domain: "landing.example.org" }], ["scam_patterns", {}],
+      ["known_breach", { data: "card" }], ["known_breach", { data: "name" }], ["my_people", { name: null }]),
+    answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message: short, personalContext: LINDA, patternCards: CARDS, first: CAREFUL, deps: deps({ resolveLink }) });
+  assert.equal(out.checks.length, 6, "the five valid calls of the second round all ran");
+  assert.equal(out.refused, 1);
+  mock.script(ask(["website_age", { domain: "usps-hold.test" }], ["website_age", { domain: "USPS-HOLD.TEST" }], ["website_age", { domain: "https://usps-hold.test/pay" }],
+    ["my_providers", { company: "USPS" }], ["my_providers", { company: " usps " }]), answer("scam", [{ text: "x", check: 1 }]));
+  const same = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps({ exampleFacts: D1.mockLinkInspection }) });
+  assert.deepEqual(same.checks.map((c) => c.tool), ["website_age", "my_providers"], "three spellings of one address, two of one company");
+});
+
+test("a link written with a trailing dot is the same website and is opened; a TLS error is not called a private address", async () => {
+  const opened = [];
+  const message = { channel: "sms", body: "Pay https://shop.example.org./pay and https://tls.example.org/x", links: [{ href: "https://shop.example.org./pay" }, { href: "https://tls.example.org/x" }] };
+  const resolveLink = async (href) => {
+    opened.push(href);
+    if (href.includes("tls.")) throw Object.assign(new Error("write EPROTO ... ssl3_get_record:wrong version number, ERR_SSL_UNSUPPORTED_PROTOCOL"), { code: "ERR_SSL_UNSUPPORTED_PROTOCOL" });
+    return { final_url: "https://shop.example.org/pay", redirects: [], page_shows: null };
+  };
+  mock.script(ask(["where_link_goes", { domain: "shop.example.org" }], ["where_link_goes", { domain: "tls.example.org" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ resolveLink }) });
+  assert.deepEqual(opened, ["https://shop.example.org./pay", "https://tls.example.org/x"]);
+  assert.deepEqual(out.checks.map((c) => c.found), ["Where the link goes: shop.example.org", "The link to tls.example.org could not be opened just now"]);
+});
+
 test("one call with arguments the layer could not read is refused alone; the look goes on", async () => {
   let tool = "";
   mock.script({ toolCalls: [{ name: "website_age", arguments: {}, invalid: "arguments that are not JSON" }, { name: "scam_patterns", arguments: {} }] },
