@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prudence scam database</title>
+<meta name="description" content="A public, CC BY 4.0 library of redacted scam examples by family, channel and country, with the sites, addresses and numbers they used, and the week's breaches and new techniques.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#14302d">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="db.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#/library"><span class="brand-mark" aria-hidden="true">P</span><span class="brand-name">Prudence</span><span class="brand-sub">scam database</span></a>
+    <nav class="nav" id="nav" aria-label="Site"></nav>
+    <form class="search" id="search" role="search">
+      <label for="q" class="sr-only">Look up a website, a sender address or a phone number</label>
+      <input id="q" name="q" type="search" placeholder="Look up a site, an address, a number" autocomplete="off" spellcheck="false">
+      <button type="submit" class="btn">Look up</button>
+    </form>
+    <button type="button" class="btn btn-ghost btn-small theme" id="theme">Theme: system</button>
+  </div>
+</header>
+<main id="main" class="main" tabindex="-1">
+  <h1 id="pageTitle" tabindex="-1">Library</h1>
+  <div id="view" class="view"><p class="loading">Loading…</p></div>
+  <p id="announce" class="sr-only" aria-live="polite"></p>
+</main>
+<footer class="footer">
+  <p>CC BY 4.0 · operator and contact on <a href="#/about">About</a> · <a href="/api/public/library.json">download the whole library (JSON)</a></p>
+  <p class="muted">Not the senior's app: Prudence for seniors is at <a href="/">heyprudence.com</a>.</p>
+</footer>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="db.js"></script>
+</body>
+</html>
