@@ -143,6 +143,9 @@ test("Look closer shows the busy line, then every check numbered, the closer ver
   assert.ok(html.includes('The website is &lt;2&gt; days old.<span class="v2-chip">Check 1</span>'), "escaped");
   assert.ok(html.includes("Looked closer by Muse Spark (muse-spark-1.3): 2 checks in 9 s"));
   assert.ok(lookCloserHtml({ result: { ...LOOK, checks: [LOOK.checks[0]], reasons: [LOOK.reasons[1]], ms: 300 } }).includes(": 1 check in 1 s"));
+  const noted = lookCloserHtml({ result: { ...LOOK, notes: ["The list of dangerous websites was not checked (no key here)"] } });
+  assert.ok(noted.includes('</ol><p class="vcard-small">The list of dangerous websites was not checked (no key here)</p>'), "a note under the checks, not numbered");
+  assert.ok(noted.includes(": 2 checks in 9 s"), "and not counted as a check");
   setLang("fr");
   const fr = lookCloserHtml({ result: { ...LOOK, verdict: "be_careful" } });
   assert.ok(fr.includes("Prudence a vérifié :") && fr.includes("Après avoir regardé de plus près : Attention") && fr.includes("Vérification 2"));

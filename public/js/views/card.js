@@ -192,9 +192,11 @@ export function lookCloserHtml(state = {}, ids = "v2") {
   const r = state.result;
   const checks = Array.isArray(r.checks) ? r.checks : [];
   const n = checks.length;
+  // Notes are not checks: no number, no citation ("not checked (no key here)").
+  const notes = (Array.isArray(r.notes) ? r.notes : []).map((x) => `<p class="vcard-small">${esc(x)}</p>`).join("");
   const list = n ? `
       <h3 id="${p}ChecksTitle" class="section-title" tabindex="-1">${esc(t("inv_checked"))}</h3>
-      <ol class="vcard-check-list">${checks.map((c) => `<li>${esc(c?.found)}</li>`).join("")}</ol>` : "";
+      <ol class="vcard-check-list">${checks.map((c) => `<li>${esc(c?.found)}</li>`).join("")}</ol>${notes}` : notes;
   // No closer verdict: the checks made are still listed, then the card's verdict stands.
   if (!VERDICTS.includes(r.verdict)) return `${list}<p ${n ? "" : `id="${p}ChecksTitle" tabindex="-1" `}class="vcard-checks-note">${esc(t("inv_none"))}</p>`;
   const seconds = Math.max(1, Math.round((Number(r.ms) || 0) / 1000));

@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
-import { investigate, decideAnswer, toolsFor, readPage, clipText, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
+import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
@@ -52,31 +52,33 @@ beforeEach(() => {
 // ------------------------------------------------------------ the engine ---
 test("the card lists every check made in plain words, then a verdict whose reasons each cite one check, and names the model", async () => {
   mock.script(
-    ask(["website_age", { domain: "usps-hold.test" }], ["blocklist", { domain: "usps-hold.test" }], ["my_orders_and_carriers", { carrier: "USPS", shop: null }],
-      ["my_providers", { company: "USPS" }], ["scam_patterns", {}], ["known_breach", { data: "card" }]),
-    answer("scam", [{ text: "The website was registered 2 days ago.", check: 1 }, { text: "No USPS parcel is on its way to you.", check: 3 }]),
+    ask(["website_age", { domain: "usps-hold.test" }], ["my_orders_and_carriers", { carrier: "USPS", shop: null }],
+      ["my_providers", { company: "USPS" }], ["scam_patterns", {}], ["known_breach", { data: "card" }], ["my_people", { name: null }]),
+    answer("scam", [{ text: "The website was registered 2 days ago.", check: 1 }, { text: "No USPS parcel is on its way to you.", check: 2 }]),
   );
   const out = await investigate({ message: D1.message, locale: "en-US", personalContext: LINDA, patternCards: CARDS, first: SCAM,
     deps: deps({ exampleFacts: D1.mockLinkInspection }) });
   assert.deepEqual(out.checks.map((c) => c.found), [
     "The website usps-hold.test was registered 2 days ago (example)",
-    "The list of dangerous websites was not checked (no key here)",
     "No USPS parcel in your orders; your parcels come by Amazon Logistics",
     "USPS is not one of the companies that write to you",
     'Matches the known scam "USPS package on hold, small redelivery fee"',
     "No known breach leaked your card number",
+    "The sender is not one of your 3 trusted people",
   ]);
   assert.deepEqual(out.checks.map((c) => c.n), [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(out.checks.map((c) => c.flag), ["warn", "unknown", "warn", "warn", "warn", "ok"]);
+  assert.deepEqual(out.checks.map((c) => c.flag), ["warn", "warn", "warn", "warn", "ok", "unknown"]);
+  // Without the URLhaus key the list is not offered: one note on the card, not a check.
+  assert.deepEqual(out.notes, ["The list of dangerous websites was not checked (no key here)"]);
   assert.equal(out.verdict, "scam");
   assert.equal(out.what_to_do, "Delete it.");
-  assert.deepEqual(out.reasons, [{ text: "The website was registered 2 days ago.", check: 1 }, { text: "No USPS parcel is on its way to you.", check: 3 }]);
+  assert.deepEqual(out.reasons, [{ text: "The website was registered 2 days ago.", check: 1 }, { text: "No USPS parcel is on its way to you.", check: 2 }]);
   assert.equal(out.source, "Mock LLM (mock-1)", "the source names whichever model lib/llm used");
   assert.equal(out.calls, 2);
   assert.equal(out.toolCalls, 6);
   assert.equal(typeof out.ms, "number");
   // What went to the model: the tools, the redacted message, its link's address, the first verdict, the rules' findings.
-  assert.deepEqual(mock.calls[0].tools.map((t) => t.name), ["website_age", "blocklist", "my_orders_and_carriers", "my_providers", "my_people", "scam_patterns", "known_breach"]);
+  assert.deepEqual(mock.calls[0].tools.map((t) => t.name), ["website_age", "my_orders_and_carriers", "my_providers", "my_people", "scam_patterns", "known_breach"]);
   assert.equal(mock.calls[0].system, INVESTIGATE_PROMPT);
   assert.equal(mock.calls[0].json.name, "look_closer_verdict");
   assert.equal(mock.calls[0].maxTokens, 2000);
@@ -118,7 +120,7 @@ test("Muse Spark may ask only about website addresses in the message's links; ot
       ["delete_everything", {}], ["known_breach", { data: "soul" }], ["website_age", { domain: "https://usps-hold.test/pay" }]),
     (req) => { seen.push(...req.messages.filter((m) => m.role === "tool").map((m) => m.content)); return answer("scam", [{ text: "Two days old.", check: 1 }]); },
   );
-  const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps({ exampleFacts: D1.mockLinkInspection }) });
+  const out = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps({ exampleFacts: D1.mockLinkInspection, blocklistKey: true }) });
   assert.equal(out.checks.length, 1, "only the address from the message's own link was checked");
   assert.deepEqual(out.checks[0].asked, { domain: "https://usps-hold.test/pay" });
   assert.equal(out.refused, 5);
@@ -360,7 +362,7 @@ test("the person's people are told by relation, never by name, address or number
   for (const secret of ["Ethan", "Miller", "555-0142", "example-mail", "Thomas"]) assert.ok(!`${tool}\n${out.checks.map((c) => c.found).join("\n")}`.includes(secret), secret);
 });
 
-test("the blocklist says it was not checked without its key, and what the list says with one", async () => {
+test("without its key the list of dangerous websites is not offered: one note on the card, not a check, never in the Safe gate; with it, what the list says", async () => {
   const message = { channel: "sms", from: "+1 555 0100", body: "Go https://login.bad.example.com/x", links: [{ href: "https://login.bad.example.com/x" }] };
   const run = async (lookup) => {
     mock.script(ask(["blocklist", { domain: "bad.example.com" }]), answer("be_careful", [{ text: "x", check: 1 }]));
@@ -368,7 +370,17 @@ test("the blocklist says it was not checked without its key, and what the list s
     return (await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: { blocklistKey: Boolean(lookup), urlhausHost: lookup,
       urlhausVerdict: (data) => (data.listed ? { phishing: true, online: true } : null) } })).checks[0];
   };
-  assert.equal((await run(null)).found, "The list of dangerous websites was not checked (no key here)");
+  mock.script(ask(["blocklist", { domain: "bad.example.com" }], ["known_breach", { data: "card" }], ["known_breach", { data: "phone number" }]),
+    answer("safe", [{ text: "Nothing leaked.", check: 1 }]));
+  const keyless = await investigate({ message: { channel: "email", from: "a@b.example.org", body: "Hello https://login.bad.example.com/x", links: [{ href: "https://login.bad.example.com/x" }] },
+    personalContext: LINDA, first: CAREFUL, deps: deps() });
+  assert.ok(!mock.calls.at(-2).tools.some((t) => t.name === "blocklist"), "not offered without the key");
+  assert.deepEqual(keyless.notes, ["The list of dangerous websites was not checked (no key here)"]);
+  assert.deepEqual(keyless.checks.map((c) => c.tool), ["known_breach", "known_breach"], "the call is refused, not a check");
+  assert.equal(keyless.verdict, "safe", "the note does not count in the Safe gate");
+  assert.deepEqual(notOfferedNotes({ message: { body: "No links here", links: [] }, fr: false, blocklist: false }), [], "no link, no note");
+  assert.deepEqual(notOfferedNotes({ message: { links: [{ href: "https://a.example.com" }] }, fr: true, blocklist: false }), ["La liste des sites dangereux n'a pas été consultée (pas de clé ici)"]);
+  assert.deepEqual(notOfferedNotes({ message: { links: [{ href: "https://a.example.com" }] }, fr: false, blocklist: true }), [], "with the key it is a check");
   assert.equal((await run(async () => ({ listed: false }))).found, "login.bad.example.com is not on the public list of dangerous websites");
   const listed = await run(async (host) => (host === "login.bad.example.com" ? { listed: true, urls: [] } : null));
   assert.equal(listed.found, "login.bad.example.com is on the public list of dangerous websites (fake pages that steal passwords)");
