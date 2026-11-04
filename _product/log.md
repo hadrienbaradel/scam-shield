@@ -18,6 +18,7 @@ Who = the person, plus the session label or agent name when several sessions run
 | Vlad · tech-review | 2026-11-04 00:40 | Every pull request reviewed by Muse Spark through `lib/llm` (diff through the Prompt Guard shield first), as a workflow and as `make pr-review PR=n`; the first real PR is the reviewer reviewing itself | `scripts/pr-review.mjs` (new), `.github/workflows/pr-review.yml` (new), `tests/prReview.test.js` (new), `Makefile` (one target), `_product/docs/git.md`, `_product/docs/dx.md`, `_product/docs/secrets.md`, one README line |
 | Vlad · tech-open | 2026-11-04 00:40 | Open-weights ticket: the 37 seed cases scored on Muse Spark Open through partner inference (Baseten or whichever partner the guide names), results as a research note and a README line; if no partner key is at hand, the target and the steps are ready for Vlad | `_product/research/open-weights.md` (new), `_product/research.md` (one line), `Makefile` (one target), `_product/docs/llm.md` |
 | Vlad · tech-codespaces | 2026-11-04 00:40 | Open in GitHub Codespaces: a devcontainer with Node 24 and Docker-in-Docker Postgres, one real cold-start run, a keyless "try it" path with the mock model; badge and three lines in the README | `.devcontainer/devcontainer.json` (new), `_product/docs/dx.md`, `_product/docs/infra.md`, README badge and three lines |
+| Hadrien · video | 2026-11-04 02:00 | Landing page built (separate folder, not published yet) | `_product/log.md` |
 
 ## To do
 
