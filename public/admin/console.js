@@ -11,6 +11,7 @@ import * as outbox from "./views/outbox.js";
 import * as library from "./views/library.js";
 import * as contests from "./views/contests.js";
 import * as watch from "./views/watch.js";
+import * as earlyAccess from "./views/earlyAccess.js";
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -184,6 +185,7 @@ const VIEWS = [
   { path: "library", label: "Library", view: library },
   { path: "contests", label: "Contests", view: contests },
   { path: "watch", label: "Scam watch", view: watch },
+  { path: "early-access", label: "Early access", view: earlyAccess },
 ];
 const EVERY_MS = 30000;
 
