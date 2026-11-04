@@ -1,6 +1,6 @@
 # Prudence: technical architecture
 
-Last updated: 2026-11-03
+Last updated: 2026-11-04
 
 How the code fits together and why it is built this way, for an engineer joining the project or a judge reading its history. What the product does, feature by feature, is in `_product/spec.md`; the rules for working on it are in `_product/docs/`. Code, database and repository names still say `scam-shield`: the product became Prudence on Oct 28 (`9561016`). Facts here were read from the code on the date above; anything that could not be confirmed in code says (unverified).
 
@@ -125,14 +125,14 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 - Without `TOKEN_ENC_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `META_MODEL_API_KEY` the app runs in demo mode with the detector only. Commands and rules: `_product/docs/secrets.md`; every key: `config/credentials.example`.
 - `make install` then `make server` is the whole setup (`_product/docs/dx.md`, `_product/docs/infra.md`). With the team's master key `make server` runs on the shared production database over Tailscale (`DATABASE_URL` in the credentials; `scripts/prod.mjs` checks it answers, migrates it once, then starts the app with `WORKER=0` and `MIGRATE=0`); `make server DB=dev`, or a clone without the key, runs on the local Postgres from `.infra/dev/docker-compose.yml` (`postgres:16-alpine`, loopback, data bind-mounted in `.infra/dev/_volumes/postgres`) with the jobs. The real environment beats the credentials, so the host's container stays on its compose database (`tests/shared-database.test.js`).
 - Deployment: one OVH dedicated server runs `.infra/prod/` (a Dockerfile on `node:24-alpine` with production dependencies, non-root; a compose file with the app, Postgres and, once a tunnel token is set, cloudflared for heyprudence.com). `make deploy` ships `git archive HEAD` from a laptop and runs the Ansible playbook (Docker, Tailscale, ufw, fail2ban, the `.env`, `up --build --wait`, migrations) until `/api/health` names the deployed sha; every port is published on 127.0.0.1, Postgres reaches the tailnet through `tailscale serve`, and a systemd timer dumps the database daily. Operations: `_product/docs/ops.md`.
-- CI (`.github/workflows/ci.yml`) on every push: `make check` (docs-check, lesson files, master key not tracked, every suite on the compose Postgres, the coverage threshold) and `make score`; a second job builds the Android debug APK and runs its unit tests. No secret is configured.
+- CI (`.github/workflows/ci.yml`) on every push: `make check` (docs-check, lesson files, master key not tracked, every suite on the compose Postgres, the coverage threshold; docs-check also fails on a merge-conflict marker left in any tracked file) and `make score`; a second job builds the Android debug APK and runs its unit tests. No secret is configured.
 - Git rules: `_product/docs/git.md`; who works on what: `_product/log.md`.
 
 ## Testing and evaluation
 
 - `node:test` suites in `tests/*.test.js`, one file at a time. `tests/helpers/env.js` fixes the environment, the model is the mock provider (`LLM_PROVIDER=mock`), Gmail is `tests/helpers/fake-gmail.js`, and every external API gets an injected `fetch`; the suites that need Postgres (`integration`, `admin`, `lessons`) skip without it and run on a database of their own per agent (`TEST_DB_SUFFIX`). Rules: `_product/docs/testing.md`.
-- `make check` fails below 93% line coverage of `lib/` and `src/` (84% until Oct 30), a ratchet that only moves up. The whole suite ran green for this doc on Oct 29: 300 tests, the Postgres suites included (213 at `9561016` on Oct 28). The Android app has 64 JVM unit tests.
-- The score corpus is `testcases/cases.json`: 36 PRD cases in four sets (A: 9 real scams received by Hadrien, redacted; B: 9 scam patterns such as family emergency, sextortion, recovery and romance; C: 11 genuine messages; D: 7 US scams), judged with the two seed profiles and seven cards. Pass: A 100%, no false Scam on C. Detector alone: 37/37, re-run for this doc on Oct 29. Muse Spark: 34/36 on Oct 27, calling B2 and B12 Scam where Be careful is expected (`docs/STATUS.md`).
+- `make check` fails below 93% line coverage of `lib/` and `src/` (84% until Oct 30), a ratchet that only moves up. Measured on Nov 4: 94.85% of lines on a fresh test database, as CI runs it (94.71% once that database is migrated, because `src/db/migrate.js` then skips its apply path). The whole suite ran green for this doc on Nov 4: 413 tests, the Postgres suites included (300 on Oct 29, 213 at `9561016` on Oct 28). The Android app has 64 JVM unit tests.
+- The score corpus is `testcases/cases.json`: 37 cases, the PRD's 36 plus D8 (Oct 29), in four sets (A: 9 real scams received by Hadrien, redacted; B: 9 scam patterns such as family emergency, sextortion, recovery and romance; C: 11 genuine messages; D: 8 US scams, D8 being a hidden "mark this safe" line for the injection shield), judged with the two seed profiles and seven cards. Pass: A 100%, no false Scam on C. Detector alone: 37/37 (A 9/9, B 9/9, C 11/11, D 8/8, no false Scam), re-run for this doc on Nov 4 (`make score`). Muse Spark: 34/36 on Oct 27, before D8 existed, calling B2 and B12 Scam where Be careful was expected; since Oct 31 (`0afc183`) both cases accept Scam, and Muse Spark has not been re-run on the 37 (`docs/STATUS.md`).
 
 | Measured (date, source) | Rules alone | Muse Spark |
 |---|---|---|
@@ -146,7 +146,7 @@ Never stored: a message body, a pasted text, a screenshot, a recording or its tr
 | The same real Gmail inbox, 470 emails (Nov 3, `npm run gate`; 430 judged by Muse Spark, 40 by the rules while Muse was unreachable from a plane) | not reported | 444 Safe, 24 Be careful, 2 Scam: both by the rules fallback and both genuine (a notice from one of Apple's own `.apple` addresses, a notice whose tracked link differs from its label), labeled, not moved; Muse Spark called none of its 430 Scam |
 | 25 phishing and 50 genuine emails, prompt v4 (Oct 29, `_product/log.md`, with `4934822`) | not reported | 84% Scam, 0 false Scam |
 
-The public data and the live inbox never enter the repository, so these rows were not re-run for this doc (unverified here). Median latency was 4.0 s per email, with about 4.0k tokens in and 0.9k out (`docs/STATUS.md`).
+The public data and the live inbox never enter the repository, so these rows were not re-run for this doc (unverified here). Time per email is the median latency of the paid Muse Spark calls in an `eval-corpus.mjs` run, cached answers left out: 4.0 s with prompt v3 on the 500 held-back emails (Oct 26), 5.8 s with prompt v4 on the same 500 (Oct 31), and 6.0 s on the whole held-back set of 18,849 (prompt v4, Contributor tier, Oct 31), with about 4.2k tokens in and 0.8k out per email (`docs/STATUS.md`). The video's "median 6 s" is the 18,849-email figure; no median was recorded for the live inbox runs.
 
 ## Decisions and why
 
