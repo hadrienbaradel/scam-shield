@@ -37,22 +37,24 @@ export function newCode(random = randomBytes) {
   return out;
 }
 
-// One `drafting` row per idea, each with its own code; a code already taken
-// (a unique violation on ads.code) is drawn again, five times at most.
+// One `drafting` row per idea, each with its own code, in one statement: the
+// first idea is the newest by a millisecond, so a batch reads in Muse
+// Spark's order under the newest-first list. A code already taken (a unique
+// violation on ads.code) draws the batch's codes again, five times at most.
 export async function createDrafting({ brief = null, count = 1, createdBy = null, code = newCode } = {}) {
-  const rows = [];
-  for (let i = 0; i < count; i++) {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        rows.push(await one(`INSERT INTO ads (code, status, brief, created_by) VALUES ($1, 'drafting', $2, $3) RETURNING id, code`,
-          [code(), brief, createdBy]));
-        break;
-      } catch (e) {
-        if (e.code !== "23505" || !/code/.test(e.constraint || "") || attempt >= 5) throw e;
-      }
+  for (let attempt = 1; ; attempt++) {
+    const codes = Array.from({ length: count }, () => code());
+    try {
+      const rows = await many(`INSERT INTO ads (code, status, brief, created_by, created_at)
+                               SELECT c, 'drafting', $2, $3, now() - make_interval(secs => (o - 1) / 1000.0)
+                               FROM unnest($1::text[]) WITH ORDINALITY AS t(c, o)
+                               RETURNING id, code`, [codes, brief, createdBy]);
+      const byCode = new Map(rows.map((r) => [r.code, r]));
+      return codes.map((c) => byCode.get(c));
+    } catch (e) {
+      if (e.code !== "23505" || !/code/.test(e.constraint || "") || attempt >= 5) throw e;
     }
   }
-  return rows;
 }
 
 // The ad with its current version (words, photo, check, models), or null.

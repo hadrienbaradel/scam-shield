@@ -287,6 +287,17 @@ test("New ideas answers at once with one drafting row per idea; each becomes a d
   assert.equal(studio.calls.propose.at(-1).brief, undefined, "no brief, none sent");
 });
 
+test("a batch reads in Muse Spark's order, its first idea on top, under the newest batch first", opts, async () => {
+  useDeps();
+  const first = (await post("/api/admin/ads/ideas", { count: 3 })).json().ids;
+  assert.deepEqual((await list()).ads.map((a) => a.id), first, "in order while still drafting");
+  await adsIdle();
+  assert.deepEqual((await list()).ads.map((a) => a.words.headline), [1, 2, 3].map((i) => `Your mother's email, checked ${i}`));
+  const second = (await post("/api/admin/ads/ideas", { count: 2 })).json().ids;
+  await adsIdle();
+  assert.deepEqual((await list()).ads.map((a) => a.id), [...second, ...first]);
+});
+
 test("the inputs have limits: a brief and an instruction of 500 characters, 1 to 4 ideas, a reason of 300", opts, async () => {
   useDeps();
   for (const [body, field] of [[{ brief: "x".repeat(501) }, "brief"], [{ brief: 42 }, "brief"], [{ count: 0 }, "count"], [{ count: 5 }, "count"], [{ count: 2.5 }, "count"], [{ count: "many" }, "count"]]) {
