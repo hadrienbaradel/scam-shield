@@ -115,6 +115,11 @@ test("cleanHref keeps the scheme, host and path; credentials, an address and a t
   assert.equal(cleanHref("https://a:b@evil.example/x"), "https://evil.example/x");
   assert.equal(cleanHref("https://evil.example/verify/linda@gmail.com"), "https://evil.example/verify/[someone]@gmail.com");
   assert.equal(cleanHref("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9e"), "https://evil.example/t/[token]");
+  // Double-encoded, and a bad escape next to a valid one: the address still goes.
+  assert.equal(cleanHref("https://evil.example/v/linda%2540gmail.com"), "https://evil.example/v/[someone]@gmail.com");
+  assert.equal(cleanHref("https://evil.example/v/linda%40gmail.com%ZZ"), "https://evil.example/v/[someone]@gmail.com%ZZ");
+  // A token stays a token whether it is read raw or decoded.
+  assert.equal(cleanHref("https://evil.example/t/3f9a0c1e8b7d4a2f9c6e1b0d5a8f7e3c2b1a0d9%65"), "https://evil.example/t/[token]");
   assert.equal(cleanHref("https://evil.example/verify-linda@gmail.com-now"), "https://evil.example/[someone]@gmail.com-now", "an address inside a segment (a dash belongs to the local part, as in the body)");
   assert.equal(cleanHref("https://evil.example/u/linda%40gmail.com/x"), "https://evil.example/u/[someone]@gmail.com/x", "a percent-encoded address");
   assert.equal(cleanHref("https://evil.example/caf%C3%A9/menu%ZZ"), "https://evil.example/caf%C3%A9/menu%ZZ", "encoding that hides no address stays as written, bad encoding too");
