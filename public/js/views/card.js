@@ -190,13 +190,15 @@ export function lookCloserHtml(state = {}, ids = "v2") {
       <button id="${p}CloserRetry" class="btn btn-gold btn-big" type="button">${esc(t("inv_try_again"))}</button>`;
   }
   const r = state.result;
-  if (!VERDICTS.includes(r.verdict)) return `<p id="${p}ChecksTitle" class="vcard-checks-note" tabindex="-1">${esc(t("inv_none"))}</p>`;
   const checks = Array.isArray(r.checks) ? r.checks : [];
   const n = checks.length;
-  const seconds = Math.max(1, Math.round((Number(r.ms) || 0) / 1000));
-  return `
+  const list = n ? `
       <h3 id="${p}ChecksTitle" class="section-title" tabindex="-1">${esc(t("inv_checked"))}</h3>
-      <ol class="vcard-check-list">${checks.map((c) => `<li>${esc(c?.found)}</li>`).join("")}</ol>
+      <ol class="vcard-check-list">${checks.map((c) => `<li>${esc(c?.found)}</li>`).join("")}</ol>` : "";
+  // No closer verdict: the checks made are still listed, then the card's verdict stands.
+  if (!VERDICTS.includes(r.verdict)) return `${list}<p ${n ? "" : `id="${p}ChecksTitle" tabindex="-1" `}class="vcard-checks-note">${esc(t("inv_none"))}</p>`;
+  const seconds = Math.max(1, Math.round((Number(r.ms) || 0) / 1000));
+  return `${list}
       <div class="vcard vcard-closer ${verdictClass(r.verdict)}">
         <p class="vcard-word"><span class="vcard-mark" aria-hidden="true">${verdictIcon(r.verdict, 28)}</span>${esc(t("inv_after", { verdict: verdictWord(r.verdict) }))}</p>
         ${r.headline ? `<p class="vcard-next">${esc(headlineOf(r.headline))}</p>` : ""}

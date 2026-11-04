@@ -152,9 +152,12 @@ test("Look closer shows the busy line, then every check numbered, the closer ver
 
 test("with nothing usable the card keeps its verdict, and a look that could not run offers Try again in plain words", () => {
   setLang("en");
-  const none = lookCloserHtml({ result: { verdict: null, none: "no_reason", checks: [{ n: 1, found: "x" }] } }, "v2");
-  assert.ok(none.includes("Prudence could not look closer this time. The verdict above stands."));
-  assert.ok(!none.includes("Prudence checked:") && !none.includes("<li>"), "no verdict, one sentence");
+  const none = lookCloserHtml({ result: { verdict: null, none: "no_answer", checks: [{ n: 1, found: "The website was registered 2 days ago" }] } }, "v2");
+  assert.ok(none.includes("Prudence checked:") && none.includes("<li>The website was registered 2 days ago</li>"), "the checks made stay on the card");
+  assert.ok(none.indexOf("</ol>") < none.indexOf("Prudence could not look closer this time. The verdict above stands."), "then the verdict above stands");
+  assert.ok(!none.includes("After looking closer"));
+  const nothing = lookCloserHtml({ result: { verdict: null, none: "no_reason", checks: [] } }, "v2");
+  assert.ok(!nothing.includes("Prudence checked:") && nothing.includes('id="v2ChecksTitle"') && nothing.includes("The verdict above stands."), "no check made: one sentence, focusable");
   const failed = lookCloserHtml({ failed: true }, "v2");
   assert.ok(failed.includes("Prudence could not look closer right now. Please try again in a minute."));
   assert.ok(failed.includes('<button id="v2CloserRetry" class="btn btn-gold btn-big" type="button">Try again</button>'));

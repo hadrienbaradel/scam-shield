@@ -212,6 +212,7 @@ test("at most 6 checks: further calls are refused and the model is told to answe
   assert.equal(out.refused, 2);
   assert.match(mock.calls[1].messages.at(-2).content, /no more checks allowed/);
   assert.equal(mock.calls[1].messages.at(-1).content, "No more checks are possible. Answer now with the JSON object only.");
+  assert.equal(mock.calls[1].tools, undefined, "six checks made: no tools on the answering round");
   assert.equal(out.verdict, "scam");
   mock.script(ask(["scam_patterns", {}], ["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
   const twice = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
@@ -246,6 +247,14 @@ test("at most 4 rounds with the model: a model that keeps asking leaves the card
   assert.equal(out.none, "no_answer");
   assert.equal(out.checks.length, 3, "the fourth round's calls are not run");
   assert.equal(mock.calls[3].messages.at(-1).content, "No more checks are possible. Answer now with the JSON object only.");
+  assert.equal(mock.calls[3].tools, undefined, "the last round offers no tools: the answer is forced");
+  assert.ok(mock.calls[2].tools.length > 0);
+  // The forced answer, when the model gives it, stands.
+  mock.reset();
+  mock.script(ask(["scam_patterns", {}]), ask(["known_breach", { data: "card" }]), ask(["known_breach", { data: "name" }]), answer("scam", [{ text: "x", check: 1 }]));
+  const forced = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  assert.equal(forced.verdict, "scam");
+  assert.equal(forced.calls, 4);
 });
 
 test("the whole look has 25 seconds and each lookup outside Prudence 5: a slow registry is said in plain words, a spent budget fails the look", async () => {
