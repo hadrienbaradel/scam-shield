@@ -10,16 +10,21 @@ Set keys with `make secrets-set KEY=value` (`_product/docs/secrets.md`); provide
 
 | Variable | Meaning |
 |---|---|
-| `LLM_PROVIDER` | `meta` (default; alias `muse`), `anthropic` (alias `claude`), `openai`, `groq`, `together`, `ollama`, `llama-api`, `openai-compatible`, `mock` |
-| `LLM_MODEL` | Model id for the selected provider. Defaults: `muse-spark-1.3`, `claude-opus-5-5`, `gpt-4o-mini`, `llama-3.3-70b-versatile`, `meta-llama/Llama-3.3-70B-Instruct-Turbo`, `llama3.2`, `Llama-4-Maverick-17B-128E-Instruct-FP8`; `openai-compatible` has none |
+| `LLM_PROVIDER` | `meta` (default; alias `muse`), `anthropic` (alias `claude`), `openai`, `groq`, `together`, `ollama`, `llama-api`, `baseten` (Muse Spark Open, Meta's open weights), `openai-compatible`, `mock` |
+| `LLM_MODEL` | Model id for the selected provider. Defaults: `muse-spark-1.3`, `claude-opus-5-5`, `gpt-4o-mini`, `llama-3.3-70b-versatile`, `meta-llama/Llama-3.3-70B-Instruct-Turbo`, `llama3.2`, `Llama-4-Maverick-17B-128E-Instruct-FP8`, `meta-models/muse-spark-open-1026`; `openai-compatible` has none |
 | `LLM_BASE_URL` | Address of an OpenAI-compatible endpoint (any `/v1` that serves `chat/completions`); overrides the preset address |
 | `LLM_THINKING` | Reasoning effort for any provider: `minimal`, `low`, `medium`, `high`; `off` sends none |
 | `META_MODEL_API_KEY`, `META_MODEL_NAME`, `META_MODEL_BASE_URL`, `META_MODEL_REASONING_EFFORT` | Muse Spark, unchanged (effort default `low`; a `-contributor` model id is refused, except by `scripts/eval-corpus.mjs --contributor`, which calls `allowContributorForPublicEval()` and may only read public corpora) |
-| `OPENAI_API_KEY` | Key for every OpenAI-compatible provider; not needed for `ollama` or a custom `LLM_BASE_URL` |
+| `OPENAI_API_KEY` | Key for every OpenAI-compatible provider except `baseten`; not needed for `ollama` or a custom `LLM_BASE_URL` |
+| `BASETEN_API_KEY` | Baseten's key, read by `baseten` alone (no other key is ever sent to Baseten) |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | Claude (Messages API, version 2026-10-21) |
 
-Examples: `LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...`; `LLM_PROVIDER=ollama LLM_MODEL=llama3.2`; `LLM_PROVIDER=groq OPENAI_API_KEY=... LLM_MODEL=llama-3.3-70b-versatile`; `LLM_PROVIDER=openai-compatible LLM_BASE_URL=http://host:8080/v1 LLM_MODEL=...`.
+Examples: `LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...`; `LLM_PROVIDER=baseten BASETEN_API_KEY=...`; `LLM_PROVIDER=ollama LLM_MODEL=llama3.2`; `LLM_PROVIDER=groq OPENAI_API_KEY=... LLM_MODEL=llama-3.3-70b-versatile`; `LLM_PROVIDER=openai-compatible LLM_BASE_URL=http://host:8080/v1 LLM_MODEL=...`.
 The verdict's `source` names who judged: `Muse Spark (muse-spark-1.3)`, `Claude (claude-opus-5-5)`, `Groq (...)`, or `detector (<provider> unavailable)` with `degraded: true` when the model failed and the detector answered.
+
+## Open weights (Muse Spark Open)
+
+`LLM_PROVIDER=baseten` runs the same engine (prompts, redaction, guardrails, schema check, cache) on Muse Spark Open, Meta's open-weight model, served by Baseten's Model APIs at `https://inference.baseten.co/v1` (OpenAI-compatible): model `meta-models/muse-spark-open-1026`, the id the hackathon guide asks for (`LLM_MODEL` names another), key `BASETEN_API_KEY`, effort `low` by default because the model always reasons and Baseten's own default is `xhigh`. Baseten accepts `response_format: json_schema` for this model without enforcing it, so the engine's schema check decides and an answer that fails it falls back to the detector, marked `degraded`. `make score-open` scores the 37 seed cases this way; a degraded case was judged by the rules, so the number to publish is the pass count with 0 degraded. Measured on 2026-11-04: Muse Spark 1.3 on the Meta API 37/37, 0 false Scam, median 8.5 s; Muse Spark Open not yet measured (no Baseten key at hand). Own hardware: `LLM_PROVIDER=ollama LLM_MODEL=muse-glimmer:30b` reaches Muse Glimmer (18 GB), untested here: the engine gives each check 20 seconds, likely too short for a 30B model on a laptop (unverified). Partners, prices, the comparison table and the steps: `_product/research/open-weights.md`.
 
 ## Interface
 
@@ -33,10 +38,10 @@ const { text, usage, model, provider, raw } = await complete({
 
 ## Capability matrix and degradation
 
-| | meta (Muse Spark) | openai-style (openai, groq, together, ollama, llama-api, openai-compatible) | anthropic | mock |
+| | meta (Muse Spark) | openai-style (openai, groq, together, ollama, llama-api, baseten, openai-compatible) | anthropic | mock |
 |---|---|---|---|---|
 | JSON schema | `response_format: json_schema`; resent without it on a 400 | same | `output_config.format` with the schema trimmed to the supported subset (no `maxLength`/`minimum`/`maxItems`, `additionalProperties: false` everywhere); resent without it on a 400 | recorded |
-| thinking | `reasoning_effort`, default `low`; dropped on a 400 | `reasoning_effort` only when `LLM_THINKING` is set; dropped on a 400 | `output_config.effort`, default `low`; dropped on a 400; adaptive thinking stays on | recorded |
+| thinking | `reasoning_effort`, default `low`; dropped on a 400 | `reasoning_effort` only when `LLM_THINKING` is set (`baseten`: `low` by default); dropped on a 400 | `output_config.effort`, default `low`; dropped on a 400; adaptive thinking stays on | recorded |
 | temperature | 0.1 | 0.1; dropped on a 400 (reasoning models); `max_tokens` becomes `max_completion_tokens` on request | never sent (the API rejects sampling parameters) | recorded |
 | images | yes | depends on the model | yes | yes |
 | transcribe | Muse Voice Transcribe: multipart `POST /asr/transcribe`, `muse-voice-transcribe-1.0`, `audioEncoding: "WAV"`, `PUSH_TO_TALK`, plain-text answer | multipart `POST /audio/transcriptions`: `file`, `model` (`LLM_TRANSCRIBE_MODEL`, default `whisper-1`), `language`; JSON `text` answer; the endpoint must serve it | no: throws "not supported" | scripted (`mock.scriptTranscript`), recorded |

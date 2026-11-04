@@ -4,6 +4,8 @@
 //   node scripts/score.mjs --json out.json
 //   node --env-file-if-exists=.env scripts/score.mjs --muse   (full Muse Spark check, paid API;
 //     answers are cached in .runtime/eval/muse-cache.json so a re-run is free)
+//   LLM_PROVIDER=baseten node scripts/score.mjs --muse   (make score-open: the same on Muse Spark
+//     Open, Meta's open weights, served by Baseten; BASETEN_API_KEY; _product/research/open-weights.md)
 import "../lib/credentials.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { detect } from "../lib/detector.js";
@@ -23,7 +25,7 @@ const { cases } = await load("testcases/cases.json");
 
 const useMuse = process.argv.includes("--muse");
 if (useMuse && !museConfigured()) {
-  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (make secrets-set META_MODEL_API_KEY=...), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
+  console.error("--muse needs a model key: META_MODEL_API_KEY for Muse Spark (make secrets-set META_MODEL_API_KEY=...), BASETEN_API_KEY for Muse Spark Open (make score-open), or another provider via LLM_PROVIDER (_product/docs/llm.md)");
   process.exit(2);
 }
 const cache = useMuse ? await fileCache(new URL(".runtime/eval/muse-cache.json", root).pathname) : null;

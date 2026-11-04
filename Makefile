@@ -114,6 +114,10 @@ score: deps ## PRD pass criteria on the seed cases (detector only, no API key ne
 score-muse: deps ## The same through Muse Spark (paid API; answers cached in .runtime/eval)
 	@$(NODE) $(ENV) scripts/score.mjs --muse
 
+.PHONY: score-open
+score-open: deps ## The same on Muse Spark Open, Meta's open weights, served by Baseten (BASETEN_API_KEY; partner credits)
+	@LLM_PROVIDER=baseten $(NODE) $(ENV) scripts/score.mjs --muse
+
 .PHONY: readme-numbers
 readme-numbers: deps ## Re-measure the numbers atop README.md and its badges: tests, coverage, seed cases, Android tests, commits, CI runs (gh); needs Postgres
 	@$(DOCTOR) testdb --quiet

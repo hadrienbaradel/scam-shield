@@ -13,7 +13,7 @@ import { checkMessage, extractFromImage, museChat, breaker } from "../lib/muse.j
 import { VERDICT_SCHEMA } from "../lib/schema.js";
 
 const ENV = ["LLM_PROVIDER", "LLM_MODEL", "LLM_BASE_URL", "LLM_THINKING", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL",
-  "META_MODEL_API_KEY", "META_MODEL_NAME", "META_MODEL_BASE_URL", "META_MODEL_REASONING_EFFORT"];
+  "META_MODEL_API_KEY", "META_MODEL_NAME", "META_MODEL_BASE_URL", "META_MODEL_REASONING_EFFORT", "BASETEN_API_KEY"];
 const clean = () => { for (const k of ENV) delete process.env[k]; breaker.failures = 0; breaker.openUntil = 0; getProvider("mock").reset(); };
 beforeEach(clean);
 afterEach(clean);
@@ -235,6 +235,33 @@ test("openai-compatible: degrades on 400s: effort, response_format, max_completi
   assert.equal(out.text, '{"ok":true}');
   assert.deepEqual(toOpenAiMessages("S", [{ role: "user", content: [{ type: "text", text: "t" }, { type: "image", mime: "image/png", base64: "aGk=" }, { type: "other", x: 1 }] }]),
     [{ role: "system", content: "S" }, { role: "user", content: [{ type: "text", text: "t" }, { type: "image_url", image_url: { url: "data:image/png;base64,aGk=" } }, { type: "other", x: 1 }] }]);
+});
+
+test("baseten: Muse Spark Open (open weights) on its own key, never OPENAI_API_KEY; low effort unless LLM_THINKING says otherwise", async () => {
+  process.env.LLM_PROVIDER = "baseten";
+  process.env.OPENAI_API_KEY = "sk-openai";
+  assert.equal(llmConfigured(), false, "an OpenAI key is never sent to Baseten");
+  assert.equal(llmLabel(), "Baseten");
+  assert.equal(llmModel(), "meta-models/muse-spark-open-1026", "the hackathon's model id");
+  assert.equal(llmThinking(), "low", "it always reasons; Baseten's own default is xhigh");
+  process.env.BASETEN_API_KEY = "bt";
+  assert.equal(llmConfigured(), true);
+  const { fetchImpl, calls } = fakeFetch(ok(chat(VERDICT)));
+  const out = await createOpenAiCompatibleProvider({ preset: "baseten", fetchImpl }).complete({ system: "s", messages: [{ role: "user", content: "hi" }],
+    maxTokens: 4000, temperature: 0.1, thinking: llmThinking(), json: { name: "scam_shield_verdict", schema: VERDICT_SCHEMA } });
+  assert.equal(calls[0].url, "https://inference.baseten.co/v1/chat/completions");
+  assert.equal(calls[0].headers.authorization, "Bearer bt");
+  assert.equal(calls[0].body.model, "meta-models/muse-spark-open-1026");
+  assert.equal(calls[0].body.reasoning_effort, "low");
+  assert.equal(calls[0].body.response_format.type, "json_schema", "sent; Baseten accepts it without enforcing it, so the engine's own schema check decides");
+  assert.deepEqual([out.provider, JSON.parse(out.text).verdict], ["baseten", "be_careful"]);
+  process.env.LLM_THINKING = "high";
+  assert.equal(llmThinking(), "high");
+  process.env.LLM_MODEL = "meta-models/muse-spark-open";
+  assert.equal(llmModel(), "meta-models/muse-spark-open", "LLM_MODEL names another id");
+  delete process.env.BASETEN_API_KEY;
+  await assert.rejects(createOpenAiCompatibleProvider({ preset: "baseten", fetchImpl }).transcribe({ wav: new Uint8Array(44) }),
+    { message: "Baseten API needs BASETEN_API_KEY or LLM_BASE_URL to transcribe" });
 });
 
 test("anthropic: Messages API request: key and version headers, system on top, effort, structured output, images, no sampling", async () => {

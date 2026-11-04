@@ -296,7 +296,7 @@ test("mock: transcripts are scripted (text, Error, function) and every request i
 test("selection: Muse Voice Transcribe whenever Meta's key is set, else the active provider when it can transcribe; capabilities() says who can", async () => {
   const caps = capabilities();
   assert.deepEqual(Object.fromEntries(PROVIDER_NAMES.map((n) => [n, caps[n].transcribe])),
-    { meta: true, anthropic: false, mock: true, "openai-compatible": true, openai: true, groq: true, together: true, ollama: true, "llama-api": true });
+    { meta: true, anthropic: false, mock: true, "openai-compatible": true, openai: true, groq: true, together: true, ollama: true, "llama-api": true, baseten: true });
   assert.equal(voiceConfigured(), false, "the default (Meta) without its key: no voice checks");
   process.env.LLM_PROVIDER = "anthropic";
   process.env.ANTHROPIC_API_KEY = "a";
