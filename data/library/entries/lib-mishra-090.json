@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-090",
+  "family": "romance",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Young blonde woman new in the UK wants sex with you",
+  "ask": "Text MTALK to 69866 or call the premium number",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Mila, age23, blonde, new in UK. I look sex with UK guys. if u like fun with me. Text MTALK to 69866.18call 08718728876",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-059",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Your mobile number won a £2000 bonus prize",
+  "ask": "Call a premium-rate number immediately",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "URGENT! Your mobile number *************** WON a £2000 Bonus Caller prize on 10/06/03! This is the 2nd attempt to reach you! Call 09066368753 ASAP! Box 97N7QP, 150ppm",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

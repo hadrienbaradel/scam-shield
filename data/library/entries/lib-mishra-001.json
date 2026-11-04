@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-001",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Brand new Nokia 7250 up for auction today",
+  "ask": "Text NOKIA to 86021 to join the free auction",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "SMS AUCTION - A BRAND NEW Nokia 7250 is up 4 auction today! Auction is FREE 2 join & take part! Txt NOKIA to 86021 now! HG/Suite342/2Lands Row/W1J6HL",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-002",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "CDs 4u",
+  "lure": "You won 500 pounds in CD vouchers or a guaranteed gift",
+  "ask": "Text MUSIC to 87066 to claim the vouchers",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "CDs 4u: Congratulations ur awarded £500 of CD gift vouchers or £125 gift guaranteed & Freeentry 2 £100 wkly draw xt MUSIC to 87066 TnCs www.ldew.com1win150ppmx3age16",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

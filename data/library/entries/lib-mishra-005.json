@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-005",
+  "family": "charity",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Children in Need",
+  "lure": "Get Alfie Moon's Children in Need song on your mobile",
+  "ask": "Text a keyword to a premium number to donate",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "25p 4 alfie Moon's Children in need song on ur mob. Tell ur m8s. Txt Tone charity to 8007 for Nokias or Poly charity for polys: zed 08701417012 profit 2 charity.",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-046",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "You are due for a COVID-19 grant",
+  "ask": "Contact us by email to redeem it",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Congratulations!!! You are Due for a COVID-19 Grant, To Redeem,Contact us Via Email: [someone]@cokegrant.com",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

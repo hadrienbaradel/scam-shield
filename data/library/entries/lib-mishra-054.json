@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-054",
+  "family": "utility",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Orange",
+  "lure": "Free phones with double minutes and 1000 texts on Orange tariffs",
+  "ask": "Call MobileUpd8 on 08000839402 to claim the offer",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Double Mins & 1000 txts on Orange tariffs. Latest Motorola, SonyEricsson & Nokia with Bluetooth FREE! Call MobileUpd8 on 08000839402 or call2optout/HF8",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

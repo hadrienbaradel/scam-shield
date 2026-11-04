@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-072",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "You have won a guaranteed £800 prize in today's draw",
+  "ask": "Call 09050000460 from a landline to claim prize",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "URGENT! We are trying to contact U Todays draw shows that you have won a £800 prize GUARANTEED. Call 09050000460 from land line. Claim J89. po box245c2150pm",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

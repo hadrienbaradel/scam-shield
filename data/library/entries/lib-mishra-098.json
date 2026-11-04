@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-098",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Flipkart",
+  "lure": "You won a guaranteed Rs.10,00,000 prize",
+  "ask": "Call the provided number with claim code within 12 hours",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "URGENT! Dear FL1PKART Customer, We are trying to contact you. Last weekends draw shows that you w0n a Rs.10,00,000 prize GUARANTEED. Call 8536074310. Claim Code K52. Valid 12hrs only.",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

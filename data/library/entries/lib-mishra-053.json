@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-053",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "You have won 2,000 cash or 5,000 prize",
+  "ask": "Call 09050000337 to claim the winnings",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "You have won ?2,000 cash or a ?5,000 prize! To claim, call09050000337",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-063",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Free entry into 350 pound weekly competition",
+  "ask": "Text WIN to 80086 now",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "FREE entry into our £350 weekly competition just text the word WIN to 80086 NOW. 18 T&C www.txttowin.co.uk",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

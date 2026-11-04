@@ -1,0 +1,26 @@
+{
+  "id": "lib-mishra-026",
+  "family": "romance",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "A friendly stranger says you seem cool and says hello",
+  "ask": "Reply to chat with the stranger",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "SMS. ac sun0819 posts HELLO:\"You seem cool, wanted to say hi. HI!!!\" Stop? Send STOP to 62468",
+    "links": []
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

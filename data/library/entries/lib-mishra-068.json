@@ -1,0 +1,31 @@
+{
+  "id": "lib-mishra-068",
+  "family": "bank",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Paytm",
+  "lure": "Re-verification done and 1205 cashback added to wallet",
+  "ask": "Click the link and log in to Paytm",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Welcome to Paytm payment bank your re verification done successful in your wallet get 1205 cashback click in link and login your paytm http://7e4d6417.ngrok.io/paytm",
+    "links": [
+      {
+        "text": null,
+        "href": "http://7e4d6417.ngrok.io/paytm"
+      }
+    ]
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "lib-mishra-023",
+  "family": "prize",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": null,
+  "lure": "Claim this week's voucher offer",
+  "ask": "Visit the link on your PC",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Dear Voucher Holder, To claim this weeks offer, at you PC please go to http://www.e-tlp.co.uk/rewa",
+    "links": [
+      {
+        "text": null,
+        "href": "http://www.e-tlp.co.uk/rewa"
+      }
+    ]
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}

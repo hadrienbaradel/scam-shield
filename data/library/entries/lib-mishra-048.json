@@ -1,0 +1,31 @@
+{
+  "id": "lib-mishra-048",
+  "family": "bank",
+  "channel": "sms",
+  "country": null,
+  "language": "en",
+  "brand": "Nationwide",
+  "lure": "Debit card charged 1500 GBP at Apple Online Store",
+  "ask": "Urgently call fraud prevention number provided",
+  "message": {
+    "from": null,
+    "subject": null,
+    "body": "Nationwide has noticed your debit card was recently used on 22-10-2016 15:04:43, at APPLE ONLINE STORE FOR 1500.00 GBP. If not you please urgently call fraud prevention on 03303800231 or intl +443303800231. Do not reply by sms http://ww.Nationwide.co.uk/",
+    "links": [
+      {
+        "text": null,
+        "href": "http://ww.Nationwide.co.uk/"
+      }
+    ]
+  },
+  "first_seen": "2022-01-01",
+  "last_seen": "2022-01-01",
+  "source": {
+    "id": "mishra-soni",
+    "url": "https://data.mendeley.com/datasets/f45bkkt8pr/1",
+    "licence": "CC BY 4.0",
+    "attribution": "Mishra, S. and Soni, D. (2022). SMS Phishing Dataset for Machine Learning and Pattern Recognition. Mendeley Data, V1, doi:10.17632/f45bkkt8pr.1, CC BY 4.0"
+  },
+  "verdict": null,
+  "status": "published"
+}
