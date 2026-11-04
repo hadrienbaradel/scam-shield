@@ -18,7 +18,7 @@ Leave real messages, tokens and personal data out of the report.
 
 ## What the code does today
 
-- **Keys** are encrypted in `config/credentials.enc` (AES-256-GCM). `config/master.key` opens it, is git-ignored, and `make check`, so CI, fails if it is ever tracked (`_product/docs/secrets.md`). On Nov 1, 2026 gitleaks scanned the full git history: no key, password or token in any commit.
+- **Keys** are encrypted in `config/credentials.enc` (AES-256-GCM). `config/master.key` opens it, is git-ignored, and `make check`, so CI, fails if it is ever tracked (`_product/docs/secrets.md`). On Nov 1, 2026 gitleaks scanned the full git history: no key, password or token in any commit. Since Nov 4, CI runs gitleaks on every push and `npm audit`, which fails on a high or critical advisory (`_product/docs/infra.md`, CI).
 - **Mail bodies are never stored**, nor pasted texts, screenshots or recordings: a check keeps its verdict, the Gmail ids and the sender's domain. The only message text kept is what the person chose to share with a trusted person. The Gmail client can label and move, never send, trash or delete (`src/google/gmail.js`).
 - **The model** sees a message with its numbers, codes and names masked (screenshots and voice notes go as they are, since they must be read, and are not kept), in Standard mode only. Text that gives the AI orders, hidden text included, is scanned by Meta's Llama Prompt Guard 2 when its host's key is set (`lib/promptGuard/`), and a flagged message is never judged Safe.
 - **Retention** (`src/jobs/retention.js`): checks and alerts 90 days, the audit log 180, the model cache 30, the guardian outbox 7. "Delete my account" stops Gmail push, revokes Google's grant and deletes every per-person row.
