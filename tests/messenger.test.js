@@ -387,6 +387,46 @@ test("Muse Spark reads a picture as one message, a chat or a profile, and every 
   assert.match(buildUserPrompt({ ...input, socialProfile: { platform: "Instagram", facts: ["Call me on +1 555 010 0199"] } }), /<social_profile>\{"platform":"Instagram","facts":\["Call me on \[phone number\]"\]\}<\/social_profile>/);
 });
 
+test("a screenshot of Messenger's Message requests gets exactly one reply with the verdict words and the stranger's name", async () => {
+  const yakubu = { name: "Yakubu Zeero", preview: "Carlos Alcaraz: 4 months out injured. Today ...", date: "Aug 31", section: "requests" };
+  const INBOX = read("inbox", { platform: "Messenger", threads: [yakubu] });
+  const careful = {
+    ...verdict("be_careful"), headline: "Be careful: a stranger wrote to you first.",
+    reasons: [{ text: "Yakubu Zeero wrote to you first, on Aug 31, about tennis: no reason to contact you.", evidence: "pattern" }],
+    action: "do_nothing", action_text: "Do not reply and do not tap any link. To know more, open the chat and send Prudence a screenshot of what they wrote.",
+    impersonated_brand: null, scam_type: "romance_investment",
+  };
+  const meta = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  mock.script(INBOX, careful);
+  await send(channelWith(meta), attach("image", { url: IMG }));
+  assert.equal(meta.replies().length, 1, "one picture, one reply");
+  const reply = meta.replies()[0];
+  assert.match(reply, /^🟠 Be careful\nA stranger wrote to you first\./, reply);
+  assert.ok(reply.includes("• Yakubu Zeero wrote to you first, on Aug 31, about tennis") && reply.includes("send Prudence a screenshot"), reply);
+  const prompt = mock.calls[1].messages[0].content;
+  const message = JSON.parse(prompt.match(/<message>(.*?)<\/message>/)[1]);
+  assert.deepEqual([message.channel, message.from_name, message.subject, message.body],
+    ["messenger", "Yakubu Zeero", "Message requests on Messenger", "Yakubu Zeero (Aug 31): Carlos Alcaraz: 4 months out injured. Today ..."]);
+  assert.ok(prompt.includes("<inbox>") && prompt.includes("<thread_history>[]</thread_history>"), "judged as the list itself, not as a turn of a chat");
+  // The model down: the rules still answer Be careful, naming him.
+  mock.reset();
+  mock.script(INBOX, new Error("down"));
+  const rulesOnly = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  await send(channelWith(rulesOnly), attach("image", { url: IMG }));
+  assert.equal(rulesOnly.replies().length, 1);
+  assert.match(rulesOnly.replies()[0], /^🟠 Be careful/);
+  assert.ok(rulesOnly.replies()[0].includes("Yakubu Zeero wrote to you first, out of the blue."), rulesOnly.replies()[0]);
+  // After a forwarded text, the list is still what is judged; the text is its history.
+  mock.reset();
+  mock.script(INBOX, careful);
+  const after = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  await send(channelWith(after), delivery(event({ text: "Who is this man?" }), event({ attachments: [{ type: "image", payload: { url: IMG } }] })));
+  assert.equal(after.replies().length, 1);
+  const p2 = mock.calls[1].messages[0].content;
+  assert.equal(JSON.parse(p2.match(/<message>(.*?)<\/message>/)[1]).subject, "Message requests on Messenger");
+  assert.deepEqual(JSON.parse(p2.match(/<thread_history>(.*?)<\/thread_history>/)[1]).map((h) => h.body), ["Who is this man?"]);
+});
+
 test("a voice message is written down by Muse Voice Transcribe and judged, the reply quoting what it says", async () => {
   const heard = "Grandpa it's me, I had an accident and I'm in jail. Please buy $2,000 in gift cards today and don't tell mom.";
   const mp4 = Buffer.from("mp4-aac-bytes");

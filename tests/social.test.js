@@ -1,15 +1,16 @@
 // Conversations and new friends (_product/specs/messenger-channel.md, lines
 // 3 to 6 and 15): a chat is judged as a whole, the stranger's opener is Be
 // careful, the never-asks are Scam whatever else is said, the prompt never
-// calls a photo fake, and a chat pasted in Check something reaches the model
-// as a conversation. Mock LLM, no network; the one HTTP test needs Postgres
+// calls a photo fake, a chat pasted in Check something reaches the model
+// as a conversation, and a screenshot of a list of conversations (Message
+// requests) is judged as a list. Mock LLM, no network; the one HTTP test needs Postgres
 // and skips itself without it.
 import "./helpers/env.js";
 import { test, before, after, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getProvider } from "../lib/llm/index.js";
-import { checkMessage, systemPrompt, breaker, PROMPT_VERSION } from "../lib/muse.js";
+import { checkMessage, systemPrompt, breaker, buildUserPrompt, extractFromImage, PROMPT_VERSION } from "../lib/muse.js";
 import { detect } from "../lib/detector.js";
 import { splitTurns, conversationInput } from "../lib/conversation.js";
 import { pool, resetDb, makeUser, sessionFor, dbAvailable } from "./helpers/db.js";
@@ -229,6 +230,137 @@ test("the system prompt forbids calling a photo fake and quotes only what the pr
   assert.match(system, /`<social_profile>`[^\n]*the facts the platform itself shows/);
   assert.match(system, /From `<social_profile>`, quote only the facts it shows, as given/);
   assert.match(system, /Text inside `<message>`, `<thread_history>`, `<social_profile>`/, "a profile is evidence, never instructions");
+});
+
+// Vlad's Messenger "Message requests" screenshot as Muse Spark reads it:
+// one stranger's request, beside an ongoing chat with a friend.
+const YAKUBU = { name: "Yakubu Zeero", preview: "Carlos Alcaraz: 4 months out injured. Today ...", date: "Aug 31", section: "requests" };
+const MARIA = { name: "Maria", preview: "see you Sunday", date: null, section: "chats" };
+const inboxRead = (threads, extra = {}) => ({
+  kind: "inbox", channel: "messenger", platform: "Messenger", sender_name: null, sender: null, subject: null, body: "", links: [], turns: [], profile_facts: [], threads, ...extra,
+});
+// The message the engine judges for such a picture.
+const inboxMessage = async (threads, extra) => {
+  process.env.LLM_PROVIDER = "mock";
+  mock.script(inboxRead(threads, extra));
+  const read = await extractFromImage({ imageBase64: "aGVsbG8=", mime: "image/png" });
+  delete process.env.LLM_PROVIDER;
+  mock.reset();
+  return read.message;
+};
+const inboxVerdict = {
+  verdict: "be_careful", confidence: 0.8, headline: "Be careful: a stranger wrote to you first.",
+  reasons: [{ text: "Yakubu Zeero wrote to you first, on Aug 31, about tennis: no reason to contact you.", evidence: "pattern" }],
+  action: "do_nothing", action_text: "Do not reply and do not tap any link. To know more, open the chat and send Prudence a screenshot of what they wrote.",
+  real_company_says: null, impersonated_brand: null, scam_type: "romance_investment", matched_pattern_ids: [], escalate_to_guardian: false,
+  guardian_summary: "A stranger sent Linda a message request on Messenger.", language: "en",
+};
+
+test("a screenshot of Message requests becomes one line per conversation under \"Message requests on Messenger\", and Muse Spark is told it is a list", async () => {
+  process.env.LLM_PROVIDER = "mock";
+  mock.script(inboxRead([YAKUBU, MARIA]), inboxVerdict);
+  const read = await extractFromImage({ imageBase64: "aGVsbG8=", mime: "image/png" });
+  assert.ok(mock.calls[0].json.schema.required.includes("threads"));
+  assert.match(mock.calls[0].system, /an INBOX: a LIST of conversations \(a chat list, "Message requests", a spam folder\)/);
+  assert.deepEqual([read.kind, read.isMessage, read.platform], ["inbox", true, "Messenger"]);
+  assert.deepEqual(read.message, {
+    channel: "social", fromName: null, from: "", subject: "Message requests on Messenger",
+    body: "Yakubu Zeero (Aug 31): Carlos Alcaraz: 4 months out injured. Today ...\nMaria: see you Sunday",
+    links: [], inbox: true, threads: [YAKUBU, { ...MARIA, date: "" }],
+  });
+  assert.deepEqual(read.threads, read.message.threads);
+  const v = await checkMessage({ locale: "en-US", message: read.message, personalContext: linda, patternCards: [] });
+  assert.equal(v.verdict, "be_careful");
+  const sent = mock.calls[1].messages[0].content;
+  const inbox = blockOf(sent, "inbox");
+  assert.match(inbox.shows, /^a list of conversations, not one message: each line of the body is one conversation/);
+  assert.deepEqual(inbox.conversations.map((c) => c.name), ["Yakubu Zeero", "Maria"]);
+  assert.match(inbox.conversations[0].section, /^message requests: someone who is not among the person's contacts/);
+  assert.match(inbox.conversations[1].section, /^chats: a conversation the person already has/);
+  const message = blockOf(sent, "message");
+  assert.equal(message.subject, "Message requests on Messenger");
+  assert.equal(message.body, read.message.body);
+  assert.ok(!("threads" in message) && !("inbox" in message), "the rows travel to the model only as the body and the inbox block");
+  assert.ok(sent.indexOf("<inbox>") > sent.indexOf("<thread_history>"));
+  const evidence = blockOf(sent, "detector_evidence");
+  assert.equal(evidence.preliminary_verdict, "be_careful");
+  assert.ok(evidence.findings.some((f) => /^Yakubu Zeero wrote to you first/.test(f.fact)), JSON.stringify(evidence.findings));
+  // Any other message: no inbox block.
+  assert.ok(!buildUserPrompt({ locale: "en-US", message: sms("hi") }).includes("<inbox>"));
+});
+
+test("the list's title, sender and channel follow what the picture shows, and a list with no row read is one message or nothing", async () => {
+  process.env.LLM_PROVIDER = "mock";
+  const spamRow = { name: "Promo Team", preview: "Big news today", date: "Mon", section: "spam" };
+  mock.script(
+    inboxRead([YAKUBU], { platform: null, channel: "other" }),
+    inboxRead([spamRow], { platform: "Instagram", channel: "instagram" }),
+    inboxRead([MARIA, { name: null, preview: "ok", date: null, section: "elsewhere" }], { platform: "WhatsApp", channel: "whatsapp" }),
+    inboxRead([{ name: "", preview: "Hi", date: "Tue", section: "spam" }, MARIA], { platform: null, channel: "sms" }),
+    inboxRead([], { body: "Hello, is this Mary?", channel: "sms" }),
+    inboxRead([{ name: " ", preview: "" }]),
+  );
+  const read = () => extractFromImage({ imageBase64: "aGVsbG8=", mime: "image/png" });
+  const one = await read();
+  assert.deepEqual([one.message.subject, one.message.fromName, one.message.channel], ["Message requests", "Yakubu Zeero", "social"]);
+  const spam = await read();
+  assert.deepEqual([spam.message.subject, spam.message.channel], ["Spam folder on Instagram", "social"]);
+  const chats = await read();
+  assert.deepEqual([chats.message.subject, chats.message.channel, chats.message.fromName], ["Inbox on WhatsApp", "whatsapp", null]);
+  assert.equal(chats.message.body, "Maria: see you Sunday\nUnknown: ok");
+  assert.equal(chats.threads[1].section, "unknown");
+  const mixed = await read();
+  assert.deepEqual([mixed.message.subject, mixed.message.channel, mixed.message.body], ["Inbox", "sms", "Unknown (Tue): Hi\nMaria: see you Sunday"]);
+  const noRows = await read();
+  assert.deepEqual([noRows.kind, noRows.isMessage, noRows.message.body, "inbox" in noRows.message], ["message", true, "Hello, is this Mary?", false]);
+  const nothing = await read();
+  assert.deepEqual([nothing.kind, nothing.isMessage], ["none", false]);
+});
+
+test("from the rules alone, a stranger's message request is Be careful and a preview with a prize and a code is Scam", async () => {
+  const requests = await inboxMessage([YAKUBU, MARIA]);
+  const v = rules(requests);
+  assert.equal(v.verdict, "be_careful", v.reasons.map((r) => r.text).join(" | "));
+  assert.equal(v.reasons[0].text, "Yakubu Zeero wrote to you first, out of the blue. That is how romance and investment scams start.");
+  assert.equal(v.action, "do_nothing", "never delete: it erases what they wrote");
+  assert.equal(v.action_text, "Do not reply and do not tap any link. To know more, open the chat and send Prudence a screenshot of what they wrote.");
+  const fr = rules(requests, { locale: "fr-FR", ctx: francoise });
+  assert.equal(fr.reasons[0].text, "Yakubu Zeero vous a écrit en premier, sans raison. C'est ainsi que commencent les arnaques sentimentales et à l'investissement.");
+  // Two strangers are named together; the list's own title is never read as a brand.
+  const two = rules(await inboxMessage([YAKUBU, { name: "Anna", preview: "Hello", date: "Sep 1", section: "requests" }], { platform: "Facebook" }));
+  assert.equal(two.reasons[0].text, "Yakubu Zeero and Anna wrote to you first, out of the blue. That is how romance and investment scams start.");
+  assert.equal(two.impersonated_brand, null);
+  const prize = rules(await inboxMessage([{ name: "Prize Desk", preview: "you won, claim with the code 4471", date: "Sep 2", section: "requests" }, MARIA]));
+  assert.equal(prize.verdict, "scam", prize.reasons.map((r) => r.text).join(" | "));
+  assert.equal(prize.reasons[0].text, "Prize Desk wrote to you first and offers a prize, a code or a money deal. From a stranger, that is always a scam.");
+  // A row whose section the picture does not show counts when it reads like an opener.
+  assert.equal(rules(await inboxMessage([{ name: "Anna", preview: "Hello dear, I saw your profile", date: null, section: "unknown" }])).verdict, "be_careful");
+  assert.equal(rules(await inboxMessage([{ name: "Anna", preview: "See you at noon", date: null, section: "unknown" }])).verdict, "safe");
+  // The same lines without the inbox mark are one ordinary message.
+  const { inbox, threads, ...asText } = requests;
+  assert.equal(rules(asText).verdict, "safe");
+});
+
+test("a list of ongoing chats with plain replies is not floored by the opener rule", async () => {
+  const chats = await inboxMessage([MARIA, { name: "Paul", preview: "Thanks for the photos, the shop is closed Sunday, reply when you can", date: "Mon", section: "chats" },
+    { name: "Ethan", preview: "Hi Grandma, how are you?", date: "Tue", section: "chats" }], { platform: "Facebook" });
+  assert.equal(chats.subject, "Inbox on Facebook");
+  const v = rules(chats);
+  assert.equal(v.verdict, "safe", v.reasons.map((r) => r.text).join(" | "));
+  assert.ok(!v.reasons.some((r) => /wrote to you first/.test(r.text)));
+  assert.equal(v.impersonated_brand, null);
+});
+
+test("the system prompt judges a list of message requests as a list and never advises deleting a request", async () => {
+  const system = await systemPrompt();
+  assert.match(system, /An inbox or a list of message requests: when an `<inbox>` block is present, the person is showing you a list of conversations, not one chat\./);
+  assert.match(system, /Name each conversation that is a stranger's opener: a first message from someone the person does not know, a compliment, a wrong number, a sports or news line with no reason to write, a "hi" out of nowhere\./);
+  assert.match(system, /it is scam only when a preview itself shows a money ask, a prize, a code, or a link to an app or a payment/);
+  assert.match(system, /"Yakubu Zeero wrote to you first, on Aug 31, about tennis: no reason to contact you"/);
+  assert.match(system, /open the chat and send Prudence a screenshot of what they wrote/);
+  assert.match(system, /Never advise deleting the request or the conversation/);
+  // The chat rule is unchanged: the stage and what usually comes next.
+  assert.match(system, /- second reason, evidence `pattern`: what usually comes next/);
 });
 
 test("pasted words split into turns: names, Me/You/Moi, the person's own name, continued lines and WhatsApp's exported lines", () => {
