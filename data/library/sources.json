@@ -1,0 +1,16 @@
+[
+  {
+    "id": "prudence-demo",
+    "name": "Prudence demo cases",
+    "url": "https://github.com/hadrienbaradel/scam-shield",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  {
+    "id": "prudence-submissions",
+    "name": "Submitted to Prudence",
+    "url": "https://github.com/hadrienbaradel/scam-shield",
+    "licence": "CC BY 4.0",
+    "attribution": "Submitted to the Prudence scam library (Scam Shield), CC BY 4.0"
+  }
+]

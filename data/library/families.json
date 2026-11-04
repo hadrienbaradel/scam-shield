@@ -1,0 +1,191 @@
+[
+  {
+    "id": "delivery",
+    "name": { "en": "Delivery or parcel", "fr": "Colis et livraison" },
+    "definition": {
+      "en": "A message about a parcel that is waiting, blocked or undeliverable, asking for a small fee or an address on a link that is not the carrier's.",
+      "fr": "Un message sur un colis en attente, bloqué ou non livrable, qui demande de petits frais ou une adresse sur un lien qui n'est pas celui du transporteur."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Phishing/Spoofing", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": "NFIB5A" }
+  },
+  {
+    "id": "bank",
+    "name": { "en": "Bank fraud alert or safe account", "fr": "Fausse alerte bancaire, faux conseiller" },
+    "definition": {
+      "en": "Someone posing as the bank reports a suspicious payment or a blocked card and asks for codes, a sign-in on a look-alike page, or a transfer to a \"safe\" account.",
+      "fr": "Quelqu'un se fait passer pour la banque, signale un paiement suspect ou une carte bloquée et demande des codes, une connexion sur une page imitée ou un virement vers un compte « sécurisé »."
+    },
+    "refs": { "scamclassifier": "Bank Impostor", "ic3": "Phishing/Spoofing", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "impersonation-scams", "fr": "fraude-faux-conseiller-bancaire", "nfib": "NFIB5A" }
+  },
+  {
+    "id": "government",
+    "name": { "en": "Government, tax or benefits", "fr": "Administration, impôts ou prestations" },
+    "definition": {
+      "en": "A message or call in the name of a tax office, a benefits agency, the police or a court, threatening a suspension, a fine or an arrest unless the person pays or gives her details at once.",
+      "fr": "Un message ou un appel au nom des impôts, d'une caisse, de la police ou d'un tribunal, qui menace d'une suspension, d'une amende ou d'une arrestation si la personne ne paie pas ou ne donne pas ses informations tout de suite."
+    },
+    "refs": { "scamclassifier": "Government Impostor", "ic3": "Government Impersonation", "ftc": "Imposter Scams › Government Imposters", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": "NFIB15" }
+  },
+  {
+    "id": "tech-support",
+    "name": { "en": "Tech support or refund", "fr": "Faux support technique, faux remboursement" },
+    "definition": {
+      "en": "A pop-up, email or call says the computer is infected or a subscription was charged, and asks the person to call a number, let someone take control of the computer or pay to fix it.",
+      "fr": "Une fenêtre, un e-mail ou un appel annonce un ordinateur infecté ou un abonnement facturé, et demande d'appeler un numéro, de laisser quelqu'un prendre la main sur l'ordinateur ou de payer pour réparer."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Tech/Customer Support", "ftc": "Imposter Scams › Tech Support Scams", "scamwatch": "threats-and-extortion-scams", "fr": "arnaques-au-faux-support-technique", "nfib": "NFIB3E" }
+  },
+  {
+    "id": "family-emergency",
+    "name": { "en": "Family emergency", "fr": "Urgence familiale, faux petit-enfant" },
+    "definition": {
+      "en": "Someone posing as a grandchild, a relative or a friend in trouble (an accident, an arrest, a stolen wallet) asks for money or gift cards right now and for secrecy.",
+      "fr": "Quelqu'un se fait passer pour un petit-enfant, un proche ou un ami en difficulté (accident, arrestation, portefeuille volé), demande de l'argent ou des cartes cadeaux tout de suite et exige le secret."
+    },
+    "refs": { "scamclassifier": "Relative/Family/Friend Impostor", "ic3": "Confidence/Romance", "ftc": "Imposter Scams › Family & Friend Imposters", "scamwatch": "impersonation-scams", "fr": null, "nfib": null }
+  },
+  {
+    "id": "new-number",
+    "name": { "en": "\"Hi Mum, new number\"", "fr": "« Maman, j'ai changé de numéro »" },
+    "definition": {
+      "en": "A text from an unknown number claims to be a child or grandchild with a new phone, then asks for money or a payment because the usual account cannot be reached.",
+      "fr": "Un SMS d'un numéro inconnu se présente comme un enfant ou un petit-enfant qui a changé de téléphone, puis demande de l'argent ou un paiement parce que le compte habituel est inaccessible."
+    },
+    "refs": { "scamclassifier": "Relative/Family/Friend Impostor", "ic3": "Confidence/Romance", "ftc": "Imposter Scams › Family & Friend Imposters", "scamwatch": "impersonation-scams", "fr": null, "nfib": null }
+  },
+  {
+    "id": "romance",
+    "name": { "en": "Romance", "fr": "Escroquerie sentimentale" },
+    "definition": {
+      "en": "A stranger builds affection over weeks of messages, keeps the relationship secret from the family, then asks for money, a loan or an investment.",
+      "fr": "Un inconnu construit une relation affectueuse au fil des messages, la tient secrète vis-à-vis de la famille, puis demande de l'argent, un prêt ou un placement."
+    },
+    "refs": { "scamclassifier": "Romance Impostor", "ic3": "Confidence/Romance", "ftc": "Imposter Scams › Romance Scams", "scamwatch": "online-dating-and-romance-scams", "fr": "comment-reagir-en-cas-descroquerie-sentimentale", "nfib": "NFIB1D" }
+  },
+  {
+    "id": "investment",
+    "name": { "en": "Investment or crypto", "fr": "Placement, crypto" },
+    "definition": {
+      "en": "A sure, fast profit on a trading app, crypto or a \"mentor\"'s platform, with fake gains shown to get a first deposit and then bigger ones.",
+      "fr": "Un gain sûr et rapide sur une application de trading, des cryptomonnaies ou la plateforme d'un « mentor », avec de faux profits affichés pour obtenir un premier dépôt puis de plus gros."
+    },
+    "refs": { "scamclassifier": "Investment", "ic3": "Investment Fraud", "ftc": "Investment Related", "scamwatch": "investment-scams", "fr": "escroquerie-placement-financier", "nfib": "NFIB2A" }
+  },
+  {
+    "id": "prize",
+    "name": { "en": "Lottery, prize or inheritance", "fr": "Loterie, gain, héritage" },
+    "definition": {
+      "en": "The person has won a prize, a lottery or an inheritance she never entered, and must pay a fee, a tax or give her bank details to receive it.",
+      "fr": "La personne a gagné un lot, une loterie ou un héritage auxquels elle n'a jamais participé, et doit payer des frais, une taxe ou donner ses coordonnées bancaires pour le recevoir."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Lottery/Sweepstakes/Inheritance", "ftc": "Prizes, Sweepstakes and Lotteries", "scamwatch": "unexpected-money", "fr": null, "nfib": "NFIB1B" }
+  },
+  {
+    "id": "charity",
+    "name": { "en": "Charity", "fr": "Faux appel aux dons" },
+    "definition": {
+      "en": "An appeal for donations in the name of a charity, a disaster or a sick child, pressing for a gift now through a link, an account or a fundraising page that is not the charity's.",
+      "fr": "Un appel aux dons au nom d'une association, d'une catastrophe ou d'un enfant malade, qui presse de donner tout de suite par un lien, un compte ou une cagnotte qui ne sont pas ceux de l'association."
+    },
+    "refs": { "scamclassifier": "Other Trusted Party", "ic3": "Charity", "ftc": "Charitable Solicitations", "scamwatch": null, "fr": null, "nfib": "NFIB4A" }
+  },
+  {
+    "id": "job",
+    "name": { "en": "Job or task", "fr": "Fausse offre d'emploi" },
+    "definition": {
+      "en": "A job offer or paid tasks nobody applied for, through a recruiter's name, leading to a form that collects personal details, an upfront payment or a fake cheque.",
+      "fr": "Une offre d'emploi ou des tâches rémunérées que personne n'a demandées, au nom d'un recruteur, qui mènent à un formulaire qui collecte des données personnelles, à une avance à payer ou à un faux chèque."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Employment Fraud", "ftc": "Business and Job Opportunities › Job Scams & Employment Agencies", "scamwatch": "jobs-and-employment-scams", "fr": "fausses-offres-demploi-creees-par-des-fraudeurs", "nfib": null }
+  },
+  {
+    "id": "rental",
+    "name": { "en": "Rental", "fr": "Fausse location" },
+    "definition": {
+      "en": "A flat or holiday home at a good price, with a deposit or the first rent to pay before any visit, to a landlord who is abroad or cannot meet.",
+      "fr": "Un appartement ou une location de vacances à bon prix, avec une caution ou un premier loyer à verser avant toute visite, à un propriétaire à l'étranger ou injoignable."
+    },
+    "refs": { "scamclassifier": "Property Sale or Rental", "ic3": "Real Estate Fraud", "ftc": null, "scamwatch": "product-and-service-scams", "fr": "arnaques-location-immobiliere", "nfib": "NFIB1G" }
+  },
+  {
+    "id": "renewal",
+    "name": { "en": "Subscription renewal or fake order", "fr": "Faux renouvellement, fausse commande" },
+    "definition": {
+      "en": "A subscription has failed to renew or an order was placed in the person's name, with a link to \"update the payment\" or a number to call to cancel.",
+      "fr": "Un abonnement n'a pas pu être renouvelé ou une commande a été passée au nom de la personne, avec un lien pour « mettre à jour le paiement » ou un numéro à appeler pour annuler."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Tech/Customer Support", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": "NFIB3E" }
+  },
+  {
+    "id": "toll-fine",
+    "name": { "en": "Toll or fine", "fr": "Péage, amende" },
+    "definition": {
+      "en": "An unpaid toll or a traffic fine, small today and much bigger tomorrow, to pay on a link that is not the agency's.",
+      "fr": "Un péage impayé ou une contravention, petite aujourd'hui et bien plus grosse demain, à payer sur un lien qui n'est pas celui de l'organisme."
+    },
+    "refs": { "scamclassifier": "Government Impostor", "ic3": "Phishing/Spoofing", "ftc": "Imposter Scams › Government Imposters", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": null }
+  },
+  {
+    "id": "utility",
+    "name": { "en": "Utility or phone bill", "fr": "Facture d'énergie ou de téléphone" },
+    "definition": {
+      "en": "A bill, a refund or a cut-off notice in the name of an energy, water, phone or internet provider, with a link to a look-alike customer area or a payment to make at once.",
+      "fr": "Une facture, un remboursement ou une menace de coupure au nom d'un fournisseur d'énergie, d'eau, de téléphone ou d'internet, avec un lien vers un espace client imité ou un paiement à faire tout de suite."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Phishing/Spoofing", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": null }
+  },
+  {
+    "id": "account",
+    "name": { "en": "Account suspended or sign-in needed", "fr": "Compte suspendu, piratage de compte" },
+    "definition": {
+      "en": "An account is about to be closed, was accessed from a new device or needs a code: the person is asked to sign in on a copied page or to hand over a one-time code.",
+      "fr": "Un compte va être fermé, a été consulté depuis un nouvel appareil ou a besoin d'un code : la personne doit se connecter sur une page copiée ou donner un code à usage unique."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Phishing/Spoofing", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "impersonation-scams", "fr": "piratage-de-compte", "nfib": "NFIB52C" }
+  },
+  {
+    "id": "sextortion",
+    "name": { "en": "Sextortion or blackmail", "fr": "Sextorsion, chantage" },
+    "definition": {
+      "en": "A stranger claims to have filmed the person or to hold compromising material, often quoting an old password as proof, and demands a payment in crypto within hours.",
+      "fr": "Un inconnu prétend avoir filmé la personne ou détenir des images compromettantes, cite souvent un ancien mot de passe comme preuve, et exige un paiement en cryptomonnaie sous quelques heures."
+    },
+    "refs": { "scamclassifier": null, "ic3": "Extortion", "ftc": null, "scamwatch": "threats-and-extortion-scams", "fr": "sextorsion", "nfib": null }
+  },
+  {
+    "id": "invoice",
+    "name": { "en": "Fake invoice or new bank details", "fr": "Fausse facture, faux RIB" },
+    "definition": {
+      "en": "An invoice to pay or a supplier, a landlord or a notary who has \"changed bank\", so that a real payment goes to the scammer's account.",
+      "fr": "Une facture à régler ou un fournisseur, un bailleur ou un notaire qui a « changé de banque », pour qu'un vrai paiement parte sur le compte de l'escroc."
+    },
+    "refs": { "scamclassifier": "Business Impostor", "ic3": "Business Email Compromise", "ftc": "Imposter Scams › Business Imposters", "scamwatch": "product-and-service-scams", "fr": "que-faire-en-cas-de-fraude-au-virement-ou-au-faux-rib", "nfib": "NFIB5D" }
+  },
+  {
+    "id": "marketplace",
+    "name": { "en": "Marketplace buyer or seller", "fr": "Faux acheteur, faux vendeur" },
+    "definition": {
+      "en": "On a classifieds or shopping site, a seller who never ships, a buyer who overpays and asks for the difference, or a payment moved off the platform.",
+      "fr": "Sur un site d'annonces ou de vente, un vendeur qui n'envoie jamais, un acheteur qui paie trop et réclame la différence, ou un paiement sorti de la plateforme."
+    },
+    "refs": { "scamclassifier": "Merchandise", "ic3": "Non-Payment/Non-Delivery", "ftc": "Online Shopping and Negative Reviews", "scamwatch": "product-and-service-scams", "fr": null, "nfib": "NFIB3A" }
+  },
+  {
+    "id": "health",
+    "name": { "en": "Health, Medicare or insurance", "fr": "Santé, Assurance Maladie, mutuelle" },
+    "definition": {
+      "en": "A message in the name of Medicare, the health service or an insurer about a new card, a refund or a benefit, asking for a fee or for the person's details on a link.",
+      "fr": "Un message au nom de l'Assurance Maladie, d'un service de santé ou d'une mutuelle à propos d'une nouvelle carte, d'un remboursement ou d'un droit, qui demande des frais ou les informations de la personne sur un lien."
+    },
+    "refs": { "scamclassifier": "Government Impostor", "ic3": "Government Impersonation", "ftc": "Health Care", "scamwatch": "impersonation-scams", "fr": "hameconnage-phishing", "nfib": null }
+  },
+  {
+    "id": "recovery",
+    "name": { "en": "Recovery of lost money", "fr": "Fausse récupération d'argent perdu" },
+    "definition": {
+      "en": "A law firm, an agency or an \"official\" offers to get back money the person already lost to a scam, for a fee to pay first.",
+      "fr": "Un cabinet, une agence ou un « officiel » propose de récupérer l'argent que la personne a déjà perdu dans une arnaque, contre des frais à payer d'abord."
+    },
+    "refs": { "scamclassifier": null, "ic3": null, "ftc": null, "scamwatch": null, "fr": null, "nfib": "NFIB1E" }
+  }
+]
