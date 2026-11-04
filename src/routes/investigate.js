@@ -112,12 +112,15 @@ export default async function investigateRoutes(app) {
     if (!investigateConfigured()) return unavailable(reply);
     const hit = demoLooks.get(e.id);
     if (hit) return hit;
+    const first = await demoVerdict(e);
     const out = await look(request, reply, {
       message: e, threadHistory: e.threadHistory || [], linkInspection: e.mockLinkInspection || {}, locale: e.locale,
       personalContext: demoProfile(e), patternCards: DEMO_CARDS,
-      first: await demoVerdict(e), deps: investigateDeps({ exampleFacts: e.mockLinkInspection || null }),
+      first, deps: investigateDeps({ exampleFacts: e.mockLinkInspection || null }),
     });
-    if (out?.verdict) demoLooks.set(e.id, out);
+    // Kept only when it stands on a real first verdict: never after the rules answered
+    // for a failing model (degraded, not kept by the demo check either), never without a verdict.
+    if (out?.verdict && !first?.degraded) demoLooks.set(e.id, out);
     return out;
   });
 }

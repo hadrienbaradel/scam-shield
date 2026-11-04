@@ -535,6 +535,26 @@ test("a demo example is looked at with its persona and its own link facts, and t
   assert.equal(mock.calls.length, 3, "a repeat costs no model call");
 });
 
+test("a demo look is never kept when its first verdict came from the rules for a failing model, nor when it has no verdict", async () => {
+  const look = () => app.inject({ method: "POST", url: "/api/demo/investigate", headers: { origin: ORIGIN }, payload: { id: "D7" } });
+  // The first check's model fails: the rules answer (degraded), then the look runs.
+  mock.script(new Error("down"), ask(["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
+  const res = await look();
+  assert.equal(res.statusCode, 200, res.body);
+  assert.equal(res.json().verdict, "scam");
+  const used = mock.calls.length;
+  mock.script(new Error("down"), ask(["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
+  await look();
+  assert.equal(mock.calls.length, used + 3, "asked again: the degraded first verdict was not kept, nor the look on it");
+  // A look without a verdict is not kept either (the first verdict, now real, is).
+  mock.script({ verdict: "scam", confidence: 0.9, headline: "Scam.", reasons: [{ text: "x", evidence: "link" }], action: "delete", action_text: "Delete it.",
+    real_company_says: null, impersonated_brand: null, scam_type: "other", matched_pattern_ids: [], escalate_to_guardian: false, guardian_summary: null, language: "en" },
+  ask(["scam_patterns", {}]), answer("scam", [{ text: "cites nothing", check: 9 }]));
+  assert.equal((await look()).json().verdict, null);
+  mock.script(ask(["scam_patterns", {}]), answer("scam", [{ text: "x", check: 1 }]));
+  assert.equal((await look()).json().verdict, "scam", "asked again after a look without a verdict");
+});
+
 test("a look that cannot run answers 502 with one plain sentence, never the model's own words", async () => {
   mock.script(
     { verdict: "be_careful", confidence: 0.6, headline: "Be careful.", reasons: [{ text: "x", evidence: "sender" }], action: "ask_guardian", action_text: "Ask.",
