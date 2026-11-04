@@ -38,6 +38,7 @@ import whatsappRoutes from "./routes/whatsapp.js";
 import { webhookActive, whatsappConfigured } from "./channels/whatsapp.js";
 import messengerRoutes from "./routes/messenger.js";
 import dbWatchRoutes from "./routes/dbWatch.js";
+import adLandingRoutes from "./routes/adLanding.js";
 import earlyAccessRoutes from "./routes/earlyAccess.js";
 import { messengerConfigured, webhookActive as messengerWebhookActive } from "./channels/messenger.js";
 
@@ -111,6 +112,7 @@ export async function buildApp({ logger = true, trustProxy = config.trustProxy }
   await app.register(whatsappRoutes);
   await app.register(messengerRoutes);
   await app.register(dbWatchRoutes);
+  await app.register(adLandingRoutes);
   await app.register(earlyAccessRoutes);
   await app.register(fastifyStatic, { root: publicDir, index: ["index.html"] });
   // The public database's site (public/db/) at /public/: another interface of heyprudence, no session, never the senior's app.

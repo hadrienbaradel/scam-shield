@@ -19,6 +19,14 @@
 //
 // The classes it keeps on <html> (js, in-app, l-fr) are the ones
 // landing/hint.js set before the first paint; landing/landing.css reads them.
+//
+// An ad's landing variant (/a/<code>, src/routes/adLanding.js) is this page
+// with the ad's headline and opening line, and the ad's code in a hidden
+// "variant" field of the English form. There the landing opens in English,
+// whatever the saved or the browser's language (the visitor can still switch),
+// its tab keeps the ad's headline, a request from either form carries the
+// code, and a signed-in person sees the landing too (an admin's Preview, an
+// adult child already signed in): only a #/ route opens the app.
 
 import { api } from "../js/api.js";
 import { STRINGS, setLang, getLang, t } from "../js/i18n.js";
@@ -27,12 +35,20 @@ const html = () => document.documentElement;
 const root = () => document.getElementById("landing");
 const view = () => document.getElementById("view");
 const isRoute = () => location.hash.startsWith("#/");
+const variantField = () => root()?.querySelector('input[name="variant"]') || null;
 const SIGNIN_MESSAGES = { need_gmail: "signin_need_gmail", cancelled: "signin_cancelled", error: "signin_error", expired: "signin_expired" };
 let wired = false;
 
 export const landingAnchor = () => Boolean(root()) && !html().classList.contains("in-app") && !isRoute();
 
 export function hideLanding(signedIn) {
+  const el = root();
+  if (el && variantField() && !isRoute()) {
+    // The app draws behind it, hidden (landing.css hides #view without in-app).
+    view().hidden = true;
+    reveal(el, null);
+    return;
+  }
   html().classList.add("in-app");
   view().hidden = false;
   if (signedIn) root()?.remove();
@@ -45,10 +61,16 @@ export function showLanding(status) {
   v.hidden = true;
   const el = root();
   if (!el) { location.replace("/"); return; }
-  html().classList.remove("in-app");
   // No one is signed in: a hint left from an ended session would hide the
   // landing at the next visit for nothing.
   if (/(?:^|;\s*)prudence_in=/.test(document.cookie)) document.cookie = "prudence_in=; Max-Age=0; path=/; SameSite=Lax";
+  reveal(el, status);
+}
+
+// The landing shows; the first time, an ad's variant switches to English.
+function reveal(el, status) {
+  html().classList.remove("in-app");
+  if (!wired && variantField()) setLang("en");
   showLanguage(getLang());
   if (!wired) { wired = true; wire(el, status); }
 }
@@ -56,6 +78,9 @@ export function showLanding(status) {
 function showLanguage(l) {
   html().classList.toggle("l-fr", l === "fr");
   for (const b of root().querySelectorAll(".l-lang")) b.hidden = b.dataset.lang !== l;
+  // The variant's tab says the ad's headline (the server's <title>), in English.
+  const h1 = l === "en" && variantField() ? root().querySelector("#l-h1") : null;
+  if (h1?.textContent) document.title = h1.textContent;
 }
 
 const blocks = (el) => [...el.querySelectorAll(".l-lang")].map((b) => [b, STRINGS[b.dataset.lang === "fr" ? "fr" : "en"]]);
@@ -83,8 +108,10 @@ function wire(el, status) {
 
   // Google sign-in not set up on this server: say so next to the two sign-in
   // links (on a developer's computer they open the local sign-in instead).
+  // Without a status (a signed-in person on an ad's variant), /auth/config says.
   if (!status?.googleConfigured) {
     api("/auth/config").then((cfg) => {
+      if (cfg?.googleConfigured) return;
       for (const [b, s] of blocks(el)) {
         const note = b.querySelector(".l-signin-note");
         note.textContent = s[cfg?.devSignin ? "local_signin_note" : "not_configured"];
@@ -127,7 +154,11 @@ function wireRequest(f) {
     const send = f.querySelector(".l-send");
     send.disabled = true;
     try {
-      const out = await api("/api/early-access", { method: "POST", body: Object.fromEntries(new FormData(f)) });
+      const body = Object.fromEntries(new FormData(f));
+      // On an ad's variant the English form carries its code; the French one sends it too.
+      const variant = variantField()?.value;
+      if (variant && !body.variant) body.variant = variant;
+      const out = await api("/api/early-access", { method: "POST", body });
       thanks.querySelector(".l-sent").textContent = out.email;
       f.hidden = true;
       thanks.hidden = false;
