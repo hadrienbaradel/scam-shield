@@ -1,7 +1,8 @@
 // Every word on screen, in English and French. Plain words, "vous" in
 // French, no jargon (PRD writing rules).
 
-const STRINGS = {
+// Exported for tests/menu.test.js (every English key has its French twin).
+export const STRINGS = {
   en: {
     tagline: "It knows your life, so scammers can't fake it",
     nav_inbox: "My email", nav_check: "Check something", nav_people: "My trusted people", nav_settings: "Settings",
@@ -125,7 +126,8 @@ const STRINGS = {
     sure_high: "We are very sure.", sure_mid: "We are fairly sure.", sure_low: "We are not sure: be careful.",
     retry: "Try again", saving: "Saving…", load_failed: "Prudence could not load. Check your internet connection.",
     error_generic: "Something went wrong. To be safe, do not click anything in the message.",
-    when_now: "just now", when_min: "{n} min ago", when_hour: "{n} h ago", when_day: "{n} days ago",
+    when_now: "just now", when_min: "{n} minutes ago", when_min_one: "1 minute ago", when_hour: "{n} hours ago", when_hour_one: "1 hour ago",
+    when_day: "{n} days ago", when_day_one: "1 day ago",
     // Learn (_product/specs/micro-learning.md). A key ending in _one is the
     // singular, picked by views/learn.js (French: 0 and 1, English: 1).
     learn_tab: "Learn", learn_back: "Back to Learn",
@@ -143,6 +145,97 @@ const STRINGS = {
     learn_try_real: "Try it on a real one", learn_real_note: "An example message, checked by Prudence like your own.",
     learn_next_lesson: "Next lesson",
     learn_load_failed: "Could not load the lessons.", learn_save_failed: "Your stars could not be saved just now. Please check your internet connection.",
+    // ------------------------------------------------------------------
+    // 2026-11-04 redesign (_product/specs/protection-menu.md; the canvas is
+    // _product/design/2026-11-04-redesign/claude-design/). One group per
+    // screen, so each screen's builder appends to its own group only. Words
+    // that already exist above are reused, not copied: each group names the
+    // older keys it reads. The same groups, in the same order, sit in "fr".
+    // --- chrome ---
+    // Also read: nav_settings (the header's Settings button), v2_tab_today,
+    // v2_tab_check, learn_tab (tab labels), sign_out, lang_switch, skip.
+    tab_blocked: "Blocked", nav_tabs_label: "Main menu", nav_top_label: "Top menu",
+    // --- protects (protect_*) ---
+    // The rows of "What Prudence protects" (public/js/protects.js). protect_soon
+    // is the word of every "Coming soon" tag, on any screen.
+    protect_title: "What Prudence protects",
+    protect_email: "Your email", protect_email_on: "On", protect_email_checked: "On · checked {when}",
+    protect_email_first: "On · getting to know your mailbox", protect_email_retry: "On · checking again in a minute",
+    protect_email_lost: "Prudence cannot read your email right now", protect_email_off: "Not connected yet",
+    protect_email_verb: "See my messages", protect_email_reconnect: "Connect Gmail again", protect_email_connect: "Connect my email",
+    protect_texts: "Your text messages", protect_texts_on: "On, on {device}", protect_texts_on_phone: "On, on your phone",
+    protect_texts_none: "Needs the Prudence app on your Android phone", protect_texts_change: "Change", protect_texts_add: "Add my phone",
+    protect_voice: "Voice messages", protect_voice_state: "Send one any time", protect_voice_verb: "Check a voice message",
+    protect_whatsapp: "WhatsApp messages", protect_whatsapp_line: "Forward a message to Prudence and the answer comes back in the chat",
+    protect_facebook: "Facebook and Messenger", protect_facebook_line: "A message or a Marketplace chat that feels wrong",
+    protect_calls: "Your phone calls", protect_calls_line: "A warning before you call back a number from a scam message",
+    protect_soon: "Coming soon", protect_soon_label: "{name}, coming soon, no action",
+    // --- today (td_*) ---
+    // Also read: v2_morning, v2_afternoon, v2_evening (the greeting), v2_need_one,
+    // v2_need_many, v2_look_one, v2_look, and the three Check choices ck_photo,
+    // ck_photo_sub, ck_paste, ck_voice. A key ending in _one is the singular.
+    td_others: "The other {n} were fine.", td_others_one: "The other one was fine.",
+    td_allclear: "Nothing in your email needs you", td_checked: "Checked {when}.",
+    td_check_yourself: "Check something yourself",
+    td_moved: "{n} scams moved away this week", td_moved_one: "1 scam moved away this week",
+    td_moved_note: "They sit in the Prudence folder. Nothing is deleted.", td_moved_note_one: "It sits in the Prudence folder. Nothing is deleted.",
+    td_see_them: "See them", td_see_it: "See it",
+    // --- messages and blocked (msg_*, blk_*) ---
+    // Also read: v2_tab_today (the "Today" back link), box_inbox ("My inbox"),
+    // box_careful ("Check first"), pill_scam, pill_careful, pill_safe (through
+    // verdictPill in ui.js), put_back_done, no_subject, empty_box.
+    msg_title: "My messages", msg_filters: "Show",
+    blk_title: "Blocked",
+    blk_lead: "{n} scams this week, moved out of your inbox into the Prudence folder. Nothing is deleted.",
+    blk_lead_one: "1 scam this week, moved out of your inbox into the Prudence folder. Nothing is deleted.",
+    blk_none: "No scam this week. Prudence keeps watching your email.",
+    blk_put_back: "Put it back",
+    // --- check (ck_*) ---
+    // Also read: v2_tab_check (the "Check" back link), channel_q ("Where did you
+    // get it?"), ch_sms ("Text message"), ch_whatsapp, eml_title ("Or an email
+    // file"), eml_btn, v2_read_short ("Listen"), v2_ask ("Ask {name}"),
+    // protect_soon ("Coming soon"), checking, please_wait.
+    ck_title: "Check something", ck_lead: "Show Prudence anything that worries you.",
+    ck_photo: "Take a screenshot and send it", ck_photo_sub: "Opens your photos or your camera",
+    ck_paste: "Paste the words", ck_voice: "Send a voice message", ck_more: "More ways",
+    ck_paste_placeholder: "Touch here, then tap Paste",
+    ck_who: "Who sent it?", ck_who_bank: "My bank", ck_who_company: "A company", ck_who_known: "Someone I know", ck_who_unknown: "I don't know",
+    ck_where_facebook: "Facebook", ck_where_letter: "A letter", ck_where_other: "Somewhere else",
+    ck_check_it: "Check it",
+    ck_photo_title: "Send a screenshot", ck_photo_lead: "We read the picture, check it and do not keep it.",
+    ck_photo_choose: "Choose from my photos", ck_photo_take: "Take a photo now",
+    ck_reading: "Reading your picture…", ck_reading_note: "About a minute. You can put the phone down.", ck_stop: "Stop",
+    ck_unsure: "Still unsure?", ck_send_prudence: "Send it to Prudence",
+    ck_send_note: "A person at Prudence, or a deeper automatic check, looks at it and answers on Today within a day.",
+    ck_back_today: "Go back to Today", ck_doubt: "I still have a doubt",
+    // --- learn (lh_*) ---
+    // Also read: learn_title ("Learn to spot them."), learn_lead ("One minute at a
+    // time."), learn_to_try, learn_minutes_one ("1 minute"), learn_start,
+    // learn_no_stars, learn_question, learn_next, learn_back.
+    lh_first_star: "Your first star is one minute away", lh_badges_to_earn: "{n} badges to earn, one per lesson",
+    // --- settings (set_*) ---
+    // Also read: settings_title, v2_tab_people ("My people"), mode_move,
+    // mode_move_sub, mode_label, mode_label_sub (the two radio cards), size_q,
+    // size_1, size_2, size_3, lang_q, knows_title, history_title, delete_btn,
+    // sign_out, phone_title, people_title, saved. set_person: the relation as
+    // the person typed it, without a leading "my" ("son", not "my son").
+    set_person: "{name}, your {relation}", set_person_plain: "{name}, your trusted person",
+    set_people_none: "No one yet", set_people_add: "Add someone", set_change: "Change",
+    set_scam_mode: "When a message is a scam",
+    set_tell: "Tell {name} automatically", set_tell_plain: "Tell my trusted person automatically",
+    set_tell_off: "Off. Nothing is shared unless you tap \u201cAsk {name}\u201d.", set_tell_off_plain: "Off. Nothing is shared unless you choose to.",
+    set_tell_on: "On. {name} gets every scam card.",
+    set_turn_on: "Turn on", set_turn_off: "Turn off",
+    set_larger: "Make it larger", set_normal: "Back to normal",
+    // The language row: the state in this language, the button in the other one.
+    set_lang_now: "English", set_lang_switch: "Passer au français",
+    set_read: "Read aloud", set_read_on: "On. Tap \u201cListen\u201d on any card.", set_read_off: "Off. Tap \u201cListen\u201d on any card to hear it.",
+    set_knows_sub: "Your bank, your providers, the people who write to you.", set_look: "Look",
+    set_did_sub: "Every move and label, so you can always check.",
+    set_keeps: "What Prudence keeps", set_keeps_sub: "Only what it learned from your real emails. Your emails stay in your mailbox.",
+    set_delete_title: "Delete your account?",
+    set_delete_lead: "Prudence stops checking your email and erases everything it learned. Your emails stay exactly where they are.",
+    set_keep_account: "Keep my account",
   },
   fr: {
     tagline: "Il connaît votre vie, les escrocs ne peuvent pas l'imiter",
@@ -203,10 +296,10 @@ const STRINGS = {
     voice_title: "Ou un message vocal", voice_lead: "Un message sur votre répondeur ou une note vocale (WhatsApp, Messages). Muse Voice Transcribe de Meta écrit les mots, puis nous les vérifions. Nous ne gardons pas l'enregistrement.",
     voice_btn: "Choisir un message vocal", voice_needs_muse: "La vérification des messages vocaux nécessite Muse Voice Transcribe de Meta, qui n'est pas encore activé ici.",
     voice_none: "Nous n'avons entendu aucun mot dans cet enregistrement.", voice_heard: "Ce que dit le message vocal", voice_unreadable: "Cet enregistrement ne peut pas être ouvert. Essayez un autre fichier.",
-    v2_morning: "Bonjour {name}", v2_afternoon: "Bonjour {name}", v2_evening: "Bonsoir {name}",
+    v2_morning: "Bonjour, {name}", v2_afternoon: "Bonjour, {name}", v2_evening: "Bonsoir, {name}",
     v2_demo_note: "Exemple : voici la journée de Françoise. Rien ici n'est un vrai message.", v2_status_label: "Vos messages aujourd'hui",
     v2_safe: "Tout va bien.", v2_checked: "Nous avons vérifié {n} messages.", v2_need_one: "1 message a besoin de vous", v2_need_many: "{n} messages ont besoin de vous",
-    v2_one_at_a_time: "Un par un. Cela prend une minute.", v2_look: "Les regarder maintenant", v2_look_one: "Le regarder maintenant",
+    v2_one_at_a_time: "Un par un. Cela prend une minute.", v2_look: "Les voir maintenant", v2_look_one: "Le voir maintenant",
     v2_moved: "{n} arnaques sont déjà rangées dans votre dossier Arnaques.", v2_trusted: "{name}, votre personne de confiance, est prêt à vous aider.",
     v2_no_trusted: "Ajoutez une personne de confiance qui peut vous donner son avis", v2_add_trusted: "Ajouter une personne de confiance",
     v2_today: "Aujourd'hui", v2_of: "{i} sur {n}", v2_of_label: "Message {i} sur {n}", v2_read: "Me le lire", v2_read_short: "Écouter",
@@ -266,7 +359,8 @@ const STRINGS = {
     sure_high: "Nous en sommes très sûrs.", sure_mid: "Nous en sommes plutôt sûrs.", sure_low: "Nous ne sommes pas sûrs : prudence.",
     retry: "Réessayer", saving: "Enregistrement…", load_failed: "Prudence n'a pas pu se charger. Vérifiez votre connexion internet.",
     error_generic: "Un problème est survenu. Par prudence, ne cliquez sur rien dans le message.",
-    when_now: "à l'instant", when_min: "il y a {n} min", when_hour: "il y a {n} h", when_day: "il y a {n} jours",
+    when_now: "à l'instant", when_min: "il y a {n} minutes", when_min_one: "il y a 1 minute", when_hour: "il y a {n} heures", when_hour_one: "il y a 1 heure",
+    when_day: "il y a {n} jours", when_day_one: "il y a 1 jour",
     // Learn (_product/specs/micro-learning.md); _one: the singular (0 and 1 in French).
     learn_tab: "Leçons", learn_back: "Retour aux leçons",
     learn_title: "Apprenez à les repérer.", learn_lead: "Une minute à la fois.", learn_progress_label: "Votre progression",
@@ -283,6 +377,70 @@ const STRINGS = {
     learn_try_real: "Essayer sur un vrai message", learn_real_note: "Un message d'exemple, vérifié par Prudence comme les vôtres.",
     learn_next_lesson: "Leçon suivante",
     learn_load_failed: "Impossible de charger les leçons.", learn_save_failed: "Vos étoiles n'ont pas pu être enregistrées. Vérifiez votre connexion internet.",
+    // ------------------------------------------------------------------
+    // 2026-11-04 redesign: the same groups as in "en", in the same order.
+    // --- chrome ---
+    tab_blocked: "Bloqués", nav_tabs_label: "Menu principal", nav_top_label: "Menu du haut",
+    // --- protects (protect_*) ---
+    protect_title: "Ce que Prudence protège",
+    protect_email: "Votre e-mail", protect_email_on: "Activé", protect_email_checked: "Activé · vérifié {when}",
+    protect_email_first: "Activé · Prudence découvre votre boîte mail", protect_email_retry: "Activé · nouvelle vérification dans une minute",
+    protect_email_lost: "Prudence ne peut pas lire vos e-mails pour l'instant", protect_email_off: "Pas encore connecté",
+    protect_email_verb: "Voir mes messages", protect_email_reconnect: "Reconnecter Gmail", protect_email_connect: "Connecter mes e-mails",
+    protect_texts: "Vos messages texte", protect_texts_on: "Activé, sur {device}", protect_texts_on_phone: "Activé, sur votre téléphone",
+    protect_texts_none: "Il faut l'application Prudence sur votre téléphone Android", protect_texts_change: "Changer", protect_texts_add: "Ajouter mon téléphone",
+    protect_voice: "Messages vocaux", protect_voice_state: "Envoyez-en un quand vous voulez", protect_voice_verb: "Vérifier un message vocal",
+    protect_whatsapp: "Messages WhatsApp", protect_whatsapp_line: "Transférez un message à Prudence et la réponse revient dans la discussion",
+    protect_facebook: "Facebook et Messenger", protect_facebook_line: "Un message ou une discussion Marketplace qui semble louche",
+    protect_calls: "Vos appels téléphoniques", protect_calls_line: "Un avertissement avant de rappeler un numéro venu d'un message frauduleux",
+    protect_soon: "Bientôt", protect_soon_label: "{name}, bientôt, aucune action",
+    // --- today (td_*) ---
+    td_others: "Les {n} autres étaient sûrs.", td_others_one: "L'autre était sûr.",
+    td_allclear: "Rien dans vos e-mails n'a besoin de vous", td_checked: "Vérifié {when}.",
+    td_check_yourself: "Vérifiez vous-même",
+    td_moved: "{n} arnaques écartées cette semaine", td_moved_one: "1 arnaque écartée cette semaine",
+    td_moved_note: "Elles sont dans le dossier Prudence. Rien n'est supprimé.", td_moved_note_one: "Elle est dans le dossier Prudence. Rien n'est supprimé.",
+    td_see_them: "Les voir", td_see_it: "La voir",
+    // --- messages and blocked (msg_*, blk_*) ---
+    msg_title: "Mes messages", msg_filters: "Afficher",
+    blk_title: "Bloqués",
+    blk_lead: "{n} arnaques cette semaine, sorties de votre boîte de réception et rangées dans le dossier Prudence. Rien n'est supprimé.",
+    blk_lead_one: "1 arnaque cette semaine, sortie de votre boîte de réception et rangée dans le dossier Prudence. Rien n'est supprimé.",
+    blk_none: "Aucune arnaque cette semaine. Prudence continue de surveiller vos e-mails.",
+    blk_put_back: "Le remettre",
+    // --- check (ck_*) ---
+    ck_title: "Vérifier quelque chose", ck_lead: "Montrez à Prudence tout ce qui vous inquiète.",
+    ck_photo: "Faire une capture d'écran et l'envoyer", ck_photo_sub: "Ouvre vos photos ou l'appareil photo",
+    ck_paste: "Coller le texte", ck_voice: "Envoyer un message vocal", ck_more: "Autres façons",
+    ck_paste_placeholder: "Touchez ici, puis appuyez sur Coller",
+    ck_who: "Qui l'a envoyé\u00a0?", ck_who_bank: "Ma banque", ck_who_company: "Une entreprise", ck_who_known: "Quelqu'un que je connais", ck_who_unknown: "Je ne sais pas",
+    ck_where_facebook: "Facebook", ck_where_letter: "Un courrier", ck_where_other: "Ailleurs",
+    ck_check_it: "Le vérifier",
+    ck_photo_title: "Envoyer une capture d'écran", ck_photo_lead: "Nous lisons l'image, la vérifions et ne la gardons pas.",
+    ck_photo_choose: "Choisir dans mes photos", ck_photo_take: "Prendre une photo maintenant",
+    ck_reading: "Lecture de votre image…", ck_reading_note: "Environ une minute. Vous pouvez poser le téléphone.", ck_stop: "Arrêter",
+    ck_unsure: "Encore un doute\u00a0?", ck_send_prudence: "L'envoyer à Prudence",
+    ck_send_note: "Une personne de Prudence, ou une vérification automatique plus poussée, l'examine et vous répond sur Aujourd'hui en moins d'une journée.",
+    ck_back_today: "Revenir à Aujourd'hui", ck_doubt: "J'ai encore un doute",
+    // --- learn (lh_*) ---
+    lh_first_star: "Votre première étoile est à une minute", lh_badges_to_earn: "{n} badges à gagner, un par leçon",
+    // --- settings (set_*) ---
+    set_person: "{name}, votre {relation}", set_person_plain: "{name}, votre personne de confiance",
+    set_people_none: "Personne pour l'instant", set_people_add: "Ajouter quelqu'un", set_change: "Changer",
+    set_scam_mode: "Quand un message est une arnaque",
+    set_tell: "Prévenir {name} automatiquement", set_tell_plain: "Prévenir automatiquement mon proche de confiance",
+    set_tell_off: "Désactivé. Rien n'est partagé sans que vous appuyiez sur «\u00a0Demander à {name}\u00a0».", set_tell_off_plain: "Désactivé. Rien n'est partagé sans votre accord.",
+    set_tell_on: "Activé. {name} reçoit chaque alerte d'arnaque.",
+    set_turn_on: "Activer", set_turn_off: "Désactiver",
+    set_larger: "Agrandir le texte", set_normal: "Revenir à la taille normale",
+    set_lang_now: "Français", set_lang_switch: "Switch to English",
+    set_read: "Lecture à voix haute", set_read_on: "Activée. Appuyez sur «\u00a0Écouter\u00a0» sur n'importe quelle carte.", set_read_off: "Désactivée. Appuyez sur «\u00a0Écouter\u00a0» sur une carte pour l'entendre.",
+    set_knows_sub: "Votre banque, vos fournisseurs, les personnes qui vous écrivent.", set_look: "Voir",
+    set_did_sub: "Chaque déplacement et chaque étiquette, pour que vous puissiez toujours vérifier.",
+    set_keeps: "Ce que Prudence garde", set_keeps_sub: "Seulement ce qu'il a appris de vos vrais e-mails. Vos e-mails restent dans votre boîte.",
+    set_delete_title: "Supprimer votre compte\u00a0?",
+    set_delete_lead: "Prudence arrête de vérifier vos e-mails et efface tout ce qu'il a appris. Vos e-mails restent exactement où ils sont.",
+    set_keep_account: "Garder mon compte",
   },
 };
 
@@ -306,7 +464,8 @@ export function ago(iso) {
   if (!iso) return "";
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (min < 1) return t("when_now");
-  if (min < 60) return t("when_min", { n: min });
-  if (min < 1440) return t("when_hour", { n: Math.round(min / 60) });
-  return t("when_day", { n: Math.round(min / 1440) });
+  const say = (key, n) => t(n === 1 ? `${key}_one` : key, { n });
+  if (min < 60) return say("when_min", min);
+  if (min < 1440) return say("when_hour", Math.round(min / 60));
+  return say("when_day", Math.round(min / 1440));
 }
