@@ -91,11 +91,15 @@ test("a chat pasted in Check something is judged as one conversation, with nothi
     payload: { channel: "sms", body: CHAT } });
   assert.equal(res.statusCode, 200, res.body);
   const out = res.json();
-  assert.deepEqual(Object.keys(out).sort(), ["callBack", "checkId", "message", "verdict"]);
+  assert.deepEqual(Object.keys(out).sort(), ["callBack", "checkId", "judged", "message", "verdict"]);
   assert.equal(out.verdict.verdict, "scam");
   assert.equal(out.message.channel, "social");
   assert.equal(out.message.body, CHAT, "the answer carries the whole conversation for Ask my trusted person");
   assert.ok(!("fullText" in out.message));
+  // For Look closer (_product/specs/investigate.md): the message exactly as judged, with its earlier turns; kept nowhere.
+  assert.equal(out.judged.message.fullText, CHAT);
+  assert.match(out.judged.message.body, /^It is easy\. Start with \$500/);
+  assert.equal(out.judged.threadHistory.length, 5);
   const sent = mock.calls[0].messages[0].content;
   assert.equal(blockOf(sent, "thread_history").length, 5);
   assert.match(blockOf(sent, "message").body, /^It is easy\. Start with \$500/);
