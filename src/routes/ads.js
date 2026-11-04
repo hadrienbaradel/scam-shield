@@ -68,7 +68,17 @@ const BUSY_LINE = {
   drafting: "Muse Spark and Muse Image are still making this idea",
   editing: "Muse Spark and Muse Image are still editing this idea",
   publishing: "This idea is being published right now",
+  pausing: "This ad is being paused right now",
+  resuming: "This ad is being restarted right now",
+  rejecting: "This idea is being set aside right now",
 };
+
+// The ad held in the registry while a request's network call on it runs
+// (Pause, Resume, Reject); called right after held() said it was free.
+async function holding(id, kind, fn) {
+  jobs.set(id, kind);
+  try { return await fn(); } finally { if (jobs.get(id) === kind) jobs.delete(id); }
+}
 
 // A background job holding `ids` until it ends; `release(id)` lets one go earlier.
 function background(log, ids, kind, fn) {
@@ -445,24 +455,42 @@ export default async function adsRoutes(app, opts = {}) {
       return reply.code(202).send({ id: ad.id, status: "publishing" });
     });
 
-    // Pause and Resume: the network first, then the row.
+    // Pause and Resume: the network first, then the row, the ad held all along
+    // (Reject answers 409 meanwhile). A restart the row does not take is paused again.
     for (const [path, running] of [["pause", false], ["resume", true]]) {
       adm.post(`/api/admin/ads/:id/${path}`, async (request, reply) => {
         const ad = await adOr404(request, reply);
         if (!ad) return reply;
-        if (ad.status !== (running ? "paused" : "published") || !ad.external?.adId) {
-          return conflict(reply, ad, running ? "Only a paused ad can be resumed" : "Only a live ad can be paused");
-        }
-        const d = await deps();
-        const net = networkInfo(d.network);
-        if (!net.installed || !net.configured) return reply.code(503).send({ error: net.installed ? needsKeys(net.label, net.missing) : notInstalled("Facebook publisher (lib/ads/networks/)") });
-        try {
-          await d.network.setStatus({ adId: ad.external.adId, adsetId: ad.external.adsetId, status: running ? "ACTIVE" : "PAUSED" });
-        } catch (e) {
-          return reply.code(502).send({ error: plainError(e, `${net.label} did not answer.`) });
-        }
-        await store.setRunning(ad.id, running);
-        return { id: ad.id, status: running ? "published" : "paused" };
+        if (held(reply, ad.id)) return reply;
+        return holding(ad.id, running ? "resuming" : "pausing", async () => {
+          const status = await store.statusOf(ad.id);
+          if (status !== (running ? "paused" : "published") || !ad.external?.adId) {
+            return conflict(reply, ad, running ? "Only a paused ad can be resumed" : "Only a live ad can be paused");
+          }
+          const d = await deps();
+          const net = networkInfo(d.network);
+          if (!net.installed || !net.configured) return reply.code(503).send({ error: net.installed ? needsKeys(net.label, net.missing) : notInstalled("Facebook publisher (lib/ads/networks/)") });
+          const ids = { adId: ad.external.adId, adsetId: ad.external.adsetId };
+          try {
+            await d.network.setStatus({ ...ids, status: running ? "ACTIVE" : "PAUSED" });
+          } catch (e) {
+            return reply.code(502).send({ error: plainError(e, `${net.label} did not answer.`) });
+          }
+          let moved = false;
+          try {
+            moved = await store.setRunning(ad.id, running);
+          } catch (e) {
+            request.log.error({ err: e }, "ad studio: the row of a paused or restarted ad was not written");
+          }
+          if (moved) return { id: ad.id, status: running ? "published" : "paused" };
+          if (!running) return reply.code(409).send({ error: `The ad is paused on ${net.label}, but its card could not be updated: refresh the page.` });
+          try {
+            await d.network.setStatus({ ...ids, status: "PAUSED" });
+          } catch (e) {
+            return reply.code(502).send({ error: `The ad restarted on ${net.label} but its card could not be updated, and pausing it again failed: pause it in Ads Manager now. (${plainError(e)})` });
+          }
+          return reply.code(409).send({ error: `The ad's card could not be updated, so it was paused again on ${net.label}. Refresh the page and try again.` });
+        });
       });
     }
 
@@ -490,19 +518,21 @@ export default async function adsRoutes(app, opts = {}) {
       const ad = await adOr404(request, reply);
       if (!ad) return reply;
       if (held(reply, ad.id)) return reply;
-      // A live ad stops on the network before it is set aside.
-      if (ad.status === "published" && ad.external?.adId) {
-        const d = await deps();
-        const net = networkInfo(d.network);
-        if (!net.installed || !net.configured) return reply.code(503).send({ error: `Pause it on ${net.label} first: ${net.installed ? needsKeys(net.label, net.missing) : notInstalled("Facebook publisher")}` });
-        try {
-          await d.network.setStatus({ adId: ad.external.adId, adsetId: ad.external.adsetId, status: "PAUSED" });
-        } catch (e) {
-          return reply.code(502).send({ error: plainError(e, `${net.label} did not answer.`) });
+      return holding(ad.id, "rejecting", async () => {
+        // Any ad with a number stops on the network before it is set aside, whatever the row says.
+        if (ad.external?.adId && (await store.statusOf(ad.id)) !== "rejected") {
+          const d = await deps();
+          const net = networkInfo(d.network);
+          if (!net.installed || !net.configured) return reply.code(503).send({ error: `Pause it on ${net.label} first: ${net.installed ? needsKeys(net.label, net.missing) : notInstalled("Facebook publisher")}` });
+          try {
+            await d.network.setStatus({ adId: ad.external.adId, adsetId: ad.external.adsetId, status: "PAUSED" });
+          } catch (e) {
+            return reply.code(502).send({ error: plainError(e, `${net.label} did not answer.`) });
+          }
         }
-      }
-      if (!(await store.reject(ad.id, reason.value))) return conflict(reply, ad, "This idea cannot be set aside now");
-      return { id: ad.id, status: "rejected" };
+        if (!(await store.reject(ad.id, reason.value))) return conflict(reply, ad, "This idea cannot be set aside now");
+        return { id: ad.id, status: "rejected" };
+      });
     });
 
     adm.get("/api/admin/ads/:id/photo", async (request, reply) => {

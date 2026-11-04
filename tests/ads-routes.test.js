@@ -1122,3 +1122,103 @@ test("no network call starts after the server began shutting down: a queued publ
   const queued = await rowOf(b);
   assert.deepEqual([queued.status, queued.error], ["draft", "Stopped: the server was shutting down. Try again."]);
 });
+
+// A network that remembers the ad's state on Facebook; `slow` holds one status change on a gate.
+function facebookState(slow = null) {
+  const network = fakeNetwork();
+  const fb = { status: "ACTIVE" };
+  const g = slow ? gate() : null;
+  network.setStatus = async (a) => {
+    network.calls.setStatus.push(a);
+    if (g && a.status === slow) await g.wait();
+    fb.status = a.status;
+  };
+  return { network, fb, gate: g };
+}
+
+test("Resume racing Reject: the ad is held while Facebook restarts it, so Reject waits (409) and no live ad is left without a Pause", opts, async () => {
+  const { network, fb, gate: slow } = facebookState("ACTIVE");
+  useDeps({ network });
+  const id = await published();
+  assert.equal((await post(`/api/admin/ads/${id}/pause`)).statusCode, 200);
+  assert.equal(fb.status, "PAUSED");
+
+  const resume = post(`/api/admin/ads/${id}/resume`);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(jobOf(id), "resuming");
+  const refused = await post(`/api/admin/ads/${id}/reject`, { reason: "off-brand" });
+  assert.equal(refused.statusCode, 409);
+  assert.equal(refused.json().error, "This ad is being restarted right now: wait for it to finish.");
+  assert.equal((await post(`/api/admin/ads/${id}/pause`)).statusCode, 409, "Pause waits too");
+  slow.open();
+  assert.deepEqual((await resume).json(), { id, status: "published" });
+  assert.deepEqual([fb.status, (await adOf(id)).status, jobOf(id)], ["ACTIVE", "published", null]);
+
+  const rejected = await post(`/api/admin/ads/${id}/reject`, { reason: "off-brand" });
+  assert.equal(rejected.statusCode, 200);
+  assert.deepEqual([fb.status, (await adOf(id)).status], ["PAUSED", "rejected"], "set aside and stopped on Facebook");
+});
+
+test("Pause holds the ad too, and Reject pauses on Facebook whenever the ad has a number, whatever its row says", opts, async () => {
+  const { network, fb, gate: slow } = facebookState("PAUSED");
+  useDeps({ network });
+  const id = await published();
+  const pause = post(`/api/admin/ads/${id}/pause`);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal((await post(`/api/admin/ads/${id}/reject`, { reason: "x" })).json().error, "This ad is being paused right now: wait for it to finish.");
+  slow.open();
+  assert.equal((await pause).statusCode, 200);
+  assert.equal((await adOf(id)).status, "paused");
+
+  // The row says paused, but Facebook has it running (changed in Ads Manager): Reject pauses it anyway.
+  fb.status = "ACTIVE";
+  const before = network.calls.setStatus.length;
+  assert.equal((await post(`/api/admin/ads/${id}/reject`, { reason: "set aside" })).statusCode, 200);
+  assert.deepEqual(network.calls.setStatus.slice(before).map((c) => c.status), ["PAUSED"]);
+  assert.equal(fb.status, "PAUSED");
+});
+
+test("a restart whose row write fails is paused again on Facebook and answers 409; if that pause fails too, the line says to pause it in Ads Manager", opts, async () => {
+  const { network, fb } = facebookState();
+  useDeps({ network });
+  const id = await published();
+  assert.equal((await post(`/api/admin/ads/${id}/pause`)).statusCode, 200);
+  const before = network.calls.setStatus.length;
+  let restore = faultyPool((t) => (t.includes("UPDATE ads SET status = $3") ? "before" : null));
+  let res;
+  try { res = await post(`/api/admin/ads/${id}/resume`); } finally { restore(); }
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.json().error, "The ad's card could not be updated, so it was paused again on Facebook. Refresh the page and try again.");
+  assert.deepEqual(network.calls.setStatus.slice(before).map((c) => c.status), ["ACTIVE", "PAUSED"]);
+  assert.deepEqual([fb.status, (await adOf(id)).status], ["PAUSED", "paused"]);
+
+  // The row moved on meanwhile (set aside elsewhere): the same, never a live ad with a rejected card.
+  network.setStatus = async (a) => {
+    network.calls.setStatus.push(a);
+    fb.status = a.status;
+    if (a.status === "ACTIVE") await pool.query("UPDATE ads SET status = 'rejected' WHERE id = $1", [id]);
+  };
+  assert.equal((await post(`/api/admin/ads/${id}/resume`)).statusCode, 409);
+  assert.equal(fb.status, "PAUSED");
+
+  // The second pause fails: 502, and the line says what to do.
+  await pool.query("UPDATE ads SET status = 'paused' WHERE id = $1", [id]);
+  network.setStatus = async (a) => {
+    network.calls.setStatus.push(a);
+    if (a.status === "PAUSED") throw new Error("Facebook did not answer");
+    fb.status = a.status;
+  };
+  restore = faultyPool((t) => (t.includes("UPDATE ads SET status = $3") ? "before" : null));
+  try { res = await post(`/api/admin/ads/${id}/resume`); } finally { restore(); }
+  assert.equal(res.statusCode, 502);
+  assert.match(res.json().error, /pausing it again failed: pause it in Ads Manager now/);
+
+  // A pause whose row write fails: Facebook has it paused, the card says to refresh.
+  await pool.query("UPDATE ads SET status = 'published' WHERE id = $1", [id]);
+  network.setStatus = async (a) => { network.calls.setStatus.push(a); fb.status = a.status; };
+  restore = faultyPool((t) => (t.includes("UPDATE ads SET status = $3") ? "before" : null));
+  try { res = await post(`/api/admin/ads/${id}/pause`); } finally { restore(); }
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.json().error, "The ad is paused on Facebook, but its card could not be updated: refresh the page.");
+  assert.equal(fb.status, "PAUSED");
+});
