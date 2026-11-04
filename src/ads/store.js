@@ -6,14 +6,16 @@
 // an undone version returns to that one, never to the version set aside.
 // Every state change is one conditional UPDATE: two clicks on Publish make
 // one `draft -> publishing` and the other finds nothing to move (409).
-// A row left `drafting`, `editing` or `publishing` for more than five
-// minutes was cut by a restart: it reads as failed ("interrupted"). The
-// photo's bytes leave only through photo(); the list carries its URL.
+// A row left `drafting`, `editing` or `publishing` that no job of this
+// process holds (the routes keep that registry) and that has not moved for
+// fifteen minutes (longer than the slowest edit) was cut by a restart: it
+// reads as failed ("interrupted"). The photo's bytes leave only through
+// photo(); the list carries its URL.
 
 import { randomBytes } from "node:crypto";
 import { many, one, q, tx } from "../db/pool.js";
 
-export const STALE_MINUTES = 5;
+export const STALE_MINUTES = 15;
 const STALE = `updated_at < now() - interval '${STALE_MINUTES} minutes'`;
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 const BUSY = ["drafting", "editing", "publishing"];
@@ -120,10 +122,27 @@ export async function startPublish(id) {
   return moved ? getAd(id) : null;
 }
 
-export async function publishDone(id, { network, external, budget, review }) {
-  return Boolean(await one(`UPDATE ads SET status = 'published', network = $2, external = $3, budget = $4, review = $5, error = NULL,
-                                           published_at = now(), updated_at = now()
-                            WHERE id = $1 AND status = 'publishing' RETURNING id`, [id, network, external, budget, review]));
+// publishing -> published (or paused, when the ad was created paused).
+// Idempotent: a retry after a write that did land finds its own ad number.
+export async function publishDone(id, { network, external, budget, review }, { paused = false } = {}) {
+  return Boolean(await one(`UPDATE ads SET status = $6, network = $2, external = $3, budget = $4, review = $5, error = NULL,
+                                           published_at = coalesce(published_at, now()), updated_at = now()
+                            WHERE id = $1 AND (status = 'publishing' OR (status IN ('published', 'paused') AND external->>'adId' = $7))
+                            RETURNING id`, [id, network, external, budget, review, paused ? "paused" : "published", String(external?.adId ?? "")]));
+}
+
+// An ad the network created after its row had moved on (set aside
+// elsewhere): kept with its ids, `paused` once the network paused it
+// (`published` if it could not), and a plain line, so it is never untracked.
+export async function keepAd(id, { network, external, budget, review }, { status = "paused", error = null } = {}) {
+  return Boolean(await one(`UPDATE ads SET status = $7, network = $2, external = $3, budget = $4, review = $5, error = $6,
+                                           published_at = coalesce(published_at, now()), updated_at = now()
+                            WHERE id = $1 RETURNING id`, [id, network, external, budget, review, error, status === "published" ? "published" : "paused"]));
+}
+
+// A plain line on the card without changing its state (a late result that was not kept).
+export async function noteError(id, error) {
+  await q("UPDATE ads SET error = $2 WHERE id = $1", [id, error]);
 }
 
 // A publish that failed goes back to draft with the network's plain line.
@@ -167,18 +186,20 @@ export async function photo(id, version = null) {
 // The cards, newest first: the current version's words, check and models,
 // the version count, the visits and the early-access requests that came
 // through the variant; never the photo's bytes.
-export async function listAds({ limit = 200 } = {}) {
+// `held`: the ids a job of this process is working on, never interrupted.
+export async function listAds({ limit = 200, held = new Set() } = {}) {
   const rows = await many(`
     SELECT a.id, a.code, a.status, a.brief, a.version, a.network, a.external, a.review, a.budget, a.error, a.rejected_reason,
            a.visits, a.created_by, a.created_at, a.updated_at, a.published_at,
            v.words, v.photo_check, v.models, v.instruction, (v.photo IS NOT NULL) AS has_photo,
            coalesce((v.models->>'basedOn')::int, v.version - 1) AS undo_to,
            (SELECT count(*)::int FROM ad_versions x WHERE x.ad_id = a.id) AS versions,
-           (SELECT count(*)::int FROM early_access_requests e WHERE e.variant = a.code) AS requests,
-           (a.status = ANY($2) AND a.${STALE}) AS stale
+           coalesce(r.n, 0) AS requests,
+           (a.status = ANY($2) AND a.${STALE}) AS old
     FROM ads a LEFT JOIN ad_versions v ON v.ad_id = a.id AND v.version = a.version
+    LEFT JOIN (SELECT variant, count(*)::int AS n FROM early_access_requests WHERE variant IS NOT NULL GROUP BY variant) r ON r.variant = a.code
     ORDER BY a.created_at DESC, a.id LIMIT $1`, [limit, BUSY]);
-  return rows.map(shape);
+  return rows.map((r) => shape({ ...r, stale: r.old && !held.has(r.id) }));
 }
 
 function shape(r) {
