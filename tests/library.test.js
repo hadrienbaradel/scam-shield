@@ -274,7 +274,7 @@ test("loadLibraryFiles reads a folder, validates every entry and names a bad fil
     await writeFile(join(dir, "entries", "notes.txt"), "not an entry");
     const lib = await loadLibraryFiles(dir);
     assert.equal(lib.families.length, 21);
-    assert.equal(lib.sources.length, 2);
+    assert.equal(lib.sources.length, (await load("data/library/sources.json")).length, "the repo's sources, copied");
     assert.deepEqual(lib.entries, [EXAMPLE]);
     await writeFile(join(dir, "entries", "lib-demo-bad.json"), JSON.stringify({ ...EXAMPLE, id: "lib-demo-bad", family: "x" }));
     await assert.rejects(loadLibraryFiles(dir), /lib-demo-bad\.json: unknown family x/);

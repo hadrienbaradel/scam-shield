@@ -188,6 +188,9 @@ db-create: ## Create scam_shield and scam_shield_test if missing (the compose Po
 	  else echo "$$out"; exit 1; fi; \
 	done
 
+library-import: deps ## Add redacted, Muse Spark-classified spam samples from a CC BY 4.0 SMS corpus to the public library: make library-import SOURCE=uci-sms|mishra-soni LIMIT=100 (needs the Muse Spark key; DRY=1 writes nothing)
+	@node --import ./lib/credentials.js scripts/library-import.mjs --source $(SOURCE) --limit $(LIMIT) $(if $(DRY),--dry)
+
 db-migrate: deps ## Apply the migrations in src/db/migrations to the local Postgres (DEV_DATABASE_URL; make server migrates the shared one itself)
 	@$(LOCAL_DB) $(DOCTOR) db --quiet
 	@$(LOCAL_DB) $(NPM) run migrate

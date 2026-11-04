@@ -25,6 +25,8 @@ All times below are Eastern daylight time (UTC−4) on Oct 26 unless stated. The
 - The real scam emails in `testcases/` were received by Hadrien. They are redacted test cases, not code.
 - Public phishing datasets (Zenodo 8339691, an OpenPhish sample) were used for evaluation only. They are not in the repository (see [archive/STATUS.md](archive/STATUS.md)).
 - `data/library/entries/lib-demo-*.json` (Nov 4): the public scam library's seed, the 31 demo cases of `testcases/cases.json` that are not Safe, redacted and classified by `scripts/library-seed.mjs`; the four real emails among them (A6-A9) were shared by Hadrien and kept as received with the recipient's details removed. Published under CC BY 4.0, attribution "Prudence demo cases (Scam Shield)".
+- 98 redacted SMS spam samples under `data/library/entries/lib-uci-*.json` come from the UCI SMS Spam Collection (Almeida and Hidalgo, 2011, https://archive.ics.uci.edu/dataset/228/sms+spam+collection, CC BY 4.0), classified by Muse Spark through `scripts/library-import.mjs` (Nov 4); the corpus itself is not in the repository.
+- 93 redacted SMS phishing samples under `data/library/entries/lib-mishra-*.json` come from Mishra and Soni, "SMS Phishing Dataset for Machine Learning and Pattern Recognition" (Mendeley Data f45bkkt8pr, 2022, https://data.mendeley.com/datasets/f45bkkt8pr/1, CC BY 4.0), classified the same way; the dataset itself is not in the repository. Every imported entry was read by a person before the commit; nine were removed (a recipient's name or number, a tracking id, adverts that are not scams).
 
 **Third-party code (open source, labelled as the organizers ask):** the npm dependencies listed in `package.json` and the Android dependencies in `android/`, under their own licences.
 

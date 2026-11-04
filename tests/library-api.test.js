@@ -202,7 +202,7 @@ test("the list filters and pages, newest first; the detail carries the brand's c
   const fr = (await get("/api/public/library?country=fr&language=fr&q=chronopost")).json();
   assert.ok(fr.entries.some((e) => e.id === "lib-demo-a4") && fr.entries.every((e) => e.country === "FR"));
   const page2 = (await get("/api/public/library?page=2")).json();
-  assert.deepEqual([page2.page, page2.total, page2.entries.length], [2, all.total, Math.max(0, all.total - 50)]);
+  assert.deepEqual([page2.page, page2.total, page2.entries.length], [2, all.total, Math.min(50, Math.max(0, all.total - 50))]);
   assert.equal((await get("/api/public/library?page=zero")).json().page, 1, "a bad page is the first");
 
   assert.equal((await get("/api/public/library/lib-nope")).statusCode, 404);

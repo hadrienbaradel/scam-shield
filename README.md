@@ -115,7 +115,8 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 | `make readme-numbers` | Re-measures the numbers in Built to be trusted and the badges above, from a green run |
 | `make gate` | After a live Gmail sign-in: sync, verdicts, Muse vs fallback, Gmail actions, safety checks (no email printed) |
 | `node scripts/eval-corpus.mjs` / `eval-urls.mjs` | Accuracy on public corpora and phishing URL lists (data stays in `.runtime/eval/`) |
-| `node scripts/library-seed.mjs` / `library-import.mjs` | The public scam library's entries (`/public/`): the seed from the demo cases, and redacted, classified samples of the CC BY corpora (raw files stay in `.runtime/library/`); commit the entry files |
+| `node scripts/library-seed.mjs` | Rewrites the public scam library's seed (`/public/`): one redacted entry per demo case that is not Safe in `data/library/entries/`; commit the files |
+| `make library-import SOURCE=uci-sms LIMIT=100` | Adds redacted, Muse Spark-classified spam samples from a CC BY 4.0 SMS corpus (`uci-sms`, `mishra-soni`) to the public library; the corpus is downloaded once to `.runtime/library/` and never committed; `DRY=1` writes nothing |
 | `make db-migrate` | Apply database migrations to the local Postgres (`make server` migrates the database it opens) |
 | `make secrets-set KEY=value` | Store a key encrypted; `make secrets-keys` lists names and whether each is set, never a value |
 | `node scripts/docs-check.mjs` | Product docs in step with the code: spec links, statuses, keywords, indexes, stale advice |
