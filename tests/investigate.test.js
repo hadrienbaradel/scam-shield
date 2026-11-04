@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { getProvider } from "../lib/llm/index.js";
 import { breaker } from "../lib/muse.js";
-import { investigate, decideAnswer, toolsFor, readPage, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
+import { investigate, decideAnswer, toolsFor, readPage, clipText, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
@@ -292,6 +292,18 @@ test("a closer look never lowers a Scam; it may confirm or raise a verdict; Be c
   assert.equal(decideAnswer({ answer: say("scam"), checks: ok2, first: SCAM, fallback, fr: true }).none, "language", "a French person gets French or nothing");
   assert.equal(decideAnswer({ answer: { ...say("scam"), confidence: 7 }, checks: ok2, first: SCAM, fallback, fr: false }).none, "invalid");
   assert.equal(decideAnswer({ answer: null, checks: ok2, first: SCAM, fallback, fr: false }).none, "invalid");
+});
+
+test("a headline, a next step or a reason a little too long is cut at a word, never a reason to drop the look", () => {
+  const fallback = { verdict: "be_careful", reasons: [], _authentic: false };
+  const long = (n) => Array.from({ length: n }, (_, i) => `word${i}`).join(" ");
+  const out = decideAnswer({ answer: answer("scam", [{ text: long(60), check: 1 }], { headline: long(40), action_text: long(70) }), checks: [{ n: 1, flag: "warn" }], first: SCAM, fallback, fr: false });
+  assert.equal(out.verdict, "scam");
+  assert.ok(out.headline.length <= 140 && out.headline.endsWith("…"), out.headline);
+  assert.ok(out.what_to_do.length <= 240 && out.what_to_do.endsWith("…"));
+  assert.ok(out.reasons[0].text.length <= 200 && /word\d+…$/.test(out.reasons[0].text), "cut after a whole word");
+  assert.equal(clipText("short", 140), "short");
+  assert.equal(clipText("x".repeat(150), 140).length, 140, "one long word is cut at the limit");
 });
 
 test("the usual guardrails apply: a proven scam is never Safe, a known authenticated sender is never Scam", async () => {
