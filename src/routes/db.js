@@ -9,19 +9,24 @@
 // Public endpoints give no name, no address and no hash back; the
 // submitter's address is kept as a hash for rate abuse only.
 
-import { createHash } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { config } from "../config.js";
 import { requireUser } from "../auth.js";
 import { many } from "../db/pool.js";
 import { museConfigured } from "../../lib/muse.js";
 import { classifyExample } from "../../lib/libraryMuse.js";
-import { CHANNELS, BODY_MIN, BODY_MAX, LICENCE, filterEntries, exportLibrary } from "../../lib/library.js";
-import { getLibrary, submit, submissionStatus, sharedCounts, withdrawShared } from "../library/store.js";
+import { CHANNELS, BODY_MIN, BODY_MAX, LICENCE, filterEntries, indicatorsOf } from "../../lib/library.js";
+import { getLibrary, submit, submissionStatus, sharedCounts, withdrawShared, exportJson } from "../library/store.js";
 
 export const REPO_URL = "https://github.com/hadrienbaradel/scam-shield";
 const PAGE_SIZE = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const sha256 = (s) => createHash("sha256").update(String(s)).digest("hex");
+// The submitter's address, keyed with TOKEN_ENC_KEY so the hash cannot be
+// walked back to the address (a plain hash of an IPv4 can); without a key
+// (a laptop with no setup) a key for this process, enough for the
+// duplicate rule. Cleared when the row is decided (src/library/store.js).
+const hashKey = config.tokenKey || randomBytes(32).toString("base64");
+export const submitterHashOf = (ip) => createHmac("sha256", hashKey).update(String(ip)).digest("hex");
 const activeCards = async () => (await many("SELECT card FROM pattern_cards WHERE status = 'active' ORDER BY id")).map((r) => r.card);
 const classifier = () => (museConfigured() ? classifyExample : null);
 // Newest first; the id breaks a tie so paging is stable.
@@ -63,15 +68,20 @@ export default async function dbRoutes(app) {
     return { total: entries.length, page: p, pageSize: PAGE_SIZE, entries: entries.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE) };
   });
 
-  app.get("/api/public/library.json", async () => exportLibrary(await getLibrary()));
+  // The whole library: one cached string, a minute of browser cache, 30 downloads a minute per address.
+  app.get("/api/public/library.json", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request, reply) => {
+    reply.header("cache-control", "public, max-age=60").type("application/json; charset=utf-8");
+    return exportJson();
+  });
 
+  // The indicators (sender, sites, numbers) come from the server's one rule (lib/library.js indicatorsOf): the page lists what it is given.
   app.get("/api/public/library/:id", async (request, reply) => {
     const lib = await getLibrary();
     const entry = lib.entries.find((e) => e.id === request.params.id);
     if (!entry) return reply.code(404).send({ error: "unknown entry" });
     const brand = String(entry.brand || "").toLowerCase();
     const cards = brand ? (await activeCards()).filter((c) => (c.impersonated_brands || []).some((b) => String(b).toLowerCase() === brand)) : [];
-    return { entry, cards };
+    return { entry, cards, indicators: indicatorsOf(entry) };
   });
 
   app.get("/api/public/cards", async () => ({ cards: await activeCards() }));
@@ -80,7 +90,7 @@ export default async function dbRoutes(app) {
     const problem = submissionProblem(request.body);
     if (problem) return reply.code(400).send({ error: problem });
     const { channel, message, country, language, note } = request.body;
-    const out = await submit({ channel, message, country, language, note, submitterHash: sha256(request.ip), classify: classifier() });
+    const out = await submit({ channel, message, country, language, note, submitterHash: submitterHashOf(request.ip), classify: classifier() });
     if (out.duplicate) return reply.code(409).send(duplicateAnswer(out));
     return reply.code(202).send({ id: out.id, status: "pending", statusUrl: `/api/public/library/submit/${out.id}` });
   });

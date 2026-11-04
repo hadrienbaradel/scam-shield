@@ -111,6 +111,40 @@ test("redactExample keeps the evidence and removes what belongs to the recipient
   assert.equal("links" in redactExample({ body: "no links at all here" }), false, "no links key added");
 });
 
+test("redactExample: a two-word recipient name goes as a whole and word by word; separators hide no card or social security number", () => {
+  const r = redactExample({ subject: "For Linda Carter", body: "Dear Linda Carter, Linda, Mrs Carter: your card 4111.1111.1111.1111 and SSN 123 45 6789 were used. Carter Street stays a street." },
+    { recipientName: "Linda Carter" });
+  assert.equal(r.subject, "For [name]");
+  assert.equal(r.body, "Dear [name], [name], Mrs [name]: your card [card number] and SSN [social security number] were used. [name] Street stays a street.");
+  assert.equal(redactExample({ body: "card 4111-1111-1111-1111 and 123.45.6789" }).body, "card [card number] and [social security number]");
+  assert.equal(redactExample({ body: "order 1234 5678 9012 3450 is not a card" }).body, "order 1234 5678 9012 3450 is not a card", "a run that fails Luhn stays");
+  assert.equal(redactExample({ body: "Hi Al Li, Al pays now" }, { recipientName: "Al Li" }).body, "Hi [name], Al pays now", "the whole name goes; a word under three letters alone is left");
+});
+
+test("cleanHref: a UUID, a JWT or a long run with digits is a token; mailto and bare addresses are redacted too", () => {
+  assert.equal(cleanHref("https://evil.example/t/eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImxpbmRhQGdtYWlsLmNvbSJ9.abc"), "https://evil.example/t/[token]", "a JWT");
+  assert.equal(cleanHref("https://evil.example/u/3f9a0c1e-8b7d-4a2f-9c6e-1b0d5a8f7e3c"), "https://evil.example/u/[token]", "a UUID");
+  assert.equal(cleanHref("https://evil.example/i/invoice-2026-11-04-000123"), "https://evil.example/i/[token]", "20+ characters with 6+ digits");
+  assert.equal(cleanHref("https://evil.example/docs/report-2026.html"), "https://evil.example/docs/report-2026.html", "a file name stays");
+  assert.equal(cleanHref("https://evil.example/fully-remote-integrated-marketing-manager-position/index.html"),
+    "https://evil.example/fully-remote-integrated-marketing-manager-position/index.html", "words stay");
+  assert.equal(cleanHref("mailto:linda@gmail.com"), "mailto:[someone]@gmail.com");
+  assert.equal(cleanHref("mailto:linda@gmail.com?subject=hi"), "mailto:[someone]@gmail.com");
+  assert.equal(cleanHref("linda@gmail.com"), "[someone]@gmail.com", "a bare address");
+  assert.equal(cleanHref("tel:+33612345678"), "tel:+33612345678", "nothing to redact in a number");
+});
+
+test("validateEntry refuses a link whose scheme is not http, https or mailto", async () => {
+  const ctx = await refs();
+  const link = (href) => withMessage({ links: [{ text: "x", href }] });
+  for (const href of ["tel:+33612345678", "javascript:alert(1)", "ftp://evil.example/x", "chronopost.fr", "//evil.example/x"]) {
+    assert.ok(validateEntry(link(href), ctx).includes("links must be http, https or mailto"), href);
+  }
+  assert.deepEqual(validateEntry(link("mailto:[someone]@gmail.com"), ctx), []);
+  assert.deepEqual(validateEntry(link("HTTPS://evil.example/x"), ctx), [], "the scheme's case does not matter");
+  assert.ok(validateEntry(link("mailto:linda@gmail.com"), ctx).includes("links must carry no query string, fragment, credentials or token"), "a mailto address is redacted like a path");
+});
+
 test("cleanHref keeps the scheme, host and path; credentials, an address and a token in the path go", () => {
   assert.equal(cleanHref("https://a:b@evil.example/x"), "https://evil.example/x");
   assert.equal(cleanHref("https://evil.example/verify/linda@gmail.com"), "https://evil.example/verify/[someone]@gmail.com");

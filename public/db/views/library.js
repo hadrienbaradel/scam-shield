@@ -164,7 +164,8 @@ async function entry(root, id, ctx) {
   const fname = family?.name?.en || e.family || "Scam";
   setTitle(e.brand ? `${e.brand}: ${e.lure || fname}` : `${fname}: ${e.lure || e.id}`);
   const v = e.verdict || null;
-  const ind = indicatorsOf(e);
+  // The server's one rule (lib/library.js indicatorsOf) says what is worth a lookup; the page lists it.
+  const ind = { domains: [], senders: [], phones: [], ...(data.indicators || {}) };
   const lookup = (kind, value) => `<li><span class="kind">${esc(kind)}</span><span class="value">${esc(value)}</span><a class="btn btn-ghost btn-small" href="${esc(hashFor("suspects", { q: value }))}" aria-label="Look up ${esc(value)}">Look up</a></li>`;
   const indicators = [
     ...ind.senders.map((s) => lookup("sender", s)),
@@ -248,45 +249,4 @@ let familiesPromise = null;
 function familiesCache() {
   if (!familiesPromise) familiesPromise = api("/api/public/families").catch((e) => { familiesPromise = null; throw e; });
   return familiesPromise;
-}
-
-// ---- Indicators, the page's copy of lib/library.js indicatorsOf ----------------------
-
-const RESERVED_HOST = /(^|\.)(test|example|invalid|localhost|local|onion)$/i;
-const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
-const PRIVATE_IP = /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
-const EMAIL = /^[^\s@<>"'()[\]]+@[^\s@<>"'()[\]]+\.[^\s@<>"'()[\]]+$/;
-const URL_RE = /https?:\/\/[^\s<>"'()[\]]+/gi;
-const PHONE_RE = /\+?\d[\d .()-]{5,18}\d/g;
-
-function hostOf(url) {
-  try { return new URL(String(url)).hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
-}
-const goodHost = (h) => h && !RESERVED_HOST.test(h) && !(IPV4.test(h) && PRIVATE_IP.test(h));
-// Digits with the leading + kept; a date, an amount or a short run of digits is not a number.
-function phoneValue(s) {
-  const raw = String(s).trim();
-  if (/^\d{4}[-./]\d{1,2}[-./]\d{1,2}$|^\d{1,2}[-./]\d{1,2}[-./]\d{2,4}$/.test(raw)) return null;
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length < 7 || digits.length > 15) return null;
-  if (!raw.startsWith("+") && digits.length < 10) return null;
-  return (raw.startsWith("+") ? "+" : "") + digits;
-}
-
-export function indicatorsOf(entry) {
-  const m = entry?.message || {};
-  const body = String(m.body || "");
-  const domains = new Set(), senders = new Set(), phones = new Set();
-  for (const l of m.links || []) { const h = hostOf(l?.href); if (goodHost(h)) domains.add(h); }
-  for (const u of body.match(URL_RE) || []) { const h = hostOf(u); if (goodHost(h)) domains.add(h); }
-  const from = String(m.from || "").trim();
-  if (from.includes("@")) {
-    const host = from.split("@").pop().toLowerCase();
-    if (EMAIL.test(from) && !/^\[someone\]@/i.test(from) && !RESERVED_HOST.test(host)) senders.add(from.toLowerCase());
-  } else if (from) {
-    const p = phoneValue(from);
-    if (p) phones.add(p);
-  }
-  for (const p of body.match(PHONE_RE) || []) { const v = phoneValue(p); if (v) phones.add(v); }
-  return { domains: [...domains], senders: [...senders], phones: [...phones] };
 }
