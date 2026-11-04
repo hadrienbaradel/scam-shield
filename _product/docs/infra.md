@@ -1,4 +1,4 @@
-Keywords: docker, compose, infra, database, postgres, ci, github actions, npm audit, gitleaks, dependabot, deploy, prod, ansible, volumes, test database, TEST_DB_SUFFIX
+Keywords: docker, compose, infra, database, postgres, ci, github actions, npm audit, gitleaks, dependabot, deploy, prod, ansible, volumes, test database, TEST_DB_SUFFIX, codespaces, devcontainer
 
 # Infrastructure
 
@@ -66,6 +66,21 @@ judges look (Nov 5-8); security updates are not bound by it. Raise the limit aft
 Vlad's account has push rights only) turns on CodeQL default setup, secret-scanning push protection, and Dependabot alerts with
 security updates. Results: https://github.com/hadrienbaradel/scam-shield/actions (the badge in the README links there).
 `.github/workflows/release.yml` runs on a pushed `v*` tag (`make release`): job `apk`, on a read-only token, builds as CI does (JDK 17, the Gradle cache, `./gradlew assembleDebug`); job `publish`, the only one that can write, publishes a GitHub release with generated notes and `prudence-<tag>-android-debug.apk`; its third-party actions are pinned to commit SHAs, the version in a comment (`_product/docs/git.md`, Releases).
+
+## Codespaces
+
+`.devcontainer/devcontainer.json` gives a judge the running app in one click (the README's "Open in GitHub Codespaces" badge;
+VS Code Dev Containers reads the same file). Image `mcr.microsoft.com/devcontainers/javascript-node:24-bookworm` (Node 24 as in
+`.nvmrc`; the bare `24` tag is Debian trixie, where the docker-in-docker feature refuses to install Moby), feature
+`ghcr.io/devcontainers/features/docker-in-docker:4` with Compose v2, so the dev compose Postgres runs inside the container exactly
+as on a laptop, bind mount included. `containerEnv` sets `PG_USER=postgres` and `PGUSER=postgres`, as CI does (`USER` is not set in
+lifecycle commands). `postCreateCommand`: `npm ci`, wait for the inner Docker, `make db-up` (Postgres healthy, both databases,
+migrations). `postAttachCommand`: `make server` (no master key in a codespace, so the local database and the jobs), port 3000
+forwarded and opened in a browser tab; `BASE_URL` defaults to the forwarded address (`dx.md`, Try it without keys). Measured on
+Nov 4 with the Dev Containers CLI on a laptop (OrbStack, arm64), not yet in a real codespace (creating one needs a `gh` token with
+the `codespace` scope): the docker-in-docker layer builds in about 55 s, the container and its Docker start in 30 s,
+`postCreateCommand` takes 30 s (npm ci 5 s, Postgres pulled and healthy, seven migrations), `make server` answers `/api/health`
+4 s later, and `make test` takes 16 s there. A codespace adds its own image pull and the editor's start.
 
 ## Production: the OVH host
 

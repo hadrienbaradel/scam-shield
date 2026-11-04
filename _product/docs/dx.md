@@ -1,4 +1,4 @@
-Keywords: dx, make, help, doctor, scripts, setup, install, layout, where things live, quick start, developer experience
+Keywords: dx, make, help, doctor, scripts, setup, install, layout, where things live, quick start, developer experience, without keys, keyless, codespaces, devcontainer
 
 # Developer experience: don't make me think
 
@@ -18,6 +18,12 @@ make test      # every suite; add TEST_DB_SUFFIX=<your-name> when others may be 
 
 Without Google keys the app still signs you in on your own computer: the welcome buttons open `/dev/signin`, a local sign-in as anyone in the database or as a new person (on the shared database these are production's people and a new one is a dev user in production data: `_product/docs/ops.md`), `/admin/` included for an address in `ADMIN_EMAILS` (`_product/specs/developer-sign-in.md`; the real Google client: `docs/GOOGLE_SETUP.md`). Never put `make server` behind a proxy or a port forward unless `NODE_ENV=production`: the local pages trust loopback.
 
+## Try it without keys
+
+A clone with no master key, no `.env` and no key at all runs the product in demo mode, and nothing waits for a key: `lib/credentials.js` says once that there is no master key and carries on (outside production), `TOKEN_ENC_KEY` and the Google keys only switch Gmail sign-in on, `META_MODEL_API_KEY` only switches Muse Spark on. With Docker running, `make server` (`PORT=3207 make server` for another port) starts the compose Postgres, migrates it and opens the app; the welcome page's "Try it with examples first" (`/#/demo`) judges the 37 seed messages against Linda's and Françoise's lives with the rules detector (the startup lines say "Muse Spark: NOT configured — detector only"), and Muse Spark takes over once `META_MODEL_API_KEY` is in the environment (a Codespaces secret, `META_MODEL_API_KEY=... make server`, or `make secrets-set` on a credentials file of your own). `make doctor` still prints FAIL for the master key and `TOKEN_ENC_KEY` there: the team needs them, the demo does not. `LLM_PROVIDER=mock` is no keyless mode: the mock answers only what a test scripts, so every live verdict would come back degraded.
+
+One click: the README's "Open in GitHub Codespaces" badge runs the same path in the browser from `.devcontainer/devcontainer.json` (`_product/docs/infra.md`, Codespaces): `npm ci` and `make db-up` when the codespace is created, `make server` each time the editor attaches, port 3000 opened in a new tab. There `BASE_URL` defaults to the forwarded `https://<codespace>-3000.<forwarding domain>` (`defaultBaseUrl` in `src/config.js`), so the demo's own requests pass the Origin check with no setting.
+
 ## Where things live
 
 | Path | Holds |
@@ -30,6 +36,7 @@ Without Google keys the app still signs you in on your own computer: the welcome
 | `tests/` | `node:test` suites and `helpers/` (`_product/docs/testing.md`) |
 | `config/` | `credentials.enc` (committed, encrypted), `credentials.example` (every key documented), `master.key` (never committed) |
 | `.infra/` | `dev/` Docker Compose Postgres with its data in `dev/_volumes/`; `prod/` Dockerfile, compose, Ansible and the host's scripts (`_product/docs/infra.md`, `_product/docs/ops.md`) |
+| `.devcontainer/` | GitHub Codespaces and VS Code Dev Containers: Node 24, Docker inside for the compose Postgres, the keyless demo on port 3000 (Try it without keys, above) |
 | `_product/` | What the code should do and how we work: spec, feature specs, competitors, research, marketing, rules (`_product/README.md`) |
 | `docs/` | Google Cloud setup, and the original PRD and status notes kept for history |
 

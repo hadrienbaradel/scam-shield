@@ -1,5 +1,5 @@
 # Demo mode (public examples)
-Status: Built · Last updated: 2026-10-27
+Status: Built · Last updated: 2026-11-04
 
 ## Why
 Judges, testers and anyone without a test Google account must see the product in 30 seconds. The demo runs the real engine on the PRD's own scenarios, with nothing faked in the verdict.
@@ -10,6 +10,7 @@ Judges, testers and anyone without a test Google account must see the product in
 3. Each verdict is computed on the spot by the same engine as a real inbox (Muse Spark when switched on, rules otherwise), against the example person's life context and the shipped pattern cards; scam links end in `.test` and can never resolve.
 4. When Google sign-in is configured, a "Protect my own email" button sits above the examples.
 5. The demo is rate-limited (60 checks a minute per visitor) and stores nothing.
+6. It needs no key at all: the README's "Open in GitHub Codespaces" badge, or `make server` in a fresh clone, runs it with the rules detector until `META_MODEL_API_KEY` is set (`.devcontainer/devcontainer.json`; `_product/docs/dx.md`, Try it without keys).
 
 ## Demo path
 This is the safety net for the video: if the live Gmail flow is not ready, film the demo inbox (Scam, Safe, Be careful in a row, one read aloud). It cannot show labels, Put it back or the trusted-person answer.

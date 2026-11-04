@@ -1,7 +1,7 @@
 # Prudence
 
 *Ask twice.* (Working title until Oct 28, 2026: Scam Shield. Code, database and repository names still say `scam-shield` until after the hackathon.)
-[![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml)
+[![CI](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienbaradel/scam-shield/actions/workflows/ci.yml) [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/hadrienbaradel/scam-shield?quickstart=1)
 
 **Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Features and where each one stands: [_product/spec.md](_product/spec.md). The original PRD and the first status notes stay in [docs/](docs/) for history. What was built during the hackathon, with times: [docs/PROVENANCE.md](docs/PROVENANCE.md).
 
@@ -32,6 +32,10 @@ All calls go to the Meta Model API (`api.meta.ai/v1`) from the server; nothing r
 | Muse Spark 1.3, Contributor tier (`muse-spark-1.3-contributor`) | Scored the 18,849-email public evaluation (public corpora only, never a person's mail; the server refuses this tier) | `scripts/eval-corpus.mjs --contributor`, `allowContributorForPublicEval` in `lib/llm/meta.js` |
 
 ## Quick start
+
+**Try it without keys.** Click [Open in GitHub Codespaces](https://codespaces.new/hadrienbaradel/scam-shield?quickstart=1), or run `make server` in a fresh clone with Docker running: Postgres starts and the app opens on port 3000.
+"Try it with examples first" (`/#/demo`) judges the 37 seed messages against Linda's and Françoise's lives, with no sign-in.
+Without a key the verdicts come from the rules detector; put `META_MODEL_API_KEY` in the environment (a Codespaces secret, or `META_MODEL_API_KEY=... make server`) and Muse Spark judges them ([_product/docs/dx.md](_product/docs/dx.md), Try it without keys).
 
 Needs Node 22.9+ (`.nvmrc` says 24; `nvm install` reads it) and Docker, which runs Postgres for you (details, including a local PostgreSQL already on port 5432: [_product/docs/infra.md](_product/docs/infra.md)). Three commands:
 
