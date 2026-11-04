@@ -58,11 +58,18 @@ const CARD_CHANNELS = { email: "email", sms: "sms", chat: "whatsapp", voice: "ph
 const bothLines = (a) => (a && typeof a.en === "string" && a.en.trim() && typeof a.fr === "string" && a.fr.trim() ? { en: a.en.trim(), fr: a.fr.trim() } : null);
 const sourceOf = (id) => WATCH_SOURCES.find((s) => s.id === id);
 
+// One feed body, at most 2 MB (a feed is a few hundred KB at most; a bloated
+// one is that source's error line, never the run's): refused on its declared
+// length when it says one, else on what came back.
+const MAX_BODY = 2 * 1024 * 1024;
 async function fetchBody(fetchImpl, url) {
   const res = await fetchImpl(url, { headers: { "user-agent": USER_AGENT, accept: "application/json, application/rss+xml, application/atom+xml, text/xml;q=0.9, */*;q=0.8" },
     signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+  if (Number(res.headers.get("content-length")) > MAX_BODY) throw new Error("body over 2 MB");
+  const text = await res.text();
+  if (text.length > MAX_BODY) throw new Error("body over 2 MB");
+  return text;
 }
 
 // One source's body as items { title, url, summary, published, breach? }.
@@ -170,22 +177,34 @@ async function cardForTechnique(row) {
 // The reviewer's one action wins when it has both languages; a technique
 // gets its card unless the threat feed already carded that link. Null when
 // the item is unknown.
+// A decision is final: only a candidate, or a row the classifier failed on,
+// takes one. The approval is written first and only when the row is still
+// open (the WHERE is the guard, so two reviewers cannot both decide it);
+// the card follows, so a decided row never runs the card path again.
+// Answers: null (unknown id), { refused } (already decided), { cardId }.
+const DECIDED = { refused: "already decided" };
 export async function approveWatchItem(id, { one_action } = {}) {
   const row = await one("SELECT * FROM watch_items WHERE id = $1", [id]);
   if (!row) return null;
   const action = bothLines(one_action) || row.one_action;
+  const taken = await one(`UPDATE watch_items SET status = 'approved', decided_at = now(), one_action = $2
+                           WHERE id = $1 AND status IN ('candidate', 'error') RETURNING id`, [id, action]);
+  if (!taken) return DECIDED;
   let cardId = null;
   if (row.kind === "technique") {
     const carded = await one("SELECT 1 FROM feed_items WHERE url = $1 AND status = 'carded'", [row.url]);
     if (!carded) cardId = await cardForTechnique({ ...row, one_action: action });
   }
-  await q("UPDATE watch_items SET status = 'approved', decided_at = now(), one_action = $2, card_id = $3 WHERE id = $1", [id, action, cardId]);
+  await q("UPDATE watch_items SET card_id = $2 WHERE id = $1", [id, cardId]);
   return { cardId };
 }
 
+// Answers: null (unknown id), { refused } (already decided), { ok: true }.
 export async function rejectWatchItem(id, reason) {
-  const res = await q("UPDATE watch_items SET status = 'rejected', reason = $2, decided_at = now() WHERE id = $1", [id, String(reason || "").slice(0, 500) || null]);
-  return res.rowCount > 0;
+  const taken = await one(`UPDATE watch_items SET status = 'rejected', reason = $2, decided_at = now()
+                           WHERE id = $1 AND status IN ('candidate', 'error') RETURNING id`, [id, String(reason || "").slice(0, 500) || null]);
+  if (taken) return { ok: true };
+  return (await one("SELECT 1 FROM watch_items WHERE id = $1", [id])) ? DECIDED : null;
 }
 
 // What the public page shows: the approved items decided within `days`,

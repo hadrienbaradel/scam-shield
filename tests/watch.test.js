@@ -129,6 +129,7 @@ function fixtures(over = {}) {
     const body = bodies[url];
     if (body instanceof Error) throw body;
     if (typeof body === "number") return new Response("down", { status: body });
+    if (body && typeof body === "object") return body; // a hand-made response (headers of its own)
     return new Response(body, { status: 200 });
   };
   return { fetchImpl, calls };
@@ -196,14 +197,19 @@ test("a run reads every source once: HIBP rows are breaches without the classifi
 
 test("one feed down, one answering something that is not a feed, one not JSON: each is an error line and the others go on; without a classifier the rows wait for a human", opts, async () => {
   await resetDb();
-  const { fetchImpl } = fixtures({ [src("krebs").url]: 500, [src("cisa-news").url]: "<html>Service unavailable</html>", [src("hibp").url]: "not json", [src("therecord").url]: new Error("socket hang up") });
+  // A feed that says it is 3 MB is refused before it is read; one that turns out to be 2.5 MB is refused after.
+  const declared = { ok: true, status: 200, headers: new Headers({ "content-length": String(3 * 1024 * 1024) }), text: async () => { throw new Error("should not be read"); } };
+  const bloated = `<rss><channel>${"x".repeat(2.5 * 1024 * 1024)}</channel></rss>`;
+  const { fetchImpl } = fixtures({ [src("krebs").url]: 500, [src("cisa-news").url]: "<html>Service unavailable</html>", [src("hibp").url]: "not json", [src("therecord").url]: new Error("socket hang up"),
+    [src("malwarebytes").url]: declared, [src("google-ti").url]: bloated });
   const report = await runScamWatch({ fetchImpl, classify: null, now: NOW });
-  assert.deepEqual(report.errors.sort(), ["cisa-news: not a feed", "krebs: HTTP 500", "therecord: socket hang up", "hibp: Unexpected token 'o', \"not json\" is not valid JSON"].sort());
+  assert.deepEqual(report.errors.sort(), ["cisa-news: not a feed", "krebs: HTTP 500", "therecord: socket hang up", "hibp: Unexpected token 'o', \"not json\" is not valid JSON",
+    "malwarebytes: body over 2 MB", "google-ti: body over 2 MB"].sort());
   assert.equal(report.breaches + report.techniques, 0, "nothing classified");
   assert.ok(report.newItems > 5);
   const rows = await many("SELECT source, kind, status FROM watch_items");
   assert.ok(rows.every((r) => r.kind === null && r.status === "candidate"));
-  assert.ok(!rows.some((r) => ["krebs", "cisa-news", "hibp", "therecord"].includes(r.source)));
+  assert.ok(!rows.some((r) => ["krebs", "cisa-news", "hibp", "therecord", "malwarebytes", "google-ti"].includes(r.source)), "a failed source leaves no row");
   const mastodonSlice = fixtures({ [src("mastodon-scam").url]: JSON.stringify({ error: "rate limited" }) });
   const bad = await runScamWatch({ fetchImpl: mastodonSlice.fetchImpl, classify: null, now: NOW });
   assert.deepEqual(bad.errors, ["mastodon-scam: not a list of posts"]);
@@ -324,14 +330,25 @@ test("approve: a technique becomes a candidate card (watch-<slug>, the source an
   assert.deepEqual(bareRow.card.countries, []);
   assert.equal(bareRow.card.lure, "Europol news alert");
   assert.equal(await approveWatchItem("00000000-0000-0000-0000-000000000000"), null);
+  // A decision is final: a second approve changes nothing (no new decided_at, no second card path), a reject of an approved row is refused.
+  const decided = await one("SELECT decided_at, card_id, one_action FROM watch_items WHERE id = $1", [technique.id]);
+  assert.deepEqual(await approveWatchItem(technique.id, { one_action: { en: "Again", fr: "Encore" } }), { refused: "already decided" });
+  assert.deepEqual(await one("SELECT decided_at, card_id, one_action FROM watch_items WHERE id = $1", [technique.id]), decided, "nothing moved");
+  assert.deepEqual(await rejectWatchItem(technique.id, "changed my mind"), { refused: "already decided" });
+  assert.equal((await one("SELECT status FROM watch_items WHERE id = $1", [technique.id])).status, "approved");
   // Reject.
   const krebs = await one("SELECT * FROM watch_items WHERE source = 'krebs'");
-  assert.equal(await rejectWatchItem(krebs.id, "a duplicate of the IC3 alert"), true);
+  assert.deepEqual(await rejectWatchItem(krebs.id, "a duplicate of the IC3 alert"), { ok: true });
   const rejected = await one("SELECT status, reason, decided_at FROM watch_items WHERE id = $1", [krebs.id]);
   assert.equal(rejected.status, "rejected");
   assert.equal(rejected.reason, "a duplicate of the IC3 alert");
   assert.ok(rejected.decided_at);
-  assert.equal(await rejectWatchItem("00000000-0000-0000-0000-000000000000", "x"), false);
+  assert.deepEqual(await approveWatchItem(krebs.id), { refused: "already decided" }, "a rejected row cannot be approved");
+  assert.equal(await rejectWatchItem("00000000-0000-0000-0000-000000000000", "x"), null);
+  // A row the classifier failed on is still open to a decision.
+  await pool.query("UPDATE watch_items SET status = 'error', error = 'model timeout' WHERE source = 'malwarebytes'");
+  const failedRow = await one("SELECT id FROM watch_items WHERE source = 'malwarebytes'");
+  assert.deepEqual(await rejectWatchItem(failedRow.id, "not for seniors"), { ok: true });
   // The public week.
   await pool.query("UPDATE watch_items SET decided_at = now() - interval '10 days' WHERE id = $1", [ncsc.id]);
   const week = await publicWatch({ days: 7 });
@@ -390,6 +407,13 @@ test("routes: the public week needs no session and lists approved items only; th
     assert.deepEqual(res.json(), { ok: true, cardId: "watch-scam-warning-fake-parcel-texts" });
     const hibpRow = await one("SELECT id FROM watch_items WHERE source = 'hibp'");
     assert.deepEqual((await post(`/api/admin/db/watch/${hibpRow.id}/approve`, adminHeaders)).json(), { ok: true, cardId: null });
+    // A decision is final: 409 on a second decision either way.
+    const again = await post(`/api/admin/db/watch/${which.id}/approve`, adminHeaders);
+    assert.equal(again.statusCode, 409);
+    assert.deepEqual(again.json(), { error: "already decided" });
+    const undo = await post(`/api/admin/db/watch/${hibpRow.id}/reject`, adminHeaders, { reason: "changed my mind" });
+    assert.equal(undo.statusCode, 409);
+    assert.deepEqual(undo.json(), { error: "already decided" });
     // Reject with a reason.
     const krebs = await one("SELECT id FROM watch_items WHERE source = 'krebs'");
     assert.deepEqual((await post(`/api/admin/db/watch/${krebs.id}/reject`, adminHeaders, { reason: "not for seniors" })).json(), { ok: true });

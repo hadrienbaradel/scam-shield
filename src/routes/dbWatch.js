@@ -42,17 +42,20 @@ export default async function dbWatchRoutes(app) {
       return reply.code(202).send({ started: true, job: "scamwatch" });
     });
 
+    // A decision is final: a second one, either way, is refused (409).
     adm.post("/api/admin/db/watch/:id/approve", async (request, reply) => {
       const id = request.params.id;
       const out = UUID.test(id) ? await approveWatchItem(id, { one_action: request.body?.one_action }) : null;
       if (!out) return reply.code(404).send({ error: "unknown watch item" });
+      if (out.refused) return reply.code(409).send({ error: out.refused });
       return { ok: true, cardId: out.cardId };
     });
 
     adm.post("/api/admin/db/watch/:id/reject", async (request, reply) => {
       const id = request.params.id;
-      const done = UUID.test(id) ? await rejectWatchItem(id, request.body?.reason) : false;
-      if (!done) return reply.code(404).send({ error: "unknown watch item" });
+      const out = UUID.test(id) ? await rejectWatchItem(id, request.body?.reason) : null;
+      if (!out) return reply.code(404).send({ error: "unknown watch item" });
+      if (out.refused) return reply.code(409).send({ error: out.refused });
       return { ok: true };
     });
   });
