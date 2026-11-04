@@ -141,11 +141,6 @@ export async function setRunning(id, running) {
   return Boolean(await one(`UPDATE ads SET status = $3, error = NULL, updated_at = now() WHERE id = $1 AND status = $2 RETURNING id`, [id, from, to]));
 }
 
-// Remember a network failure on a live ad without changing its state.
-export async function noteError(id, error) {
-  await q("UPDATE ads SET error = $2, updated_at = now() WHERE id = $1", [id, error]);
-}
-
 // Set aside with a reason: a draft, a failed or interrupted idea, a paused
 // ad, or a live one once the caller has paused it on the network.
 export async function reject(id, reason) {

@@ -12,6 +12,7 @@ import * as library from "./views/library.js";
 import * as contests from "./views/contests.js";
 import * as watch from "./views/watch.js";
 import * as earlyAccess from "./views/earlyAccess.js";
+import * as ads from "./views/ads.js";
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -186,6 +187,7 @@ const VIEWS = [
   { path: "contests", label: "Contests", view: contests },
   { path: "watch", label: "Scam watch", view: watch },
   { path: "early-access", label: "Early access", view: earlyAccess },
+  { path: "ads", label: "Ads", view: ads },
 ];
 const EVERY_MS = 30000;
 
