@@ -1,54 +1,54 @@
 # WhatsApp setup (the Meta side)
 
-The channel is coded and tested (`_product/specs/whatsapp-channel.md`: forward a text, a picture or a voice note to the Prudence number, the verdict comes back in the chat). What is missing is Meta's side: an app with the WhatsApp product, its free test number, a token and the App Secret. Nothing here needs App Review, display-name review or business verification: a test number in Development mode talks to up to 5 allowlisted phones, which is all the demo needs.
+The channel is coded and tested (`_product/specs/whatsapp-channel.md`: forward a text, a picture or a voice note to the Prudence number, the verdict comes back in the chat). Meta's side runs on the same app as the Messenger channel, under Vlad's account (vladztools@gmail.com, the rule in `_product/docs/secrets.md`, Accounts). Nothing here needs App Review, display-name review or business verification: a test number talks to up to 5 allowlisted phones, which is all the demo needs.
 
-Who does it: **Hadrien, under his own Meta account** (`_product/docs/secrets.md`, Accounts: Vlad's Meta registrations use vladztools@gmail.com, Hadrien registers under his own). On Nov 4, 2026 Vlad's developer account sat in an "unusual activity" confirmation checkpoint, so the Meta side moved to Hadrien. About 20 minutes, plus 5 for the webhook once a server is reachable.
+## Where it stands (Nov 4, 2026, 10:00 CET)
 
-## Part 1: Hadrien alone, in the Meta dashboard
+| Piece | State |
+|---|---|
+| Business portfolio | **Hey Prudence**, id `4686439461680708`, the Page claimed into it, Vlad full control |
+| App | **Hey Prudence**, id `974018515302637` (the Messenger app), WhatsApp use case added |
+| Test number | **+1 (555) 623-9145**, digits `15556239145` |
+| Phone number ID | `1392583843943808`, stored as `WHATSAPP_PHONE_NUMBER_ID` |
+| WhatsApp Business Account ID | `1817793229233892`, stored as `WHATSAPP_BUSINESS_ACCOUNT_ID` |
+| `WHATSAPP_PHONE_NUMBER`, `WHATSAPP_GRAPH_VERSION` | stored (`15556239145`, `v25.0`) |
+| Webhook | callback `https://<tunnel>/api/whatsapp/webhook` with the stored `WHATSAPP_VERIFY_TOKEN`, verified by Meta (its handshake answered 200 from a Meta address) |
+| `WHATSAPP_ACCESS_TOKEN` | **missing**: dashboard step 1 below |
+| `WHATSAPP_APP_SECRET` | **missing**: dashboard step 2 below (the same value as `MESSENGER_APP_SECRET`, one app) |
+| Recipient allowlist | **empty**: dashboard step 3 below |
 
-1. **Developer account.** Open <https://developers.facebook.com/> and log in with your Facebook account. If Meta asks you to register as a developer, accept and confirm the email.
-2. **Create the app.** My Apps → Create app. App name **Prudence** (if Meta refuses the name, **Hey Prudence**; the name is internal, the test number never shows it). Contact email: yours. Use case: a WhatsApp one if the list offers it, otherwise **Other**, then app type **Business**. Business portfolio: pick yours, or **Create a new business portfolio** named after yourself or **Hey Prudence** (on Nov 3 "Prudence" alone was refused as a business name). Create the app.
-3. **Add WhatsApp.** In the app dashboard: Add products (or Use cases) → **WhatsApp** → Set up. If it asks for a business portfolio only now, create it here with the same naming rule.
-4. **API Setup.** WhatsApp → **API Setup**. Write down three things from this page:
-   - the test phone number in the **From** field (a real number, the one the phones will write to) and its **Phone number ID** (a long number, not the phone number);
-   - the **WhatsApp Business Account ID**;
-   - the **temporary access token** (24 hours; a stopgap for today only, step 6 gives the real one).
-5. **Allowlist the phones.** In the **To** field → **Manage phone number list** → add your own mobile first; Meta sends a code to that phone by WhatsApp or SMS, type it. Up to 5 numbers. Vlad's phone and the demo phone can be added later by whoever holds the dashboard, with the phone's owner reading the code. Then click **Send message**: the `hello_world` template must arrive on your phone. That proves the number pair works.
-6. **Permanent token (system user).** <https://business.facebook.com/settings> (the Business settings of the portfolio) → Users → **System users** → Add: name `prudence-server`, role **Admin** → **Add assets**: Apps → the app (Full control) and Accounts → WhatsApp accounts → the account (Full control) → **Generate new token**: app = the app, expiration **Never**, permissions `whatsapp_business_messaging` and `whatsapp_business_management` → Generate. Copy it at once: Meta shows it once.
-7. **App Secret.** App settings → **Basic** → App secret → **Show** (Facebook asks for your password) → copy.
-8. **Verify token.** Invent a random string of 20 characters or more (for example the output of `openssl rand -hex 16`). It goes into Meta's webhook form in Part 2 and to Vlad now.
-9. **Optional, saves a round trip.** App roles → Roles → **Add people** → Administrators → Vlad's Facebook account (the one tied to vladztools@gmail.com). Once he accepts in his developer dashboard he can do Part 2, add phones and regenerate tokens without you. His account was in a confirmation checkpoint on Nov 4, so this may have to wait.
-10. **Leave the app in Development mode.** Nothing else on Meta's side.
+The three missing pieces are dashboard actions behind Meta's own dialogs (a Facebook Login popup, the password re-entry, a code sent to a phone), so Vlad does them by hand. Everything after that goes through the Graph API from the command line.
 
-## What Vlad needs back
+## Part 1: Vlad, three dashboard actions, about 5 minutes
 
-Over a private channel (iMessage, Signal, a WhatsApp message): never the repository, never a chat with an agent. Six values, named exactly as the credentials name them (`config/credentials.example`):
+Open <https://developers.facebook.com/apps/974018515302637/> as the vladztools account.
 
-| Name | What it is | From step |
-|---|---|---|
-| `WHATSAPP_ACCESS_TOKEN` | the system-user token that never expires (the 24-hour one only if step 6 failed) | 6 (or 4) |
-| `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID of the test number | 4 |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | the WhatsApp Business Account ID | 4 |
-| `WHATSAPP_APP_SECRET` | the App secret | 7 |
-| `WHATSAPP_VERIFY_TOKEN` | the string you invented | 8 |
-| `WHATSAPP_PHONE_NUMBER` | the test number itself as digits only, country code first (for example 15551234567); not secret, it becomes the "Open WhatsApp" link in Settings | 4 |
+1. **Access token.** Left menu: Use cases → Connect on WhatsApp → **Step 1. Try it out** → **Generate token**. A Facebook Login popup asks to continue as the account and to grant the WhatsApp permissions: continue. Copy the token (24 hours; a system-user token that never expires replaces it later from <https://business.facebook.com/latest/settings/system_users?business_id=4686439461680708>: Add `prudence-server`, role Admin, assets = the app and the WhatsApp account, Generate token, expiration Never, permissions `whatsapp_business_messaging` and `whatsapp_business_management`). Then, in a terminal at the repo root, paste it into:
+   ```
+   make secrets-set WHATSAPP_ACCESS_TOKEN=<paste>
+   ```
+2. **App Secret.** Left menu: App settings → **Basic** → App secret → **Show** (Facebook asks for the password) → copy, then:
+   ```
+   make secrets-set WHATSAPP_APP_SECRET=<paste> MESSENGER_APP_SECRET=<paste>
+   ```
+   Both channels check every delivery's signature with it; until it is set every delivery is refused with 403.
+3. **Recipient phones.** Step 1. Try it out → **Send a message from your test number** → Recipient → **Manage phone number list** → add your own mobile; type the code Meta sends to it. Up to 5 numbers: the demo phone and Hadrien's go in the same way, each with its owner reading the code.
 
-Plus the App ID, not secret either.
+Then `git add config/credentials.enc` and commit it (the values are encrypted), or tell the agent "keys in" and it commits.
 
-Vlad stores them with `make secrets-set NAME=value` (six times, pasted from the clipboard, never typed in a chat), restarts his server, commits `config/credentials.enc` and runs `make deploy` so production has them too. Alternative once Vlad has sent you `config/master.key` (an open To do in `_product/log.md`): run the six `make secrets-set` yourself, commit `config/credentials.enc`, and tell him "pushed".
+## Part 2: the agent, by API
 
-## Part 2: the webhook, 5 minutes, once the keys are on a server reachable over HTTPS
+With the token and the secret stored, from the command line (`scripts/whatsapp-check.mjs`, see below):
 
-Whoever holds the dashboard (Hadrien, or Vlad after step 9), after Vlad confirms the keys are stored and names the host:
-
-1. WhatsApp → **Configuration** → Webhook → **Edit**: Callback URL `https://<host>/api/whatsapp/webhook`, Verify token = the `WHATSAPP_VERIFY_TOKEN` string → **Verify and save**. The server answers the handshake with the verify token alone, so this works before any message flows. Hosts: Vlad's temporary tunnel today (a random `trycloudflare.com` name; it changes when his session ends), `heyprudence.com` once the production tunnel exists (then every redeploy keeps the URL and the webhook is set once for good).
-2. Webhook fields → **Manage** → subscribe to **messages**.
-3. **Test.** On an allowlisted phone, save the test number as "Prudence" and forward any text to it: the verdict comes back within seconds. A picture goes through Muse Spark's reading, a voice note through Muse Voice Transcribe (ffmpeg is on Vlad's Mac and in the production image). The **Test** button next to the `messages` field sends a sample signed delivery; the server log shows it with ids and types only.
-4. The first live delivery is compared with the payload assumptions in `_product/specs/whatsapp-channel.md` (Open questions): `context.forwarded`, `audio.voice`, the media host.
+1. `GET /{WABA}/subscribed_apps` and, if the app is not listed, `POST /{WABA}/subscribed_apps`: the business account must be subscribed to the app for deliveries to flow.
+2. `GET /{app_id}/subscriptions` with the app token (`app_id|app_secret`): the `whatsapp_business_account` object must list the callback URL and the `messages` field; `POST /{app_id}/subscriptions` sets them when they are off, and the same call moves the callback to `https://heyprudence.com/api/whatsapp/webhook` once production is reachable.
+3. `POST /{PHONE_NUMBER_ID}/messages` with the `hello_world` template to an allowlisted phone: proves the token, the number and the allowlist.
+4. The first live delivery: the senior's phone forwards a text to the test number saved as "Prudence"; the server log shows the delivery (ids and types only) and the reply; the payload is compared with the assumptions in `_product/specs/whatsapp-channel.md` (Open questions).
+5. Production: `make deploy` ships the keys; step 2 moves the callback URL.
 
 ## What the test number cannot do
 
-- Only the 5 allowlisted phones can write to it; everyone else gets nothing.
+- Only the allowlisted phones can write to it; everyone else gets nothing.
 - No display name: the number shows as a number until the person saves the contact.
 - Replies only inside the 24-hour window that the person's own message opens; the bot only ever replies, so this never bites.
 - For real seniors: an owned number, display-name review and business verification, all after the hackathon.
