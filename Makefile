@@ -114,6 +114,11 @@ score: deps ## PRD pass criteria on the seed cases (detector only, no API key ne
 score-muse: deps ## The same through Muse Spark (paid API; answers cached in .runtime/eval)
 	@$(NODE) $(ENV) scripts/score.mjs --muse
 
+.PHONY: readme-numbers
+readme-numbers: deps ## Re-measure the numbers atop README.md and its badges: tests, coverage, seed cases, Android tests, commits, CI runs (gh); needs Postgres
+	@$(DOCTOR) testdb --quiet
+	@$(NODE) scripts/readme-numbers.mjs --write
+
 ##@ Secrets  (config/credentials.enc is committed, encrypted; config/master.key never is)
 
 secrets-init: ## First time: create config/master.key (or paste the team's) and config/credentials.enc
