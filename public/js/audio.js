@@ -18,7 +18,13 @@ export async function toWav16k(file) {
   source.connect(offline.destination);
   source.start();
   const pcm = (await offline.startRendering()).getChannelData(0);
+  return new Blob([encodeWav(pcm)], { type: "audio/wav" });
+}
 
+// The bytes of a 16 kHz mono 16-bit PCM WAV, from samples between -1 and 1 at
+// 16 kHz: what lib/llm/audio.js inspectWav accepts. Listen uses it too
+// (public/js/listen.js).
+export function encodeWav(pcm) {
   const view = new DataView(new ArrayBuffer(44 + pcm.length * 2));
   const ascii = (at, s) => { for (let i = 0; i < s.length; i++) view.setUint8(at + i, s.charCodeAt(i)); };
   ascii(0, "RIFF"); view.setUint32(4, 36 + pcm.length * 2, true); ascii(8, "WAVE");
@@ -29,5 +35,5 @@ export async function toWav16k(file) {
     const s = Math.max(-1, Math.min(1, pcm[i]));
     view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
   }
-  return new Blob([view.buffer], { type: "audio/wav" });
+  return view.buffer;
 }

@@ -8,13 +8,14 @@
 //   renderCheckScreen(root, status, { step }) -> void
 //     step "choices"  #/check        frames 1g, 1h: the screenshot in gold,
 //                                    Paste the words, Send a voice message,
-//                                    More ways
+//                                    the Meta glasses choice, More ways
 //          "paste"    #/check/paste  frame 1i: the box, "Who sent it?" and
 //                                    "Where did you get it?" as chips, Check it
 //          "photo"    #/check/photo  frame 1j: Choose from my photos (gold),
 //                                    Take a photo now (the camera)
 //          "voice"    #/check/voice  Choose a voice message
-//          "more"     #/check/more   the email file
+//          "more"     #/check/more   the email file (and the Meta glasses
+//                                    choice for someone who said they have none)
 //     status is /api/status: museConfigured (pictures), voiceConfigured
 //     (voice messages). Without them the screen says why, in plain words,
 //     instead of offering a button that cannot work.
@@ -32,6 +33,9 @@
 // verdict arrives. Under the verdict, "Look closer" (status.lookCloser:
 // _product/specs/investigate.md) sends the same words back with the check's
 // id, and the card lists Muse Spark's checks (card.js runLookCloser).
+//
+// The glasses screens (js/views/glasses.js) run their checks through the same
+// run() with a few more fields on the job (see run, below).
 //
 // Pure helpers, tested in tests/check-view.test.js:
 //   WHO, WHERE                 the chips of frame 1i and what each one sends
@@ -54,6 +58,7 @@ import { $, $$, esc, icon, readAloud, toast, focusHeading } from "../ui.js";
 import { openAsk } from "./mail.js";
 import { toWav16k } from "../audio.js";
 import { verdictCardHtml, unsureRowHtml, bindVerdictCard, runLookCloser } from "./card.js";
+import { glassesChoice } from "../protects.js";
 
 // "Who sent it?": what the senior believes about the sender, sent as
 // claimedSender and told to the model as her unverified belief; never the
@@ -118,12 +123,13 @@ const draft = { text: "", who: DEFAULT_WHO, where: DEFAULT_WHERE };
 let inflight = null; // { ctrl }: the one check running, aborted by the next screen
 let closer = false; // the server can look closer (status.lookCloser)
 
-const backLink = () => `<a class="btn-back" href="#/check">${icon("chevron-left", 28, 2.5)}${esc(t("v2_tab_check"))}</a>`;
-const problemBox = (key) => `<p id="ckProblem" class="banner caution ck-problem" role="alert" tabindex="-1"${key ? "" : " hidden"}>${key ? esc(t(key)) : ""}</p>`;
+// The back link of a screen, by default to Check; job: { backHref, backKey }.
+export const backLink = (job) => `<a class="btn-back" href="${esc(job?.backHref || "#/check")}">${icon("chevron-left", 28, 2.5)}${esc(t(job?.backKey || "v2_tab_check"))}</a>`;
+export const problemBox = (key) => `<p id="ckProblem" class="banner caution ck-problem" role="alert" tabindex="-1"${key ? "" : " hidden"}>${key ? esc(t(key)) : ""}</p>`;
 // A screen drawn in place (reading, failure, verdict) starts at the top,
 // whatever the screen before it was scrolled to.
 const toTop = () => { try { window.scrollTo(0, 0); } catch { /* no window */ } };
-const showProblem = (root, key) => {
+export const showProblem = (root, key) => {
   const p = $("#ckProblem", root);
   if (!p) return;
   p.textContent = t(key);
@@ -131,9 +137,14 @@ const showProblem = (root, key) => {
   p.focus();
 };
 
-export function renderCheckScreen(root, status, { step = "choices", problem = "" } = {}) {
+// Aborts the check that is running, if any: its late answer is dropped.
+export function stopCheck() {
   inflight?.ctrl.abort();
   inflight = null;
+}
+
+export function renderCheckScreen(root, status, { step = "choices", problem = "" } = {}) {
+  stopCheck();
   closer = Boolean(status?.lookCloser);
   const draw = { choices: drawChoices, paste: drawPaste, photo: drawPhoto, voice: drawVoice, more: drawMore }[step] || drawChoices;
   draw(root, status || {}, problem);
@@ -144,6 +155,7 @@ export function renderCheckScreen(root, status, { step = "choices", problem = ""
 // (.is-largest), so the three choices still sit above the tab bar (frame 1h).
 function drawChoices(root, status) {
   const largest = Number(status.user?.textScale) >= 1.4;
+  const glasses = glassesChoice(status);
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-choices${largest ? " is-largest" : ""}">
       <h1 class="screen-title">${esc(t("ck_title"))}</h1>
@@ -151,6 +163,7 @@ function drawChoices(root, status) {
       <a class="btn btn-choice is-hero btn-gold" href="#/check/photo">${icon("camera", 44)}<span class="btn-choice-words"><span class="btn-choice-label">${esc(t("ck_photo"))}</span><span class="btn-choice-sub">${esc(t("ck_photo_sub"))}</span></span></a>
       <a class="btn btn-choice" href="#/check/paste">${icon("clipboard", 36)}<span>${esc(t("ck_paste"))}</span></a>
       <a class="btn btn-choice" href="#/check/voice">${icon("mic", 36)}<span>${esc(t("ck_voice"))}</span></a>
+      ${glasses.inMore ? "" : `<a class="btn btn-choice" href="${esc(glasses.href)}">${icon("glasses", 36)}<span>${esc(t(glasses.label))}</span></a>`}
       <a class="btn-link" href="#/check/more">${esc(t("ck_more"))}${icon("chevron-right", 22, 2.5)}</a>
     </div>`;
 }
@@ -211,7 +224,7 @@ function drawPaste(root, status, problem) {
 // again on the device as a JPEG of at most 2560 px, which reads as well.
 const PICTURE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const PICTURE_MAX = 7 * 1024 * 1024;
-async function fitPicture(file) {
+export async function fitPicture(file) {
   if (PICTURE_TYPES.includes(file.type) && file.size <= PICTURE_MAX) return file;
   let bitmap;
   try { bitmap = await createImageBitmap(file); } catch { throw Object.assign(new Error("unreadable"), { code: "unreadable" }); }
@@ -223,6 +236,19 @@ async function fitPicture(file) {
   const blob = await new Promise((done) => canvas.toBlob(done, "image/jpeg", 0.88));
   if (!blob || blob.size > 8 * 1024 * 1024) throw Object.assign(new Error("unreadable"), { code: "unreadable" });
   return new File([blob], "picture.jpg", { type: "image/jpeg" });
+}
+
+// A picture's check, for Check and for the glasses screen; more: job fields.
+export function pictureJob(file, more) {
+  return {
+    kind: "image", title: "ck_reading", picture: file,
+    send: async (signal) => {
+      const form = new FormData();
+      form.append("image", await fitPicture(file));
+      return api("/api/check/image", { method: "POST", form, signal });
+    },
+    ...more,
+  };
 }
 
 function drawPhoto(root, status, problem) {
@@ -255,15 +281,7 @@ function drawPhoto(root, status, problem) {
       const file = input.files?.[0];
       input.value = "";
       if (!file) return;
-      run(root, {
-        kind: "image", title: "ck_reading", picture: file,
-        send: async (signal) => {
-          const form = new FormData();
-          form.append("image", await fitPicture(file));
-          return api("/api/check/image", { method: "POST", form, signal });
-        },
-        back: (key) => drawPhoto(root, status, key),
-      });
+      run(root, pictureJob(file, { back: (key) => drawPhoto(root, status, key) }));
     });
   }
   if (problem) $("#ckProblem", root)?.focus();
@@ -308,6 +326,7 @@ function drawVoice(root, status, problem) {
 
 // ------------------------------------------------------------------- more --
 function drawMore(root, status, problem) {
+  const glasses = glassesChoice(status);
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-more">
       ${backLink()}
@@ -319,6 +338,10 @@ function drawMore(root, status, problem) {
         <button id="ckEmlChoose" class="btn btn-outline btn-big" type="button">${icon("mail", 28)}<span>${esc(t("eml_btn"))}</span></button>
         <input id="ckEmlFile" type="file" accept=".eml,message/rfc822" hidden>
       </section>
+      ${glasses.inMore ? `<section class="row-card" aria-labelledby="ckGlassesTitle">
+        <h2 id="ckGlassesTitle" class="row-name">${esc(t(glasses.label))}</h2>
+        <a class="btn btn-outline btn-big" href="${esc(glasses.href)}">${icon("glasses", 28)}<span>${esc(t("gl_row_setup"))}</span></a>
+      </section>` : ""}
     </div>`;
   const input = $("#ckEmlFile", root);
   $("#ckEmlChoose", root).addEventListener("click", () => input.click());
@@ -338,8 +361,13 @@ function drawMore(root, status, problem) {
 // ------------------------------------------------------ running a check --
 // job: { kind, title (the i18n key of the reading line), picture (a File to
 // show while it is read), send(signal) -> the API answer, back(problemKey)
-// (draws the screen the check started from), done() after a verdict }.
-async function run(root, job) {
+// (draws the screen the check started from), done() after a verdict }, and,
+// for the glasses screens: backHref and backKey (the back link), note (the
+// i18n key under the reading line; false for none), afterVerdict(verdict)
+// once the card is on screen, cardEnd { key, onClick } (a gold button ending
+// the card, instead of "Go back to Today"; "Ask <name>" is then an outline,
+// so the screen keeps one gold verb).
+export async function run(root, job) {
   inflight?.ctrl.abort();
   const ctrl = new AbortController();
   const mine = { ctrl };
@@ -367,7 +395,7 @@ async function run(root, job) {
     const p = checkProblem(e, job.kind);
     if (!p) return;
     if (p.signedOut) { location.href = "/"; return; }
-    if (p.retry) drawFailed(root, () => run(root, job));
+    if (p.retry) drawFailed(root, job, () => run(root, job));
     else job.back(p.key);
   } finally {
     window.removeEventListener("hashchange", leave);
@@ -380,13 +408,13 @@ async function run(root, job) {
 function drawReading(root, job, onStop) {
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-reading" aria-busy="true">
-      ${backLink()}
+      ${backLink(job)}
       ${job.picture ? `<div class="ck-preview"><img id="ckPreview" alt="" hidden></div>` : ""}
       <div class="ck-wait">
         <span class="ck-ring" aria-hidden="true"></span>
         <h1 class="ck-wait-title" tabindex="-1">${esc(t(job.title))}</h1>
       </div>
-      <p class="screen-lead">${esc(t("ck_reading_note"))}</p>
+      ${job.note === false ? "" : `<p class="screen-lead">${esc(t(job.note || "ck_reading_note"))}</p>`}
       <button id="ckStop" class="btn btn-outline btn-big ck-stop" type="button">${icon("stop", 24)}${esc(t("ck_stop"))}</button>
     </div>`;
   $("#ckStop", root).addEventListener("click", onStop);
@@ -404,10 +432,10 @@ function drawReading(root, job, onStop) {
 
 // The check could not run (the model or the network unreachable, too many
 // checks in a minute): plain words, and Try again sends the same thing.
-function drawFailed(root, again) {
+function drawFailed(root, job, again) {
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-failed">
-      ${backLink()}
+      ${backLink(job)}
       <div class="ck-wait">
         <span class="ck-mark" aria-hidden="true">${icon("careful", 34)}</span>
         <h1 class="ck-wait-title" tabindex="-1">${esc(t("ck_failed"))}</h1>
@@ -432,14 +460,19 @@ function drawVerdict(root, job, out, guardian) {
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-verdict">
       <div class="screen-head">
-        ${backLink()}
+        ${backLink(job)}
         <button id="ckListen" class="btn-listen" type="button" aria-label="${esc(t("v2_read"))}">${icon("speaker", 26)}<span aria-hidden="true">${esc(t("v2_read_short"))}</span></button>
       </div>
       ${verdictCardHtml({ verdict: v, message: fold, ids: "ck" })}
       ${unsureRowHtml({ verdict: v.verdict, guardianName: guardian ? firstName(guardian.name) : "", folded: safe, ids: "ck", lookCloser: closer && Boolean(look) })}
       <div id="ckAskPanel" class="ck-ask-panel"></div>
     </div>`;
-  if (safe) $("#ckCard", root)?.insertAdjacentHTML("beforeend", `<a id="ckToday" class="btn btn-gold btn-big" href="#/today">${esc(t("ck_back_today"))}</a>`);
+  if (job.cardEnd) {
+    $("#ckCard", root)?.insertAdjacentHTML("beforeend", `<button id="ckEnd" class="btn btn-gold btn-big" type="button">${esc(t(job.cardEnd.key))}</button>`);
+    $("#ckEnd", root)?.addEventListener("click", job.cardEnd.onClick);
+    // One gold verb on this screen only; the shared card stays as it is everywhere else.
+    for (const ask of [$("#ckAsk", root), $("#ckAddTrusted", root)]) ask?.classList.replace("btn-gold", "btn-outline");
+  } else if (safe) $("#ckCard", root)?.insertAdjacentHTML("beforeend", `<a id="ckToday" class="btn btn-gold btn-big" href="#/today">${esc(t("ck_back_today"))}</a>`);
   $("#ckListen", root).addEventListener("click", () => readAloud(v.headline ? v : { headline: t("v2_unknown_title"), reasons: [], action_text: t("v2_unknown_note") }));
   const panel = $("#ckAskPanel", root);
   bindVerdictCard(root, {
@@ -453,4 +486,5 @@ function drawVerdict(root, job, out, guardian) {
   toTop();
   const word = $("#ckCard .vcard-word", root);
   if (word) { word.tabIndex = -1; word.focus(); }
+  job.afterVerdict?.(v);
 }

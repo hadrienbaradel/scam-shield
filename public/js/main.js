@@ -6,6 +6,7 @@ import { t, setLang, getLang } from "./i18n.js";
 import { $, esc, focusHeading, icon, signOut } from "./ui.js";
 import { TABS, screenFor } from "./protects.js";
 import { renderMail, renderMessages, renderBlocked, onCheck, onAnswer, onSync, loadList } from "./views/mail.js";
+import { renderGlassesScreen } from "./views/glasses.js";
 import { renderOnboarding, renderGuardian, renderAdmin, renderDemo } from "./views/pages.js";
 import { showLanding, hideLanding, landingAnchor } from "../landing/landing.js";
 import { renderCheckScreen } from "./views/check.js";
@@ -71,6 +72,10 @@ function applyPrefs() {
  *   #/check/photo              "check-photo"      Check
  *   #/check/voice              "check-voice"      Check
  *   #/check/more               "check-more"       Check
+ *   #/check/glasses            "check-glasses"    Check
+ *   #/check/glasses/setup      "check-glasses-setup"  Check
+ *   #/check/glasses/look       "check-glasses-look"   Check
+ *   #/check/glasses/listen     "check-glasses-listen" Check
  *   #/learn, #/learn/<lesson>  "learn"            Learn
  *   #/blocked                  "blocked"          Blocked
  *   #/settings                 "settings"         none: the Settings button is gold
@@ -228,6 +233,10 @@ const DRAW = {
   "check-photo": (root) => renderCheckScreen(root, status, { step: "photo" }),
   "check-voice": (root) => renderCheckScreen(root, status, { step: "voice" }),
   "check-more": (root) => renderCheckScreen(root, status, { step: "more" }),
+  "check-glasses": (root) => renderGlassesScreen(root, status, { step: "home", refresh }),
+  "check-glasses-setup": (root) => renderGlassesScreen(root, status, { step: "setup", refresh }),
+  "check-glasses-look": (root) => renderGlassesScreen(root, status, { step: "look", refresh }),
+  "check-glasses-listen": (root) => renderGlassesScreen(root, status, { step: "listen", refresh }),
   learn: (root) => renderLearn(root, status),
   settings: (root) => renderSettingsScreen(root, status, refresh),
   "settings-people": (root) => renderPeopleScreen(root, status),

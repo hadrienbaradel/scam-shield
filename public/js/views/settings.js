@@ -22,7 +22,7 @@
 import { api } from "../api.js";
 import { t, ago, getLang, dateTime, leakWords } from "../i18n.js";
 import { $, $$, esc, icon, toast, signOut, focusHeading } from "../ui.js";
-import { protectRows, renderProtects } from "../protects.js";
+import { protectRows, renderProtects, glassesRow } from "../protects.js";
 
 // ------------------------------------------------------------ the words --
 
@@ -197,6 +197,9 @@ export async function renderSettings(root, status, refresh) {
     rows.push(modeRow(u.actMode));
     rows.push(row({ id: "tell", ic: "bell", name: tell.name, state: tell.state, verb: button("tell", esc(tell.verb)) }));
   }
+  // Meta glasses (check-glasses.md, line 16): for everyone, with or without a mailbox.
+  const glasses = glassesRow(status);
+  rows.push(row({ id: "glasses", ic: "glasses", name: t(glasses.name), state: t(glasses.state), verb: link(glasses.href, esc(t(glasses.verb))) }));
   rows.push(row({ id: "size", text: true, name: t("size_q"), state: t(size.state), verb: button("size", esc(t(size.verb))) }));
   // The button is in the other language, and says so to a screen reader.
   rows.push(row({ id: "lang", ic: "globe", name: t("lang_q"), state: t("set_lang_now"), verb: button("lang", esc(t("set_lang_switch")), ` lang="${fr ? "en" : "fr"}"`) }));

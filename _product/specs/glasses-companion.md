@@ -1,5 +1,7 @@
 # Glasses companion ("Prudence on your glasses")
-Status: Idea · Raised by Vlad, 2026-10-29 · Discussed: no · Last updated: 2026-10-29
+Status: Idea · Raised by Vlad, 2026-10-29 · Discussed: no · Last updated: 2026-11-04
+
+The web path (set up, a photo through the phone's gallery, Listen on the phone's microphone, nothing to install) shipped as [check-glasses.md](check-glasses.md). What stays here is the native app on Meta's toolkit; where the two differ, check-glasses.md is what shipped (the sentence said aloud is hers, not the phone's: the glasses cannot announce it to the other person).
 
 ## Why
 The scams that cost seniors most happen away from the inbox: a stranger at the door, a letter at the kitchen table, a frozen computer screen, a call. With Prudence on her glasses she can keep her eyes on the visitor or the page and hear a short answer in her ear, judged against her own life like every other check. For the video it is a live, hands-free beat that names Muse Voice Transcribe and Muse Spark; use cases, precedents and the storyboard are in [research/glasses/use-cases.md](../research/glasses/use-cases.md).

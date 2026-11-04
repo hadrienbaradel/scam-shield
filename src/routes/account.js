@@ -15,8 +15,8 @@ import { clientFor, rebuildContext, syncUser } from "../sync/worker.js";
 import { revokeAndForget, tokenStatus } from "../google/tokens.js";
 import { audit } from "../sync/actions.js";
 import { jobStatus } from "../jobs/scheduler.js";
-import { whatsappConfigured } from "../channels/whatsapp.js";
-import { messengerConfigured, messengerLink } from "../channels/messenger.js";
+import { whatsappConfigured, webhookActive as whatsappReceives } from "../channels/whatsapp.js";
+import { messengerConfigured, messengerLink, webhookActive as messengerReceives } from "../channels/messenger.js";
 
 const rebuilds = new Map();
 const lookups = new Map();
@@ -26,6 +26,15 @@ const lookups = new Map();
 export function whatsappLink(env = process.env) {
   const digits = String(env.WHATSAPP_PHONE_NUMBER || "").replace(/[^0-9]/g, "");
   return digits && whatsappConfigured(env) ? `https://wa.me/${digits}` : null;
+}
+
+// The contact card of the Prudence WhatsApp number, so "Hey Meta, send a photo
+// to Prudence on WhatsApp" finds a contact (check-glasses.md, line 8): only
+// while the number really receives messages; null otherwise.
+export function prudenceCard(env = process.env) {
+  const digits = String(env.WHATSAPP_PHONE_NUMBER || "").replace(/[^0-9]/g, "");
+  if (!digits || !whatsappReceives(env)) return null;
+  return ["BEGIN:VCARD", "VERSION:3.0", "N:;Prudence;;;", "FN:Prudence", `TEL;TYPE=CELL:+${digits}`, "END:VCARD", ""].join("\r\n");
 }
 
 // How long /api/health waits for Postgres to answer SELECT 1 (tests shorten it).
@@ -56,6 +65,12 @@ export default async function accountRoutes(app) {
     }
   });
 
+  app.get("/prudence.vcf", async (request, reply) => {
+    const card = prudenceCard();
+    if (!card) return reply.code(404).send({ error: "Prudence has no WhatsApp number here." });
+    return reply.type("text/vcard; charset=utf-8").header("content-disposition", 'attachment; filename="prudence.vcf"').send(card);
+  });
+
   // Whether her address was looked up in the breach list, and when: what the
   // protection score's "breaches" criterion reads (protects.js CRITERIA,
   // breach-exposure.md); { at, found }, or null before the first tap.
@@ -79,12 +94,16 @@ export default async function accountRoutes(app) {
       whatsappLink: whatsappLink(),
       messengerConfigured: messengerConfigured(),
       messengerLink: messengerLink(),
+      // Whether a message sent there really reaches Prudence: the webhook also
+      // needs the app secret (check-glasses.md, line 8).
+      whatsappReceives: whatsappReceives(),
+      messengerReceives: messengerReceives(),
       museModel: museConfigured() ? museModel() : null,
       urlhaus: !config.abusechKey ? "off" : urlhausState.off ? "refused" : "on",
       instantChecks: pubsubConfigured() ? jobStatus.pubsub : "off",
       signedIn: Boolean(u),
       user: u && { id: u.id, name: u.name, email: u.email, locale: u.locale, textScale: u.text_scale, actMode: u.act_mode,
-        autoAlert: u.auto_alert, onboarded: u.onboarded, isAdmin: u.isAdmin },
+        autoAlert: u.auto_alert, onboarded: u.onboarded, isAdmin: u.isAdmin, glasses: u.glasses ?? null },
       gmail: gmail && { connected: tokens?.status === "ok", needsReconnect: tokens?.status === "reauth_needed", syncStatus: gmail.sync_status,
         lastSyncAt: gmail.last_sync_at, ready: gmail.backfill_done, push: Boolean(gmail.watch_expiration && gmail.watch_expiration > new Date()) },
       isGuardian: u ? Boolean(await one("SELECT 1 FROM guardianships WHERE guardian_id = $1 AND status = 'active' LIMIT 1", [u.id])) : false,
@@ -115,6 +134,7 @@ export default async function accountRoutes(app) {
       }
       if (typeof b.autoAlert === "boolean") set("auto_alert", b.autoAlert);
       if (typeof b.onboarded === "boolean") set("onboarded", b.onboarded);
+      if (["none", "have", "ready"].includes(b.glasses)) set("glasses", b.glasses);
       if (sets.length) await q(`UPDATE users SET ${sets.join(", ")} WHERE id = $1`, vals);
       if (b.actMode) await audit(request.user.id, "act_mode_changed", { actMode: b.actMode });
       return { ok: true };
