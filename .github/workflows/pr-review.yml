@@ -1,7 +1,7 @@
 # Every pull request from a branch of this repository gets a Muse Spark review through Prudence's own LLM
 # layer (scripts/pr-review.mjs), posted as one comment: advice, never a gate (a "needs changes" verdict
 # leaves the job green; only a broken run fails it). Llama Prompt Guard 2 reads the diff first when the
-# GROQ_API_KEY secret exists. Secrets are set by the repository owner (Settings > Secrets and variables >
+# GROQ_API_KEY (or HF_TOKEN) secret exists. Secrets are set by the repository owner (Settings > Secrets and variables >
 # Actions), never written here; without META_MODEL_API_KEY the job prints a notice and skips. Pull requests
 # from forks are skipped: they never receive secrets. From a laptop: make pr-review PR=<n> (_product/docs/git.md).
 name: PR review
@@ -25,8 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -35,6 +35,7 @@ jobs:
         env:
           META_MODEL_API_KEY: ${{ secrets.META_MODEL_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

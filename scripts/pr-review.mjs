@@ -34,8 +34,10 @@ export const BODY_CHARS = 6000;
 export const NOISE = /(^|\/)package-lock\.json$|\.(svg|png|jpe?g|gif|webp|ico|wav|mp3|mp4)$|^config\/credentials\.enc$|^android\/(.+\/)?(build|\.gradle)\/|\.(apk|aab)$/i;
 export const REDACTED = "[redacted: this hunk contained text that tried to steer the reviewer]";
 const REDACTED_DESCRIPTION = "[redacted: the description contained text that tried to steer the reviewer]";
-const VERDICTS = ["ready", "needs a human", "needs changes"]; // mildest first: the worst part wins
-const USAGE = "Usage: node scripts/pr-review.mjs --pr <n> [--post | --dry-run], or --diff <file> (make pr-review PR=<n> [DRY=1])";
+export const LIST_MAX = 100; // file names named in the prompt, per list
+// Mildest first, the worst part wins: a part the model could not judge sends the whole review to a human.
+const VERDICTS = ["ready", "needs changes", "needs a human"];
+const USAGE = "Usage: node scripts/pr-review.mjs --pr <n> [--post | --dry-run], or --diff <file>; it prints the review, --post also comments on the pull request (make pr-review PR=<n> [DRY=1])";
 
 export const SYSTEM = `You review a pull request for Prudence (the scam-shield repository): scam protection for seniors on Gmail and SMS. Each message is judged against the senior's own life by Meta's Muse Spark through a provider-agnostic LLM layer (lib/llm). Node ESM, Fastify, Postgres, an Android companion.
 
@@ -58,6 +60,7 @@ Then one last line, "Verdict: ready", "Verdict: needs changes" or "Verdict: need
 
 const firstLine = (e) => String(e?.message ?? e).split("\n").map((l) => l.trim()).find(Boolean)?.slice(0, 300) ?? "unknown error";
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const names = (list) => `${list.slice(0, LIST_MAX).join(", ")}${list.length > LIST_MAX ? `, and ${list.length - LIST_MAX} more` : ""}`;
 
 // One entry per file, { path, text }, the text starting at its "diff --git" line.
 export function splitDiff(diff) {
@@ -143,8 +146,8 @@ export function buildPrompt({ pr, description = "", base, head, files = [], skip
   return [
     `Pull request${pr ? ` #${pr}` : ""}${head ? ` (${head} into ${base || "main"})` : ""}`,
     `Title and description:\n${description.trim() || "(none)"}`,
-    `Files changed (${files.length}): ${files.join(", ")}`,
-    skipped.length ? `Not shown (noise, or over the size limit): ${skipped.join(", ")}` : "",
+    `Files changed (${files.length}): ${names(files)}`,
+    skipped.length ? `Not shown (noise, or over the size limit): ${names(skipped)}` : "",
     of > 1 ? `The diff is too big for one request: this is part ${part} of ${of}. Review what it shows.` : "",
     `Diff:\n${diff}`,
   ].filter(Boolean).join("\n\n");

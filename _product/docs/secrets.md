@@ -61,7 +61,7 @@ reached a commit is rotated at once (below): a red scan, a rewritten history or 
 
 ## GitHub Actions secrets
 
-Workflows never read `config/credentials.enc` (no master key on GitHub) and never hold a key in their files: a key a workflow needs is a repository secret, set by the repository owner (Hadrien; on a personal-account repository only the owner can) in Settings → Secrets and variables → Actions, and passed to one step as `${{ secrets.NAME }}`. `META_MODEL_API_KEY` there lets the pull-request reviewer (`.github/workflows/pr-review.yml`) call Muse Spark; `GROQ_API_KEY`, optional, turns on Prompt Guard 2 for the diff. Without them the reviewer skips with a notice, and `make pr-review PR=<n>` does the same review from a laptop with the credentials. A key rotated in the credentials (below) is replaced in its secret too.
+GitHub has no master key, so a workflow cannot open `config/credentials.enc`, and no key is ever written in a workflow file: a key a workflow needs is a repository secret, set by the repository owner (Hadrien; on a personal-account repository only the owner can) in Settings → Secrets and variables → Actions, and passed to one step as `${{ secrets.NAME }}`. `META_MODEL_API_KEY` there lets the pull-request reviewer (`.github/workflows/pr-review.yml`) call Muse Spark; `GROQ_API_KEY` (or `HF_TOKEN`), optional, turns on Prompt Guard 2 for the diff. Without them the reviewer skips with a notice, and `make pr-review PR=<n>` does the same review from a laptop with the credentials. A key rotated in the credentials (below) is replaced in its secret too.
 
 ## If the master key leaks
 

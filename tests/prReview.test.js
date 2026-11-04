@@ -9,6 +9,7 @@ import { execFile } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
 import { getProvider } from "../lib/llm/index.js";
 import { mockGuard } from "../lib/promptGuard/mock.js";
 import { guardBreaker } from "../lib/promptGuard/index.js";
@@ -101,8 +102,11 @@ test("a big pull request goes in at most 4 requests of about 60,000 characters, 
   assert.deepEqual(huge.cut, ["huge.js"]);
   assert.ok(huge.parts[0][0].text.length <= PART_CHARS);
   assert.match(huge.parts[0][0].text, /\+a+\n\[cut: the rest of this file's diff is over the size limit\]\n$/);
-  const review = composeReview({ answers: ["Nothing found.\nVerdict: ready"], plan, shield: { ran: false, flagged: [], failed: 0, total: 0 }, label: "Muse Spark", model: "muse-spark-1.3", pr: "7" });
-  assert.match(review, /^> Partial review, 1 file not read \(at most 4 requests of about 60k characters\): `e\.js`\./);
+  const say = (p) => composeReview({ answers: ["Nothing found.\nVerdict: ready"], plan: p, shield: { ran: false, flagged: [], failed: 0, total: 0 }, label: "Muse Spark", model: "muse-spark-1.3", pr: "7" });
+  assert.match(say(plan), /^> Partial review, 1 file not read \(at most 4 requests of about 60k characters\): `e\.js`\./);
+  assert.match(say(huge), /^> Partial review, 0 files not read and 1 cut short \(at most 4 requests of about 60k characters\): `huge\.js`\./);
+  const many = Array.from({ length: 130 }, (_, i) => `f${i}.js`);
+  assert.match(buildPrompt({ files: many, skipped: many, diff: "x" }), /Files changed \(130\): f0\.js, .*, f99\.js, and 30 more\n\nNot shown \(noise, or over the size limit\): f0\.js, .*, f99\.js, and 30 more\n/);
 });
 
 test("the prompt carries the team's rules, the title and description, the diff, and asks for four sections and one verdict line", () => {
@@ -174,6 +178,24 @@ test("a dry run with the mock model prints the review, one verdict and the foote
   assert.equal(o.stdout.match(/Verdict:/g).length, 1);
   assert.ok(o.stdout.endsWith("**Verdict: needs changes**\n\n---\nReviewed by Mock LLM (`mock-1`) through Prudence's LLM layer (`make pr-review PR=12`); one more pair of eyes, not a gate.\n"));
   assert.equal(o.stderr, "");
+  mock.script(ANSWER);
+  const bare = io();
+  assert.equal(await main(["--pr", "12"], { ...bare, gh }), 0, "without --post it only prints");
+  assert.match(bare.stdout, /\*\*Verdict: needs changes\*\*/);
+  assert.ok(!calls.some((a) => a[1] === "review"));
+});
+
+test("a long description is cut to 6,000 characters before Prompt Guard and the model read it", async () => {
+  process.env.PROMPT_GUARD_PROVIDER = "mock";
+  mock.script(ANSWER);
+  const { gh } = fakeGh();
+  const long = async (args) => (args[1] === "view" ? JSON.stringify({ title: "Long", body: `${"word ".repeat(2000)}TAIL-MARKER` }) : gh(args));
+  assert.equal(await main(["--pr", "12", "--dry-run"], { ...io(), gh: long }), 0);
+  const sent = mock.calls[0].messages[0].content;
+  const description = sent.slice(sent.indexOf("Title and description:\n"), sent.indexOf("\n\nFiles changed"));
+  assert.ok(description.length <= "Title and description:\nLong\n\n".length + 6000);
+  assert.ok(!sent.includes("TAIL-MARKER"));
+  assert.ok(mockGuard.calls.every((t) => !t.includes("TAIL-MARKER")));
 });
 
 test("--post reads the pull request with gh and posts the review as one comment, then deletes its temp file", async () => {
@@ -196,9 +218,10 @@ test("several parts give one review: each part named, the worst verdict wins, a 
   const shield = { ran: false, flagged: [], failed: 0, total: 0 };
   const two = (a, b) => composeReview({ answers: [a, b], plan, shield, label: "Muse Spark", model: "muse-spark-1.3", pr: "3" });
   const review = two("- a bug\nVerdict: needs changes", "Nothing found.\nVerdict: needs a human");
-  assert.match(review, /^\*\*Part 1 of 2:\*\* `a\.js`\n\n- a bug\n\n\*\*Part 2 of 2:\*\* `b\.js`, `c\.md`\n\nNothing found\.\n\n\*\*Verdict: needs changes\*\*\n/);
+  assert.match(review, /^\*\*Part 1 of 2:\*\* `a\.js`\n\n- a bug\n\n\*\*Part 2 of 2:\*\* `b\.js`, `c\.md`\n\nNothing found\.\n\n\*\*Verdict: needs a human\*\*\n/);
   assert.ok(review.endsWith("Reviewed by Muse Spark (`muse-spark-1.3`) through Prudence's LLM layer (`make pr-review PR=3`); one more pair of eyes, not a gate.\n"));
-  assert.match(two("Verdict: ready", "no verdict line"), /\*\*Verdict: needs a human\*\*/);
+  assert.match(two("Verdict: needs changes", "no verdict line"), /\*\*Verdict: needs a human\*\*/);
+  assert.match(two("Verdict: ready", "Verdict: needs changes"), /\*\*Verdict: needs changes\*\*/);
   assert.match(two("Verdict: ready", "Verdict: ready"), /\*\*Verdict: ready\*\*/);
 });
 
@@ -238,6 +261,32 @@ test("without a model key (as a separate process): one plain line, exit 1, gh ne
   assert.equal(r.stderr, "No model key: META_MODEL_API_KEY is not set (make secrets-set META_MODEL_API_KEY=..., or the repository secret in GitHub Actions).\n");
   assert.equal(r.stdout, "");
   assert.equal(r.gh, "");
+});
+
+test("another provider without its key: one plain line naming it, exit 1, gh never called", async () => {
+  process.env.LLM_PROVIDER = "anthropic";
+  const { gh, calls } = fakeGh();
+  const o = io();
+  assert.equal(await main(["--pr", "12", "--post"], { ...o, gh }), 1);
+  assert.equal(o.stderr, "No model: Claude is not configured (LLM_PROVIDER and its key, _product/docs/llm.md).\n");
+  assert.equal(calls.length, 0);
+});
+
+test("the workflow reviews pull requests from this repository's branches only, may comment, and skips with a notice without the key", async () => {
+  const text = readFileSync(new URL("../.github/workflows/pr-review.yml", import.meta.url), "utf8");
+  const wf = parseYaml(text);
+  assert.deepEqual(wf.on, { pull_request: { types: ["opened", "synchronize", "reopened"] } });
+  assert.deepEqual(wf.permissions, { contents: "read", "pull-requests": "write" });
+  assert.equal(wf.jobs.review.if, "github.event.pull_request.head.repo.full_name == github.repository");
+  const step = wf.jobs.review.steps.at(-1);
+  assert.equal(step.env.META_MODEL_API_KEY, "${{ secrets.META_MODEL_API_KEY }}");
+  assert.equal(step.env.GH_TOKEN, "${{ github.token }}");
+  assert.match(step.run, /node scripts\/pr-review\.mjs --pr "\$PR_NUMBER" --post/);
+  for (const value of Object.values(step.env)) assert.match(value, /^\$\{\{ [a-z_.A-Z]+ \}\}$|^\$\{\{ github\.workspace \}\}\/config\/ci-has-no-credentials\.enc$/, "only references, never a key");
+  const skip = await new Promise((resolve) => execFile("bash", ["-c", step.run], { env: { PATH: process.env.PATH, META_MODEL_API_KEY: "", PR_NUMBER: "7" } },
+    (e, stdout) => resolve({ code: e ? e.code : 0, stdout })));
+  assert.equal(skip.code, 0);
+  assert.match(skip.stdout, /^::notice title=Muse Spark review skipped::The repository secret META_MODEL_API_KEY is not set .* make pr-review PR=7\n$/);
 });
 
 test("gh not signed in (as a separate process): one plain line, exit 1, nothing posted", async () => {
