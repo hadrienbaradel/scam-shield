@@ -17,7 +17,7 @@ import { validateEntry, redactExample, LIBRARY_DIR } from "../lib/library.js";
 
 const load = async (p) => JSON.parse(await readFile(new URL(`../${p}`, import.meta.url), "utf8"));
 const PROFILE = { francoise: { country: "FR", language: "fr" }, linda: { country: "US", language: "en" } };
-const CHANNEL = { email: "email", sms: "sms", screenshot: "web", voice_transcript: "voice", whatsapp: "chat" };
+const CHANNEL = { email: "email", sms: "sms", screenshot: "web", voice_transcript: "voice", whatsapp: "chat", social: "chat" };
 const SEEN = "2026-10-27";
 
 // The family of each case, then the brand when the case does not name it,
@@ -26,7 +26,7 @@ const FAMILY = {
   A1: "utility", A2: "bank", A3: "utility", A3b: "utility", A4: "delivery",
   D1: "delivery", D2: "toll-fine", D3: "government", D4: "bank", D5: "government", D6: "tech-support", D7: "renewal", D8: "bank",
   B6: "sextortion", B7: "family-emergency", B8: "health", B9: "tech-support", B10: "account", B11: "recovery", B12: "romance",
-  B1: "family-emergency", B2: "new-number", B13: "romance", B14: "investment",
+  B1: "family-emergency", B2: "new-number", B13: "romance", B14: "investment", B15: "romance",
   C8: "bank", C9: "toll-fine", C10: "account",
   A6: "bank", A7: "bank", A8: "job", A9: "job",
 };
@@ -80,6 +80,8 @@ const LINES = {
     headline: "Be careful: a wrong number that wants to chat.", reasons: ["Romance and investment scams start with a friendly wrong number.", "Nothing is asked today; something will be."] },
   B14: { lure: "A new friend's mentor made him thousands on a trading app", ask: "Start with $500 on the mentor's app",
     headline: "This is the investment scam.", reasons: ["The profits shown are fake; the first deposit is never seen again.", "The friendship started with a wrong number and moved to WhatsApp."] },
+  B15: { lure: "A stranger's message request with a sports headline, out of the blue", ask: "Nothing yet; a reply opens the conversation",
+    headline: "Be careful: a stranger wrote to you first.", reasons: ["Someone you do not know wrote first, about sports, with no reason to.", "Romance and investment scams start with a harmless first message."] },
   C8: { lure: "A new device connected to your bank account", ask: "Call the number on the back of your card if it was not you",
     headline: "Be careful: a real alert, so call your bank yourself.", reasons: ["The message is genuine and asks for nothing on a link.", "Use the number on your card, never a number in a message."] },
   C9: { lure: "A traffic fine was issued for your vehicle", ask: "Look it up yourself on the agency's website with the paper notice",

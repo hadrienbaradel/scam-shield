@@ -1,0 +1,33 @@
+{
+  "id": "lib-demo-b15",
+  "family": "romance",
+  "channel": "chat",
+  "country": "US",
+  "language": "en",
+  "brand": null,
+  "lure": "A stranger's message request with a sports headline, out of the blue",
+  "ask": "Nothing yet; a reply opens the conversation",
+  "message": {
+    "from": null,
+    "subject": "Message requests on Messenger",
+    "body": "Peter Holm (Aug 31): Big tennis news: a top player is out injured for 4 months. Today ...",
+    "links": []
+  },
+  "first_seen": "2026-10-27",
+  "last_seen": "2026-10-27",
+  "source": {
+    "id": "prudence-demo",
+    "url": "https://github.com/hadrienbaradel/scam-shield/blob/main/testcases/cases.json",
+    "licence": "CC BY 4.0",
+    "attribution": "Prudence demo cases (Scam Shield), CC BY 4.0"
+  },
+  "verdict": {
+    "verdict": "be_careful",
+    "headline": "Be careful: a stranger wrote to you first.",
+    "reasons": [
+      "Someone you do not know wrote first, about sports, with no reason to.",
+      "Romance and investment scams start with a harmless first message."
+    ]
+  },
+  "status": "published"
+}

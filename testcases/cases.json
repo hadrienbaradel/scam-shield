@@ -596,6 +596,31 @@
       }
     },
     {
+      "id": "B15",
+      "set": "B",
+      "profile": "linda",
+      "locale": "en-US",
+      "expected": "be_careful",
+      "note": "A screenshot of Messenger's Message requests (messenger-channel.md line 6), as the engine renders it (lib/muse.js extractFromImage, kind inbox): one stranger wrote first with a sports line and no reason to. Judged as a list: Be careful, never Safe. Modelled on Vlad's own request list of Nov 4, name and words replaced.",
+      "message": {
+        "channel": "social",
+        "fromName": "Peter Holm",
+        "from": "",
+        "subject": "Message requests on Messenger",
+        "body": "Peter Holm (Aug 31): Big tennis news: a top player is out injured for 4 months. Today ...",
+        "links": [],
+        "inbox": true,
+        "threads": [
+          {
+            "name": "Peter Holm",
+            "preview": "Big tennis news: a top player is out injured for 4 months. Today ...",
+            "date": "Aug 31",
+            "section": "requests"
+          }
+        ]
+      }
+    },
+    {
       "id": "C5",
       "set": "C",
       "profile": "linda",
