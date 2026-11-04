@@ -455,6 +455,16 @@ test("tools: arguments that are not JSON throw one plain error naming the tool",
   assert.deepEqual(parseToolCalls(undefined), []);
 });
 
+test("an answer that is not a chat completion (a 200 with an HTML page, an empty body, no choices) fails plainly instead of reading as an empty answer", async () => {
+  process.env.META_MODEL_API_KEY = "test-key";
+  const page = async () => new Response("<html>Gateway</html>", { status: 200 });
+  await assert.rejects(createMetaProvider({ fetchImpl: page }).complete({ messages: [], tools: [TOOL] }), /^Error: Meta Model API answered with something that is not a chat completion$/);
+  await assert.rejects(createMetaProvider({ fetchImpl: fakeFetch(ok({})).fetchImpl }).complete({ messages: [] }), /not a chat completion/);
+  await assert.rejects(createMetaProvider({ fetchImpl: fakeFetch(ok({ choices: [] })).fetchImpl }).complete({ messages: [] }), /not a chat completion/);
+  process.env.OPENAI_API_KEY = "sk";
+  await assert.rejects(createOpenAiCompatibleProvider({ preset: "groq", fetchImpl: page }).complete({ messages: [] }), /^Error: Groq API answered with something that is not a chat completion$/);
+});
+
 test("tools: every OpenAI-style preset sends them too; a spent budget with tool calls is still an answer", async () => {
   process.env.OPENAI_API_KEY = "sk";
   const { fetchImpl, calls } = fakeFetch(ok({ choices: [{ message: { content: null, tool_calls: [{ id: "g1", type: "function", function: { name: "website_age", arguments: '{"domain":"b.test"}' } }] }, finish_reason: "length" }] }));
