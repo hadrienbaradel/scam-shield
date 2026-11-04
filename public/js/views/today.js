@@ -384,9 +384,10 @@ function drawCard() {
     lookCloser: Boolean(S.status?.lookCloser) && Boolean(S.source.canLookCloser?.(item, d)), closer: d.closer || null })}
     </div>`);
   bindHeader();
-  // Look closer (_product/specs/investigate.md): the look stays with the card in memory, for a redraw.
+  // Look closer (_product/specs/investigate.md): a look with a verdict stays with the card in
+  // memory, for a redraw; one without stays off, so the button comes back on the next visit.
   bindVerdictCard(S.root, { ids: "v2", onBody: (open) => { S.open.body = open; }, onAsk: () => drawAsk(),
-    onLookCloser: () => runLookCloser(S.root, { ids: "v2", send: () => S.source.lookCloser(item, d), onResult: (r) => { d.closer = r; } }) });
+    onLookCloser: () => runLookCloser(S.root, { ids: "v2", send: () => S.source.lookCloser(item, d), onResult: (r) => { if (r?.verdict) d.closer = r; } }) });
   $("#v2Read").addEventListener("click", () => readAloud(v));
   $("#v2Throw")?.addEventListener("click", (e) => busy(e.currentTarget, doThrow));
   $("#v2Keep")?.addEventListener("click", (e) => busy(e.currentTarget, doKeep));

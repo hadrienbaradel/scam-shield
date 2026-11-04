@@ -185,6 +185,8 @@ export function unsureRowHtml({ verdict, guardianName = "", folded = false, ids 
 export function lookCloserHtml(state = {}, ids = "v2") {
   const p = ids || "v2";
   if (state.busy) return `<p class="vcard-checks-busy" role="status">${icon("search", 26)}<span>${esc(t("inv_busy"))}</span></p>`;
+  // The server cannot look closer at all (503): said once, no Try again.
+  if (state.unavailable) return `<p id="${p}ChecksTitle" class="vcard-checks-note" tabindex="-1">${esc(t("inv_unavailable"))}</p>`;
   if (state.failed || !state.result) {
     return `<p id="${p}ChecksTitle" class="banner caution vcard-checks-note" tabindex="-1">${esc(t("inv_failed"))}</p>
       <button id="${p}CloserRetry" class="btn btn-gold btn-big" type="button">${esc(t("inv_try_again"))}</button>`;
@@ -222,11 +224,14 @@ export async function runLookCloser(root, { ids = "v2", send, onResult } = {}) {
   let state;
   try { state = { result: await send() }; } catch (e) {
     if (e?.name === "AbortError") return;
-    state = { failed: true };
+    // Signed out meanwhile: back to the sign-in page, as every check does.
+    if (Number(e?.status) === 401) { try { location.href = "/"; } catch { /* no page */ } return; }
+    state = Number(e?.status) === 503 ? { unavailable: true } : { failed: true };
   }
   if (!box.isConnected) return; // the card is gone: a late answer is dropped
   box.innerHTML = lookCloserHtml(state, p);
-  if (state.failed) {
+  if (state.unavailable) button?.remove();
+  else if (state.failed) {
     if (button) button.hidden = true;
     $(`#${p}CloserRetry`, box)?.addEventListener("click", () => runLookCloser(root, { ids: p, send, onResult }));
   } else {

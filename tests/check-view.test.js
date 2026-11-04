@@ -82,7 +82,7 @@ test("Look closer sends the check's id and the message exactly as the check judg
 });
 
 test("every word of Look closer exists in English and French, in plain words", () => {
-  const keys = ["ck_look_closer", "inv_busy", "inv_checked", "inv_after", "inv_check_n", "inv_none", "inv_failed", "inv_try_again", "inv_source", "inv_source_one"];
+  const keys = ["ck_look_closer", "inv_busy", "inv_checked", "inv_after", "inv_check_n", "inv_none", "inv_failed", "inv_unavailable", "inv_try_again", "inv_source", "inv_source_one"];
   for (const key of keys) for (const lang of ["en", "fr"]) assert.ok(STRINGS[lang][key], `${lang}.${key}`);
   for (const lang of ["en", "fr"]) {
     assert.doesNotMatch(keys.map((k) => STRINGS[lang][k]).join(" "), /RDAP|URLhaus|domain|domaine|tool|outil|fetch|error|erreur|\b\d{3}\b/i, `${lang}: no jargon`);

@@ -213,6 +213,18 @@ test("tapping Look closer: the button waits, the answer replaces the busy line, 
   await new Promise((r) => setImmediate(r));
   assert.equal(calls, 2);
   assert.ok(page2.el("v2Checks").innerHTML.includes("After looking closer: Scam"));
+  // The server cannot look closer (503): said once, no Try again; signed out (401): back to sign in.
+  const page5 = fakePage();
+  await runLookCloser(page5, { ids: "v2", send: async () => { throw Object.assign(new Error("503"), { status: 503 }); } });
+  assert.ok(page5.el("v2Checks").innerHTML.includes("Prudence cannot look closer here for now. The verdict above stands."));
+  assert.ok(!page5.el("v2Checks").innerHTML.includes("Try again"));
+  assert.equal(page5.el("v2Closer").removed, true);
+  const page6 = fakePage();
+  globalThis.location = { href: "/#/check" };
+  try {
+    await runLookCloser(page6, { ids: "v2", send: async () => { throw Object.assign(new Error("401"), { status: 401 }); } });
+    assert.equal(globalThis.location.href, "/");
+  } finally { delete globalThis.location; }
   // A card no longer on screen drops a late answer; Stop (an abort) says nothing.
   const page3 = fakePage();
   const late = runLookCloser(page3, { ids: "v2", send: async () => { page3.el("v2Checks").isConnected = false; return LOOK; } });
