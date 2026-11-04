@@ -194,6 +194,25 @@ test("at most 6 checks: further calls are refused and the model is told to answe
   const twice = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
   assert.equal(twice.checks.length, 1, "the same question twice is one check");
   assert.match(mock.calls[3].messages[3].content, /"check":1,.*"note":"the same check as before"/);
+  // Refused addresses do not use up the six: the six valid ones still run.
+  const bogus = Array.from({ length: 4 }, (_, i) => ["website_age", { domain: `nowhere${i}.example` }]);
+  const valid = [["scam_patterns", {}], ["my_providers", { company: "USPS" }], ["known_breach", { data: "card" }], ["known_breach", { data: "name" }],
+    ["my_orders_and_carriers", { carrier: "USPS", shop: null }], ["website_age", { domain: "usps-hold.test" }]];
+  mock.script(ask(...bogus, ...valid), answer("scam", [{ text: "x", check: 1 }]));
+  const mixed = await investigate({ message: D1.message, personalContext: LINDA, patternCards: CARDS, first: SCAM, deps: deps() });
+  assert.equal(mixed.checks.length, 6);
+  assert.equal(mixed.refused, 4);
+  // A repeat of a call refused after it took its slot is refused too, never a crash: the landing
+  // address of a checked link may be checked, but no link of the message goes there to open.
+  const short = { channel: "sms", body: "See https://bit.ly/x1", links: [{ href: "https://bit.ly/x1" }] };
+  mock.script(ask(["where_link_goes", { domain: "bit.ly" }]),
+    ask(["where_link_goes", { domain: "landing.example.org" }], ["where_link_goes", { domain: "landing.example.org" }]),
+    answer("be_careful", [{ text: "x", check: 1 }]));
+  const repeat = await investigate({ message: short, personalContext: LINDA, first: CAREFUL,
+    deps: deps({ resolveLink: async () => ({ final_url: "https://landing.example.org/", redirects: ["https://landing.example.org/"], page_shows: null }) }) });
+  assert.equal(repeat.checks.length, 1);
+  assert.equal(repeat.refused, 2);
+  assert.equal(repeat.verdict, "be_careful");
 });
 
 test("at most 4 rounds with the model: a model that keeps asking leaves the card's verdict as it was", async () => {

@@ -138,7 +138,7 @@ test("Look closer shows the busy line, then every check numbered, the closer ver
   assert.ok(html.includes('<ol class="vcard-check-list"><li>The website usps-hold.test was registered 2 days ago (example)</li><li>USPS is not one of the companies that write to you</li></ol>'));
   assert.ok(html.includes('class="vcard vcard-closer danger"') && html.includes("After looking closer: Scam"));
   assert.ok(html.includes(">A fake USPS fee.<"), "the headline without the verdict word");
-  assert.ok(html.includes("<p>Delete it.</p>"));
+  assert.ok(html.includes('<p class="vcard-closer-do">Delete it.</p>'), "what to do, as large as the reasons");
   assert.ok(html.includes('USPS does not write to you.<span class="v2-chip">Check 2</span>'));
   assert.ok(html.includes('The website is &lt;2&gt; days old.<span class="v2-chip">Check 1</span>'), "escaped");
   assert.ok(html.includes("Looked closer by Muse Spark (muse-spark-1.3): 2 checks in 9 s"));

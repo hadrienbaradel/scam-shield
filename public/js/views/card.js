@@ -200,7 +200,7 @@ export function lookCloserHtml(state = {}, ids = "v2") {
       <div class="vcard vcard-closer ${verdictClass(r.verdict)}">
         <p class="vcard-word"><span class="vcard-mark" aria-hidden="true">${verdictIcon(r.verdict, 28)}</span>${esc(t("inv_after", { verdict: verdictWord(r.verdict) }))}</p>
         ${r.headline ? `<p class="vcard-next">${esc(headlineOf(r.headline))}</p>` : ""}
-        ${r.what_to_do ? `<p>${esc(r.what_to_do)}</p>` : ""}
+        ${r.what_to_do ? `<p class="vcard-closer-do">${esc(r.what_to_do)}</p>` : ""}
         ${(Array.isArray(r.reasons) ? r.reasons : []).map((x) => `<p class="vcard-fact">${esc(x?.text)}<span class="v2-chip">${esc(t("inv_check_n", { n: x?.check }))}</span></p>`).join("")}
       </div>
       <p class="vcard-small">${esc(t(n === 1 ? "inv_source_one" : "inv_source", { source: r.source || "Prudence", n, s: seconds }))}</p>`;

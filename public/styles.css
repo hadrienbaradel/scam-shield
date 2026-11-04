@@ -1491,6 +1491,7 @@ h2[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .vcard-closer { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 3px solid var(--line); border-radius: 20px; background: var(--surface); }
 .vcard-closer .vcard-word { font-size: var(--t26); }
 .vcard-closer .vcard-mark { width: 44px; height: 44px; }
+.vcard-closer-do { font-size: var(--t22); line-height: 1.4; }
 
 /* --- redesign: learn (learn.js) --- */
 /* Frame 1o, the Learn home: the progress card (the 34px star beside "Your
