@@ -1,0 +1,320 @@
+/* The landing page at / for a visitor who is not signed in
+   (_product/specs/landing-page.md; the 2026-11-04 canvas "Prudence landing
+   page"). Loaded after styles.css, so the app's tokens (--navy, --gold,
+   --t19 ... --t36), its verdict card (.v2-card.vcard) and its verdict pills
+   (.pill-verdict) are reused as they are. Every class here starts with l-.
+   No inline style anywhere: the CSP allows only same-origin stylesheets.
+
+   Which of the landing and the app shows is decided by three classes on
+   <html>, set before the first paint by landing/hint.js and kept up to date by
+   landing/landing.js:
+     js      scripts run: the forms and the language buttons (.l-js) show,
+             their plain fallbacks (.l-nojs) hide;
+     in-app  the app's header, screen, tab bar and footer show and the landing
+             hides (a signed-in person, or a #/ route such as #/demo);
+     l-fr    the French block shows instead of the English one. */
+
+/* ------------------------------------------------- landing or app -- */
+
+html:not(.in-app) #skipLink,
+html:not(.in-app) body > .topbar,
+html:not(.in-app) #view,
+html:not(.in-app) #tabbar,
+html:not(.in-app) body > .footer { display: none !important; }
+html.in-app #landing { display: none !important; }
+
+html:not(.js) .l-js { display: none !important; }
+html.js .l-nojs { display: none !important; }
+
+/* French before landing.js runs: hint.js read the language, the hidden
+   attribute waits for the script (no flash of English for a French visitor). */
+html.l-fr #landing .l-lang[data-lang="en"] { display: none !important; }
+html.l-fr #landing .l-lang[data-lang="fr"][hidden] { display: block !important; }
+
+/* ------------------------------------------------------ the frame -- */
+
+.landing { background: var(--ground); color: var(--ink); font-size: var(--t22); line-height: 1.5; }
+.landing p { margin: 0; }
+.landing h1, .landing h2, .landing h3 { margin: 0; color: var(--navy); font-weight: 700; }
+.landing h2 { font-size: clamp(32px, 3.4vw, 40px); line-height: 1.15; }
+.landing h3 { font-size: var(--t26); line-height: 1.25; }
+.landing section[id] { scroll-margin-top: 16px; }
+.landing svg { flex: none; }
+@media (prefers-reduced-motion: no-preference) { html:not(.in-app) { scroll-behavior: smooth; } }
+
+.l-wrap { max-width: 1280px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); }
+.l-main:focus { outline: none; }
+.l-lead { max-width: 40em; }
+
+.l-banner {
+  padding: 16px clamp(16px, 4vw, 40px);
+  border-bottom: 2px solid var(--careful);
+  background: var(--careful-wash);
+  color: var(--careful-ink);
+  font-weight: 700;
+}
+
+/* A round icon holder: navy wash by default, gold or navy when named. */
+.l-dot { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--navy-wash); color: var(--navy); }
+.l-dot-gold { background: var(--gold); color: var(--navy-deep); }
+.l-dot-navy { background: var(--navy); color: var(--surface); }
+.l-dot-big { width: 60px; height: 60px; }
+
+/* Buttons: 64px, 22px bold, a verb on each. */
+.l-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 24px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  font-size: var(--t22);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.l-btn-gold { background: var(--gold); border-color: var(--gold); color: var(--navy-deep); }
+.l-btn-gold:hover { background: var(--gold-hover); border-color: var(--gold-hover); }
+.l-btn-outline { background: var(--surface); border-color: var(--navy); color: var(--navy); }
+.l-btn-outline:hover { background: var(--navy-wash); }
+.l-btn-teal { background: #3cb4a4; border-color: #3cb4a4; color: #0b1a18; }
+.l-btn-teal:hover { background: #5cc4b6; border-color: #5cc4b6; }
+.l-btn[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+.l-btn:disabled { opacity: 0.6; cursor: wait; }
+
+/* ------------------------------------------------------- the header -- */
+
+.l-top { background: var(--navy); color: var(--surface); }
+.l-top-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-block: 16px; }
+.l-brand { display: inline-flex; align-items: center; gap: 12px; min-height: 64px; color: var(--surface); text-decoration: none; }
+.l-mark { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: var(--navy-deep); }
+.l-brand-name { font-size: calc(24rem / 19); font-weight: 700; line-height: 1.1; }
+.l-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 0 20px;
+  border: 2px solid var(--surface);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--navy);
+  font-size: var(--t19);
+  font-weight: 700;
+  cursor: pointer;
+}
+.l-lang-btn:hover { background: var(--navy-wash); }
+
+/* --------------------------------------------------------- the hero -- */
+
+.l-hero-in { display: flex; flex-wrap: wrap; align-items: center; gap: 48px; padding-block: 72px 88px; }
+.l-hero-words { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.l-hero h1 { font-size: clamp(40px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.01em; }
+.l-hero .l-lead { max-width: 32em; font-size: calc(24rem / 19); line-height: 1.45; }
+
+.l-doors { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
+.l-door {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 96px;
+  padding: 16px 22px;
+  border: 2px solid;
+  border-radius: 22px;
+  text-decoration: none;
+}
+.l-door > svg:last-child { margin-left: auto; }
+.l-door-gold { border-color: var(--gold); background: var(--gold); color: var(--navy-deep); }
+.l-door-gold:hover { border-color: var(--gold-hover); background: var(--gold-hover); }
+.l-door-outline { border-color: var(--navy); background: var(--surface); color: var(--navy); }
+.l-door-outline:hover { background: var(--navy-wash); }
+.l-door-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.l-door-label { font-size: calc(24rem / 19); font-weight: 700; line-height: 1.25; }
+.l-door-sub { font-size: var(--t19); line-height: 1.35; color: var(--ink); }
+.l-door-gold .l-door-sub { color: var(--navy-deep); }
+
+/* Her evening at a glance, beside the words on a computer; the phone goes
+   straight from the two doors to the three messages (the canvas's phone frame). */
+.l-inbox { flex: 1 1 420px; min-width: 0; margin: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); overflow: hidden; }
+.l-inbox figcaption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 16px 20px; background: var(--navy); color: var(--surface); font-size: var(--t19); font-weight: 700; line-height: 1.3; }
+.l-inbox-in { font-weight: 400; color: #dbe6f2; }
+.l-inbox ul { list-style: none; margin: 0; padding: 0; }
+.l-inbox li { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.l-inbox li:last-child { border-bottom: 0; }
+.l-inbox-words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.l-inbox-who { font-size: var(--t22); font-weight: 700; line-height: 1.25; }
+.l-inbox-what { font-size: var(--t19); line-height: 1.35; color: var(--muted); }
+.l-inbox .pill-verdict { flex: none; align-self: center; margin: 0; }
+.l-inbox-foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--ground); font-size: var(--t19); line-height: 1.35; }
+.l-inbox-foot svg { color: var(--navy); }
+@media (max-width: 899px) { .l-inbox { display: none; } .l-hero-in { padding-block: 40px 48px; } }
+
+/* ----------------------------------------------- Linda's three messages -- */
+
+.l-examples { background: var(--surface); }
+.l-examples > .l-wrap { display: flex; flex-direction: column; gap: 16px; padding-block: 80px; }
+.l-example-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px; margin-block: 24px 8px; }
+.l-example { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+/* The message as it arrived: grey, plain, its link as bold text (never a link). */
+.l-msg { margin: 0; display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--ground); }
+.l-msg figcaption { display: flex; align-items: center; gap: 8px; font-size: var(--t19); line-height: 1.35; color: var(--muted); }
+.l-msg-from { margin-top: 4px !important; font-size: var(--t22); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.l-msg-addr { font-size: var(--t19); line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
+.l-msg-subject { margin-top: 8px !important; font-size: var(--t22); font-weight: 700; line-height: 1.3; }
+.l-msg-body { margin-top: 6px !important; font-size: var(--t19); line-height: 1.45; }
+.l-msg-link { font-weight: 700; overflow-wrap: anywhere; }
+.l-told { display: flex; align-items: center; gap: 8px; font-size: var(--t19); font-weight: 700; color: var(--navy); }
+
+/* The app's card, at the app's width; its "Checked:" chips at 19px here. */
+.l-example .v2-card { touch-action: auto; transition: none; }
+.l-example .v2-chip { font-size: var(--t19); }
+
+.l-aside { font-size: var(--t19); line-height: 1.4; color: var(--muted); }
+.l-aside-icon { display: flex; align-items: flex-start; gap: 10px; }
+.l-aside-icon svg { margin-top: 1px; color: var(--navy); }
+
+/* ------------------------------------------- the life and the promises -- */
+
+.l-life > .l-wrap { display: flex; flex-direction: column; gap: 28px; padding-block: 80px; }
+.l-life-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px 64px; }
+.l-life-head h2 { flex: 1 1 560px; min-width: 0; font-size: clamp(32px, 3.4vw, 44px); }
+.l-life-head .l-lead { flex: 1 1 380px; min-width: 0; }
+.l-life-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; }
+.l-life-lines li { flex: 1 1 300px; min-width: 0; display: flex; align-items: flex-start; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); font-weight: 700; line-height: 1.35; }
+.l-promise-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px; }
+.l-promises { flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px; padding: 24px 28px; border: 2px solid var(--navy); border-radius: 22px; background: var(--surface); }
+.l-promises ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.l-promises li { display: flex; align-items: center; gap: 14px; line-height: 1.4; }
+.l-promises .l-dot { width: 44px; height: 44px; }
+.l-ask { flex: 2 1 360px; min-width: 0; display: flex; align-items: flex-start; gap: 14px; padding: 24px; border: 2px solid var(--gold); border-radius: 22px; background: var(--gold-wash); line-height: 1.45; }
+.l-ask .l-dot { width: 44px; height: 44px; }
+@media (max-width: 600px) { .l-promises { padding: 20px; } .l-life > .l-wrap, .l-examples > .l-wrap { padding-block: 56px; } }
+
+/* ---------------------------------------------------- how it works -- */
+
+.l-how { background: var(--surface); }
+.l-how > .l-wrap { display: flex; flex-direction: column; gap: 16px; padding-block: 80px; }
+.l-steps { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 40px 28px; }
+.l-step { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.l-step-n { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--navy); color: var(--surface); font-size: calc(24rem / 19); font-weight: 700; }
+.l-step img { display: block; width: 100%; max-width: 320px; height: auto; margin-top: 8px; border: 6px solid var(--navy); border-radius: 30px; background: var(--ground); }
+
+/* ---------------------------------------------- measured, not promised -- */
+
+.l-proof { background: var(--surface); border-top: 1px solid var(--line); }
+.l-proof > .l-wrap { display: flex; flex-direction: column; gap: 20px; padding-block: 64px 80px; }
+.l-proof-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px; margin-top: 8px; }
+.l-proof-card { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.l-proof-bars { flex: 2 1 440px; gap: 16px; }
+.l-proof-bars h3 { font-size: var(--t22); color: var(--ink); }
+.l-bar-line { display: flex; flex-direction: column; gap: 6px; }
+.l-bar-line p { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: var(--t19); font-weight: 700; line-height: 1.3; }
+.l-big { font-size: var(--t36); font-weight: 700; line-height: 1.1; color: var(--navy); }
+.l-big-muted { color: var(--muted); }
+.l-bar { height: 22px; border-radius: 6px; background: var(--ground); overflow: hidden; }
+.l-bar-fill { height: 100%; border-radius: 0 4px 4px 0; background: var(--navy); }
+.l-bar-81 { width: 81%; }
+.l-bar-29 { width: 29%; background: #6b7a8f; }
+.l-huge { font-size: calc(40rem / 19); font-weight: 700; line-height: 1.1; color: var(--navy); }
+.l-standard { display: flex; align-items: center; gap: 14px; padding: 20px 24px; border-radius: 18px; background: var(--navy-wash); line-height: 1.4; }
+@media (max-width: 600px) { .l-standard { align-items: flex-start; padding: 20px; } .l-lang-btn { padding: 0 16px; } }
+.l-source { max-width: 62em; font-size: var(--t19); line-height: 1.45; color: var(--muted); }
+.l-source a, .l-fine a { color: var(--navy); font-weight: 700; }
+
+/* ----------------------------------------------------- early access -- */
+
+.l-ea-in { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 40px 56px; padding-block: 80px; }
+.l-ea-words { flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.l-phase { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px; border: 2px solid var(--gold); border-radius: 18px; background: var(--gold-wash); line-height: 1.45; }
+.l-phase svg { margin-top: 3px; color: var(--navy-deep); }
+.l-signin { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px; }
+.l-signin > p:first-child { font-size: var(--t19); }
+.l-signin-note { font-size: var(--t19); color: var(--muted); }
+/* The trusted person's way in (sign-in without the mailbox): a plain link, 64px tall. */
+.l-trusted { display: inline-flex; align-items: center; min-height: 64px; color: var(--navy); font-size: var(--t19); font-weight: 700; text-underline-offset: 4px; }
+.l-trusted[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+.l-ea-box { flex: 1 1 480px; min-width: 0; }
+.l-form { display: flex; flex-direction: column; gap: 22px; padding: 28px; border: 2px solid var(--navy); border-radius: 22px; background: var(--surface); }
+.l-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.l-field > label, .l-field > legend { padding: 0; font-weight: 700; line-height: 1.3; }
+.l-field > legend { margin-bottom: 10px; }
+.l-opt { font-weight: 400; }
+.l-form input[type="text"], .l-form textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 0 16px;
+  border: 2px solid var(--field);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: var(--t22);
+}
+.l-form textarea { min-height: 120px; padding: 12px 16px; line-height: 1.4; resize: vertical; }
+.l-form [aria-invalid="true"] { border-color: var(--scam); }
+.l-radios { display: flex; flex-wrap: wrap; gap: 10px; }
+.l-radio { flex: 1 1 180px; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 20px; border: 2px solid var(--navy); border-radius: 16px; background: var(--surface); color: var(--navy); font-weight: 700; cursor: pointer; }
+.l-radio:has(input:checked) { background: var(--navy); color: var(--surface); }
+.l-radio input { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--gold); }
+.l-err { font-size: var(--t19); font-weight: 700; line-height: 1.4; color: var(--scam-ink); }
+.l-send { width: 100%; }
+.l-fine { font-size: var(--t19); line-height: 1.4; color: var(--muted); }
+.l-thanks { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 28px; border: 2px solid var(--navy); border-radius: 22px; background: var(--surface); }
+.l-thanks:focus { outline: none; }
+.l-thanks-line { font-size: var(--t28); font-weight: 700; line-height: 1.25; color: var(--navy); overflow-wrap: anywhere; }
+.l-ea-box .l-nojs { padding: 24px; border: 2px dashed var(--field); border-radius: 18px; background: var(--surface); }
+@media (max-width: 600px) { .l-form, .l-thanks { padding: 20px; } .l-ea-in { padding-block: 56px; } }
+
+/* ------------------------------------- what scammers are doing this week -- */
+
+/* The public database's own look (public/db/db.css): deep green, the P mark, teal. */
+.l-db { background: #f6f4ef; }
+.l-db-head { background: #14302d; color: #f3f6f4; }
+.l-db-head-in { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 32px 56px; padding-block: 64px; }
+.l-db-words { flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.l-db .l-db-words h2 { color: #f3f6f4; }
+.l-db-eyebrow { display: flex; align-items: center; gap: 12px; font-size: var(--t19); font-weight: 700; line-height: 1.3; color: #b9cbc5; }
+.l-db-mark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 8px; background: #3cb4a4; color: #0b1a18; font-size: calc(20rem / 19); font-weight: 700; }
+.l-look { flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.l-look label { font-weight: 700; line-height: 1.3; }
+.l-look-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.l-look input { flex: 1 1 240px; min-width: 0; min-height: 64px; padding: 0 16px; border: 2px solid var(--surface); border-radius: 12px; background: var(--surface); color: #1b2024; font-size: var(--t22); }
+.l-look .l-btn { border-radius: 12px; }
+.l-look-nojs { flex: 1 1 460px; }
+.l-db-cards { display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px; padding-block: 32px 72px; }
+.l-db-card { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid #d9d6ce; border-radius: 6px; background: var(--surface); color: #1b2024; line-height: 1.4; text-decoration: none; }
+.l-db-card:hover { border-color: #0b5f55; }
+.l-db-card-title { display: flex; align-items: center; gap: 12px; font-size: var(--t26); font-weight: 700; line-height: 1.25; color: #0b5f55; }
+.l-db-card-title > svg:last-child { margin-left: auto; }
+.l-u { text-decoration: underline; text-underline-offset: 4px; min-width: 0; }
+.l-db-sample { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid #e9e6df; border-radius: 6px; background: #fbfaf6; }
+.l-db-msg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t19); line-height: 1.45; overflow-wrap: anywhere; }
+.l-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.l-tag { padding: 2px 10px; border-radius: 999px; font-size: var(--t19); font-weight: 700; line-height: 1.3; }
+.l-tag-family { background: #e0efea; color: #2f5e54; }
+.l-tag-channel { background: #e6e9f5; color: #3b4a7a; }
+.l-tag-country { background: #f6ecd8; color: #6a4e1e; }
+.l-tag-warn { background: #fcefdc; color: #8a4600; }
+.l-tag-info { background: #e4edf2; color: #26495c; }
+
+/* -------------------------------------------------------- the footer -- */
+
+.l-foot { background: var(--navy); color: var(--surface); }
+.l-foot-in { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 32px 56px; padding-block: 48px 56px; }
+.l-foot-words { flex: 2 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px; font-size: var(--t19); line-height: 1.45; color: #dbe6f2; }
+.l-foot-words .l-brand { min-height: 0; }
+.l-foot-nav { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; }
+.l-foot-nav a { display: inline-flex; align-items: center; min-height: 64px; color: var(--surface); font-weight: 700; text-underline-offset: 4px; }
+.l-foot-lang { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.l-foot-lang > p { font-size: var(--t19); font-weight: 700; }
+.l-foot-lang-row { display: flex; gap: 10px; }
+.l-lang-pick { flex: 1 1 0; min-width: 0; min-height: 64px; padding: 0 16px; border: 2px solid var(--surface); border-radius: 16px; background: var(--navy); color: var(--surface); font-size: var(--t22); font-weight: 700; cursor: pointer; }
+.l-lang-pick[aria-pressed="true"] { background: var(--surface); color: var(--navy); }
+
+/* The skip link, 64px like every other control. */
+.landing .skip-link { display: inline-flex; align-items: center; min-height: 64px; }
+/* A French word with a hyphen (est-il, e-mails) is never cut at it. */
+.l-nowrap { white-space: nowrap; }

@@ -1,5 +1,8 @@
 // Sessions: a random token in an httpOnly cookie; only its SHA-256 is
-// stored. 30-day sliding expiry.
+// stored. 30-day sliding expiry. Beside it, prudence_in=1, readable by the
+// page and carrying nothing secret: it tells public/landing/hint.js before the
+// first paint that someone signed in on this browser, so a signed-in person
+// never sees the landing page flash; /api/status still decides.
 
 import { config, isAdmin } from "./config.js";
 import { randomToken, sha256 } from "./crypto.js";
@@ -8,17 +11,20 @@ import { one, q } from "./db/pool.js";
 const COOKIE = "ss_sid";
 const DAYS = 30;
 const cookieOpts = () => ({ path: "/", httpOnly: true, sameSite: "lax", secure: config.secureCookies, maxAge: DAYS * 86400 });
+export const HINT_COOKIE = "prudence_in";
 
 export async function startSession(reply, userId) {
   const token = randomToken();
   await q("INSERT INTO sessions (id_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '30 days')", [sha256(token), userId]);
   reply.setCookie(COOKIE, token, cookieOpts());
+  reply.setCookie(HINT_COOKIE, "1", { ...cookieOpts(), httpOnly: false });
 }
 
 export async function endSession(request, reply) {
   const token = request.cookies?.[COOKIE];
   if (token) await q("DELETE FROM sessions WHERE id_hash = $1", [sha256(token)]);
   reply.clearCookie(COOKIE, { path: "/" });
+  reply.clearCookie(HINT_COOKIE, { path: "/" });
 }
 
 export async function loadUser(request) {
