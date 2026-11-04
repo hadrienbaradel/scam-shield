@@ -21,7 +21,7 @@ import { t, getLang, ago } from "../i18n.js";
 import { $, esc, icon, readAloud, toast, busy, focusHeading } from "../ui.js";
 import { syncLine } from "./mail.js";
 import { protectRows, renderProtects, scoreOf, renderScore } from "../protects.js";
-import { verdictCardHtml, unsureRowHtml, bindVerdictCard } from "./card.js";
+import { verdictCardHtml, unsureRowHtml, bindVerdictCard, runLookCloser } from "./card.js";
 
 let S = null; // the screen state: source, info, queue, index, details, last action
 const demoDone = new Set(); // demo cards handled in this visit
@@ -107,6 +107,9 @@ function liveSource(status) {
     keep: (item) => api(`/api/messages/${enc(item.id)}/put-back`, { method: "POST", body: {} }),
     undoKeep: (item) => api(`/api/messages/${enc(item.id)}/undo-keep`, { method: "POST", body: {} }),
     ask: (item, detail, opts) => api("/api/ask", { method: "POST", body: { checkId: detail.checkId, via: opts.via, includeText: opts.includeText } }),
+    // Look closer: the card already holds the message's words (for "Show me the message").
+    canLookCloser: (item, detail) => Boolean(detail.checkId && String(detail.message?.body || detail.message?.subject || "").trim()),
+    lookCloser: (item, detail) => api("/api/check/investigate", { method: "POST", body: { checkId: detail.checkId, message: detail.message } }),
   };
 }
 
@@ -129,6 +132,9 @@ function demoSource() {
     undoThrow: async (item) => { demoDone.delete(item.id); },
     keep: async (item) => { demoDone.add(item.id); },
     undoKeep: async (item) => { demoDone.delete(item.id); },
+    // Look closer on an example (the voicemail is no example: no button there).
+    canLookCloser: (item) => !String(item.id || "").startsWith("voicemail-"),
+    lookCloser: (item) => api("/api/demo/investigate", { method: "POST", body: { id: item.id } }),
     async ask(item, detail, opts) {
       const g = data.guardian;
       if (opts.via === "email") return { sentTo: [g.name], texts: [] };
@@ -375,10 +381,13 @@ function drawCard() {
       ${d.callBack ? `<p class="v2-hint">${esc(t("v2_call_note", { name: firstName(d.callBack.name) }))}</p>` : ""}
       ${quietThrow ? `<button id="v2Throw" class="btn btn-outline btn-big" type="button">${t("v2_throw")}</button>` : ""}
       ${quietKeep ? `<button id="v2Keep" class="btn btn-outline btn-big" type="button">${t("v2_keep")}</button>` : ""}
-      ${unsureRowHtml({ verdict: v.verdict, guardianName: g ? firstName(g.name) : "", folded: v.verdict === "safe", ids: "v2" })}
+      ${unsureRowHtml({ verdict: v.verdict, guardianName: g ? firstName(g.name) : "", folded: v.verdict === "safe", ids: "v2",
+    lookCloser: Boolean(S.status?.lookCloser) && Boolean(S.source.canLookCloser?.(item, d)), closer: d.closer || null })}
     </div>`);
   bindHeader();
-  bindVerdictCard(S.root, { ids: "v2", onBody: (open) => { S.open.body = open; }, onAsk: () => drawAsk() });
+  // Look closer (_product/specs/investigate.md): the look stays with the card in memory, for a redraw.
+  bindVerdictCard(S.root, { ids: "v2", onBody: (open) => { S.open.body = open; }, onAsk: () => drawAsk(),
+    onLookCloser: () => runLookCloser(S.root, { ids: "v2", send: () => S.source.lookCloser(item, d), onResult: (r) => { d.closer = r; } }) });
   $("#v2Read").addEventListener("click", () => readAloud(v));
   $("#v2Throw")?.addEventListener("click", (e) => busy(e.currentTarget, doThrow));
   $("#v2Keep")?.addEventListener("click", (e) => busy(e.currentTarget, doKeep));

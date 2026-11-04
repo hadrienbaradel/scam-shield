@@ -29,7 +29,9 @@
 // screen with one sentence saying why. Stop, the back link or another tab
 // abort the request; a late answer for a screen that is gone is dropped.
 // Nothing is kept on the device: the pasted words wait in memory until their
-// verdict arrives.
+// verdict arrives. Under the verdict, "Look closer" (status.lookCloser:
+// _product/specs/investigate.md) sends the same words back with the check's
+// id, and the card lists Muse Spark's checks (card.js runLookCloser).
 //
 // Pure helpers, tested in tests/check-view.test.js:
 //   WHO, WHERE                 the chips of frame 1i and what each one sends
@@ -38,6 +40,9 @@
 //   checkProblem(error, kind)  -> null (stopped), { signedOut: true }, or
 //                                 { key, retry }: the words for a failed check
 //                                 (kind "text", "image", "voice" or "eml")
+//   lookCloserRequest(answer)  -> the body of POST /api/check/investigate
+//                                 ({ checkId, message }), or null when the
+//                                 answer holds no message words to look at
 //   firstName(name)
 //
 // Styles: "redesign: check (check.js)" at the end of styles.css, on top of the
@@ -48,7 +53,7 @@ import { t } from "../i18n.js";
 import { $, $$, esc, icon, readAloud, toast, focusHeading } from "../ui.js";
 import { openAsk } from "./mail.js";
 import { toWav16k } from "../audio.js";
-import { verdictCardHtml, unsureRowHtml, bindVerdictCard } from "./card.js";
+import { verdictCardHtml, unsureRowHtml, bindVerdictCard, runLookCloser } from "./card.js";
 
 // "Who sent it?": what the senior believes about the sender, sent as
 // claimedSender and told to the model as her unverified belief; never the
@@ -79,6 +84,14 @@ export function pasteRequest({ text = "", who = DEFAULT_WHO, where = DEFAULT_WHE
 
 export const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
 
+// What Look closer sends back: the check's id (its first verdict stays on the
+// server) and the message as the answer gave it; nothing without both.
+export function lookCloserRequest(out) {
+  const m = out?.message;
+  if (!out?.checkId || !m || !String(m.body || m.subject || "").trim()) return null;
+  return { checkId: out.checkId, message: m };
+}
+
 // What a failed check tells the senior. Never the server's own words (they
 // can be "fetch failed" or a status code): a plain sentence from i18n.js.
 // retry: the same check may work in a minute (the model or the network was
@@ -101,6 +114,7 @@ export function checkProblem(e, kind = "text") {
 // back (Stop), cleared once its verdict is on screen.
 const draft = { text: "", who: DEFAULT_WHO, where: DEFAULT_WHERE };
 let inflight = null; // { ctrl }: the one check running, aborted by the next screen
+let closer = false; // the server can look closer (status.lookCloser)
 
 const backLink = () => `<a class="btn-back" href="#/check">${icon("chevron-left", 28, 2.5)}${esc(t("v2_tab_check"))}</a>`;
 const problemBox = (key) => `<p id="ckProblem" class="banner caution ck-problem" role="alert" tabindex="-1"${key ? "" : " hidden"}>${key ? esc(t(key)) : ""}</p>`;
@@ -118,6 +132,7 @@ const showProblem = (root, key) => {
 export function renderCheckScreen(root, status, { step = "choices", problem = "" } = {}) {
   inflight?.ctrl.abort();
   inflight = null;
+  closer = Boolean(status?.lookCloser);
   const draw = { choices: drawChoices, paste: drawPaste, photo: drawPhoto, voice: drawVoice, more: drawMore }[step] || drawChoices;
   draw(root, status || {}, problem);
 }
@@ -411,6 +426,7 @@ function drawVerdict(root, job, out, guardian) {
   const safe = v.verdict === "safe";
   const fold = job.kind === "voice" && out.transcript ? { subject: t("voice_heard"), body: out.transcript }
     : job.kind === "eml" ? out.message : null;
+  const look = lookCloserRequest(out);
   root.innerHTML = `
     <div class="screen is-snug ck-screen ck-verdict">
       <div class="screen-head">
@@ -418,7 +434,7 @@ function drawVerdict(root, job, out, guardian) {
         <button id="ckListen" class="btn-listen" type="button" aria-label="${esc(t("v2_read"))}">${icon("speaker", 26)}<span aria-hidden="true">${esc(t("v2_read_short"))}</span></button>
       </div>
       ${verdictCardHtml({ verdict: v, message: fold, ids: "ck" })}
-      ${unsureRowHtml({ verdict: v.verdict, guardianName: guardian ? firstName(guardian.name) : "", folded: safe, ids: "ck" })}
+      ${unsureRowHtml({ verdict: v.verdict, guardianName: guardian ? firstName(guardian.name) : "", folded: safe, ids: "ck", lookCloser: closer && Boolean(look) })}
       <div id="ckAskPanel" class="ck-ask-panel"></div>
     </div>`;
   if (safe) $("#ckCard", root)?.insertAdjacentHTML("beforeend", `<a id="ckToday" class="btn btn-gold btn-big" href="#/today">${esc(t("ck_back_today"))}</a>`);
@@ -429,6 +445,7 @@ function drawVerdict(root, job, out, guardian) {
     onAsk: () => openAsk({ checkId: out.checkId, verdict: v, message: out.message || {}, target: panel, provided: true })
       .then(() => panel.scrollIntoView({ block: "start", behavior: "smooth" }))
       .catch(() => toast(t("ck_failed"), "danger")),
+    onLookCloser: () => runLookCloser(root, { ids: "ck", send: () => api("/api/check/investigate", { method: "POST", body: look }) }),
   });
   // The verdict word first, for a screen reader too.
   toTop();

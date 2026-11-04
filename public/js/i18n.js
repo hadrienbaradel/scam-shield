@@ -253,6 +253,18 @@ export const STRINGS = {
     ck_eml_none: "We could not read an email in this file. Please choose another one.",
     ck_failed: "The check could not run just now.",
     ck_failed_note: "Please try again in a minute. Until then, do not use its links or reply to it.",
+    // Look closer under a verdict (js/views/card.js, _product/specs/investigate.md);
+    // the checks' own words come from the server (lib/investigate.js).
+    ck_look_closer: "Look closer",
+    inv_busy: "Prudence is looking closer. About ten seconds.",
+    inv_checked: "Prudence checked:",
+    inv_after: "After looking closer: {verdict}",
+    inv_check_n: "Check {n}",
+    inv_none: "Prudence could not look closer this time. The verdict above stands.",
+    inv_failed: "Prudence could not look closer right now. Please try again in a minute.",
+    inv_try_again: "Try again",
+    inv_source: "Looked closer by {source}: {n} checks in {s} s",
+    inv_source_one: "Looked closer by {source}: 1 check in {s} s",
     // --- learn (lh_*) ---
     // Also read: learn_title ("Learn to spot them."), learn_lead ("One minute at a
     // time."), learn_to_try, learn_minutes_one ("1 minute"), learn_start,
@@ -536,6 +548,16 @@ export const STRINGS = {
     ck_eml_none: "Nous n'avons pas pu lire d'e-mail dans ce fichier. Choisissez-en un autre.",
     ck_failed: "La vérification n'a pas pu se faire pour l'instant.",
     ck_failed_note: "Réessayez dans une minute. D'ici là, n'utilisez pas ses liens et n'y répondez pas.",
+    ck_look_closer: "Regarder de plus près",
+    inv_busy: "Prudence regarde de plus près. Environ dix secondes.",
+    inv_checked: "Prudence a vérifié :",
+    inv_after: "Après avoir regardé de plus près : {verdict}",
+    inv_check_n: "Vérification {n}",
+    inv_none: "Prudence n'a pas pu regarder de plus près cette fois. Le verdict ci-dessus reste valable.",
+    inv_failed: "Prudence n'a pas pu regarder de plus près pour l'instant. Réessayez dans une minute.",
+    inv_try_again: "Réessayer",
+    inv_source: "Regardé de plus près par {source} : {n} vérifications en {s} s",
+    inv_source_one: "Regardé de plus près par {source} : 1 vérification en {s} s",
     // --- learn (lh_*) ---
     lh_first_star: "Votre première étoile est à une minute", lh_badges_to_earn: "{n} badges à gagner, un par leçon",
     lh_badges_left: "Encore {n} badges à gagner", lh_badges_left_one: "Encore {n} badge à gagner",
