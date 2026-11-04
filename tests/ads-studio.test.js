@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { getProvider } from "../lib/llm/index.js";
 import { TINY_JPEG } from "../lib/llm/mock.js";
 import { proposeIdeas, makePhoto, editIdea, checkPhoto, validateWords, PHOTO_COST_USD, modelLabel, IDEAS_SCHEMA, WORDS_SCHEMA } from "../lib/ads/studio.js";
-import { adPrompts, factNumbers, factsForModel, brandsIn, attributedQuotes, inFactSheet, numbersIn, normalizeWords, ALLOWED_BRANDS } from "../lib/ads/guardrails.js";
+import { adPrompts, factNumbers, factsForModel, brandsIn, attributedQuotes, inFactSheet, numbersIn, normalizeWords, parentsNamed, ALLOWED_BRANDS } from "../lib/ads/guardrails.js";
 
 const mock = getProvider("mock");
 const ENV = ["LLM_PROVIDER", "IMAGE_PROVIDER", "META_MODEL_API_KEY", "IMAGE_MODEL", "LLM_MODEL"];
@@ -26,7 +26,9 @@ const IDEA = Object.freeze({
   landing: { headline: "Is this email real? Now she can ask.", lead: "On 18,849 public test emails, Muse Spark lifts phishing caught from 29% to 81%, with 1 false Scam in 17,291 genuine emails." },
 });
 const idea = (over = {}) => ({ ...structuredClone(IDEA), ...over });
-const PHOTO = { bytes: TINY_JPEG, mime: "image/jpeg" };
+// The main text without Mom or Dad, so only the headline names the parent.
+const PARENT_TEXT = "Prudence checks each new email in your parent's Gmail against their own life, in plain words.";
+const PHOTO ={ bytes: TINY_JPEG, mime: "image/jpeg" };
 const EDITED = Buffer.concat([TINY_JPEG, Buffer.from("edited")]);
 const pass = { pass: true, problems: [], fix: null };
 const fails = (problems, fix) => ({ pass: false, problems, fix });
@@ -82,6 +84,25 @@ test("words the fact sheet itself quotes are not a person's quote (the trusted p
   assert.equal(out.ideas.length, 1, "kept, not dropped");
   assert.deepEqual(out.dropped, []);
   assert.equal(mock.calls.length, 1, "no rewrite asked");
+});
+
+test("the words and the photo brief name the same parent: \"Dad's email\" over a mother is refused and rewritten, \"your parent\" passes", async () => {
+  const dad = "A second pair of eyes for Dad's email";
+  assert.deepEqual(validateWords(idea({ headline: dad, primary_text: PARENT_TEXT })).problems, ["the words name Dad but the photo brief shows a mother: the photo must show the parent the words name"]);
+  assert.deepEqual(validateWords(idea({ landing: { headline: "Mom's email, checked", lead: "Plain words." }, photo_brief: "An older man in his seventies alone at a kitchen table." })).problems,
+    ["the words name Mom but the photo brief shows a father: the photo must show the parent the words name"]);
+  for (const [headline, photo_brief] of [
+    ["For your parent's email", IDEA.photo_brief], ["Her email, checked", "An older man in his seventies reading."], [dad, "An older couple at a kitchen table."],
+    [dad, "A man in his forties and his father on a porch."], ["For Mom and Dad's email", IDEA.photo_brief], [dad, "Hands on a kitchen table, a cup of tea."],
+  ]) assert.equal(validateWords(idea({ headline, photo_brief, primary_text: PARENT_TEXT })).ok, true, `${headline} / ${photo_brief}`);
+  assert.deepEqual(parentsNamed(idea({ headline: dad, primary_text: PARENT_TEXT })), { words: "father", photo: "mother" });
+  assert.deepEqual(parentsNamed(idea({ headline: "Your parent's email", primary_text: PARENT_TEXT })), { words: null, photo: "mother" });
+  assert.match(adPrompts()["Rules for the words"], /when the words name Mom or a mother, the photo brief shows a mother/);
+  mock.script({ ideas: [idea({ headline: dad, primary_text: PARENT_TEXT })] }, idea({ headline: "A second pair of eyes for Mom" }));
+  const out = await proposeIdeas({ count: 1 });
+  assert.equal(out.ideas[0].headline, "A second pair of eyes for Mom");
+  assert.match(mock.calls[0].system, /The words and the photo show the same people/);
+  assert.match(textOf(mock.calls[1]), /the words name Dad but the photo brief shows a mother/);
 });
 
 test("an idea that says guaranteed, names a price, or plays on fear or shame is refused", () => {

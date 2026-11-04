@@ -28,6 +28,7 @@ Read by `lib/ads/studio.js` and `lib/ads/guardrails.js` by their `## ` headings 
 - headline: at most 40 characters. primary_text: at most 125 characters. description: at most 30 characters. landing.headline: at most 60 characters. landing.lead: at most 220 characters.
 - cta: "LEARN_MORE" or "SIGN_UP".
 - photo_brief: one paragraph for a photographer: who is in the photo (an adult child and an older parent, or the parent alone), where, the light, what they are doing; real people at home, no screen shown up close, no written words, no logos.
+- The words and the photo show the same people: when the words name Mom or a mother, the photo brief shows a mother; Dad or a father, a father; "your parent" fits either. The same number of people too: one parent in the words, one parent in the photo.
 - landing.headline and landing.lead replace the top of heyprudence.com for people who clicked this ad: they continue the ad's idea and speak to the adult child about their parent.
 
 ## Ideas
