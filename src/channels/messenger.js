@@ -44,6 +44,14 @@ export const MAX_GROUP_ITEMS = 20;
 // A video longer or bigger than this gets "too long" (spec line 16).
 export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_SECONDS = 180;
+// A picture, voice or video check whose verdict came back degraded by a
+// timeout or a 5xx is asked once more, only if this much time has passed
+// since the group started (Muse Spark's own budget is 20 s, so the whole
+// stays under about 60 s).
+export const RETRY_WITHIN_MS = 35000;
+const retryable = (v) => Boolean(v?.degraded && /time ?out|timed out|abort|\b5\d\d\b/i.test(String(v.error || "")));
+// The API's error text for the log, without any quoted model output.
+const errorText = (v) => (v?.degraded && v.error ? String(v.error).replace(/"[^"]*"|'[^']*'/g, "…").slice(0, 200) : null);
 // Assumption: a video comes as type "video" with its url on video.xx.fbcdn.net
 // (or another Meta CDN host below), checked on the first live delivery.
 // Assumption: attachment URLs are on Meta's CDN, seen as scontent.xx.fbcdn.net,
@@ -191,6 +199,7 @@ export function createMessengerChannel({
   maxAudioBytes = MAX_AUDIO_BYTES,
   maxVideoBytes = MAX_VIDEO_BYTES,
   maxVideoSeconds = MAX_VIDEO_SECONDS,
+  retryWithinMs = RETRY_WITHIN_MS,
   maxReplyChars = MAX_REPLY_CHARS,
 } = {}) {
   const cfg = () => messengerConfig(env);
@@ -225,7 +234,7 @@ export function createMessengerChannel({
     if (res.status >= 300 && res.status < 400) throw new Error(`attachment redirected (${res.status}), not followed`);
     if (!res.ok) throw new Error(`attachment download ${res.status}`);
     const buffer = await readCapped(res, maxBytes, tooBig);
-    return { buffer, mime: imageMime(res.headers.get("content-type"), url) };
+    return { buffer, mime: imageMime(res.headers.get("content-type"), url), contentType: String(res.headers.get("content-type") || "").slice(0, 80) };
   }
 
   async function judge({ message, threadHistory = [], socialProfile = null, lang }) {
@@ -241,8 +250,15 @@ export function createMessengerChannel({
   // is said in it (Muse Voice Transcribe, when voice is on), read together
   // from one temporary file; null when neither has anything. stats gets
   // its length and size for the log, never its words.
-  async function readVideoTurn(media, stats) {
-    const { buffer } = await download(media, maxVideoBytes, "videoTooLong");
+  // What Meta sent, for the log: the webhook's type, the CDN's content-type, the size.
+  async function fetchFor(it, maxBytes, stats, tooBig) {
+    const got = await download(it.media, maxBytes, tooBig);
+    (stats.attachments ||= []).push({ type: it.type, contentType: got.contentType, bytes: got.buffer.length });
+    return got;
+  }
+
+  async function readVideoTurn(it, stats) {
+    const { buffer } = await fetchFor(it, maxVideoBytes, stats, "videoTooLong");
     const clip = await readVideo(buffer, { maxSeconds: maxVideoSeconds });
     (stats.videos ||= []).push({ seconds: Math.round(clip.durationSec * 10) / 10, bytes: buffer.length });
     if (clip.tooLong || clip.durationSec > maxVideoSeconds) throw new Expected("videoTooLong");
@@ -265,6 +281,7 @@ export function createMessengerChannel({
   // one turn with what it shows and what is said in it. The last turn is
   // judged, the earlier ones are its thread history.
   async function answer(items, lang = "en", stats = {}) {
+    const t0 = now();
     const W = () => wordsFor(lang);
     const readable = items.filter((i) => (i.type === "text" && i.text.trim()) || (["image", "audio", "video"].includes(i.type) && i.media?.url));
     if (!readable.length) return { text: W().onlyTypesVideo, lang };
@@ -282,7 +299,7 @@ export function createMessengerChannel({
     for (const it of readable) {
       if (it.type === "text") turns.push({ who: "them", name: "", text: it.text.trim() });
       else if (it.type === "image") {
-        const { buffer, mime } = await download(it.media, maxImageBytes);
+        const { buffer, mime } = await fetchFor(it, maxImageBytes, stats);
         if (!IMAGE_TYPES.includes(mime)) continue;
         const read = await extractFromImage({ imageBase64: buffer.toString("base64"), mime });
         if (read.kind === "conversation" && read.turns?.length) turns.push(...read.turns);
@@ -295,12 +312,12 @@ export function createMessengerChannel({
           turns.push({ who: "them", name: read.message.fromName || "", text: read.message.body, links: read.message.links });
         } else blankPicture = true;
       } else if (it.type === "video") {
-        const turn = await readVideoTurn(it.media, stats);
+        const turn = await readVideoTurn(it, stats);
         if (!turn) { emptyVideo = true; continue; }
         if (turn.said) { transcripts.push(turn.said); videoWords = true; }
         turns.push(turn);
       } else {
-        const { buffer } = await download(it.media, maxAudioBytes);
+        const { buffer } = await fetchFor(it, maxAudioBytes, stats);
         const wav = await transcode(buffer);
         const { text: heard } = await transcribeVoice({ wav, fetchImpl });
         if (!heard) { silentVoice = true; continue; }
@@ -322,7 +339,14 @@ export function createMessengerChannel({
       }
       : { ...profileMessage, channel: "messenger" };
     const threadHistory = turns.slice(0, -1).slice(-30).map((t) => ({ from: speakerOf(t), date: null, body: t.text }));
-    const verdict = await judge({ message, threadHistory, socialProfile: profile?.facts.length ? profile : null, lang });
+    const ask = () => judge({ message, threadHistory, socialProfile: profile?.facts.length ? profile : null, lang });
+    let verdict = await ask();
+    // A picture, voice or video: Muse Spark timing out or failing on its side
+    // gets one more try while there is time.
+    if (readable.some((i) => i.type !== "text") && retryable(verdict) && now() - t0 < retryWithinMs) {
+      stats.retried = errorText(verdict);
+      verdict = await ask();
+    }
     const reply = formatReply(verdict, { lang, transcript: transcripts.join(" "), saysKey: videoWords ? "saysVideo" : "says" }).slice(0, maxReplyChars);
     return { text: reply, lang, verdict };
   }
@@ -337,9 +361,14 @@ export function createMessengerChannel({
     try {
       const out = await answer(items, lang, stats);
       lang = out.lang;
-      const sent = await sendText(g.from, out.text);
-      log.info?.({ ids, types: items.map((i) => i.type), lang, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null, ms: now() - started, ...stats }, "messenger check answered");
-      return { ids, lang, verdict: out.verdict?.verdict || null, reply: out.text, sent };
+      // The rules alone never say Safe for what Muse Spark could not judge.
+      const withheld = Boolean(out.verdict?.degraded && out.verdict.verdict === "safe");
+      const sent = await sendText(g.from, withheld ? wordsFor(lang).failed : out.text);
+      log.info?.({
+        ids, types: items.map((i) => i.type), lang, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null,
+        error: errorText(out.verdict), withheld, ms: now() - started, ...stats,
+      }, "messenger check answered");
+      return { ids, lang, verdict: out.verdict?.verdict || null, reply: withheld ? wordsFor(lang).failed : out.text, sent };
     } catch (e) {
       const key = e.replyKey || "failed";
       log.error?.({ ids, types: items.map((i) => i.type), err: e.message, ms: now() - started, ...stats }, "messenger check failed");

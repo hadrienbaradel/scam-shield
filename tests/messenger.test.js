@@ -696,6 +696,62 @@ test("a video whose container lies about its length is never decoded past the ca
   }
 });
 
+test("a degraded Safe never goes out: the failure wording instead, a degraded Scam still goes out, and the log names the API error and what Meta sent", async () => {
+  const pic = Buffer.from("jpeg-bytes");
+  const meta = fakeMeta({ media: { [IMG]: { bytes: pic, type: "image/jpeg" } } });
+  mock.script(read("message", { sender_name: "Mom", body: "See you Sunday for lunch, love you" }), new Error("schema: verdict missing"));
+  logs.length = 0;
+  await send(channelWith(meta), attach("image", { url: IMG }));
+  assert.deepEqual(meta.replies(), [WORDS.en.failed], "the rules' Safe is withheld");
+  assert.equal(verdictCalls().length, 1, "not a timeout or a 5xx: asked once");
+  const [, line] = logs.find(([m]) => m === "messenger check answered");
+  assert.deepEqual([line.verdict, line.withheld, line.error, line.source], ["safe", true, "schema: verdict missing", "detector (Mock LLM unavailable)"]);
+  assert.deepEqual(line.attachments, [{ type: "image", contentType: "image/jpeg", bytes: pic.length }]);
+  assert.ok(!JSON.stringify(logs).includes("Sunday"), "no content in the log");
+  // A degraded Scam still goes out, from the rules, saying so.
+  mock.reset();
+  mock.script(read("message", { sender_name: "USPS", body: USPS, links: [{ text: "usps-delivery.test/pay", href: "usps-delivery.test/pay" }] }), new Error("schema: verdict missing"));
+  const scam = fakeMeta({ media: { [IMG]: { bytes: pic, type: "image/jpeg" } } });
+  await send(channelWith(scam), attach("image", { url: IMG }));
+  assert.match(scam.replies()[0], /^🔴 Scam/);
+  assert.match(scam.replies()[0], /Checked with Prudence's rules \(Mock LLM was not available\)\.$/);
+  // Muse Spark not switched on (line 12) is unchanged: a text is judged by the rules and says so.
+  delete process.env.LLM_PROVIDER;
+  const off = fakeMeta();
+  await send(channelWith(off), text("See you Sunday for lunch, love you"));
+  assert.match(off.replies()[0], /^🟢 Safe/);
+});
+
+test("a picture, voice or video check that Muse Spark times out on or fails on its side is asked once more while there is time", async () => {
+  const meta = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  mock.script(read("message", { sender_name: "Mom", body: "See you Sunday for lunch, love you" }), new Error("The operation was aborted due to timeout"), verdict("safe"));
+  logs.length = 0;
+  await send(channelWith(meta), attach("image", { url: IMG }));
+  assert.equal(verdictCalls().length, 2, "asked twice");
+  assert.match(meta.replies()[0], /^🟢 Safe/);
+  assert.match(meta.replies()[0], /Checked with Mock LLM\.$/, "Muse Spark's own answer the second time");
+  const [, line] = logs.find(([m]) => m === "messenger check answered");
+  assert.deepEqual([line.retried, line.error, line.withheld], ["The operation was aborted due to timeout", null, false]);
+  // A 5xx is retried too; the second failure gives up (here withheld, being Safe).
+  mock.reset();
+  mock.script(read("message", { body: "See you Sunday for lunch, love you" }), new Error("Muse Spark 503: overloaded"), new Error("Muse Spark 503: overloaded"));
+  const twice = fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } });
+  await send(channelWith(twice), attach("image", { url: IMG }));
+  assert.equal(verdictCalls().length, 2);
+  assert.deepEqual(twice.replies(), [WORDS.en.failed]);
+  // No time left (the window is spent), or a plain text: no second try.
+  mock.reset();
+  breaker.failures = 0;
+  mock.script(read("message", { body: "See you Sunday for lunch, love you" }), new Error("The operation was aborted due to timeout"));
+  await send(channelWith(fakeMeta({ media: { [IMG]: { type: "image/jpeg" } } }), { retryWithinMs: 0 }), attach("image", { url: IMG }));
+  assert.equal(verdictCalls().length, 1);
+  mock.reset();
+  breaker.failures = 0;
+  mock.script(new Error("The operation was aborted due to timeout"));
+  await send(channelWith(fakeMeta()), text(USPS));
+  assert.equal(verdictCalls().length, 1, "a text is judged by the rules at once");
+});
+
 test("a sticker, a file, a reel or a shared link alone gets the plain reply; beside a text it is skipped", async () => {
   const meta = fakeMeta();
   const channel = channelWith(meta, { limiter: createLimiter({ max: 100 }) });

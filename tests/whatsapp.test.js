@@ -193,6 +193,13 @@ test("a picture goes through the screenshot path: downloaded with the token, rea
   assert.ok(mock.calls[1].messages[0].content.includes('"channel":"sms"') && mock.calls[1].messages[0].content.includes('"from_name":"USPS"'));
   assert.match(graph.replies()[0].text.body, /^🔴 Scam/);
 
+  // Muse Spark failing on a harmless picture: the rules' Safe is withheld.
+  mock.reset();
+  mock.script({ is_message: true, channel: "sms", sender_name: "Mom", sender: null, subject: null, body: "See you Sunday for lunch, love you", links: [] }, new Error("Muse Spark 503: overloaded"));
+  await channel.handle(delivery({ type: "image", image: { id: "MEDIA1", mime_type: "image/jpeg" } }));
+  await channel.idle();
+  assert.equal(graph.replies().at(-1).text.body, WORDS.en.failed);
+
   mock.reset();
   mock.script({ is_message: false, channel: "other", sender_name: null, sender: null, subject: null, body: "", links: [] });
   await channel.handle(delivery({ type: "image", image: { id: "MEDIA1", mime_type: "image/jpeg" } }));

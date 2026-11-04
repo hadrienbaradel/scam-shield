@@ -511,6 +511,7 @@ export function createWhatsAppChannel({
     try {
       const out = await answer(m, lang);
       lang = out.lang;
+      if (out.verdict?.degraded && out.verdict.verdict === "safe") out.text = wordsFor(lang).failed; // the rules alone never say Safe for what Muse Spark could not judge
       const sent = await sendText(m.from, out.text, m.id);
       log.info?.({ id: m.id, type: m.type, lang, forwarded: m.forwarded, verdict: out.verdict?.verdict || null, source: out.verdict?.source || null, ms: Date.now() - started }, "whatsapp check answered");
       return { id: m.id, type: m.type, lang, verdict: out.verdict?.verdict || null, reply: out.text, sent };
