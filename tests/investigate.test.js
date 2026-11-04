@@ -12,7 +12,7 @@ import { breaker } from "../lib/muse.js";
 import { investigate, decideAnswer, toolsFor, readPage, clipText, notOfferedNotes, TOOLS, LIMITS, INVESTIGATE_PROMPT } from "../lib/investigate.js";
 import { detect } from "../lib/detector.js";
 import { messageFrom, historyFrom } from "../src/routes/investigate.js";
-import { registrationDate as registrationDate2 } from "../src/links/resolver.js";
+import { inspectMessageLinks, registrationDate as registrationDate2 } from "../src/links/resolver.js";
 import { contextFor, liveCards, runCheck } from "../src/sync/checker.js";
 import { buildApp } from "../src/server.js";
 import { one } from "../src/db/pool.js";
@@ -587,6 +587,21 @@ test("a link written with a trailing dot is the same website and is opened; a TL
   assert.deepEqual(out.checks.map((c) => c.found), ["Where the link goes: shop.example.org", "The link to tls.example.org could not be opened just now"]);
 });
 
+test("a website's age is counted from the message's date only when it is not in the future (an .eml carries the sender's own Date)", async () => {
+  const day = 86400000;
+  const yesterday = new Date(Date.now() - day);
+  const message = { channel: "email", from: "a@b.example.org", date: "2029-06-01T00:00:00Z", body: "Pay https://pay.future-example.com/x", links: [{ href: "https://pay.future-example.com/x" }] };
+  mock.script(ask(["website_age", { domain: "pay.future-example.com" }]), answer("be_careful", [{ text: "x", check: 1 }]));
+  const out = await investigate({ message, personalContext: LINDA, first: CAREFUL, deps: deps({ registrationDate: async () => yesterday }) });
+  assert.deepEqual([out.checks[0].found, out.checks[0].flag], ["The website future-example.com was registered 1 day ago (public registry)", "warn"]);
+  // The first check's link inspection, the same way.
+  const rdapFetch = async (url) => (url.includes("data.iana.org")
+    ? new Response(JSON.stringify({ services: [[["com"], ["https://rdap.example/"]]] }), { status: 200 })
+    : new Response(JSON.stringify({ events: [{ eventAction: "registration", eventDate: yesterday.toISOString() }] }), { status: 200 }));
+  const facts = await inspectMessageLinks({ ...message, links: [{ href: "https://second.dated-example.com/x" }] }, {}, { fetchImpl: rdapFetch });
+  assert.equal(facts["https://second.dated-example.com/x"].domain_age_days, 1);
+});
+
 test("a lookup that loses the race against its cap is cancelled, and a cancelled registry lookup is never kept for the day", async () => {
   let aborted = false;
   const registrationDate = (d, { signal }) => new Promise((resolve, reject) => {
@@ -609,7 +624,7 @@ test("a lookup that loses the race against its cap is cancelled, and a cancelled
   ac.abort();
   assert.equal(await registrationDate2("cancel-me-example.com", { fetchImpl: rdapFetch, signal: ac.signal }), null);
   assert.equal((await registrationDate2("cancel-me-example.com", { fetchImpl: rdapFetch })).toISOString().slice(0, 10), "2020-01-02", "asked again: nothing was cached");
-  assert.ok(calls >= 3);
+  assert.ok(calls >= 2, "the domain was asked both times (the registry bootstrap may already be known)");
 });
 
 test("one call with arguments the layer could not read is refused alone; the look goes on", async () => {

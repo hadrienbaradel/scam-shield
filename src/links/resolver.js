@@ -276,7 +276,8 @@ export async function inspectMessageLinks(message, ctx = {}, { resolve = false, 
   const domains = [...new Set(links.map((l) => registrableDomain(domainOf(l.href))))]
     .filter((d) => d && !known.has(d) && !brandDomains.some((b) => sameOrSub(d, b)))
     .slice(0, maxDomains);
-  const asOf = Date.parse(message.date) || Date.now();
+  // As it was when the message arrived, never later than now: an .eml carries the sender's own Date header.
+  const asOf = Math.min(Date.parse(message.date) || Date.now(), Date.now());
   await Promise.all(domains.map(async (d) => ages.set(d, await domainAgeDays(d, { fetchImpl: rdapFetch, asOf }))));
   // URLhaus by exact host (malware sits on one subdomain of a free host).
   const hosts = [...new Set(links.map((l) => domainOf(l.href)))]
