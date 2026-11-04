@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="./prudence-fonts.css">
+  <style>
+    body { margin: 0; background: #f6f7f9; }
+    a { color: #16283f; }
+    a:hover { color: #0f1d2f; }
+  </style>
+</helmet>
+<section data-screen-label="Turn 1" style="display: flex; flex-direction: column; gap: 56px; padding: 48px 56px 96px; width: max-content; min-width: 100%; box-sizing: border-box; font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif; color: #1a1a1a">
+
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 760px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 700; line-height: 1.2">Prudence, redesigned for Linda at 9 pm</h1>
+    <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #4a4a4a">Frames at 390 × 844. Body 22 px, buttons 64 px, one verdict and one action per screen. Normal text size unless the title says Largest. Long screens are shown at full length; the dashed line marks where the first screen ends. Grey rows with a “Coming soon” tag have no button and nothing to tap.</p>
+  </div>
+
+  <!-- ============================== TODAY ============================== -->
+  <div style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">Today · the menu and “What Prudence protects”</h2>
+    <div style="display: flex; flex-wrap: nowrap; gap: 40px; align-items: flex-start">
+
+      <!-- 1a Today, 1 message -->
+      <div id="1a" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1a" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1a</a><span style="font-size: 15px; font-weight: 600">Today · 1 message needs you</span></div>
+        <div data-screen-label="1a Today" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Good evening, Linda</h1>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 2px solid #16283f; border-radius: 22px">
+              <h2 style="margin: 0; font-size: calc(28px * var(--s)); line-height: 1.2; font-weight: 700">1 message needs you</h2>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">The other 24 were fine.</p>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look at it now <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <span style="width: 44px; height: 44px; border-radius: 50%; background: #fef3f2; color: #b42318; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg></span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">3 scams moved away this week</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">They sit in the Prudence folder. Nothing is deleted.</span>
+                </div>
+              </div>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">See them</button>
+            </div>
+            <dc-import name="PrudenceProtects" paired="{{ phonePaired }}" hint-size="100%,900px"></dc-import>
+          </div>
+          <dc-import name="PrudenceTabs" active="today" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> the header keeps only the brand and a Settings button (gear and the word); Linda’s name, Sign out and the link wall are gone. Four tabs with icons and words at the bottom: Today, Check, Learn, Blocked. The status line moved into the email row, so it is said once.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> one card, one gold verb. The list under it shows what is watched, what is not yet, and the single next step for each. 18 words fewer than today.</p>
+        </div>
+      </div>
+
+      <!-- 1b Today, nothing needs you -->
+      <div id="1b" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1b" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1b</a><span style="font-size: 15px; font-weight: 600">Today · nothing needs you</span></div>
+        <div data-screen-label="1b Today empty" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Good evening, Linda</h1>
+            <div style="display: flex; flex-direction: column; gap: 10px; padding: 20px; background: #ecfdf3; border: 3px solid #067647; border-radius: 22px; color: #054f31">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span style="width: 56px; height: 56px; border-radius: 50%; background: #ffffff; border: 3px solid #067647; color: #067647; display: grid; place-items: center; flex: none"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>
+                <h2 style="margin: 0; font-size: calc(26px * var(--s)); line-height: 1.2; font-weight: 700">Nothing in your email needs you</h2>
+              </div>
+              <p style="margin: 0; font-size: calc(19px * var(--s)); line-height: 1.4">Checked 2 minutes ago.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <h2 style="margin: 0 0 2px; font-size: calc(22px * var(--s)); line-height: 1.2; font-weight: 700">Check something yourself</h2>
+              <button style="display: flex; align-items: center; justify-content: flex-start; gap: 14px; min-height: 80px; padding: 12px 18px; border: 2px solid #e9a820; border-radius: 18px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg><span>Take a screenshot and send it</span></button>
+              <button style="display: flex; align-items: center; justify-content: flex-start; gap: 14px; min-height: 64px; padding: 10px 18px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2h6v2"></path><path d="M8 10h8M8 14h6"></path></svg><span>Paste the words</span></button>
+              <button style="display: flex; align-items: center; justify-content: flex-start; gap: 14px; min-height: 64px; padding: 10px 18px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg><span>Send a voice message</span></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <span style="width: 44px; height: 44px; border-radius: 50%; background: #fef3f2; color: #b42318; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg></span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">3 scams moved away this week</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">They sit in the Prudence folder. Nothing is deleted.</span>
+                </div>
+              </div>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">See them</button>
+            </div>
+            <dc-import name="PrudenceProtects" paired="{{ phonePaired }}" hint-size="100%,900px"></dc-import>
+          </div>
+          <dc-import name="PrudenceTabs" active="today" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> the all-clear is a green card with a check and the words, then the three Check choices from the Check tab, then the list.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> when nothing is waiting, the next useful thing is to check what worries her. The screenshot choice is gold because on a phone that is the easiest one.</p>
+        </div>
+      </div>
+
+      <!-- 1c Today, Largest -->
+      <div id="1c" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1c" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1c</a><span style="font-size: 15px; font-weight: 600">Today · Largest text size</span></div>
+        <div data-screen-label="1c Today Largest" style="--s: 1.4; --u: 1.2; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Good evening, Linda</h1>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 2px solid #16283f; border-radius: 22px">
+              <h2 style="margin: 0; font-size: calc(28px * var(--s)); line-height: 1.2; font-weight: 700">1 message needs you</h2>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">The other 24 were fine.</p>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look at it now <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <span style="width: 44px; height: 44px; border-radius: 50%; background: #fef3f2; color: #b42318; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg></span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">3 scams moved away this week</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">They sit in the Prudence folder. Nothing is deleted.</span>
+                </div>
+              </div>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">See them</button>
+            </div>
+            <dc-import name="PrudenceProtects" paired="{{ phonePaired }}" hint-size="100%,1100px"></dc-import>
+          </div>
+          <dc-import name="PrudenceTabs" active="today" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Largest:</strong> body 31 px, headings 45 px. The header and the tab bar grow less (23 px labels) so nothing wraps or is cut; each tab takes the width its word needs.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> the card and its gold button still fit on the first screen. The list scrolls, one row at a time.</p>
+        </div>
+      </div>
+
+      <!-- 1d Today, French -->
+      <div id="1d" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1d" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1d</a><span style="font-size: 15px; font-weight: 600">Aujourd’hui · en français</span></div>
+        <div data-screen-label="1d Today French" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" label="Réglages" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Bonsoir, Linda</h1>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 2px solid #16283f; border-radius: 22px">
+              <h2 style="margin: 0; font-size: calc(28px * var(--s)); line-height: 1.2; font-weight: 700">1 message a besoin de vous</h2>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">Les 24 autres étaient sûrs.</p>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Le voir maintenant <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <span style="width: 44px; height: 44px; border-radius: 50%; background: #fef3f2; color: #b42318; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg></span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">3 arnaques écartées cette semaine</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Elles sont dans le dossier Prudence. Rien n’est supprimé.</span>
+                </div>
+              </div>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Les voir</button>
+            </div>
+            <dc-import name="PrudenceProtects" lang="fr" paired="{{ phonePaired }}" hint-size="100%,900px"></dc-import>
+          </div>
+          <dc-import name="PrudenceTabs" active="today" lang="fr" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">French:</strong> same frame, same sizes. “Aujourd’hui” and “Bloqués” stay on one line because tabs are sized by their word, not in quarters. Buttons are full-width under the text, so a longer verb never squeezes the state.</p>
+        </div>
+      </div>
+
+      <!-- 1e My messages -->
+      <div id="1e" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1e" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1e</a><span style="font-size: 15px; font-weight: 600">My messages · opened from Today</span></div>
+        <div data-screen-label="1e My messages" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+            <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer; align-self: flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Today</button>
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">My messages</h1>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <button style="display: inline-flex; align-items: center; min-height: 56px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #16283f; color: #ffffff; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer">My inbox</button>
+                            <button style="display: inline-flex; align-items: center; min-height: 56px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer">Check first</button>
+            </div>
+            <div style="display: flex; flex-direction: column; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px; padding: 4px 16px">
+              <button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid #d8dee6; background: none; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer">
+                <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Walmart Customer Experience</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Take our survey and you could win $1000!</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border: 2px solid #b54708; border-radius: 999px; background: #fffaeb; color: #7a3a06; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b54708" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5v.01"></path></svg>Be careful</span>
+                </span>
+                <svg style="flex: none; color: #16283f" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+              </button>
+              <button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid #d8dee6; background: none; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer">
+                <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Google</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Security alert · Nov 3, 8:43 PM</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border: 2px solid #067647; border-radius: 999px; background: #ecfdf3; color: #054f31; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#067647" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Safe</span>
+                </span>
+                <svg style="flex: none; color: #16283f" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+              </button>
+              <button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 14px 0; border: 0; border-bottom: 1px solid #d8dee6; background: none; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer">
+                <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Eversource Energy</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Get ahead of winter energy costs · Oct 27</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border: 2px solid #067647; border-radius: 999px; background: #ecfdf3; color: #054f31; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#067647" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Safe</span>
+                </span>
+                <svg style="flex: none; color: #16283f" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+              </button>
+              <button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 14px 0; border: 0; background: none; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer">
+                <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Uber</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Help shape the future of safety at Uber · Oct 22</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border: 2px solid #067647; border-radius: 999px; background: #ecfdf3; color: #054f31; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#067647" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Safe</span>
+                </span>
+                <svg style="flex: none; color: #16283f" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+              </button>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="today" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> “My email” left the menu. This list opens from “See my messages” on Today, under the Today tab with a back link. The message that needs her sits first; every row carries its word and icon, not just a colour.</p>
+        </div>
+      </div>
+
+      <!-- 1f Scams we moved -->
+      <div id="1f" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1f" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1f</a><span style="font-size: 15px; font-weight: 600">Blocked · the fourth tab</span></div>
+        <div data-screen-label="1f Blocked" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+            <h1 style="margin: 12px 0 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Blocked</h1>
+            <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">3 scams this week, moved out of your inbox into the Prudence folder. Nothing is deleted.</p>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">“Medicare Benefits”</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Your new card is waiting, confirm today · Nov 2</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border-radius: 999px; background: #b42318; color: #ffffff; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg>Scam</span>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Put it back</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">“USPS Delivery”</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Pay $1.99 to release your parcel · Oct 30</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border-radius: 999px; background: #b42318; color: #ffffff; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg>Scam</span>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Put it back</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">“Bank of America Alerts”</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Unusual sign-in, verify your account now · Oct 28</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: 4px; padding: 4px 12px 4px 8px; border-radius: 999px; background: #b42318; color: #ffffff; font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path></svg>Scam</span>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Put it back</button>
+              </div>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="blocked" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed (your ask):</strong> “My people” left the tab bar for Settings; the fourth tab is now everything Prudence blocked. The “3 scams moved away” card on Today opens the same screen.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> the red “Scam” pill always carries the word and the icon; every row has its undo, “Put it back”, on the same screen.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================== CHECK ============================== -->
+  <div style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">Check · three choices before any form</h2>
+    <div style="display: flex; flex-wrap: nowrap; gap: 40px; align-items: flex-start">
+
+      <!-- 1g Check choices -->
+      <div id="1g" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1g" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1g</a><span style="font-size: 15px; font-weight: 600">Check · three choices</span></div>
+        <div data-screen-label="1g Check" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Check something</h1>
+            <p style="margin: 0 0 6px; font-size: calc(22px * var(--s)); line-height: 1.4">Show Prudence anything that worries you.</p>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 120px; padding: 16px 20px; border: 2px solid #e9a820; border-radius: 22px; background: #e9a820; color: #0f1d2f; font-family: inherit; text-align: left; cursor: pointer"><svg style="flex: none" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg><span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2">Take a screenshot and send it</span><span style="font-size: calc(19px * var(--s)); line-height: 1.3">Opens your photos or your camera</span></span></button>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #16283f; border-radius: 22px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2h6v2"></path><path d="M8 10h8M8 14h6"></path></svg><span>Paste the words</span></button>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #16283f; border-radius: 22px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg><span>Send a voice message</span></button>
+            <button style="display: inline-flex; align-items: center; gap: 6px; min-height: 64px; padding: 0 8px; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; align-self: flex-start">More ways <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> the long form of frame 04 (dropdown, four fields, three more sections) is gone. Three choices, the screenshot first and biggest. “Or an email file” waits behind “More ways”.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> at 9 pm she has a screenshot, not a typed-out message. Each choice opens one question. About 110 words on frame 04, 24 here.</p>
+        </div>
+      </div>
+
+      <!-- 1h Check choices, Largest -->
+      <div id="1h" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1h" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1h</a><span style="font-size: 15px; font-weight: 600">Check · Largest text size</span></div>
+        <div data-screen-label="1h Check Largest" style="--s: 1.4; --u: 1.2; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Check something</h1>
+            <p style="margin: 0 0 6px; font-size: calc(22px * var(--s)); line-height: 1.4">Show Prudence anything that worries you.</p>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 120px; padding: 16px 20px; border: 2px solid #e9a820; border-radius: 22px; background: #e9a820; color: #0f1d2f; font-family: inherit; text-align: left; cursor: pointer"><svg style="flex: none" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg><span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2">Take a screenshot and send it</span><span style="font-size: calc(19px * var(--s)); line-height: 1.3">Opens your photos or your camera</span></span></button>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #16283f; border-radius: 22px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2h6v2"></path><path d="M8 10h8M8 14h6"></path></svg><span>Paste the words</span></button>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #16283f; border-radius: 22px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg><span>Send a voice message</span></button>
+            <button style="display: inline-flex; align-items: center; gap: 6px; min-height: 64px; padding: 0 8px; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; align-self: flex-start">More ways <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Largest:</strong> labels wrap inside their button, the header and tab bar do not. The three choices stay on the first screen.</p>
+        </div>
+      </div>
+
+      <!-- 1i Paste the words -->
+      <div id="1i" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1i" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1i</a><span style="font-size: 15px; font-weight: 600">Paste the words</span></div>
+        <div data-screen-label="1i Paste" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer; align-self: flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Paste the words</h1>
+            <textarea placeholder="Touch here, then tap Paste" style="display: block; width: 100%; min-height: 150px; padding: 16px; box-sizing: border-box; border: 2px solid #8a97a8; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; font-size: calc(22px * var(--s)); line-height: 1.4; resize: none"></textarea>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <h2 style="margin: 0; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2">Who sent it?</h2>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px">
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">My bank</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">A company</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">Someone I know</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #16283f; color: #ffffff; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>I don’t know</button>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <h2 style="margin: 0; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2">Where did you get it?</h2>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px">
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #16283f; color: #ffffff; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Text message</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">WhatsApp</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">Facebook</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">A letter</button>
+                <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 20px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer">Somewhere else</button>
+              </div>
+            </div>
+            <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: 4px">Check it <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> the paste box first, then two questions as 64 px chips instead of a dropdown and two typed fields. A chosen chip turns navy with a check. “Subject” is gone; the words are enough.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> one typing step, two taps, one gold verb: “Check it”.</p>
+        </div>
+      </div>
+
+      <!-- 1j Screenshot: choose -->
+      <div id="1j" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1j" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1j</a><span style="font-size: 15px; font-weight: 600">Screenshot · 1 of 3 · choose</span></div>
+        <div data-screen-label="1j Screenshot choose" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer; align-self: flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Send a screenshot</h1>
+            <p style="margin: 0 0 8px; font-size: calc(22px * var(--s)); line-height: 1.4">We read the picture, check it and do not keep it.</p>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #e9a820; border-radius: 22px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="M21 16l-5-5-9 9"></path></svg><span>Choose from my photos</span></button>
+            <button style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; min-height: 88px; padding: 12px 20px; border: 2px solid #16283f; border-radius: 22px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(24px * var(--s)); font-weight: 700; line-height: 1.2; text-align: left; cursor: pointer"><svg style="flex: none" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg><span>Take a photo now</span></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Flow:</strong> the gold button opens the phone’s photo picker; the second opens the camera. One sentence says what happens to the picture.</p>
+        </div>
+      </div>
+
+      <!-- 1k Reading your picture -->
+      <div id="1k" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1k" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1k</a><span style="font-size: 15px; font-weight: 600">Screenshot · 2 of 3 · reading</span></div>
+        <div data-screen-label="1k Reading" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer; align-self: flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+            <div style="height: 240px; border-radius: 18px; border: 1px solid #d8dee6; background: repeating-linear-gradient(135deg, #ffffff 0 12px, #eef1f5 12px 24px); display: grid; place-items: center"><span style="font-family: 'Courier New', monospace; font-size: 15px; color: #4a4a4a; background: #ffffff; padding: 6px 10px; border-radius: 8px">Linda’s screenshot</span></div>
+            <div style="display: flex; align-items: center; gap: 14px">
+              <span style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid #16283f; border-right-color: #d8dee6; flex: none"></span>
+              <h1 style="margin: 0; font-size: calc(28px * var(--s)); line-height: 1.2; font-weight: 700">Reading your picture…</h1>
+            </div>
+            <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">About a minute. You can put the phone down.</p>
+            <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: 8px"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>Stop</button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Flow:</strong> no countdown, no spinner that blinks: a still ring, one sentence, and “Stop” on the same screen as the undo.</p>
+        </div>
+      </div>
+
+      <!-- 1l Verdict after a check: Be careful -->
+      <div id="1l" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1l" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1l</a><span style="font-size: 15px; font-weight: 600">Screenshot · 3 of 3 · the verdict, both buttons live</span></div>
+        <div data-screen-label="1l Verdict Be careful" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+              <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+              <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>Listen</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 4px solid #b54708; border-radius: 26px">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span style="width: 60px; height: 60px; border-radius: 50%; background: #fffaeb; border: 3px solid #b54708; color: #b54708; display: grid; place-items: center; flex: none"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5v.01"></path></svg></span>
+                <span style="font-size: calc(36px * var(--s)); font-weight: 700; line-height: 1.05; color: #b54708">Be careful</span>
+              </div>
+              <h1 style="margin: 0; font-size: calc(26px * var(--s)); line-height: 1.25; font-weight: 700">Check this before you do anything.</h1>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4; font-weight: 700">Do not use the link. Open the company’s own app or website yourself.</p>
+              <p style="margin: 0; padding: 12px 14px; border-radius: 14px; background: #fffaeb; font-size: calc(22px * var(--s)); line-height: 1.4">Replies would go to a different address than the sender’s.</p>
+              <p style="margin: 0; padding: 12px 14px; border-radius: 14px; background: #fffaeb; font-size: calc(22px * var(--s)); line-height: 1.4">The link shows one website address but leads to another.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <h2 style="margin: 0; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2">Still unsure?</h2>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1-4 4-6 8-6s7 2 8 6"></path></svg>{{ askName }}</button>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4z"></path></svg>Send it to Prudence</button>
+              <p style="margin: 0; font-size: calc(19px * var(--s)); line-height: 1.4; color: #4a4a4a">A person at Prudence, or a deeper automatic check, looks at it and answers on Today within a day.</p>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Kept:</strong> frame 02’s card: the word with its icon, the headline, the next step, the reasons, Listen. “Why we think so” and “Show me the message” are gone: the reasons are already on the card.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Added:</strong> the “still unsure” row. Gold goes to the person she trusts; the navy outline is the slower, deeper check. One line says who answers and where.</p>
+        </div>
+      </div>
+
+      <!-- 1m Verdict, Send it to Prudence not built yet -->
+      <div id="1m" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1m" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1m</a><span style="font-size: 15px; font-weight: 600">The verdict · “Send it to Prudence” not built yet</span></div>
+        <div data-screen-label="1m Verdict coming soon" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+              <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+              <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>Listen</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 4px solid #b54708; border-radius: 26px">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span style="width: 60px; height: 60px; border-radius: 50%; background: #fffaeb; border: 3px solid #b54708; color: #b54708; display: grid; place-items: center; flex: none"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5v.01"></path></svg></span>
+                <span style="font-size: calc(36px * var(--s)); font-weight: 700; line-height: 1.05; color: #b54708">Be careful</span>
+              </div>
+              <h1 style="margin: 0; font-size: calc(26px * var(--s)); line-height: 1.25; font-weight: 700">Check this before you do anything.</h1>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4; font-weight: 700">Do not use the link. Open the company’s own app or website yourself.</p>
+              <p style="margin: 0; padding: 12px 14px; border-radius: 14px; background: #fffaeb; font-size: calc(22px * var(--s)); line-height: 1.4">Replies would go to a different address than the sender’s.</p>
+              <p style="margin: 0; padding: 12px 14px; border-radius: 14px; background: #fffaeb; font-size: calc(22px * var(--s)); line-height: 1.4">The link shows one website address but leads to another.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <h2 style="margin: 0; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2">Still unsure?</h2>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1-4 4-6 8-6s7 2 8 6"></path></svg>{{ askName }}</button>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 64px; padding: 10px 16px; border-radius: 16px; background: #e6eaef; color: #4a4a4a; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: default; box-sizing: border-box"><span style="display: inline-flex; align-items: center; gap: 10px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4z"></path></svg>Send it to Prudence</span><span style="font-size: calc(19px * var(--s)); font-weight: 700; line-height: 1.2; padding: 2px 10px; border: 2px solid #8a97a8; border-radius: 999px; white-space: nowrap">Coming soon</span></div>
+              <p style="margin: 0; font-size: calc(19px * var(--s)); line-height: 1.4; color: #4a4a4a">A person at Prudence, or a deeper automatic check, looks at it and answers on Today within a day.</p>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">While it is not built:</strong> the second button is flat grey with the “Coming soon” tag, no border, nothing happens on tap. Same grey as the Coming soon rows on Today, so it reads as the same thing.</p>
+        </div>
+      </div>
+
+      <!-- 1n Safe card -->
+      <div id="1n" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1n" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1n</a><span style="font-size: 15px; font-weight: 600">A Safe card · the row folded</span></div>
+        <div data-screen-label="1n Verdict Safe" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+              <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Check</button>
+              <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>Listen</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 4px solid #067647; border-radius: 26px">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span style="width: 60px; height: 60px; border-radius: 50%; background: #ecfdf3; border: 3px solid #067647; color: #067647; display: grid; place-items: center; flex: none"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>
+                <span style="font-size: calc(36px * var(--s)); font-weight: 700; line-height: 1.05; color: #067647">Safe</span>
+              </div>
+              <h1 style="margin: 0; font-size: calc(26px * var(--s)); line-height: 1.25; font-weight: 700">This is the real bill from Eversource.</h1>
+              <p style="margin: 0; padding: 12px 14px; border-radius: 14px; background: #ecfdf3; font-size: calc(22px * var(--s)); line-height: 1.4">It matches the bills you already get from them.</p>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Go back to Today</button>
+            </div>
+            <button style="display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; text-align: left">I still have a doubt <svg style="flex: none" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="check" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Safe:</strong> green, the check and the word. One reason, one gold verb. “{{ askName }}” and “Send it to Prudence” unfold from “I still have a doubt”, so a good answer is not followed by two more buttons.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ============================== LEARN ============================== -->
+  <div style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">Learn · the game is visible from the first minute</h2>
+    <div style="display: flex; flex-wrap: nowrap; gap: 40px; align-items: flex-start">
+
+      <!-- 1o Learn at zero -->
+      <div id="1o" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1o" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1o</a><span style="font-size: 15px; font-weight: 600">Learn · before the first lesson</span></div>
+        <div data-screen-label="1o Learn zero" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Learn to spot them.</h1>
+              <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4; color: #4a4a4a">One minute at a time.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 22px">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <svg style="flex: none" width="34" height="34" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg>
+                <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25; color: #16283f">Your first star is one minute away</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">📦</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">👵</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">⏰</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">🏦</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">🔑</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">🖥️</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">🎁</span>
+                  <span style="width: 48px; height: 48px; border-radius: 50%; background: #e6eaef; display: grid; place-items: center; font-size: 24px; line-height: 1; filter: grayscale(1); opacity: 0.7">💘</span>
+                </div>
+                <span style="font-size: calc(19px * var(--s)); line-height: 1.35; color: #4a4a4a">8 badges to earn, one per lesson</span>
+              </div>
+            </div>
+            <h2 style="margin: 4px 0 0; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2">Lessons to try</h2>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #ffffff; border: 4px solid #16283f; border-radius: 26px; box-shadow: 0 10px 28px rgba(15, 29, 47, 0.16)">
+              <div style="display: flex; align-items: center; gap: 14px">
+                <span style="width: 64px; height: 64px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 32px; line-height: 1; flex: none">📦</span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-size: calc(26px * var(--s)); font-weight: 700; line-height: 1.2">The $1.99 parcel trap</span>
+                  <span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px" role="img" aria-label="No stars yet">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg>
+              </div>
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Start <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+            </div>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">👵</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">It’s me, Grandma!</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">⏰</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">The “act in 10 minutes” trick</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">🏦</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">The bank calls you</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">🔑</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">The “read me the code” trick</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">🖥️</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">The screaming pop-up</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">🎁</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">The gift card trap</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+            <button style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px; border: 2px solid #d8dee6; border-radius: 18px; background: #ffffff; color: #1a1a1a; font-family: inherit; text-align: left; cursor: pointer"><span style="width: 48px; height: 48px; border-radius: 50%; background: #eef4fb; display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none">💘</span><span style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Too sweet to be true</span><span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="display: inline-flex; gap: 3px"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg><svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span><span style="font-size: calc(19px * var(--s)); line-height: 1.3; color: #4a4a4a">1 minute</span><span style="display: inline-flex; align-items: center; font-size: calc(19px * var(--s)); font-weight: 700; color: #16283f">Start <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></span></span></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="learn" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> “0 of 8 lessons · 0 stars” became “Your first star is one minute away”, with the eight badges to earn in grey and three empty drawn stars on every card.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> she can see the whole game before the first tap. Nothing counts down, nothing goes down; a zero is never shown.</p>
+        </div>
+      </div>
+
+      <!-- 1p Lesson -->
+      <div id="1p" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1p" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1p</a><span style="font-size: 15px; font-weight: 600">A lesson · kept from frame 06</span></div>
+        <div data-screen-label="1p Lesson" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 14px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap">
+              <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Learn</button>
+              <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 18px; border: 2px solid #16283f; border-radius: 999px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(19px * var(--s)); font-weight: 700; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>Listen</button>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+              <span style="font-size: calc(22px * var(--s)); font-weight: 700; color: #16283f">Question 1 of 3</span>
+              <span style="display: inline-flex; gap: 8px" role="img" aria-label="No stars yet">
+                <span style="display: grid; place-items: center; width: 34px; height: 38px; box-shadow: inset 0 -3px 0 #e9a820"><svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span>
+                <span style="display: grid; place-items: center; width: 34px; height: 38px"><svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span>
+                <span style="display: grid; place-items: center; width: 34px; height: 38px"><svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" stroke="#16283f" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l2.35 6.76 7.16.15-5.71 4.33 2.08 6.85L12 16.9l-5.88 4.09 2.08-6.85-5.71-4.33 7.16-.15z"></path></svg></span>
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px">
+              <span style="width: 56px; height: 56px; border-radius: 50%; background: #ffffff; border: 2px solid #d8dee6; display: grid; place-items: center; font-size: 28px; line-height: 1; flex: none">📦</span>
+              <h1 style="margin: 0; font-size: calc(26px * var(--s)); line-height: 1.25; font-weight: 700">The $1.99 parcel trap</h1>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; align-items: center; gap: 8px; color: #4a4a4a; font-size: calc(19px * var(--s)); font-weight: 700"><span style="width: 32px; height: 32px; border-radius: 50%; background: #e9a820; display: grid; place-items: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f1d2f" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Prudence</div>
+              <p style="margin: 0; padding: 14px 18px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 22px; border-top-left-radius: 6px; font-size: calc(22px * var(--s)); line-height: 1.45">Meet <strong>Mr. Tiny Fee</strong>. He never asks for much. Just $1.99 to release a parcel.</p>
+              <p style="margin: 0; padding: 14px 18px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 22px; font-size: calc(22px * var(--s)); line-height: 1.45">He counts on one thought. “It is only two dollars.”</p>
+            </div>
+            <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: auto">Next <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+          </div>
+          <dc-import name="PrudenceTabs" active="learn" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Kept:</strong> the stepper, the three drawn stars with the gold mark under the current one, the speech bubbles and the docked “Next”. Only the header and the tab bar changed.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ============================== SETTINGS ============================== -->
+  <div style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">Settings · rows with one verb; the long lists wait behind “Look”</h2>
+    <div style="display: flex; flex-wrap: nowrap; gap: 40px; align-items: flex-start">
+
+      <!-- 1q Settings -->
+      <div id="1q" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1q" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1q</a><span style="font-size: 15px; font-weight: 600">Settings · full length</span></div>
+        <div data-screen-label="1q Settings" style="--s: 1; --u: 1; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" active="{{ true }}" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Settings</h1>
+            <dc-import name="PrudenceProtects" paired="{{ phonePaired }}" hint-size="100%,900px"></dc-import>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1-4 4-6 8-6s7 2 8 6"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">My people</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">{{ nameSon }}</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Change</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: center">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"></path></svg></span>
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">When a message is a scam</span>
+                </div>
+                <label style="display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 14px; border: 2px solid #16283f; border-radius: 14px; background: #eef4fb; cursor: pointer">
+                  <span style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #16283f; background: #16283f; box-shadow: inset 0 0 0 5px #eef4fb; flex: none; margin-top: 2px"></span>
+                  <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Move it out of my inbox, into the Prudence folder</span><span style="font-size: calc(19px * var(--s)); line-height: 1.35">Recommended. You can always put it back.</span></span>
+                </label>
+                <label style="display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 14px; border: 2px solid #d8dee6; border-radius: 14px; background: #ffffff; cursor: pointer">
+                  <span style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #16283f; background: #ffffff; flex: none; margin-top: 2px"></span>
+                  <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Only add a red label, leave it in my inbox</span><span style="font-size: calc(19px * var(--s)); line-height: 1.35">You decide what to do with it.</span></span>
+                </label>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 21h4"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">{{ tellName }}</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Off. Nothing is shared unless you tap “{{ askName }}”.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Turn on</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none; font-size: 20px; font-weight: 700; line-height: 1" aria-hidden="true">Aa</span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Text size</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Normal</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Make it larger</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18"></path><path d="M12 3a14 14 0 0 0 0 18"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Language</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">English</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Passer au français</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Read aloud</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">On. Tap “Listen” on any card.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Turn off</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence knows about you</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Your bank, your providers, the people who write to you.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence did</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Every move and label, so you can always check.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence keeps</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Only what it learned from your real emails. Your emails stay in your mailbox.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 16px; border: 2px solid #b42318; border-radius: 16px; background: #ffffff; color: #b42318; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M9 7V4h6v3"></path><path d="M6 7l1 13h10l1-13"></path></svg>Delete my account</button>
+              </div>
+
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: 6px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Sign out</button>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="none" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> “What Prudence protects” first, then one white card per setting: a 44 px icon, the name, the state in words, one 64 px verb. “My people” (frame 07) is the first row, as your ask. The provider, sender and breach lists of frame 08 wait behind “Look”. Sign out is the last button.</p>
+          <p style="margin: 0"><strong style="color: #1a1a1a">Why:</strong> Linda reads a state and taps a verb; she never scans a list to find out whether something is on. Text size and Language say what the tap will do (“Make it larger”, “Passer au français”) instead of showing three buttons.</p>
+        </div>
+      </div>
+
+      <!-- 1r Settings Largest -->
+      <div id="1r" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1r" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1r</a><span style="font-size: 15px; font-weight: 600">Settings · Largest text size</span></div>
+        <div data-screen-label="1r Settings Largest" style="--s: 1.4; --u: 1.2; position: relative; width: 390px; min-height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" active="{{ true }}" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; padding: 20px 16px 24px; display: flex; flex-direction: column; gap: 20px">
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Settings</h1>
+            <dc-import name="PrudenceProtects" paired="{{ phonePaired }}" hint-size="100%,1100px"></dc-import>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1-4 4-6 8-6s7 2 8 6"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">My people</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">{{ nameSon }}</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Change</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: center">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"></path></svg></span>
+                  <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">When a message is a scam</span>
+                </div>
+                <label style="display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 14px; border: 2px solid #16283f; border-radius: 14px; background: #eef4fb; cursor: pointer">
+                  <span style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #16283f; background: #16283f; box-shadow: inset 0 0 0 5px #eef4fb; flex: none; margin-top: 2px"></span>
+                  <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Move it out of my inbox, into the Prudence folder</span><span style="font-size: calc(19px * var(--s)); line-height: 1.35">Recommended. You can always put it back.</span></span>
+                </label>
+                <label style="display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 14px; border: 2px solid #d8dee6; border-radius: 14px; background: #ffffff; cursor: pointer">
+                  <span style="width: 28px; height: 28px; border-radius: 50%; border: 3px solid #16283f; background: #ffffff; flex: none; margin-top: 2px"></span>
+                  <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Only add a red label, leave it in my inbox</span><span style="font-size: calc(19px * var(--s)); line-height: 1.35">You decide what to do with it.</span></span>
+                </label>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 21h4"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">{{ tellName }}</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Off. Nothing is shared unless you tap “{{ askName }}”.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Turn on</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none; font-size: 20px; font-weight: 700; line-height: 1" aria-hidden="true">Aa</span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Text size</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Normal</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Make it larger</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18"></path><path d="M12 3a14 14 0 0 0 0 18"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Language</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">English</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Passer au français</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">Read aloud</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">On. Tap “Listen” on any card.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Turn off</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence knows about you</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Your bank, your providers, the people who write to you.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence did</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Every move and label, so you can always check.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer">Look</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+                <div style="display: flex; gap: 12px; align-items: flex-start">
+                  <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.25">What Prudence keeps</span>
+                    <span style="font-size: calc(19px * var(--s)); line-height: 1.35">Only what it learned from your real emails. Your emails stay in your mailbox.</span>
+                  </div>
+                </div>
+                <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 16px; border: 2px solid #b42318; border-radius: 16px; background: #ffffff; color: #b42318; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M9 7V4h6v3"></path><path d="M6 7l1 13h10l1-13"></path></svg>Delete my account</button>
+              </div>
+
+              <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: 6px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Sign out</button>
+            </div>
+          </div>
+          <dc-import name="PrudenceTabs" active="none" hint-size="390px,80px"></dc-import>
+          <div style="position: absolute; left: 0; right: 0; top: 762px; display: {{ foldDisplay }}; align-items: center; gap: 6px; pointer-events: none; z-index: 2"><span style="flex: 1; border-top: 2px dashed #8a97a8"></span></div>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Largest:</strong> every row keeps its shape: the icon stays 44 px, the state wraps under the name, the verb stays on one full-width 64 px button. The gold Settings button in the header shows where she is.</p>
+        </div>
+      </div>
+      <!-- 1q_END -->
+
+      <!-- 1s Delete my account -->
+      <div id="1s" style="display: flex; flex-direction: column; gap: 12px; width: 390px; flex: none">
+        <div style="display: flex; align-items: center; gap: 10px"><a href="#1s" style="display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; background: #16283f; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none">1s</a><span style="font-size: 15px; font-weight: 600">Delete my account · the confirmation</span></div>
+        <div data-screen-label="1s Delete confirmation" style="--s: 1; --u: 1; position: relative; width: 390px; height: 844px; background: #eef1f5; border: 2px solid #c9d0da; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a; line-height: 1.4">
+          <dc-import name="PrudenceHeader" active="{{ true }}" hint-size="390px,96px"></dc-import>
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 16px">
+            <button style="display: inline-flex; align-items: center; gap: 2px; min-height: 64px; padding: 0 12px 0 0; border: 0; background: none; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; cursor: pointer; align-self: flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Settings</button>
+            <h1 style="margin: 0; font-size: calc(32px * var(--s)); line-height: 1.15; font-weight: 700">Delete your account?</h1>
+            <p style="margin: 0; font-size: calc(22px * var(--s)); line-height: 1.4">Prudence stops checking your email and erases everything it learned. Your emails stay exactly where they are.</p>
+            <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 72px; padding: 10px 18px; border: 2px solid #e9a820; border-radius: 16px; background: #e9a820; color: #0f1d2f; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer; margin-top: 8px">Keep my account</button>
+            <button style="display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; padding: 10px 18px; border: 2px solid #b42318; border-radius: 16px; background: #ffffff; color: #b42318; font-family: inherit; font-size: calc(22px * var(--s)); font-weight: 700; line-height: 1.2; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M9 7V4h6v3"></path><path d="M6 7l1 13h10l1-13"></path></svg>Delete my account</button>
+          </div>
+          <dc-import name="PrudenceTabs" active="none" hint-size="390px,80px"></dc-import>
+        </div>
+        <div style="font-size: 15px; line-height: 1.45; color: #4a4a4a; display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+          <p style="margin: 0"><strong style="color: #1a1a1a">Changed:</strong> a screen, not a dialog on top of Settings. “Keep my account” comes first and is gold; the red button carries the icon and the words and comes second.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;phonePaired&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;States&quot;},&quot;trustedName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Thomas&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;States&quot;},&quot;showFold&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Frames&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const name = p.trustedName ?? 'Thomas';
+    return {
+      phonePaired: p.phonePaired ?? false,
+      name,
+      askName: 'Ask ' + name,
+      tellName: 'Tell ' + name + ' automatically',
+      nameSon: name + ', your son',
+      foldDisplay: (p.showFold ?? true) ? 'flex' : 'none'
+    };
+  }
+}
+</script>
+</body>
+</html>

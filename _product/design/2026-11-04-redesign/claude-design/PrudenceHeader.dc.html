@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="./prudence-fonts.css"></helmet>
+<header style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px; background: #16283f; color: #ffffff; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; flex: none">
+  <div style="display: flex; align-items: center; gap: 10px; min-width: 0">
+    <span style="width: 44px; height: 44px; border-radius: 50%; background: #e9a820; display: grid; place-items: center; flex: none"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0f1d2f" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>
+    <span style="font-size: calc(22px * var(--u, 1)); font-weight: 700; white-space: nowrap; line-height: 1.1">Prudence</span>
+  </div>
+  <button style="display: inline-flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 14px; border: 2px solid {{ btnBorder }}; border-radius: 16px; background: {{ btnBg }}; color: {{ btnColor }}; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; font-size: calc(19px * var(--u, 1)); font-weight: 700; white-space: nowrap; cursor: pointer; flex: none">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+    <span>{{ label }}</span>
+  </button>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:96},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Settings&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const active = !!this.props.active;
+    return {
+      label: this.props.label ?? 'Settings',
+      btnBorder: active ? '#e9a820' : '#ffffff',
+      btnBg: active ? '#e9a820' : 'transparent',
+      btnColor: active ? '#0f1d2f' : '#ffffff'
+    };
+  }
+}
+</script>
+</body>
+</html>

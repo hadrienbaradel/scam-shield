@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="./prudence-fonts.css"></helmet>
+<section style="display: flex; flex-direction: column; gap: 10px; font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; color: #1a1a1a">
+  <h2 style="margin: 0 0 2px; font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.2">{{ t.heading }}</h2>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.email }}</span>
+        <span style="display: flex; align-items: flex-start; gap: 6px; font-size: calc(19px * var(--s, 1)); line-height: 1.35; color: #1a1a1a"><svg style="flex: none; margin-top: 0.2em" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#067647" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg><span>{{ t.emailState }}</span></span>
+      </div>
+    </div>
+    <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.2; cursor: pointer">{{ t.emailBtn }}</button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.texts }}</span>
+        <span style="display: flex; align-items: flex-start; gap: 6px; font-size: calc(19px * var(--s, 1)); line-height: 1.35; color: #1a1a1a"><svg style="flex: none; margin-top: 0.2em; display: {{ textsCheck }}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#067647" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg><span>{{ t.textsState }}</span></span>
+      </div>
+    </div>
+    <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.2; cursor: pointer">{{ t.textsBtn }}</button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #ffffff; border: 1px solid #d8dee6; border-radius: 18px">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <span style="width: 44px; height: 44px; border-radius: 50%; background: #eef4fb; color: #16283f; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.voice }}</span>
+        <span style="font-size: calc(19px * var(--s, 1)); line-height: 1.35; color: #1a1a1a">{{ t.voiceState }}</span>
+      </div>
+    </div>
+    <button style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 64px; padding: 10px 16px; border: 2px solid #16283f; border-radius: 16px; background: #ffffff; color: #16283f; font-family: inherit; font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.2; cursor: pointer">{{ t.voiceBtn }}</button>
+  </div>
+
+  <div style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; background: #e6eaef; border-radius: 18px; color: #4a4a4a; cursor: default">
+    <span style="width: 44px; height: 44px; border-radius: 50%; background: #d8dee6; color: #4a4a4a; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"></path></svg></span>
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.whatsapp }}</span><span style="font-size: calc(19px * var(--s, 1)); font-weight: 700; line-height: 1.2; padding: 2px 10px; border: 2px solid #8a97a8; border-radius: 999px; white-space: nowrap">{{ t.soon }}</span></div>
+      <span style="font-size: calc(19px * var(--s, 1)); line-height: 1.35">{{ t.whatsappLine }}</span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; background: #e6eaef; border-radius: 18px; color: #4a4a4a; cursor: default">
+    <span style="width: 44px; height: 44px; border-radius: 50%; background: #d8dee6; color: #4a4a4a; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13v10H9l-5 4z"></path><path d="M17 9h3v10l-3-2h-7v-3"></path></svg></span>
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.facebook }}</span><span style="font-size: calc(19px * var(--s, 1)); font-weight: 700; line-height: 1.2; padding: 2px 10px; border: 2px solid #8a97a8; border-radius: 999px; white-space: nowrap">{{ t.soon }}</span></div>
+      <span style="font-size: calc(19px * var(--s, 1)); line-height: 1.35">{{ t.facebookLine }}</span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; background: #e6eaef; border-radius: 18px; color: #4a4a4a; cursor: default">
+    <span style="width: 44px; height: 44px; border-radius: 50%; background: #d8dee6; color: #4a4a4a; display: grid; place-items: center; flex: none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg></span>
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: calc(22px * var(--s, 1)); font-weight: 700; line-height: 1.25">{{ t.calls }}</span><span style="font-size: calc(19px * var(--s, 1)); font-weight: 700; line-height: 1.2; padding: 2px 10px; border: 2px solid #8a97a8; border-radius: 999px; white-space: nowrap">{{ t.soon }}</span></div>
+      <span style="font-size: calc(19px * var(--s, 1)); line-height: 1.35">{{ t.callsLine }}</span>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:358,&quot;height&quot;:900},&quot;paired&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;en&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;fr&quot;],&quot;tsType&quot;:&quot;'en'|'fr'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const fr = this.props.lang === 'fr';
+    const paired = !!this.props.paired;
+    const en = {
+      heading: 'What Prudence protects',
+      email: 'Your email', emailState: 'On since Nov 3 · checked 2 minutes ago', emailBtn: 'See my messages',
+      texts: 'Your text messages',
+      textsState: paired ? "On, on Linda's phone" : 'Needs the Prudence app on your Android phone',
+      textsBtn: paired ? 'Change' : 'Add my phone',
+      voice: 'Voice messages', voiceState: 'Send one any time', voiceBtn: 'Check a voice message',
+      whatsapp: 'WhatsApp messages', whatsappLine: 'Forward a message to Prudence and the answer comes back in the chat',
+      facebook: 'Facebook and Messenger', facebookLine: 'A message or a Marketplace chat that feels wrong',
+      calls: 'Your phone calls', callsLine: 'A warning before you call back a number from a scam message',
+      soon: 'Coming soon'
+    };
+    const frT = {
+      heading: 'Ce que Prudence protège',
+      email: 'Votre e-mail', emailState: 'Activé depuis le 3 nov. · vérifié il y a 2 minutes', emailBtn: 'Voir mes messages',
+      texts: 'Vos messages texte',
+      textsState: paired ? 'Activé, sur le téléphone de Linda' : "Il faut l'application Prudence sur votre téléphone Android",
+      textsBtn: paired ? 'Changer' : 'Ajouter mon téléphone',
+      voice: 'Messages vocaux', voiceState: 'Envoyez-en un quand vous voulez', voiceBtn: 'Vérifier un message vocal',
+      whatsapp: 'Messages WhatsApp', whatsappLine: 'Transférez un message à Prudence et la réponse revient dans la discussion',
+      facebook: 'Facebook et Messenger', facebookLine: 'Un message ou une discussion Marketplace qui semble louche',
+      calls: 'Vos appels téléphoniques', callsLine: "Un avertissement avant de rappeler un numéro venu d'un message frauduleux",
+      soon: 'Bientôt'
+    };
+    return { t: fr ? frT : en, textsCheck: paired ? 'block' : 'none' };
+  }
+}
+</script>
+</body>
+</html>
