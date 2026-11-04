@@ -238,7 +238,12 @@ export default async function mailRoutes(app) {
     }
     if (!transcript) return reply.code(422).send({ error: "no_speech", message: "We could not hear any words in this recording." });
     const caller = String(file.fields?.from?.value || "").slice(0, 200);
-    const message = { channel: "voice_transcript", from: caller, fromName: caller || "Voice message", subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
+    // Listen on the glasses screen (check-glasses.md, line 12): a person heard
+    // live, face to face, not a voicemail. The page sends the field before the
+    // file, the only fields request.file() sees.
+    const faceToFace = file.fields?.context?.value === "conversation";
+    const fromName = faceToFace ? (String(request.user.locale || "").startsWith("fr") ? "Personne qui vous parle en face" : "Person speaking face to face") : caller || "Voice message";
+    const message = { channel: "voice_transcript", from: faceToFace ? "" : caller, fromName, ...(faceToFace ? { setting: "face_to_face" } : {}), subject: "", body: transcript, links: linksFromText(transcript), auth: "" };
     const { verdict, ctx } = await runCheck({ user: request.user, message });
     const check = await recordCheck({ userId: request.user.id, message, verdict, channel: "voice" });
     return { checkId: check.id, verdict, message, transcript, callBack: callBackFor(ctx, message) };
