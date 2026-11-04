@@ -516,7 +516,7 @@ export async function renderKnows(root) {
     b.textContent = t("k_breach_looking");
     try {
       const out = await api("/api/context/lookup-breaches", { method: "POST" });
-      toast(out.lookup?.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
+      toast(out.lookup?.found === 1 ? t("k_breach_found_one") : out.lookup?.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
     } catch (e) {
       toast(t(e.data?.error === "lookup_wait" ? "k_breach_lookup_wait" : "k_breach_lookup_failed"), "danger");
     }

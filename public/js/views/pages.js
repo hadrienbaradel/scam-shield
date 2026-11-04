@@ -103,7 +103,7 @@ async function runBreachLookup(button) {
   return busy(button, async () => {
     try {
       const out = await api("/api/context/lookup-breaches", { method: "POST" });
-      toast(out.lookup.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
+      toast(out.lookup.found === 1 ? t("k_breach_found_one") : out.lookup.found ? t("k_breach_found", { n: out.lookup.found }) : t("k_breach_found_none"), "ok");
       return out;
     } catch (e) {
       toast(t(e.data?.error === "lookup_wait" ? "k_breach_lookup_wait" : "k_breach_lookup_failed"), "danger");
