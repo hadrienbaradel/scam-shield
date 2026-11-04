@@ -1,5 +1,5 @@
 # Public database: scam library, suspect list, scam watch
-Status: Idea · Raised by Vlad, 2026-11-04 · Discussed: no · Last updated: 2026-11-04
+Status: Planned · Raised by Vlad, 2026-11-04 · Decided by Vlad 2026-11-04 (build with subagents; plan: `docs/plans/2026-11-04-public-database.md`) · Last updated: 2026-11-04
 
 ## Why
 Prudence judges a message against the senior's life; the other half of a good verdict is what scammers are doing this week. A public, openly licensed database of scam examples, the sites and numbers they use, and the breaches and new techniques behind them gives Prudence that "world context", gives the model its evaluation and few-shot material, gives the Learn tab its stories, and gives journalists, banks and other apps a reason to link to us. Nobody publishes one today (`_product/research/public-database.md`). Desktop, for people who work on scams, not for seniors.
