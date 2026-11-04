@@ -8,6 +8,16 @@ badge: Gift card guard
 rule: Nobody official is ever paid in gift cards. Anyone who asks for them is a scammer.
 demo_case: B7
 steps:
+  - chat:
+      - Hello! Got a minute? Today's story has a villain. His name is Mr. Gift Card.
+      - Do you ever buy gift cards? For a grandchild's birthday, maybe?
+    replies:
+      - say: All the time. So handy.
+        answer: They make a lovely present. He likes them for another reason. Let me tell you about Monday.
+      - say: Never. I give cash.
+        answer: A birthday card with cash inside. The classic! Let me tell you about Monday.
+      - say: Why? Is that bad?
+        answer: Not at all. Buying one for a grandchild is fine. Wait until you see what he does with them.
   - say:
       - Monday, 10 in the morning. The coffee is ready, and the phone rings.
   - from: character
@@ -27,8 +37,15 @@ steps:
         right: true
         reply: The number on your bill? That rings the REAL power company. They have never heard of me.
         tell: Your own bill gives you the real number. No power company, bank or tax office takes gift cards.
-  - say:
-      - Wednesday, an email arrives with your friend Mark's name on it.
+  - chat:
+      - So? You called the number on your bill. What did they say?
+    replies:
+      - say: My bill is paid. All fine.
+        answer: Of course. He made the late bill up. Wednesday, an email arrives with your friend Mark's name on it.
+      - say: They never heard of him!
+        answer: Nobody there ever has. Wednesday, an email arrives with your friend Mark's name on it.
+      - say: Why gift cards, though?
+        answer: Once he has the numbers, the money is gone in minutes. Wednesday, an email arrives with your friend Mark's name on it.
   - from: character
     as: Mark
     say:
@@ -46,8 +63,14 @@ steps:
       - text: Reply to the email to ask if he is all right.
         reply: I am fine, just in a hurry! The cards, please. And a coin, if you have one.
         tell: A reply goes to whoever wrote the email. Call Mark on the number you already have.
-  - say:
-      - Friday, your neighbor Rosa knocks, her phone on speaker. She is off to buy gift cards before noon.
+  - chat:
+      - Two tries, two misses. Mr. Gift Card is having a bad week.
+      - Friday, your neighbor Rosa knocks, her phone on speaker. She's off to buy gift cards before noon.
+    replies:
+      - say: Oh no. Not Rosa!
+        answer: Oh yes. Listen to who's on her phone.
+      - say: Is it him again?
+        answer: It is. Same voice, same hurry. Listen.
   - from: character
     as: Power company
     say:
@@ -64,8 +87,15 @@ steps:
       - text: Say nothing. It is her business.
         reply: Perfect. Her business is my business now.
         tell: "Speaking up is not meddling. Tell her: nobody official is ever paid in gift cards."
-  - from: you
-    say:
-      - Rosa, call the number on your bill. Then come in for coffee.
+  - chat:
+      - Rosa hangs up and calls the number on her bill. Nothing is late.
+      - She's still a little shaken. Ask her in for coffee?
+    replies:
+      - say: Come in, Rosa!
+        answer: She's in before the kettle boils.
+      - say: Yes, and I've got cake.
+        answer: Coffee and cake. Rosa feels better already.
+      - say: I'll tell her about Mark.
+        answer: She laughs so hard she spills her coffee. The same man, all week!
   - say:
       - Mr. Gift Card goes home with empty pockets. No cards, no codes, and still no coin.

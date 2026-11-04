@@ -8,6 +8,16 @@ badge: Hang-up hero
 rule: When "your bank" calls about fraud, hang up and call the number on the back of your card.
 demo_case: D4
 steps:
+  - chat:
+      - Hello! This story starts with a text and ends with a phone call.
+      - Does your bank ever text you?
+    replies:
+      - say: Sometimes.
+        answer: Real banks do, sometimes. That is why the fake texts work. Let me tell you a story. You are in it.
+      - say: Never.
+        answer: Then a text from your bank would surprise you. Let me tell you a story. You are in it.
+      - say: Why? What happened?
+        answer: Nothing yet! Let me tell you a story. You are in it.
   - say:
       - Thursday, 2:30 in the afternoon. You are writing a birthday card.
       - In a back room far away, the **Bank That Forgot Your Name** clears its throat. It calls everyone Dear Customer.
@@ -25,8 +35,15 @@ steps:
         right: true
         reply: No reply? I wrote it so nicely. Fine. I will call. Everyone answers a call.
         tell: Not replying tells him nothing. You choose how to reach your bank, not him.
-  - say:
+  - chat:
       - Two minutes later, the phone rings. The screen says **Chase**.
+    replies:
+      - say: Uh-oh.
+        answer: Don't worry. Let's listen to what he says.
+      - say: Is it really Chase?
+        answer: Let's find out. Listen to what he says.
+      - say: He said he would call!
+        answer: He did say that. Let's listen to what he says.
   - from: character
     as: Chase
     say:
@@ -43,9 +60,15 @@ steps:
         right: true
         reply: You hung up? On the FRAUD TEAM? I had a whole speech, Dear Customer.
         tell: The fraud team that calls to protect you from fraud is the fraud.
-  - from: you
-    say:
-      - Click. Now I want to talk to my real bank.
+  - chat:
+      - Click! The line goes quiet.
+    replies:
+      - say: Bye-bye, Dear Customer!
+        answer: Ha! He hates hearing it back. Now let's call your real bank, to be sure.
+      - say: But what if it was real?
+        answer: Then your real bank will tell you. Let's call them, to be sure.
+      - say: My heart is pounding.
+        answer: He wanted you scared, because scared people rush. Take a breath. Then let's call your real bank.
   - ask: Which number do you call?
     choices:
       - text: The number on the back of my card.

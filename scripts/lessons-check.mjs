@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // Lesson files checker: every data/lessons/<lang>/<id>.yaml follows the
 // lesson format of _product/specs/micro-learning.md (fields; a story that
-// starts and ends with a say, never more than two says in a row, the
+// opens on a say or a chat and ends on a say, two chats at least with one
+// before the first question, never more than two says in a row, the
 // character's own text at least once; 1 to 3 lines per say, from the
-// narrator, the character or you, the name he borrows under 40 characters;
-// exactly three questions with one right answer each and a tell on every
-// other choice; under 140 characters, **bold** only), has its English or
-// French twin that plays the same (the same steps, speakers and right
-// choices), and names a demo case that exists. `make lessons-check` and
-// `make check` run it; exit 1 on any problem.
+// narrator or the character, the name he borrows under 40 characters; per
+// chat 1 to 3 lines and 1 to 3 replies, each a button under 60 characters
+// and Prudence's answer; exactly three questions with one right answer each
+// and a tell on every other choice; under 140 characters, **bold** only), has
+// its English or French twin that plays the same (the same steps, speakers,
+// replies per chat and right choices), and names a demo case that exists.
+// `make lessons-check` and `make check` run it; exit 1 on any problem.
 //
 //   node scripts/lessons-check.mjs                this checkout
 //   node scripts/lessons-check.mjs --root <dir>   another checkout (the tests use this)

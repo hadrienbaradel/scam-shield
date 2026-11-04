@@ -8,6 +8,16 @@ badge: Parcel-fee spotter
 rule: Never pay a delivery fee from a link in a text. Go to the carrier's own website or app.
 demo_case: D1
 steps:
+  - chat:
+      - Hello! Got a minute? I want to show you a text that goes around every week.
+      - Ever had a text about a parcel you were not expecting?
+    replies:
+      - say: All the time.
+        answer: Same here. Some weeks, one a day. Let's pretend a new one comes to your phone.
+      - say: Are they all fake?
+        answer: Not all. Real carriers send texts too. That is why the fake ones work. Let's pretend one comes to your phone.
+      - say: Never. Nobody texts me.
+        answer: Well, I text you! Now let's pretend a parcel text comes to your phone too.
   - say:
       - Tuesday, 7:40 in the morning. The kettle is on.
       - Far away, **Mr. Tiny Fee** shakes his coin jar. Empty again. He picks up his phone.
@@ -28,9 +38,15 @@ steps:
         right: true
         reply: Oh no. Not the app. Nobody checks the app. Fine. FINE.
         tell: Going to the carrier yourself costs nothing and proves everything.
-  - from: you
-    say:
-      - I look it up in the USPS app. No parcel on hold. Nothing to pay.
+  - chat:
+      - The USPS app shows no parcel on hold. Nothing to pay.
+    replies:
+      - say: Phew.
+        answer: Phew indeed. No parcel, no fee. But Mr. Tiny Fee is not done.
+      - say: That was easy.
+        answer: Easy for you. Sad for Mr. Tiny Fee. But he is not done.
+      - say: What did he want?
+        answer: Your card number. With it, he spends your money, far more than $1.99. And he is not done.
   - from: character
     as: USPS
     say:
@@ -47,8 +63,16 @@ steps:
       - text: Tap the link, just to look.
         reply: Just a look! Come in, come in. My page looks exactly like USPS. I copied every button.
         tell: One look opens his page, and his page asks for your card. Go to the carrier's own app.
-  - say:
+  - chat:
       - "Thursday. This time you really are waiting for a parcel: a new teapot."
+      - Do you buy things online?
+    replies:
+      - say: Now and then.
+        answer: Then you know the wait. You listen for the doorbell. Your phone buzzes instead.
+      - say: Ooh, a teapot!
+        answer: A blue one, with a round lid. You listen for the doorbell. Your phone buzzes instead.
+      - say: I prefer real shops.
+        answer: Real shops are lovely. This teapot came from a website, though. Then your phone buzzes.
   - from: character
     as: USPS
     say:
@@ -62,9 +86,7 @@ steps:
       - text: Pay. This time it really must be my teapot.
         reply: Your teapot! Yes! I know all about your teapot. Lovely teapot. Card number, please.
         tell: He knows nothing about your teapot. He sends the same text to everyone.
-  - from: you
-    say:
-      - I enter the shop's tracking number on the USPS website. My teapot comes Friday. No fee.
   - say:
+      - The USPS website says your teapot comes Friday. No fee.
       - Mr. Tiny Fee shakes his coin jar one more time. Not a rattle.
       - The coin jar stays empty.

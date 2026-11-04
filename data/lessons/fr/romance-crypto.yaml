@@ -7,6 +7,16 @@ minutes: 1
 badge: Grand cœur, porte-monnaie fermé
 rule: Quelqu'un que vous n'avez jamais rencontré et qui parle d'argent n'est pas un ami. Ne lui envoyez rien.
 steps:
+  - chat:
+      - Bonjour ! Cette histoire parle d'un homme qui écrit des messages très tendres.
+      - Vous vous êtes déjà fait un ami sur internet ? Quelqu'un que vous n'avez jamais vu en vrai ?
+    replies:
+      - say: Oui, quelqu'un d'adorable.
+        answer: Tant mieux. Antoine, dans cette histoire, écrit lui aussi de jolis messages. Regardez ce qu'il demande.
+      - say: Non. Je préfère les vrais visages.
+        answer: Les vrais visages, ça compte. Antoine, dans cette histoire, ne montre jamais le sien.
+      - say: C'est sans danger ?
+        answer: Souvent, oui. Voici une histoire où ce n'est pas le cas.
   - say:
       - "Dimanche soir. Depuis six semaines, Antoine vous écrit chaque jour : bonjour, bonne nuit, photos de la mer."
       - Ses messages sont tendres. Ça fait du bien, qu'on pense à vous.
@@ -27,9 +37,16 @@ steps:
         right: true
         reply: Rien ? Pas même un peu ? Mais ma caméra… enfin, mon cœur. Mon cœur est brisé.
         tell: Quelqu'un que vous n'avez jamais rencontré et qui parle d'argent n'est pas un ami. Votre cœur peut rester ouvert.
-  - from: you
-    say:
-      - "Je lui réponds : je n'envoie pas d'argent à quelqu'un que je n'ai jamais rencontré."
+  - chat:
+      - "Vous répondez à Antoine : pas d'argent pour quelqu'un que vous n'avez jamais rencontré."
+      - C'était difficile à dire, après six semaines de messages tendres ?
+    replies:
+      - say: Un peu. Il a l'air gentil.
+        answer: C'est normal que ce soit dur. Dire non à l'argent, ce n'est pas dire non à la gentillesse. Voici sa réponse.
+      - say: Pas du tout.
+        answer: Bravo. Voici sa réponse.
+      - say: Il va avoir de la peine ?
+        answer: Il dira que oui. Ça fait partie de son plan. Voici sa réponse.
   - from: character
     as: Antoine
     say:
@@ -46,8 +63,16 @@ steps:
       - text: J'envoie la moitié, pour lui montrer que je tiens à lui.
         reply: La moitié, c'est un bon début ! Je demanderai l'autre moitié jeudi.
         tell: La moitié des frais, c'est encore de l'argent pour un inconnu. On peut tenir à quelqu'un sans payer.
-  - say:
+  - chat:
+      - Sa caméra ne marche jamais, et lui n'arrive jamais. Il y a toujours de nouveaux frais.
       - Quelques jours plus tard, il essaie autre chose.
+    replies:
+      - say: Qu'est-ce que c'est, cette fois ?
+        answer: Un secret. Le voici.
+      - say: Le pauvre, bloqué à la douane.
+        answer: Vous avez bon cœur. Mais il n'est pas à la douane. Il écrit les mêmes mots à beaucoup de gens. Voici la suite.
+      - say: Il insiste, hein ?
+        answer: Oui, mais plus pour longtemps. Voici son message suivant.
   - from: character
     as: Antoine
     say:
@@ -64,9 +89,16 @@ steps:
       - text: Je lui demande pourquoi ce doit être un secret.
         reply: Parce que ta famille me démasquerait en une seconde. Euh… parce que je t'aime.
         tell: Un inconnu qui veut être caché à votre famille cache quelque chose. Parlez-en à quelqu'un de confiance.
-  - from: you
-    say:
-      - J'appelle ma famille. On déjeune ensemble mardi, et je raconte tout.
+  - chat:
+      - Vous appelez votre famille. Vous déjeunez ensemble mardi, et vous leur racontez tout.
+      - Comment ça se passe ?
+    replies:
+      - say: Ils sont contents que j'en parle.
+        answer: Évidemment. Avec eux à vos côtés, il n'a aucune chance.
+      - say: On rit de sa caméra en panne.
+        answer: Six semaines, et pas un seul appel vidéo. Il y a de quoi rire.
+      - say: Je dois le bloquer ?
+        answer: Oui. Bloquez-le et ne lui répondez plus. Vous ne lui devez aucun adieu.
   - say:
       - L'Ami qui n'allume jamais sa caméra retourne sur sa plateforme. Sa caméra est toujours en panne. Son plan aussi.
       - Déjà envoyé de l'argent à quelqu'un comme lui ? Beaucoup l'ont fait. Parlez-en à vos proches et à votre banque.

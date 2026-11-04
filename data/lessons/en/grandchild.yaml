@@ -8,6 +8,16 @@ badge: Call-back champion
 rule: If family asks for money in a hurry, call them back on the number you already have.
 demo_case: B2
 steps:
+  - chat:
+      - Hello! Today's story is about family.
+      - Does your family text you, or do they call?
+    replies:
+      - say: They text. All day long.
+        answer: Lovely. Then a text from family feels normal. Let's pretend a text comes to your phone.
+      - say: They call. I like a voice.
+        answer: A call is a good habit. Keep it. Let's pretend a text comes to your phone.
+      - say: Depends who!
+        answer: Ha, true. Grandsons text, sisters call. Let's pretend a text comes to your phone.
   - say:
       - Sunday, 6 in the evening. The soup is on the stove.
       - Somewhere, **Cousin Stuck Abroad** spins his globe. Where will he be stuck today?
@@ -28,8 +38,15 @@ steps:
         right: true
         reply: The old number? Oh no. That is the one the real grandson answers.
         tell: The number you already have reaches your real grandson. A new number proves nothing.
-  - say:
+  - chat:
       - His usual number rings and rings. He must be at work. You leave a message.
+    replies:
+      - say: I hope he is all right.
+        answer: He is fine. You will see. Meanwhile, the new number writes again.
+      - say: Typical! He never picks up.
+        answer: Ha! Busy, as usual. Meanwhile, the new number writes again.
+      - say: What if it really is him?
+        answer: Then he will be glad you checked. Meanwhile, the new number writes again.
   - from: character
     as: +1 555-0161
     say:
@@ -46,9 +63,15 @@ steps:
       - text: Ask for the lawyer's name and number.
         reply: Of course! Mr. Smith, lawyer. His number is this one, funnily enough.
         tell: A name and a number are easy to make up. No real lawyer sends someone to collect cash.
-  - from: you
-    say:
-      - Nobody gets cash at my door. Not today, not ever.
+  - chat:
+      - Lisbon, then Madrid. He travels a lot for a man who is stuck.
+    replies:
+      - say: Nobody gets cash at my door.
+        answer: Not today, not ever. So he tries another trick.
+      - say: Ha! Where to next?
+        answer: Wait and see. His globe is spinning again.
+      - say: Is he really stuck?
+        answer: Not at all. He picks a city on his globe. And now he tries another trick.
   - from: character
     as: +1 555-0161
     say:

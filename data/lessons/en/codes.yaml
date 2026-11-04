@@ -8,6 +8,16 @@ badge: Code keeper
 rule: A code sent to you is a key. Never read it out or send it to anyone who calls or writes.
 demo_case: B10
 steps:
+  - chat:
+      - Hello! Today is about the little codes that come by text. Six numbers, usually.
+      - Do you ever get one?
+    replies:
+      - say: Yes, lots of them.
+        answer: They are everywhere now. Let's pretend someone calls you about one.
+      - say: Sometimes. What are they for?
+        answer: They prove it is really you signing in, like a key. Let's pretend someone calls you about one.
+      - say: Never seen one.
+        answer: Then here is your first. Let's pretend someone calls you about one.
   - say:
       - Saturday, 11 in the morning. You are reading the paper.
       - Somewhere, **Mr. Read-Me-The-Code** sharpens his pencil. Ready for six little numbers.
@@ -28,9 +38,15 @@ steps:
       - text: Ask him why he needs it.
         reply: To protect you, of course! I always have a lovely reason. I keep a whole list.
         tell: He always has a reason ready. No reason is good enough for your code.
-  - from: you
-    say:
-      - "I read the text again. It says: **do not share this code**. Even my bank says so."
+  - chat:
+      - "The text with the code ends in small letters: **do not share this code**."
+    replies:
+      - say: Even my bank says so!
+        answer: Even your bank, in writing. And the phone rings again.
+      - say: I never read that part.
+        answer: Few people do. It is small, at the very end. And the phone rings again.
+      - say: So why did he ask?
+        answer: Because that code can open your account to him. And the phone rings again.
   - from: character
     as: Your bank
     say:
@@ -47,8 +63,15 @@ steps:
         right: true
         reply: Not even your own bank? But I said please. Twice.
         tell: Your bank already has your money. It does not need your code as well.
-  - say:
-      - Sunday. A text from a number you do not know.
+  - chat:
+      - Not one number for his pencil. He gives up, for today.
+    replies:
+      - say: Ha! Poor pencil.
+        answer: Still sharp, and nothing to write. On Sunday, a text comes from a number you do not know.
+      - say: He will be back.
+        answer: You know him well! On Sunday, a text comes from a number you do not know.
+      - say: Does he ever give up?
+        answer: Not really. On Sunday, a text comes from a number you do not know.
   - from: character
     as: +1 555-0155
     say:
@@ -65,8 +88,6 @@ steps:
       - text: Ask him to call me first, to be sure.
         reply: Call? I can't, I have a sore throat. Just the code, Grandma. Quickly.
         tell: He will always find a reason not to call. A code you did not ask for stays with you.
-  - from: you
-    say:
-      - I call my grandson. He is at football practice. He sent no code.
   - say:
+      - You call your grandson. He is at football practice, and he sent no code.
       - Mr. Read-Me-The-Code puts his pencil away. Still sharp. Not one number written.

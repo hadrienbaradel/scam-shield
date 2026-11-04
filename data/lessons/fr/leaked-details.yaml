@@ -8,6 +8,16 @@ badge: À l'épreuve des fuites
 rule: Un message qui cite vos vraies données ne prouve rien. Elles ont fuité ; les voleurs les achètent par milliers.
 demo_case: A3b
 steps:
+  - chat:
+      - "Bonjour ! Pensez à tous ceux qui ont vos données : votre banque, votre médecin, votre opérateur de téléphone."
+      - Vous vous êtes déjà demandé où elles finissent ?
+    replies:
+      - say: Je n'y ai jamais pensé.
+        answer: Comme la plupart des gens. Voici un endroit où elles finissent.
+      - say: En lieu sûr, j'espère.
+        answer: Je l'espère aussi. Voici un endroit où elles ne devraient jamais être.
+      - say: Pourquoi ? Où vont-elles ?
+        answer: Certaines tombent entre de mauvaises mains. Je vous montre lesquelles.
   - say:
       - Mercredi, 9 heures. Un e-mail arrive, et il connaît votre vrai numéro de compte.
       - Au loin, M. Je-Connais-Votre-Numéro lit vos données sur une liste froissée, achetée en gros. Vous êtes la page 4312.
@@ -28,8 +38,16 @@ steps:
       - text: Je réponds pour qu'ils prouvent qui ils sont.
         reply: "Une preuve ? Votre date de naissance : le 2 mai… non, ça, c'est la page 4311. Hum. Le 9 mai. Voilà."
         tell: "De vraies données ne prouvent rien : les voleurs les achètent par milliers. Vérifiez dans l'appli de votre banque."
-  - say:
-      - Une heure plus tard, le téléphone sonne. L'homme dit être votre conseiller bancaire.
+  - chat:
+      - Dans votre appli, aucun prélèvement de 69,90 €. Il l'a inventé. Une heure plus tard, le téléphone sonne.
+      - L'homme dit être votre conseiller bancaire. Votre banque vous appelle souvent ?
+    replies:
+      - say: Presque jamais.
+        answer: C'est rare, oui. Alors cet appel a l'air important. Écoutez ce qu'il dit.
+      - say: De temps en temps.
+        answer: Alors cet appel paraît normal. C'est ce qu'il espère. Écoutez ce qu'il dit.
+      - say: Pourquoi cette question ?
+        answer: Parce qu'un appel de la banque, ça fait sérieux. Il compte là-dessus. Écoutez ce qu'il dit.
   - from: character
     as: Votre banque
     say:
@@ -47,9 +65,15 @@ steps:
       - text: Je lui demande son nom et son agence, pour vérifier.
         reply: Bien sûr ! Michel Durand, agence du centre-ville. Très facile à vérifier. Le code, maintenant ?
         tell: Un nom et une agence s'inventent en une seconde. Raccrochez et appelez le numéro au dos de votre carte.
-  - from: you
-    say:
-      - Ma banque dit qu'il n'y a aucun prélèvement et aucun problème. Mais comment savait-il tout ça ?
+  - chat:
+      - Alors ? Vous avez appelé le numéro au dos de votre carte. Que dit votre banque ?
+    replies:
+      - say: Aucun prélèvement, aucun problème.
+        answer: Tant mieux. Mais il connaissait votre date de naissance et votre adresse. Tout ça vient de quelque part.
+      - say: Ils ne m'ont jamais appelé !
+        answer: Bien sûr que non. Ce n'était pas votre banque. Mais votre date de naissance et votre adresse viennent de quelque part.
+      - say: Comment savait-il tout ça ?
+        answer: Bonne question. Votre date de naissance, votre adresse, la fin de votre carte. Tout ça vient de quelque part.
   - ask: Et ensuite ?
     choices:
       - text: Je demande à ma banque qui a donné mes données.
@@ -62,9 +86,15 @@ steps:
         right: true
         reply: "Vous avez cherché ? Alors vous connaissez mon secret : je ne vous connais pas. J'ai acheté votre page au kilo."
         tell: Prudence montre les piratages connus qui contiennent votre adresse e-mail, et ce qui a fuité.
-  - from: you
-    say:
-      - "La voilà : la fuite de Bouygues Telecom, en 2025. C'est donc là que mes données sont parties."
+  - chat:
+      - Vous cherchez votre adresse e-mail. La voilà, dans la fuite de Bouygues Telecom, en 2025.
+    replies:
+      - say: C'est donc là que mes données sont parties !
+        answer: Exactement. Maintenant, vous savez d'où vient sa liste froissée.
+      - say: Mon opérateur ? Vraiment ?
+        answer: Vraiment. Les entreprises se font pirater, même les grandes. Ce n'est pas votre faute.
+      - say: Je peux les récupérer ?
+        answer: Non, on ne peut pas les récupérer. Mais maintenant vous savez, et un message qui les cite ne peut plus vous tromper.
   - say:
       - M. Je-Connais-Votre-Numéro fait tomber sa liste froissée, et les pages s'envolent partout.
       - La vôtre ne lui sert plus à rien.

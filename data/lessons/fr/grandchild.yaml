@@ -8,6 +8,16 @@ badge: Pilier de la famille
 rule: Si un proche demande de l'argent en urgence, rappelez-le au numéro que vous avez déjà.
 demo_case: B1
 steps:
+  - chat:
+      - Bonjour ! L'histoire du jour parle de famille.
+      - Vos proches vous écrivent, ou ils vous appellent ?
+    replies:
+      - say: Ils écrivent. Toute la journée.
+        answer: C'est bien agréable. Alors un SMS de la famille paraît tout à fait normal. Imaginons qu'il en arrive un.
+      - say: Ils appellent. J'aime entendre leur voix.
+        answer: Un appel, c'est une bonne habitude. Gardez-la. Imaginons qu'un SMS arrive sur votre téléphone.
+      - say: Ça dépend de qui !
+        answer: Ah, c'est vrai. Les petits-enfants écrivent, les sœurs appellent. Imaginons qu'un SMS arrive sur votre téléphone.
   - say:
       - Dimanche, 18 h. La soupe mijote.
       - Quelque part, le **Petit-fils en détresse** ouvre son carnet de malheurs. Lequel, aujourd'hui ?
@@ -28,8 +38,15 @@ steps:
         right: true
         reply: L'ancien numéro ? Oh non. C'est celui où le vrai répond.
         tell: Le numéro que vous avez déjà mène à votre vrai petit-fils. Un nouveau numéro ne prouve rien.
-  - say:
+  - chat:
       - Son numéro habituel sonne dans le vide. Il doit être au travail. Vous laissez un message.
+    replies:
+      - say: J'espère qu'il va bien.
+        answer: Il va bien, vous verrez. En attendant, le nouveau numéro réécrit.
+      - say: Comme d'habitude ! Il ne décroche jamais.
+        answer: Ha ! Il a toujours mille choses à faire. En attendant, le nouveau numéro réécrit.
+      - say: Et si c'était vraiment lui ?
+        answer: Alors il sera content que vous ayez vérifié. En attendant, le nouveau numéro réécrit.
   - from: character
     as: 01 99 00 12 34
     say:
@@ -46,9 +63,15 @@ steps:
       - text: Je demande le nom et le numéro de l'avocat.
         reply: Bien sûr ! Maître Martin, avocat. Son numéro ? Celui-ci, justement. Quel hasard.
         tell: Un nom et un numéro s'inventent en une seconde. Aucun vrai avocat n'envoie chercher de l'argent.
-  - from: you
-    say:
-      - Personne ne vient chercher d'argent chez moi. Ni aujourd'hui, ni jamais.
+  - chat:
+      - Un accident, puis un portefeuille volé. Ça fait beaucoup de malheurs pour un seul dimanche.
+    replies:
+      - say: Pas un euro à ma porte !
+        answer: Pas un euro, ni aujourd'hui, ni jamais. Alors il essaie autre chose.
+      - say: Ha ! Et quel malheur, ensuite ?
+        answer: Vous allez voir. Il tourne déjà les pages de son carnet.
+      - say: Il a vraiment eu un accident ?
+        answer: Pas du tout. Il choisit un malheur dans son carnet. Et maintenant, il essaie autre chose.
   - from: character
     as: 01 99 00 12 34
     say:

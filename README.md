@@ -123,7 +123,7 @@ Always open the app at exactly `BASE_URL` (default `http://localhost:3000`): sig
 | `make db-migrate` | Apply database migrations to the local Postgres (`make server` migrates the database it opens) |
 | `make secrets-set KEY=value` | Store a key encrypted; `make secrets-keys` lists names and whether each is set, never a value |
 | `node scripts/docs-check.mjs` | Product docs in step with the code: spec links, statuses, keywords, indexes, stale advice |
-| `make lessons-check` | Every lesson under `data/lessons/` (the Learn tab) against its YAML format: fields, a story that starts and ends with a say, three questions with one right answer and a tell on the others, EN/FR twins that play the same, demo cases that exist; part of `make check` |
+| `make lessons-check` | Every lesson under `data/lessons/` (the Learn tab) against its YAML format: fields, a conversation that opens with Prudence and ends on a say, a chat with the person before the first question, three questions with one right answer and a tell on the others, EN/FR twins that play the same, demo cases that exist; part of `make check` |
 
 ## Product docs
 

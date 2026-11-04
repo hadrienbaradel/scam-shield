@@ -1,14 +1,15 @@
 // Learn (_product/specs/micro-learning.md; the 2026-11-04 redesign canvas,
 // frames 1o and 1p, _product/specs/protection-menu.md line 7; the spec's
-// "Story screens"): one-minute lessons told as stories, one step per screen
-// like Today's one card at a time. Prudence narrates, the character's texts
-// land in a bubble under the name he borrows, the person's own lines sit on
-// the right; three times the story stops on "What do you do?", with the
-// text it answers on the same screen. After each choice the character
-// answers in his own voice and the narrator names the tell. A right choice
-// earns a cheer and confetti (a star when it is the first try); a wrong one
-// plays out, then Rewind brings the same choice back with the tried answer
-// greyed. The lesson ends with the rule to remember.
+// "Thread screen"): one-minute lessons told as one conversation that grows
+// with each tap, like texts with a friend. Prudence talks and the person
+// answers with a tap on a reply in their own words; the character's texts
+// land in the thread under the name he borrows; three times the thread
+// stops on "What do you do?". After each choice the character answers in
+// his own voice and Prudence names the tell. A right choice earns a cheer
+// and confetti (a star when it is the first try) and the story goes on by
+// itself; a wrong one plays out, then Rewind takes it back out of the
+// thread and the same choice comes back with the tried answer greyed. The
+// lesson ends with the rule to remember.
 // Lessons come from GET /api/lessons; progress is kept in the account when
 // signed in and on this device in the demo (#/demo/learn).
 
@@ -23,8 +24,12 @@ const inboxCache = new Map(); // lang -> demo messages, for "Try it on a real on
 let saving = Promise.resolve(); // the last progress write, so a new screen reads after it
 
 // Lesson text is content: escaped first, then **bold** (the only markup a
-// lesson may hold, checked by lib/lessons.js) becomes <strong>.
-const rich = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+// lesson may hold, checked by lib/lessons.js) becomes <strong>. In French,
+// a plain space before ? ! : ; » or after « is shown as a no-break space, so
+// the mark never wraps onto a line of its own (the lesson files type a plain
+// one; what Listen reads, plain(), keeps it).
+const french = (s) => (getLang() === "fr" ? String(s ?? "").replace(/(«) | ([?!:;»])/g, "$1\u00a0$2") : s);
+const rich = (s) => esc(french(s)).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 const plain = (s) => String(s ?? "").replace(/\*\*/g, "");
 // What Listen reads: the words without the bold marks, each part ending like a sentence.
 const spoken = (parts) => parts.map((p) => plain(p).trim()).filter(Boolean)
@@ -36,6 +41,7 @@ const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)
 const base = () => (L.demo ? "#/demo/learn" : "#/learn");
 const isAsk = (step) => Boolean(step) && Object.hasOwn(step, "ask");
 const isSay = (step) => Boolean(step) && Object.hasOwn(step, "say");
+const isChat = (step) => Boolean(step) && Object.hasOwn(step, "chat");
 
 // ------------------------------------------------------------ progress rules
 // Mirrored from lib/lessons.js, the source of truth (emptyProgress,
@@ -127,19 +133,21 @@ function loadInbox(lang) {
 
 // ------------------------------------------------------------------ screens
 // Every screen goes through paint(): it starts at the top, moves focus to
-// the new heading (a screen reader says where the person is), docks the
-// Next button above the tabs, and counts screens so that an answer arriving
-// after the person has moved on is dropped instead of drawn over them.
+// the new heading (a screen reader says where the person is), and counts
+// screens so that an answer arriving after the person has moved on, or the
+// rest of a lesson's beat still appearing, is dropped instead of drawn over
+// them. No Learn screen docks a button (a lesson's buttons sit at the end
+// of its thread), so the answer bar's room under the page is never kept.
 let painted = 0;
-let paintedAt = 0;
+let shownAt = 0; // when the buttons on screen appeared, for the double-tap guard
+let pending = 0; // the timer of a beat still appearing
 function paint(html, { focus = true } = {}) {
   if ("speechSynthesis" in window) speechSynthesis.cancel(); // a new screen never keeps reading the last one
+  clearTimeout(pending);
   L.root.innerHTML = html;
-  const dock = L.root.querySelector(".v2-actions");
-  document.body.classList.toggle("v2-docked", Boolean(dock));
-  if (dock) document.body.style.setProperty("--dock-h", `${dock.offsetHeight}px`);
+  document.body.classList.remove("v2-docked");
   if (focus) { window.scrollTo(0, 0); focusHeading(L.root); }
-  paintedAt = performance.now();
+  shownAt = performance.now();
   return ++painted;
 }
 const stale = (n) => n !== painted || !L.root.isConnected || L.root.dataset.view !== "learn";
@@ -270,28 +278,33 @@ function lessonCard(l, kind) {
 }
 
 // ---------------------------------------------------------------- a lesson
-// A lesson is a story the person is inside (micro-learning.md, Behavior 3
-// and 4), one step per screen, except that a say right before an ask shares
-// the ask's screen, so the decision always has its text in view. Its state
-// stays in memory while it runs; progress is written once, on the end
-// screen, so leaving in the middle loses nothing that was saved.
+// A lesson is one conversation, like texts with a friend (micro-learning.md,
+// Behavior 3 to 5; the Design's "Thread screen"): under the header and the
+// stepper, the lesson's title once, then the thread, a list of messages that
+// grows downward and stays on the screen. A beat is what appears between two
+// taps: the steps up to and including the next chat (Prudence waits for a
+// reply), the next ask (the question and its choices) or the end (one
+// Next). The run's state stays in memory; progress is written once, on the
+// end screen, so leaving in the middle loses nothing that was saved.
+//   step        the chat or ask the thread waits on (steps.length: the end)
 //   answers[q]  whether the first choice on question q was the right one:
 //               its star (stars count first tries, 0 to 3)
 //   tried[q]    the choices tried on question q, greyed and marked "Tried"
 //               when Rewind brings the question back
+//   heard       what Listen reads: the messages arrived since the last tap,
+//   waiting     then what the buttons say once they are there (the question
+//               and its choices, or the replies)
 function startLesson(lesson) {
-  L.run = { lesson, step: 0, answers: [], tried: [], total: lesson.steps.filter(isAsk).length, saved: null };
-  drawStep();
+  L.run = { lesson, step: 0, answers: [], tried: [], total: lesson.steps.filter(isAsk).length, saved: null, heard: [], waiting: [] };
+  drawThread();
 }
 
-// The question the person is on (a say step counts toward the next one).
-const questionAt = () => Math.min(L.run.lesson.steps.slice(0, L.run.step).filter(isAsk).length, L.run.total - 1);
-// A tap landing within a moment of a screen appearing is the second half of
-// a double tap on the last screen's button: dropped.
-const tooSoon = () => performance.now() - paintedAt < 400;
+// A tap landing within a moment of buttons appearing is the second half of
+// a double tap on the button before them: dropped.
+const tooSoon = () => performance.now() - shownAt < 400;
 
 // Frame 1p: "‹ Learn" and the round "Listen" on one row (the shared
-// .btn-back and .btn-listen); the rest of the lesson is as it was.
+// .btn-back and .btn-listen).
 function header() {
   const listen = "speechSynthesis" in window
     ? `<button id="learnRead" class="btn-listen" type="button" aria-label="${esc(t("v2_read"))}">${icon("speaker", 26)}<span aria-hidden="true">${t("v2_read_short")}</span></button>` : "";
@@ -316,150 +329,266 @@ function stepper(q, fresh = -1) {
     </div>`;
 }
 
-// The one button of a lesson screen, docked above the tabs: Next, or Rewind
-// after a wrong choice (the ⏪ drawn, the font has no such glyph).
-const dockButton = (id, label) => `<div class="v2-actions learn-dock"><button id="${id}" class="btn btn-gold btn-big" type="button">${label}</button></div>`;
-const nextButton = () => dockButton("learnNext", `${t("learn_next")}${icon("chevron-right", 26, 2.5)}`);
-const rewindButton = () => dockButton("learnRewind", `${drawn("rewind", 26)}${t("learn_rewind")}`);
-function bindNext() {
-  $("#learnNext", L.root).addEventListener("click", () => {
-    if (tooSoon()) return;
-    L.run.step += 1;
-    drawStep();
-  });
+// The pace (the Design's "Thread screen"): each new message about 450 ms
+// after the one before so the eye can follow, the buttons last. Under
+// reduced motion a beat appears at once, and what Rewind takes back goes at
+// once instead of sliding away (320 ms, learn-out in styles.css). Timers
+// append the elements: the content-security policy allows no inline style.
+const PACE = 450;
+const LEAVE = 320;
+const calm = () => Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+// An element built from its HTML (escaped content, as every screen).
+function node(html) {
+  const box = document.createElement("template");
+  box.innerHTML = html.trim();
+  return box.content.firstElementChild;
+}
+// The newest element scrolled into view, its bottom just above the tab bar
+// (its scroll margin, styles.css). "nearest" lines its bottom up like "end"
+// whenever it fits the screen, and keeps the top of a taller one in view.
+const reveal = (el) => el.scrollIntoView?.({ block: "nearest", behavior: calm() ? "auto" : "smooth" });
+// Keyboard and screen-reader focus on a message or on the question, without
+// scrolling away from the newest message.
+function focusOn(el) {
+  if (!el) return;
+  el.setAttribute("tabindex", "-1");
+  el.focus({ preventScroll: true });
 }
 
-// A say right before an ask is not a screen of its own: the run steps over
-// it to the ask, which draws it on top. Next and Rewind both come through
-// here, so the step stays on the ask and the stepper counts asks as before.
-function drawStep() {
-  const { steps } = L.run.lesson;
-  if (isSay(steps[L.run.step]) && isAsk(steps[L.run.step + 1])) L.run.step += 1;
-  const step = steps[L.run.step];
-  if (!step) return drawEnd();
-  return isAsk(step) ? drawAsk(step) : drawSay(step);
+// The messages, each a list item that names its speaker above its bubble:
+// Prudence under her mark, on the left; the character under the name he
+// borrows (his own when he answers a choice), on the left, his emoji as the
+// avatar (decorative); the person under "You", on the right. One bubble per
+// message, its lines as paragraphs. Each comes with what Listen reads of
+// it, the speaker first: "Prudence says: ...", "USPS says: ...", "You
+// say: ...". An item's then() runs as it appears.
+const saidBy = (name) => t("learn_says", { name: plain(name).trim() });
+function message(kind, name, lines, mark = "") {
+  return `<li class="learn-msg ${kind}">
+      <p class="learn-msg-name">${name}</p>
+      <div class="learn-bubble">${mark}${lines.map((line) => `<p>${rich(line)}</p>`).join("")}</div>
+    </li>`;
+}
+const herName = () => `<span class="learn-mark" aria-hidden="true">${icon("check", 18, 3.2)}</span><span>Prudence</span>`;
+const prudence = (lines) => ({ html: message("is-prudence", herName(), lines), heard: [saidBy("Prudence"), ...lines] });
+// Her tell after a choice, what gave him away: her bubble in gold, with the bulb.
+const tell = (line) => ({ html: message("is-prudence is-tell", herName(), [line], drawn("bulb", 26)), heard: [saidBy("Prudence"), line] });
+const character = (name, lines) => ({
+  html: message("is-character", `<span class="learn-avatar" aria-hidden="true">${esc(L.run.lesson.emoji)}</span><span>${rich(name)}</span>`, lines),
+  heard: [saidBy(name), ...lines],
+});
+const you = (line) => ({ html: message("is-you", esc(t("learn_you")), [line]), heard: [t("learn_you_say"), line] });
+// The question, a heading in the thread; Listen reads it with its choices
+// (run.waiting), and Rewind gives it the focus back by its id.
+const question = (step, q) => ({ html: `<li class="learn-ask"><h2 id="learnQ${q}" class="learn-question">${rich(step.ask)}</h2></li>`, heard: [] });
+
+// The items from step i on, up to and including the next chat or ask; the
+// run then waits on that chat or ask, or on Next after the last say. A say
+// is Prudence's (from: narrator, the default) or the character's, under the
+// name he borrows when the step gives one.
+const linesOf = (v) => (Array.isArray(v) ? v : []);
+const asksBefore = (k) => L.run.lesson.steps.slice(0, k).filter(isAsk).length;
+function storyFrom(i) {
+  const { steps, character: own } = L.run.lesson;
+  const items = [];
+  let k = i;
+  for (; k < steps.length; k += 1) {
+    const step = steps[k];
+    if (isAsk(step)) { items.push(question(step, asksBefore(k))); break; }
+    if (isChat(step)) { items.push(prudence(linesOf(step.chat))); break; }
+    if (isSay(step)) items.push(step.from === "character" ? character(step.as || own, linesOf(step.say)) : prudence(linesOf(step.say)));
+  }
+  L.run.step = k;
+  return items;
 }
 
-// Who says a say step: the narrator (also when from is missing), the
-// character, or the person ("you").
-const speakerOf = (step) => (step?.from === "character" || step?.from === "you" ? step.from : "narrator");
-// The name on the character's bubble: the one he borrows ("USPS") when the
-// step gives one, his own otherwise. He answers a choice in his own name.
-const nameOf = (step) => (speakerOf(step) === "character" && step.as ? step.as : L.run.lesson.character);
-// Listen reads a bubble with its speaker first: "USPS says: ...", "You say: ...".
-const saidBy = (who, name) => (who === "you" ? t("learn_you_say") : t("learn_says", { name: plain(name).trim() }));
-
-// The narrator: Prudence's lines under her mark, as before the stories.
-function narratorLines(lines) {
-  return `<div class="learn-say">
-      <p class="learn-speaker"><span class="learn-mark" aria-hidden="true">${icon("check", 18, 3.2)}</span>Prudence</p>
-      ${lines.map((line) => `<p class="learn-line">${rich(line)}</p>`).join("")}
-    </div>`;
-}
-// A text in the story, one bubble per line like texts on a phone: the
-// character's on the left under his name, the lesson's emoji as his avatar
-// (decorative); the person's own on the right under "You".
-function bubbles(who, name, lines) {
-  const you = who === "you";
-  const head = you ? esc(t("learn_you"))
-    : `<span class="learn-avatar" aria-hidden="true">${esc(L.run.lesson.emoji)}</span><span>${rich(name)}</span>`;
-  return `<div class="learn-msg ${you ? "is-you" : "is-character"}">
-      <p class="learn-msg-name">${head}</p>
-      ${lines.map((line) => `<p class="learn-bubble">${rich(line)}</p>`).join("")}
-    </div>`;
-}
-
-// A say as it shows, on its own screen or on top of the ask it leads to,
-// and what Listen reads of it (a bubble starts with its speaker).
-const linesOf = (step) => (Array.isArray(step.say) ? step.say : []);
-function sayBlock(step) {
-  const who = speakerOf(step);
-  return who === "narrator" ? narratorLines(linesOf(step)) : bubbles(who, nameOf(step), linesOf(step));
-}
-const sayHeard = (step) => (speakerOf(step) === "narrator" ? linesOf(step) : [saidBy(speakerOf(step), nameOf(step)), ...linesOf(step)]);
-
-function drawSay(step) {
+// The lesson screen: its frame at once (the header, the stepper, the title,
+// the thread still empty), then the first beat, from Prudence's hello to
+// the first chat. The title has the focus (paint), so the opening moves none.
+function drawThread() {
   const { lesson } = L.run;
   paint(`
     <div class="v2 learn learn-run">
       ${header()}
-      ${stepper(questionAt())}
+      ${stepper(0)}
       <div class="learn-lesson-head"><span class="learn-emoji" aria-hidden="true">${esc(lesson.emoji)}</span><h1>${rich(lesson.title)}</h1></div>
-      ${sayBlock(step)}
-      ${nextButton()}
+      <ol class="learn-thread" role="list" aria-label="${esc(t("learn_thread"))}"></ol>
     </div>`);
-  bindHeader(say(sayHeard(step)));
-  bindNext();
+  bindHeader(() => speak(spoken([...L.run.heard, ...L.run.waiting]), L.lang));
+  L.run.heard = [lesson.title];
+  beat(storyFrom(0), waitBox, { wait: true, focus: false });
 }
 
-// "What do you do?" and two to four big buttons, under the say that leads to
-// it (drawn as on its own screen; Rewind brings it back too). The question
-// stays the heading that takes the focus, described by that text so a screen
-// reader hears what it answers. Back after a Rewind, the answers tried stay
-// in their place, grey and marked "Tried" in words (and aria-disabled, so a
-// screen reader says it too); a tap on one does nothing.
-function drawAsk(step) {
-  const q = questionAt();
-  const before = L.run.lesson.steps[L.run.step - 1];
-  const lead = isSay(before) ? before : null; // the say right before shares this screen
+// One beat: its messages appended one at a time, each scrolled into view,
+// then its buttons, so nothing of a beat can be tapped while it is still
+// appearing. A beat still appearing when the screen changes (Back, another
+// tab, the end) stops there. Once it is all there, focus moves to its first
+// new message: a screen reader reads the new messages in order, then
+// reaches the buttons (no live region on top: it would read them twice).
+// buttons(added) builds the buttons for what the run now waits on.
+function beat(items, buttons, { wait = false, focus = true } = {}) {
+  const run = L.run;
+  const n = painted;
+  const quick = calm();
+  const thread = $(".learn-thread", L.root);
+  const added = [];
+  const put = (item) => {
+    const li = node(item.html);
+    thread.append(li);
+    added.push(li);
+    run.heard.push(...item.heard);
+    item.then?.();
+    reveal(li);
+  };
+  const end = () => {
+    const box = buttons(added);
+    thread.after(box);
+    reveal(box);
+    shownAt = performance.now();
+    if (focus) focusOn(added[0]);
+  };
+  let i = 0;
+  const next = () => {
+    if (stale(n) || L.run !== run) return;
+    if (quick) { items.forEach(put); end(); return; }
+    if (i === items.length) { end(); return; }
+    put(items[i]);
+    i += 1;
+    pending = setTimeout(next, PACE);
+  };
+  // The opening lets the title come first; under reduced motion it waits
+  // only for the app to focus the title before the thread scrolls.
+  if (wait) pending = setTimeout(next, quick ? 0 : PACE);
+  else next();
+}
+
+// The buttons for what the thread waits on: a chat's replies, a question's
+// choices, or Next after the last message.
+function waitBox() {
+  const step = L.run.lesson.steps[L.run.step];
+  if (isAsk(step)) return choicesBox(step, asksBefore(L.run.step));
+  if (isChat(step)) return repliesBox(step);
+  return nextBox();
+}
+// A tap: its buttons go (the words tapped come back as the person's
+// message), the reading stops, and Listen starts again from here.
+function tapped(box) {
+  box.remove();
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  L.run.heard = [];
+  L.run.waiting = [];
+}
+
+// A chat's replies, in the person's own voice: never right or wrong, no star
+// (Behavior 3). A tap: the person's message, Prudence's answer, then the
+// story goes on to the next chat, question or the end.
+function repliesBox(step) {
+  const replies = Array.isArray(step.replies) ? step.replies : [];
+  const box = node(`<div class="learn-choices" role="group" aria-label="${esc(t("learn_choose_reply"))}">
+      ${replies.map((r, i) => `<button class="btn learn-choice" type="button" data-reply="${i}">${icon("chat", 26)}<span>${rich(r.say)}</span></button>`).join("")}
+    </div>`);
+  box.querySelectorAll(".learn-choice").forEach((b) => b.addEventListener("click", () => {
+    if (tooSoon()) return;
+    const reply = replies[Number(b.dataset.reply)];
+    tapped(box);
+    beat([you(reply.say), ...(reply.answer ? [prudence([reply.answer])] : []), ...storyFrom(L.run.step + 1)], waitBox);
+  }));
+  L.run.waiting = replies.map((r) => r.say);
+  return box;
+}
+
+// "What do you do?" and two to four big buttons. Back after a Rewind, the
+// answers tried stay in their place, grey and marked "Tried" in words (and
+// aria-disabled, so a screen reader says it too); a tap on one does nothing.
+function choicesBox(step, q) {
   const tried = L.run.tried[q] || [];
   const button = (c, i) => (tried.includes(i)
     ? `<button class="btn learn-choice is-tried" type="button" data-choice="${i}" aria-disabled="true">${drawn("circle", 26)}<span class="learn-choice-words"><span>${rich(c.text)}</span> <span class="learn-tried">${esc(t("learn_tried"))}</span></span></button>`
     : `<button class="btn learn-choice" type="button" data-choice="${i}">${drawn("circle", 26)}<span>${rich(c.text)}</span></button>`);
-  paint(`
-    <div class="v2 learn learn-run">
-      ${header()}
-      ${stepper(q)}
-      ${lead ? `<div id="learnAskSay" class="learn-ask-say">${sayBlock(lead)}</div>` : ""}
-      <h1 class="learn-question"${lead ? ' aria-describedby="learnAskSay"' : ""}>${rich(step.ask)}</h1>
-      <div class="learn-choices" role="group" aria-label="${esc(t("learn_choose"))}">
-        ${step.choices.map(button).join("")}
-      </div>
+  const box = node(`<div class="learn-choices" role="group" aria-label="${esc(t("learn_choose"))}">
+      ${step.choices.map(button).join("")}
     </div>`);
-  bindHeader(say([...(lead ? sayHeard(lead) : []), step.ask, ...step.choices.flatMap((c, i) => (tried.includes(i) ? [c.text, t("learn_tried")] : [c.text]))]));
-  L.root.querySelectorAll(".learn-choice").forEach((b) => b.addEventListener("click", () => {
+  box.querySelectorAll(".learn-choice").forEach((b) => b.addEventListener("click", () => {
     if (b.getAttribute("aria-disabled") === "true" || tooSoon()) return;
-    const i = Number(b.dataset.choice);
-    const choice = step.choices[i];
-    const right = choice.right === true;
-    if (L.run.answers[q] === undefined) L.run.answers[q] = right; // the first choice on a question decides its star
-    if (!right) L.run.tried[q] = [...tried, i];
-    drawResult(q, choice);
+    choose(step, q, Number(b.dataset.choice), box);
   }));
+  L.run.waiting = [step.ask, ...step.choices.flatMap((c, i) => (tried.includes(i) ? [c.text, t("learn_tried")] : [c.text]))];
+  return box;
 }
 
-// After a choice (Behavior 4): what the person chose in a plain box, never
-// red; the character's answer in his own voice; the narrator's tell, one
-// plain line under it. Right: the cheer, confetti, the star when it was the
-// first try, and Next. Wrong: no verdict and no right answer shown; the box
-// is the screen's heading, and Rewind brings the same choice back.
-function drawResult(q, choice) {
-  const { lesson, answers, total } = L.run;
+// After a choice (Behavior 4): the person's message, the character's answer
+// in his own voice and his own name, Prudence's tell. Right: the cheer,
+// confetti and the star the first time, then the story goes on by itself.
+// Wrong: no verdict and no right answer shown, one Rewind at the end.
+function choose(step, q, i, box) {
+  const run = L.run;
+  const choice = step.choices[i];
   const right = choice.right === true;
-  const earned = right && answers[q] === true; // right the first time: the star is earned now
+  if (run.answers[q] === undefined) run.answers[q] = right; // the first choice on a question decides its star
+  if (!right) run.tried[q] = [...(run.tried[q] || []), i];
+  tapped(box);
+  const items = [you(choice.text),
+    ...(choice.reply ? [character(run.lesson.character, [choice.reply])] : []), ...(choice.tell ? [tell(choice.tell)] : [])];
+  if (!right) { beat(items, (added) => rewindBox(step, q, added)); return; }
+  items.push(cheer(q));
+  beat([...items, ...storyFrom(run.step + 1)], waitBox);
+}
+
+// The cheer, a small note in the thread: "Well spotted!", and under it "You
+// earned a star." the first time, as the star pops in, there and in the
+// stepper (which moves on to the next choice); confetti falls, more of it
+// on a 3 of 3.
+function cheer(q) {
+  const { answers, total } = L.run;
+  const earned = answers[q] === true;
   const perfect = earned && answers.filter(Boolean).length === total;
-  const box = right ? "div" : "h1";
-  paint(`
-    <div class="v2 learn learn-run">
-      ${header()}
-      ${stepper(q, earned ? q : -1)}
-      <section class="learn-result" role="status">
-        ${right ? `
-          <div class="learn-result-head">
-            <span class="learn-result-dot" aria-hidden="true">${earned ? star(30, true) : icon("check", 30, 3)}</span>
-            <div class="learn-result-words"><h1>${t("learn_right")}</h1>${earned ? `<p class="learn-result-sub">${t("learn_right_star")}</p>` : ""}</div>
-          </div>` : ""}
-        <${box} class="learn-pick"><span class="learn-pick-label">${t("learn_your_answer")}<span class="learn-sr">:</span></span> <span class="learn-pick-text">${rich(choice.text)}</span></${box}>
-        ${choice.reply ? bubbles("character", lesson.character, [choice.reply]) : ""}
-        ${choice.tell ? `<p class="learn-tell">${drawn("bulb", 26)}<span>${rich(choice.tell)}</span></p>` : ""}
-      </section>
-      ${right ? `${confetti(perfect)}${nextButton()}` : rewindButton()}
-    </div>`);
-  const story = [t("learn_your_answer"), choice.text,
-    ...(choice.reply ? [saidBy("character", lesson.character), choice.reply] : []), ...(choice.tell ? [choice.tell] : [])];
-  bindHeader(say(right ? [t("learn_right"), ...(earned ? [t("learn_right_star")] : []), ...story] : story));
-  if (right) bindNext();
-  else $("#learnRewind", L.root).addEventListener("click", () => { if (!tooSoon()) drawStep(); });
+  return {
+    html: `<li class="learn-cheer"><span class="learn-cheer-dot" aria-hidden="true">${earned ? star(30, true) : icon("check", 28, 3)}</span>
+        <p><strong>${esc(t("learn_right"))}</strong>${earned ? ` <span>${esc(t("learn_right_star"))}</span>` : ""}</p></li>`,
+    heard: [t("learn_right"), ...(earned ? [t("learn_right_star")] : [])],
+    then() {
+      $(".learn-stepper", L.root)?.replaceWith(node(stepper(Math.min(q + 1, total - 1), earned ? q : -1)));
+      $(".learn-confetti", L.root)?.remove();
+      $(".learn-run", L.root)?.prepend(node(confetti(perfect)));
+    },
+  };
+}
+
+// After a wrong choice: one big gold Rewind at the end of the thread (the ⏪
+// drawn, the font has no such glyph). It takes the person's message, his
+// answer and the tell back out (they slide away; under reduced motion they
+// just go), then brings the same choices back with the tried one greyed,
+// and the question takes the focus.
+function rewindBox(step, q, added) {
+  const box = node(`<div class="learn-thread-end"><button id="learnRewind" class="btn btn-gold btn-big" type="button">${drawn("rewind", 26)}${t("learn_rewind")}</button></div>`);
+  $("#learnRewind", box).addEventListener("click", () => {
+    if (tooSoon()) return;
+    const run = L.run;
+    const n = painted;
+    tapped(box);
+    const back = () => {
+      if (stale(n) || L.run !== run) return;
+      added.forEach((li) => li.remove());
+      const choices = choicesBox(step, q);
+      $(".learn-thread", L.root).after(choices);
+      reveal(choices);
+      shownAt = performance.now();
+      focusOn($(`#learnQ${q}`, L.root));
+    };
+    if (calm()) { back(); return; }
+    added.forEach((li) => li.classList.add("is-leaving"));
+    pending = setTimeout(back, LEAVE);
+  });
+  L.run.waiting = [];
+  return box;
+}
+
+// After the last message: one big gold Next, to the stars and the rule.
+function nextBox() {
+  const box = node(`<div class="learn-thread-end"><button id="learnNext" class="btn btn-gold btn-big" type="button">${t("learn_next")}${icon("chevron-right", 26, 2.5)}</button></div>`);
+  $("#learnNext", box).addEventListener("click", () => { if (!tooSoon()) drawEnd(); });
+  L.run.waiting = [];
+  return box;
 }
 
 // CSS-only confetti that falls once (about 1.2 s), hidden from screen

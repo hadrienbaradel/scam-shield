@@ -8,6 +8,16 @@ badge: Gardien des codes
 rule: Un code reçu est une clé. Ne le donnez jamais à quelqu'un qui vous appelle ou vous écrit.
 demo_case: A2
 steps:
+  - chat:
+      - Bonjour ! Aujourd'hui, on parle des petits codes qui arrivent par SMS. Six chiffres, en général.
+      - Vous en recevez, parfois ?
+    replies:
+      - say: Oui, plein !
+        answer: Il y en a partout, maintenant. Imaginons qu'on vous appelle à propos d'un code.
+      - say: Parfois. Ça sert à quoi ?
+        answer: À prouver que c'est bien vous qui entrez dans votre compte, comme une clé. Imaginons qu'on vous appelle à propos d'un code.
+      - say: Jamais vu ça.
+        answer: Alors en voici un premier. Imaginons qu'on vous appelle à propos d'un code.
   - say:
       - Samedi, 11 h. Vous lisez le journal.
       - Quelque part, **Monsieur Lisez-moi-le-code** taille son crayon. Prêt pour six petits chiffres.
@@ -28,9 +38,15 @@ steps:
       - text: Je lui demande pourquoi il en a besoin.
         reply: Pour vous protéger, voyons ! J'ai toujours une belle raison. J'en ai toute une liste.
         tell: Il a toujours une raison toute prête. Aucune ne suffit pour avoir votre code.
-  - from: you
-    say:
-      - "Je relis le SMS. Il dit : **ne communiquez ce code à personne**. Même ma banque le dit."
+  - chat:
+      - "Le SMS avec le code se termine en petites lettres : **ne communiquez ce code à personne**."
+    replies:
+      - say: Même ma banque le dit !
+        answer: Même votre banque, et par écrit. Et le téléphone sonne encore.
+      - say: Je ne lis jamais la fin.
+        answer: Presque personne ne la lit. C'est écrit petit, tout en bas. Et le téléphone sonne encore.
+      - say: Alors pourquoi il le demandait ?
+        answer: Parce que ce code peut lui ouvrir votre compte. Et le téléphone sonne encore.
   - from: character
     as: Votre banque
     say:
@@ -47,8 +63,15 @@ steps:
         right: true
         reply: Même pas votre propre banque ? J'ai pourtant dit s'il vous plaît. Deux fois.
         tell: Votre banque a déjà votre argent. Elle n'a pas besoin de votre code en plus.
-  - say:
-      - Dimanche. Un SMS d'un numéro inconnu.
+  - chat:
+      - Pas un seul chiffre pour son crayon. Il abandonne, pour aujourd'hui.
+    replies:
+      - say: Ha ! Pauvre crayon.
+        answer: Bien taillé, et rien à écrire. Dimanche, un SMS arrive d'un numéro inconnu.
+      - say: Il va revenir.
+        answer: Vous le connaissez bien ! Dimanche, un SMS arrive d'un numéro inconnu.
+      - say: Il s'arrête un jour ?
+        answer: Pas vraiment, non. Dimanche, un SMS arrive d'un numéro inconnu.
   - from: character
     as: 01 99 00 12 34
     say:
@@ -65,8 +88,6 @@ steps:
       - text: Je lui demande de m'appeler d'abord, pour vérifier.
         reply: Appeler ? Impossible, j'ai une extinction de voix. Juste le code, Mamie. Vite.
         tell: Il trouvera toujours une raison de ne pas appeler. Un code non demandé reste avec vous.
-  - from: you
-    say:
-      - J'appelle mon petit-fils. Il est au foot. Il n'a envoyé aucun code.
   - say:
+      - Vous appelez votre petit-fils. Il est au foot, et il n'a envoyé aucun code.
       - Monsieur Lisez-moi-le-code range son crayon. Toujours pointu. Pas un chiffre noté.

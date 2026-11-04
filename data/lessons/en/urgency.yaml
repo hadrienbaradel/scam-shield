@@ -8,6 +8,16 @@ badge: Calm under pressure
 rule: When a message says hurry, slow down. A real bank always gives you time to check.
 demo_case: D3
 steps:
+  - chat:
+      - Hello! This one is about hurry, so let's start slowly.
+      - How do you take your coffee?
+    replies:
+      - say: Black. No sugar, no fuss.
+        answer: No fuss. I like that. Let's pretend a text comes while your coffee is still hot.
+      - say: With milk, and slowly.
+        answer: Slowly is the best way. Let's pretend a text comes while your coffee is still hot.
+      - say: Is this about coffee?
+        answer: A little! Mostly about hurry. Let's pretend a text comes while your coffee is still hot.
   - say:
       - Wednesday, 10:15 in the morning. A fresh cup of coffee.
       - Across the world, the **Urgency Monster** checks his watch. It runs fast. It always has.
@@ -28,9 +38,15 @@ steps:
         right: true
         reply: Finish your COFFEE? I said ten minutes! My watch says nine. Eight! Why are you so calm?
         tell: A real bank does not close your account in ten minutes. You have time to check.
-  - from: you
-    say:
-      - I put the phone down. Coffee first.
+  - chat:
+      - The phone stays on the table. You finish your coffee.
+    replies:
+      - say: Ahh. Lovely coffee.
+        answer: Lovely and calm. The Urgency Monster cannot stand calm. Here he comes again.
+      - say: He is in a hurry!
+        answer: He always is. His watch runs fast. Here he comes again.
+      - say: Why the rush?
+        answer: In a rush, people do not check. That is his whole trick. Here he comes again.
   - from: character
     as: Your bank
     say:
@@ -47,8 +63,16 @@ steps:
       - text: Call the number, just in case.
         reply: Just in case! My favorite words, after hurry. Hello, hello?
         tell: His number leads to him, not to your bank. Real deadlines leave you time to think.
-  - say:
+  - chat:
       - Your neighbor reads it twice. The two minutes pass. Then an hour. Nothing closes.
+      - Who would you show a text like that to?
+    replies:
+      - say: My neighbor, of course.
+        answer: Good choice. Two pairs of eyes see more than one. And look, he texts again.
+      - say: Family. Always family.
+        answer: Always. One call, and the hurry is gone. And look, he texts again.
+      - say: Can I show it to you?
+        answer: Yes, any time! Checking texts is my job. And look, he texts again.
   - from: character
     as: Your bank
     say:
@@ -65,9 +89,7 @@ steps:
       - text: Reply and tell him to leave me alone.
         reply: A reply! So you are there. I will be back tomorrow, with a brand new deadline.
         tell: Any reply tells him your number works. Leave it unanswered and call your bank yourself.
-  - from: you
-    say:
-      - I call the number on my card. My account is open. It always was.
   - say:
+      - Your real bank answers. Your account is open. It always was.
       - The Urgency Monster taps his watch. It says Friday. It is still Wednesday.
       - You have all the time in the world.

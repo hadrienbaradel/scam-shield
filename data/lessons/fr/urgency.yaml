@@ -8,6 +8,16 @@ badge: Calme sous pression
 rule: Quand un message dit « vite », ralentissez. Une vraie banque vous laisse toujours le temps de vérifier.
 demo_case: A2
 steps:
+  - chat:
+      - Bonjour ! Aujourd'hui, on parle du mot « vite ». Alors commençons doucement.
+      - Vous avez des fleurs, chez vous ?
+    replies:
+      - say: Oui, plein le balcon !
+        answer: Quel bonheur. Imaginons qu'un SMS arrive pendant que vous les arrosez.
+      - say: Pas de fleurs. Trop de travail !
+        answer: Alors je vous prête des géraniums, juste pour aujourd'hui. Imaginons qu'un SMS arrive pendant que vous les arrosez.
+      - say: Ça parle de jardinage ?
+        answer: Un peu ! Surtout du mot « vite ». Imaginons qu'un SMS arrive pendant que vous arrosez.
   - say:
       - Mercredi, 10 h 15. Vous arrosez les géraniums du balcon.
       - À l'autre bout du monde, le **Monstre de l'Urgence** regarde sa montre. Elle avance. Elle a toujours avancé.
@@ -28,9 +38,15 @@ steps:
         right: true
         reply: Finir d'arroser ? Vos GÉRANIUMS ? J'ai dit dix minutes ! Ma montre dit neuf. Huit !
         tell: Une vraie banque ne bloque pas votre compte en dix minutes. Vous avez le temps de vérifier.
-  - from: you
-    say:
-      - Je pose le téléphone. Les géraniums d'abord.
+  - chat:
+      - Le téléphone reste sur la table. Vous finissez d'arroser.
+    replies:
+      - say: Mes géraniums ont bien bu !
+        answer: Ils ont bien bu, et vous gardez votre calme. Le Monstre de l'Urgence déteste ça. Le revoilà.
+      - say: Il est bien pressé, lui !
+        answer: Toujours. Sa montre avance. Le revoilà.
+      - say: Pourquoi tant de hâte ?
+        answer: Quand on se presse, on ne vérifie pas. C'est toute sa ruse. Le revoilà.
   - from: character
     as: Votre banque
     say:
@@ -47,8 +63,16 @@ steps:
       - text: J'appelle le numéro, au cas où.
         reply: Au cas où ! Mes mots préférés, après « vite ». Allô, allô ?
         tell: Son numéro mène à lui, pas à votre banque. Les vrais délais laissent le temps de réfléchir.
-  - say:
+  - chat:
       - Votre voisine le lit deux fois. Les deux minutes passent. Puis une heure. Rien n'est bloqué.
+      - Et dans la vraie vie, vous montreriez un SMS comme ça à qui ?
+    replies:
+      - say: À ma voisine, bien sûr.
+        answer: Bon choix. Deux paires d'yeux valent mieux qu'une. Et voilà qu'il réécrit.
+      - say: À la famille. Toujours.
+        answer: Toujours, oui. Un coup de fil, et plus rien ne presse. Et voilà qu'il réécrit.
+      - say: Je peux vous le montrer ?
+        answer: Oui, quand vous voulez ! Vérifier les SMS, c'est mon métier. Et voilà qu'il réécrit.
   - from: character
     as: Votre banque
     say:
@@ -65,9 +89,7 @@ steps:
       - text: Je lui réponds de me laisser tranquille.
         reply: Une réponse ! Donc vous êtes là. Je reviens demain, avec un tout nouveau délai.
         tell: Toute réponse lui confirme que votre numéro marche. Ne répondez pas, appelez votre banque.
-  - from: you
-    say:
-      - J'appelle le numéro au dos de ma carte. Mon compte va très bien. Il n'a jamais été bloqué.
   - say:
+      - Votre vraie banque répond. Votre compte va très bien. Il n'a jamais été bloqué.
       - Le Monstre de l'Urgence tapote sa montre. Elle indique vendredi. Nous sommes mercredi.
       - Les géraniums ont eu leur eau. Votre argent n'a pas bougé.

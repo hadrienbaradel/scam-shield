@@ -8,6 +8,16 @@ badge: Pop-up silencer
 rule: Never call a number shown in a pop-up window. Close it, or turn the computer off.
 demo_case: D6
 steps:
+  - chat:
+      - Hi! Today's villain is a pop-up. A very loud one.
+      - Has a scary warning ever popped up on your screen?
+    replies:
+      - say: Yes, and it gave me a fright.
+        answer: It's made to give people a fright. Here's how it goes.
+      - say: Never, knock on wood.
+        answer: Good. Then you meet it here first, where it can't do a thing.
+      - say: What kind of warning?
+        answer: A red one, with beeps and a phone number. Here's how it goes.
   - say:
       - Thursday afternoon. A cup of tea, the news on the computer.
       - Then the screen turns red, and the computer starts to beep.
@@ -28,8 +38,16 @@ steps:
       - text: Click inside the window to read more.
         reply: Come in, come in! One click and I fill the WHOLE screen. I am much bigger than I look.
         tell: A click gives a scary window more room. Close it, and call no one.
-  - say:
-      - Ten minutes later, on another page, it is back. It fills the whole screen, and there is no X.
+  - chat:
+      - It's coughing! All that screaming is hard on the throat.
+      - Ten minutes later, on another page, it's back. It fills the whole screen, and there's no X.
+    replies:
+      - say: Oh no. No X!
+        answer: No X. It hopes that scares you. Look what it says now.
+      - say: Can it hurt my computer?
+        answer: It's only a web page. Its whole job is to scare you into calling. Look what it says now.
+      - say: It doesn't give up!
+        answer: Not on the first try. Look what it says now.
   - from: character
     as: Microsoft Security
     say:
@@ -46,8 +64,14 @@ steps:
         right: true
         reply: Not the power button! Nobody hears me scream at a computer that is off. Croak.
         tell: Holding the power button turns the computer off, and no web page can stop it.
-  - say:
+  - chat:
+      - The screen goes dark. When you turn it back on, your photos are all still there.
       - Saturday morning, the phone rings. The voice on the line is very, very hoarse.
+    replies:
+      - say: I think I know that voice.
+        answer: I think you do. Here's what he says.
+      - say: Does he have a cold?
+        answer: From all that screaming, I'd say so. Here's what he says.
   - from: character
     as: Microsoft Support
     say:
@@ -64,9 +88,16 @@ steps:
       - text: Ask for his employee number first.
         reply: Of course! It is 1-2-3-4-5. Very official. Now let me in. Croak.
         tell: "A caller can make up any number he likes. Hang up: Microsoft does not phone people about computers."
-  - from: you
-    say:
-      - I put the phone down and finish my tea.
+  - chat:
+      - You hung up. Saturday is quiet again.
+      - Time for a cup of tea?
+    replies:
+      - say: Yes, a big one.
+        answer: You've earned it. Three tries, and he got nothing.
+      - say: With honey, please.
+        answer: Good idea. Somebody else needs honey more than you today.
+      - say: Will he call again?
+        answer: He might. Now you know the trick, and hanging up is always allowed.
   - say:
       - The Pop-up That Screams has no voice left, and nobody called its number.
       - It is in bed with hot honey and lemon.

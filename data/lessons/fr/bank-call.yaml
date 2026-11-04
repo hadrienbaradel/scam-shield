@@ -8,6 +8,16 @@ badge: As du raccrochage
 rule: Si « votre banque » appelle pour une fraude, raccrochez et appelez le numéro au dos de votre carte.
 demo_case: A6
 steps:
+  - chat:
+      - Bonjour ! Cette histoire commence par un SMS et finit par un coup de téléphone.
+      - Votre banque vous envoie parfois des SMS ?
+    replies:
+      - say: Parfois, oui.
+        answer: Oui, les vraies banques en envoient. C'est pour ça que les faux marchent. Je vous raconte une histoire, et vous êtes dedans.
+      - say: Jamais.
+        answer: Alors un SMS de votre banque vous étonnerait. Je vous raconte une histoire, et vous êtes dedans.
+      - say: Pourquoi ? Il s'est passé quelque chose ?
+        answer: Rien du tout, pour l'instant ! Je vous raconte une histoire, et vous êtes dedans.
   - say:
       - Jeudi, 14 h 30. Vous écrivez une carte d'anniversaire.
       - Dans une arrière-boutique, la **Banque qui a oublié votre nom** s'éclaircit la voix. Elle dit « Cher client » à tout le monde.
@@ -25,8 +35,15 @@ steps:
         right: true
         reply: Pas d'appel ? Moi qui l'avais si bien écrit. Bon. J'appelle, moi. Tout le monde décroche.
         tell: C'est vous qui choisissez comment joindre votre banque, pas lui.
-  - say:
+  - chat:
       - Deux minutes plus tard, le téléphone sonne. L'écran affiche **Société Générale**.
+    replies:
+      - say: Aïe aïe aïe.
+        answer: Pas d'inquiétude. Écoutons ce qu'il dit.
+      - say: C'est vraiment la Société Générale ?
+        answer: On va le savoir. Écoutons ce qu'il dit.
+      - say: Il avait dit qu'il appellerait !
+        answer: Il l'avait bien dit. Écoutons ce qu'il raconte.
   - from: character
     as: Société Générale
     say:
@@ -43,9 +60,15 @@ steps:
         right: true
         reply: Raccroché ? Au SERVICE ANTIFRAUDE ? J'avais tout un discours, cher client.
         tell: Le service antifraude qui vous appelle pour vous protéger de la fraude, c'est la fraude.
-  - from: you
-    say:
-      - Clic. Maintenant, je veux parler à ma vraie banque.
+  - chat:
+      - Clic ! La ligne est coupée.
+    replies:
+      - say: Au revoir, cher client !
+        answer: Ha ! Pour une fois, le « cher client », c'est lui. Maintenant, appelons votre vraie banque, pour être tranquille.
+      - say: Et si c'était vrai ?
+        answer: Alors votre vraie banque vous le dira. Appelons-la, pour être tranquille.
+      - say: J'ai le cœur qui bat fort.
+        answer: "Il voulait vous faire peur : quand on a peur, on se presse. Respirez un bon coup. Puis appelons votre vraie banque."
   - ask: Quel numéro appelez-vous ?
     choices:
       - text: Le numéro au dos de ma carte.

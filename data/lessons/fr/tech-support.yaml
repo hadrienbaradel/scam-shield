@@ -7,6 +7,16 @@ minutes: 1
 badge: Pro du bouton Fermer
 rule: N'appelez jamais un numéro affiché dans une fenêtre d'alerte. Fermez-la, ou éteignez l'ordinateur.
 steps:
+  - chat:
+      - Bonjour ! La méchante du jour est une fenêtre qui s'ouvre sur l'écran. Et elle crie très fort.
+      - Vous avez déjà vu une alerte qui fait peur sur votre ordinateur ?
+    replies:
+      - say: Oui, et j'ai eu peur.
+        answer: C'est normal. Elle est faite exprès pour faire peur. Voici comment ça se passe.
+      - say: Jamais, je touche du bois.
+        answer: Tant mieux. Alors vous la rencontrez d'abord ici, où elle ne peut rien faire.
+      - say: Quel genre d'alerte ?
+        answer: Une alerte rouge, qui bipe, avec un numéro de téléphone. Voici comment ça se passe.
   - say:
       - Jeudi après-midi. Un café, les infos sur l'ordinateur.
       - Soudain, l'écran devient rouge et l'ordinateur se met à biper.
@@ -27,8 +37,16 @@ steps:
       - text: Je clique dans la fenêtre pour en savoir plus.
         reply: Entrez, entrez ! Un clic, et je prends TOUT l'écran. Je suis bien plus grande que j'en ai l'air.
         tell: Un clic donne plus de place à une fenêtre qui fait peur. Fermez-la, et n'appelez personne.
-  - say:
+  - chat:
+      - La fenêtre tousse ! Tous ces cris, ça fait mal à la gorge.
       - Dix minutes plus tard, sur une autre page, la revoilà. En plein écran, et sans croix.
+    replies:
+      - say: Oh non. Pas de croix !
+        answer: Pas de croix. Elle espère que ça vous fera peur. Regardez ce qu'elle dit maintenant.
+      - say: Elle peut abîmer mon ordinateur ?
+        answer: Ce n'est qu'une page web. Son seul but, c'est de vous faire peur pour que vous appeliez. Regardez ce qu'elle dit.
+      - say: Elle n'abandonne pas !
+        answer: Pas après un seul essai, non. Regardez ce qu'elle dit maintenant.
   - from: character
     as: Sécurité Microsoft
     say:
@@ -45,8 +63,14 @@ steps:
         right: true
         reply: Pas le bouton marche-arrêt ! Personne ne m'entend hurler sur un ordinateur éteint. Kof.
         tell: Un appui long sur le bouton marche-arrêt éteint l'ordinateur, et aucune page web ne peut l'en empêcher.
-  - say:
+  - chat:
+      - L'écran s'éteint. Quand vous rallumez l'ordinateur, toutes vos photos sont toujours là.
       - Samedi matin, le téléphone sonne. La voix au bout du fil est très, très enrouée.
+    replies:
+      - say: Je crois connaître cette voix.
+        answer: Moi aussi, je crois. Écoutez ce qu'elle dit.
+      - say: C'est un rhume ?
+        answer: Plutôt à force de hurler, je dirais. Écoutez ce qu'elle dit.
   - from: character
     as: Support Microsoft
     say:
@@ -63,9 +87,16 @@ steps:
       - text: Je lui demande d'abord son matricule.
         reply: Bien sûr ! Matricule 1-2-3-4-5. Très officiel. Maintenant, laissez-moi entrer. Kof.
         tell: "Au téléphone, on peut inventer n'importe quel matricule. Raccrochez : Microsoft n'appelle pas pour réparer."
-  - from: you
-    say:
-      - Je raccroche et je finis mon café.
+  - chat:
+      - Vous avez raccroché. Tout est calme à nouveau.
+      - Un petit café, pour fêter ça ?
+    replies:
+      - say: Oui, un grand.
+        answer: Vous l'avez bien mérité. Trois essais, et la Fenêtre qui hurle n'a rien obtenu.
+      - say: Avec un carré de chocolat !
+        answer: Bonne idée. Quelqu'un d'autre aurait bien besoin d'un grog, aujourd'hui.
+      - say: Ils vont rappeler ?
+        answer: Peut-être. Maintenant, vous connaissez la ruse. Et raccrocher est toujours permis.
   - say:
       - La Fenêtre qui hurle a une extinction de voix, et personne n'a appelé son numéro.
       - Elle est au lit, avec un grog.

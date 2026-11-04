@@ -7,6 +7,16 @@ minutes: 1
 badge: Leak-proof
 rule: A message that quotes your real details proves nothing. They leaked; thieves buy them by the thousand.
 steps:
+  - chat:
+      - "Hello! Think of all the places that have your details: the bank, the doctor, the phone company."
+      - Ever wonder where they all end up?
+    replies:
+      - say: Never thought about it.
+        answer: Most people never do. Here's one place they end up.
+      - say: Somewhere safe, I hope.
+        answer: I hope so too. Here's one place they should never be.
+      - say: Why? Where do they go?
+        answer: Some end up in the wrong hands. Let me show you whose.
   - say:
       - Wednesday, 9 in the morning. An email arrives, and it knows your real bank account number.
       - Far away, Mr. I-Know-Your-Number reads your details off a crumpled list. You are page 4,312.
@@ -27,8 +37,16 @@ steps:
       - text: Reply and ask them to prove who they are.
         reply: Proof? Your birthday is May 2nd... no, that is page 4,311. Ahem. May 9th. There.
         tell: "Real details prove nothing: thieves buy them by the thousand. Check in your bank's own app."
-  - say:
-      - An hour later, the phone rings. The caller says he is from your bank.
+  - chat:
+      - No $69.90 charge in your app. He made it up. An hour later, the phone rings.
+      - The caller says he's from your bank. Does your bank call you often?
+    replies:
+      - say: Hardly ever.
+        answer: Mine neither. So this call feels important. Here's what he says.
+      - say: Now and then.
+        answer: Then this call feels normal. That's what he hopes. Here's what he says.
+      - say: Why do you ask?
+        answer: Because a call from the bank feels serious. He counts on that. Here's what he says.
   - from: character
     as: Your bank
     say:
@@ -46,9 +64,15 @@ steps:
       - text: Ask for his name and branch, to check.
         reply: Certainly! Bob Smith, Main Street branch. Very easy to check. Now, the card number?
         tell: A name and a branch take one second to make up. Hang up and call the number on your card.
-  - from: you
-    say:
-      - My bank says there is no charge and no problem. So how did he know all that?
+  - chat:
+      - So? You called the number on the back of your card. What does your bank say?
+    replies:
+      - say: No charge, no problem.
+        answer: Good. Still, he knew your birthday and your address. They came from somewhere.
+      - say: They never called me!
+        answer: Of course not. The caller wasn't your bank. But your birthday and your address came from somewhere.
+      - say: How did he know all that?
+        answer: I wondered the same. Your birthday, your address, the last digits of your card. It all came from somewhere.
   - ask: And then?
     choices:
       - text: Ask my bank who gave my details away.
@@ -61,9 +85,15 @@ steps:
         right: true
         reply: You looked it up? Now you know my secret. I never knew you. I bought your page in a pack.
         tell: Prudence shows which known leaks hold your email address, and what leaked in each.
-  - from: you
-    say:
-      - "There it is: my phone company's leak, last year. So that is where my details went."
+  - chat:
+      - "You look up your email address. There it is: your phone company's leak, last year."
+    replies:
+      - say: So that's where my details went!
+        answer: Yes, from there. Now you know where his crumpled list came from.
+      - say: My phone company? Really?
+        answer: Really. Companies get hacked, even big ones. It's not your fault.
+      - say: Can I get them back?
+        answer: Not back, no. But now you know, and a message that quotes them can't fool you.
   - say:
       - Mr. I-Know-Your-Number drops his crumpled list, and the pages fly everywhere.
       - Yours is no use to him now.

@@ -8,6 +8,16 @@ badge: Big heart, closed wallet
 rule: Someone you have never met who talks about money is not a friend. Send them nothing.
 demo_case: B12
 steps:
+  - chat:
+      - Hello! This story is about a man who writes very sweet messages.
+      - Have you ever made a friend online? Someone you've never met in person?
+    replies:
+      - say: Yes, a lovely one.
+        answer: How nice. James, in this story, writes sweet messages too. Watch what he asks for.
+      - say: No. I like real faces.
+        answer: Real faces matter. James, in this story, never shows his.
+      - say: Is that safe?
+        answer: Often it is. Here's a story where it isn't.
   - say:
       - "Sunday evening. For six weeks, James has written every day: good morning, good night, photos of the sea."
       - His messages are warm. It is nice to be thought of.
@@ -28,9 +38,16 @@ steps:
         right: true
         reply: Nothing? Not even a little? But my camera... I mean, my heart. My heart is broken.
         tell: Someone you have never met who talks about money is not a friend. Your heart can stay open.
-  - from: you
-    say:
-      - "I write back: I do not send money to someone I have never met."
+  - chat:
+      - "You write back to James: no money for someone you've never met."
+      - Was that hard to say, after six weeks of sweet messages?
+    replies:
+      - say: A little. He seems kind.
+        answer: It's hard. Saying no to money is not saying no to kindness. Here's his answer.
+      - say: Not at all.
+        answer: Good for you. Here's his answer.
+      - say: Will he be hurt?
+        answer: He'll say he is. That's part of his plan. Here's his answer.
   - from: character
     as: James
     say:
@@ -47,8 +64,16 @@ steps:
       - text: Send half, to show that I care.
         reply: Half is a lovely start! I will ask for the other half on Thursday.
         tell: Half a fee is still money to a stranger. You can care without paying.
-  - say:
+  - chat:
+      - His camera never works, and he never arrives. There's always one more fee.
       - A few days later, he tries something new.
+    replies:
+      - say: What is it this time?
+        answer: A secret. Here it is.
+      - say: Poor man, stuck at customs.
+        answer: He's not at customs. He's at a desk, writing the same words to many people. Here's his next one.
+      - say: He doesn't give up, does he?
+        answer: Not yet. Here's his next message.
   - from: character
     as: James
     say:
@@ -65,9 +90,16 @@ steps:
       - text: Ask him why it must be a secret.
         reply: Because your family would see through me in a second. I mean... because I love you.
         tell: A stranger who wants to be hidden from your family is hiding something. Tell someone you trust.
-  - from: you
-    say:
-      - I call my family. We have lunch on Tuesday, and I tell them everything.
+  - chat:
+      - You call your family. Lunch on Tuesday, and you tell them everything.
+      - How does it go?
+    replies:
+      - say: They're glad I told them.
+        answer: Of course they are. With them by your side, he has no chance.
+      - say: We laugh about his camera.
+        answer: Six weeks, and not one video call. I'd laugh too.
+      - say: Should I block him?
+        answer: Yes. Block him and stop answering. You owe him no goodbye.
   - say:
       - The Friend Who Never Video-Calls goes back to his oil rig. His camera is still broken, and so is his plan.
       - Ever sent money to someone like him? Many people have. Tell your family and call your bank.

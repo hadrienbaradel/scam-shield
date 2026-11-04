@@ -8,6 +8,16 @@ badge: Détective des faux frais
 rule: Ne payez jamais de frais de livraison depuis un lien dans un SMS. Passez par le site ou l'application du transporteur.
 demo_case: A4
 steps:
+  - chat:
+      - Bonjour ! Vous avez une minute ? Je veux vous montrer un SMS qui circule toutes les semaines.
+      - Vous avez déjà reçu un SMS pour un colis que vous n'attendiez pas ?
+    replies:
+      - say: Tout le temps.
+        answer: Moi aussi ! Certaines semaines, un par jour. Imaginons qu'il en arrive un nouveau sur votre téléphone.
+      - say: Ils sont tous faux ?
+        answer: Pas tous. Les vrais transporteurs en envoient aussi, et c'est pour ça que les faux marchent. Imaginons qu'il en arrive un.
+      - say: Jamais. Personne ne m'écrit.
+        answer: Eh bien, moi, je vous écris ! Imaginons qu'un SMS de colis arrive aussi sur votre téléphone.
   - say:
       - Mardi, 7 h 40. Le café passe.
       - Au loin, **Monsieur Petits Frais** secoue sa tirelire. Encore vide. Il prend son téléphone.
@@ -28,9 +38,15 @@ steps:
         right: true
         reply: Oh non. Pas l'appli. Personne ne regarde l'appli. Bon. BON.
         tell: Aller vous-même voir le transporteur ne coûte rien et prouve tout.
-  - from: you
-    say:
-      - Je regarde dans l'appli Chronopost. Aucun colis en attente. Rien à payer.
+  - chat:
+      - Dans l'appli Chronopost, aucun colis en attente. Rien à payer.
+    replies:
+      - say: Ouf.
+        answer: Ouf, comme vous dites ! Pas de colis, pas de frais. Mais Monsieur Petits Frais n'a pas fini.
+      - say: C'était facile.
+        answer: Facile pour vous. Pour Monsieur Petits Frais, c'est raté. Et il n'a pas fini.
+      - say: Il voulait quoi ?
+        answer: Votre numéro de carte, pour dépenser votre argent. Bien plus que 1,99 €. Et il n'a pas fini.
   - from: character
     as: Chronopost
     say:
@@ -47,8 +63,16 @@ steps:
       - text: Je touche le lien, juste pour voir.
         reply: Juste pour voir ! Entrez, entrez. Ma page ressemble trait pour trait à Chronopost. J'ai copié chaque bouton.
         tell: Un coup d'œil ouvre sa page, et sa page demande votre carte. Passez par l'appli du transporteur.
-  - say:
+  - chat:
       - "Jeudi. Cette fois, vous attendez vraiment un colis : une nouvelle cafetière."
+      - Vous achetez parfois sur Internet ?
+    replies:
+      - say: De temps en temps.
+        answer: Alors vous connaissez l'attente. Vous guettez le livreur. Et c'est votre téléphone qui vibre.
+      - say: Oh, une cafetière !
+        answer: Une rouge, toute neuve. Vous guettez le livreur. Et c'est votre téléphone qui vibre.
+      - say: Je préfère les vrais magasins.
+        answer: Les vrais magasins, c'est bien agréable. Mais cette cafetière vient d'un site. Et votre téléphone vibre.
   - from: character
     as: Chronopost
     say:
@@ -62,9 +86,7 @@ steps:
       - text: Je paie. Cette fois, c'est sûrement ma cafetière.
         reply: Votre cafetière ! Oui ! Je la connais très bien, votre cafetière. Superbe. Votre carte, s'il vous plaît.
         tell: Il ne sait rien de votre cafetière. Il envoie le même SMS à tout le monde.
-  - from: you
-    say:
-      - Je tape le numéro de suivi de la boutique sur le site de Chronopost. Ma cafetière arrive vendredi. Sans frais.
   - say:
+      - "Le site de Chronopost le confirme : votre cafetière arrive vendredi. Sans frais."
       - Monsieur Petits Frais secoue sa tirelire une dernière fois. Pas un bruit.
       - La tirelire reste vide.

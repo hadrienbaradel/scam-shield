@@ -7,6 +7,16 @@ minutes: 1
 badge: Incollable sur les cartes cadeaux
 rule: Aucun organisme officiel ne se fait payer en cartes cadeaux ou en coupons. Qui vous en demande est un escroc.
 steps:
+  - chat:
+      - Bonjour ! Vous avez une minute ? L'histoire du jour a un méchant. Il s'appelle Monsieur Carte Cadeau.
+      - Il vous arrive d'acheter des cartes cadeaux ? Pour l'anniversaire d'un petit-enfant, par exemple ?
+    replies:
+      - say: Tout le temps. C'est pratique.
+        answer: C'est un joli cadeau. Lui, il les aime pour une tout autre raison. Écoutez plutôt.
+      - say: Jamais. Je donne un billet.
+        answer: Le billet dans la carte, le grand classique ! Lui, il préfère les cartes cadeaux. Écoutez plutôt.
+      - say: Pourquoi ? C'est risqué ?
+        answer: Pas du tout. En offrir une à un petit-enfant, c'est très bien. Attendez de voir ce qu'il en fait, lui.
   - say:
       - Lundi, 10 heures. Le café vient de passer, et le téléphone sonne.
   - from: character
@@ -27,8 +37,15 @@ steps:
         right: true
         reply: Le numéro de votre avis ? Ça sonne chez les VRAIS impôts. Ils n'ont jamais entendu parler de moi.
         tell: Votre avis d'imposition donne le vrai numéro. Aucun service public ne se fait payer en cartes cadeaux.
-  - say:
-      - Mercredi, un e-mail arrive au nom de votre ami Gérard.
+  - chat:
+      - Alors ? Vous avez appelé le numéro de votre avis d'imposition. Qu'est-ce qu'on vous a dit ?
+    replies:
+      - say: Je ne dois rien. Tout va bien.
+        answer: Bien sûr. Il avait tout inventé. Mercredi, un e-mail arrive au nom de votre ami Gérard.
+      - say: Ils n'ont jamais entendu parler de lui !
+        answer: Là-bas, personne ne le connaît. Mercredi, un e-mail arrive au nom de votre ami Gérard.
+      - say: Mais pourquoi des cartes cadeaux ?
+        answer: Une fois qu'il a les codes, l'argent part en quelques minutes. Mercredi, un e-mail arrive au nom de votre ami Gérard.
   - from: character
     as: Gérard
     say:
@@ -46,8 +63,14 @@ steps:
       - text: Je réponds à l'e-mail pour savoir s'il va bien.
         reply: Je vais bien, juste pressé ! Les cartes, s'il te plaît. Et une pièce, si tu en as une.
         tell: Une réponse part chez celui qui a écrit l'e-mail. Appelez Gérard au numéro que vous avez déjà.
-  - say:
+  - chat:
+      - Deux essais, deux ratés. Monsieur Carte Cadeau passe une mauvaise semaine.
       - Vendredi, votre voisine Josiane sonne, téléphone sur haut-parleur. Elle part acheter des cartes cadeaux avant midi.
+    replies:
+      - say: Oh non. Pas Josiane !
+        answer: Eh si. Écoutez qui est au bout du fil.
+      - say: C'est encore lui ?
+        answer: C'est lui. Même voix, toujours aussi pressé. Écoutez.
   - from: character
     as: Centre des impôts
     say:
@@ -64,8 +87,15 @@ steps:
       - text: Je ne dis rien. Ça ne me regarde pas.
         reply: Parfait. Ses affaires sont mes affaires, maintenant.
         tell: "Parler, ce n'est pas se mêler de tout. Dites-lui : aucun organisme officiel ne prend de cartes cadeaux."
-  - from: you
-    say:
-      - Josiane, appelez le numéro de votre avis d'imposition. Puis entrez prendre un café.
+  - chat:
+      - Josiane raccroche et appelle le numéro de son avis d'imposition. Elle ne doit rien.
+      - Elle est encore un peu secouée. Vous l'invitez à prendre un café ?
+    replies:
+      - say: Entrez, Josiane !
+        answer: Elle entre tout de suite. Vous sortez deux tasses.
+      - say: Oui, et j'ai du gâteau.
+        answer: Café et gâteau. Josiane va déjà mieux.
+      - say: Je lui raconte pour Gérard.
+        answer: Elle rit tellement qu'elle renverse son café. Le même escroc, toute la semaine !
   - say:
       - Monsieur Carte Cadeau repart les poches vides. Pas une carte, pas un code, et toujours pas de pièce.
