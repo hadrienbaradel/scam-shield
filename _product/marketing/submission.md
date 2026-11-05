@@ -60,7 +60,7 @@ Required fields are marked *. The rating questions are Hadrien's own opinion; th
 
 **Problem statement\*:** Build for Your World
 
-**Most Viral X post:** the link to the post below, once it is live.
+**Most Viral X post:** https://x.com/baradelhadrien/status/2118121946994901218 (posted Nov 4 evening, the 280-character version with the final video link; the two replies below as a thread)
 
 **Project Description\*:** the Description above.
 
