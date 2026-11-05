@@ -5,6 +5,8 @@
 
 **Senior-first scam protection that judges each message against the user's own life: their real orders, bank, carrier, known breaches and the people they write to.** Built for the [Meta Global AI Developer Hackathon](https://dev.meta.ai) (Oct 26 – Nov 4, 2026, Indie track, "Build for Your World"). Team: Hadrien (product) and Vlad (CTO). Features and where each one stands: [_product/spec.md](_product/spec.md). The original PRD and the first status notes stay in [docs/archive/](docs/archive/) for history. What was built during the hackathon, with times: [docs/PROVENANCE.md](docs/PROVENANCE.md).
 
+**▶ 3-minute demo:** https://youtu.be/XdCqM1nhpfU · **Try it, no sign-in:** https://heyprudence.com
+
 Americans 60+ reported **$7.7 billion** lost to online fraud in 2025 (FBI IC3). Gmail already blocks most phishing in bulk. What it does not do is explain, in words a frightened 74-year-old can act on at 9pm, *why* a message is dangerous and *what to do instead*, or check it against *her* life ("your parcel comes by Amazon Logistics, not Chronopost").
 
 ## What it does
