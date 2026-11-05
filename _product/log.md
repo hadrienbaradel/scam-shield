@@ -82,6 +82,7 @@ Who = the person, plus the session label or agent name when several sessions run
 
 ## Done
 
+- 2026-11-04 · Hadrien · submission · Form field "Describe your use of Meta products" updated before the deadline: the duplicated list removed; "Look closer" (function calling), Messenger live with the video check, WhatsApp set up, Muse Image in the ad studio and the glasses-prototype sentence added (text in the Cerebral Valley submission, team 3558)
 - 2026-11-04 · Hadrien · submission · **Prudence is submitted** on the Cerebral Valley platform, confirmed by email ("Hackathon Project "Prudence" Submitted!", before 19:40 ET; deadline 9:00 PM ET): repo hadrienbaradel/scam-shield, video https://youtu.be/XdCqM1nhpfU, X post https://x.com/baradelhadrien/status/2118121946994901218. Judging Nov 5-8; Most Viral counts reshares until Nov 8
 - 2026-11-04 · Hadrien · submission · README: the 3-minute demo (https://youtu.be/XdCqM1nhpfU) and the live site (https://heyprudence.com) linked under the tagline, so a judge opening the repo finds both
 - 2026-11-04 · Hadrien · submission · The X post is live: https://x.com/baradelhadrien/status/2118121946994901218 (the 280-character version with the final video link; the two replies prefilled as a thread); in the form texts' Most Viral X post field (`_product/marketing/submission.md`)
